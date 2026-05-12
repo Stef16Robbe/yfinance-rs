@@ -1,5 +1,9 @@
-use yfinance_rs::core::conversions::money_to_f64;
+use std::fmt::Display;
 use yfinance_rs::{Ticker, YfClient, YfError};
+
+fn display_opt<T: Display>(value: Option<&T>) -> String {
+    value.map_or_else(|| "N/A".to_string(), ToString::to_string)
+}
 
 #[tokio::main]
 async fn main() -> Result<(), YfError> {
@@ -21,20 +25,10 @@ async fn section_earnings_and_shares(symbol: &str, ticker: &Ticker) -> Result<()
     println!("Earnings Trend ({} periods):", earnings_trend.len());
     if let Some(trend) = earnings_trend.iter().find(|t| t.period.to_string() == "0y") {
         println!(
-            "  Current Year ({}): Earnings Est. Avg: {:.2}, Revenue Est. Avg: {}",
+            "  Current Year ({}): Earnings Est. Avg: {}, Revenue Est. Avg: {}",
             trend.period,
-            trend
-                .earnings_estimate
-                .avg
-                .as_ref()
-                .map(money_to_f64)
-                .unwrap_or_default(),
-            trend
-                .revenue_estimate
-                .avg
-                .as_ref()
-                .map(money_to_f64)
-                .unwrap_or_default()
+            display_opt(trend.earnings_estimate.avg.as_ref()),
+            display_opt(trend.revenue_estimate.avg.as_ref())
         );
     }
     println!();
@@ -71,22 +65,10 @@ async fn section_price_target(symbol: &str, ticker: &Ticker) -> Result<(), YfErr
     println!("--- Analyst Price Target for {symbol} ---");
     let price_target = ticker.analyst_price_target(None).await?;
     println!(
-        "  Target: avg=${:.2}, high=${:.2}, low=${:.2} (from {} analysts)",
-        price_target
-            .mean
-            .as_ref()
-            .map(money_to_f64)
-            .unwrap_or_default(),
-        price_target
-            .high
-            .as_ref()
-            .map(money_to_f64)
-            .unwrap_or_default(),
-        price_target
-            .low
-            .as_ref()
-            .map(money_to_f64)
-            .unwrap_or_default(),
+        "  Target: avg={}, high={}, low={} (from {} analysts)",
+        display_opt(price_target.mean.as_ref()),
+        display_opt(price_target.high.as_ref()),
+        display_opt(price_target.low.as_ref()),
         price_target.number_of_analysts.unwrap_or_default()
     );
     println!();

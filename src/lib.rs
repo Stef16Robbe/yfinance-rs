@@ -99,12 +99,14 @@
 //!
 //!     // Get the latest quote
 //!     let quote = ticker.quote().await?;
-//!     println!("Latest price for AAPL: ${:.2}", quote.price.as_ref().map(|p| yfinance_rs::core::conversions::money_to_f64(p)).unwrap_or(0.0));
+//!     if let Some(price) = quote.price.as_ref() {
+//!         println!("Latest price for AAPL: {price}");
+//!     }
 //!
 //!     // Get historical data for the last 6 months
 //!     let history = ticker.history(Some(Range::M6), Some(Interval::D1), false).await?;
 //!     if let Some(last_bar) = history.last() {
-//!         println!("Last closing price: ${:.2} on timestamp {}", yfinance_rs::core::conversions::money_to_f64(&last_bar.close), last_bar.ts);
+//!         println!("Last closing price: {} on timestamp {}", last_bar.close, last_bar.ts);
 //!     }
 //!
 //!     // Get analyst recommendations

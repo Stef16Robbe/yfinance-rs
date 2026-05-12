@@ -1,5 +1,9 @@
-use yfinance_rs::core::conversions::money_to_f64;
+use std::fmt::Display;
 use yfinance_rs::{Ticker, YfClient};
+
+fn display_opt<T: Display>(value: Option<&T>) -> String {
+    value.map_or_else(|| "N/A".to_string(), ToString::to_string)
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -11,8 +15,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let income_stmt = ticker.quarterly_income_stmt(None).await?;
     if let Some(latest) = income_stmt.first() {
         println!(
-            "Latest quarterly revenue: {:.2} (from {})",
-            latest.total_revenue.as_ref().map_or(0.0, money_to_f64),
+            "Latest quarterly revenue: {} (from {})",
+            display_opt(latest.total_revenue.as_ref()),
             latest.period
         );
     } else {
@@ -23,8 +27,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let balance_sheet = ticker.quarterly_balance_sheet(None).await?;
     if let Some(latest) = balance_sheet.first() {
         println!(
-            "Latest quarterly total assets: {:.2} (from {})",
-            latest.total_assets.as_ref().map_or(0.0, money_to_f64),
+            "Latest quarterly total assets: {} (from {})",
+            display_opt(latest.total_assets.as_ref()),
             latest.period
         );
     } else {
@@ -35,8 +39,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cashflow_stmt = ticker.quarterly_cashflow(None).await?;
     if let Some(latest) = cashflow_stmt.first() {
         println!(
-            "Latest quarterly operating cash flow: {:.2} (from {})",
-            latest.operating_cashflow.as_ref().map_or(0.0, money_to_f64),
+            "Latest quarterly operating cash flow: {} (from {})",
+            display_opt(latest.operating_cashflow.as_ref()),
             latest.period
         );
     } else {

@@ -1,6 +1,10 @@
-use yfinance_rs::core::conversions::money_to_f64;
+use std::fmt::Display;
 use yfinance_rs::core::{Interval, Range};
 use yfinance_rs::{Ticker, YfClient};
+
+fn display_opt<T: Display>(value: Option<&T>) -> String {
+    value.map_or_else(|| "N/A".to_string(), ToString::to_string)
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -14,14 +18,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(|v| format!(" (vol: {v})"))
         .unwrap_or_default();
     println!(
-        "  {}: ${:.2} (prev_close: ${:.2}){}",
+        "  {}: {} (prev_close: {}){}",
         quote.instrument,
-        quote.price.as_ref().map(money_to_f64).unwrap_or_default(),
-        quote
-            .previous_close
-            .as_ref()
-            .map(money_to_f64)
-            .unwrap_or_default(),
+        display_opt(quote.price.as_ref()),
+        display_opt(quote.previous_close.as_ref()),
         vol
     );
     println!();
@@ -40,9 +40,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
     if let Some(candle) = history.last() {
         println!(
-            "  Last close on {}: ${:.2}",
+            "  Last close on {}: {}",
             candle.ts.date_naive(),
-            money_to_f64(&candle.close)
+            candle.close
         );
     }
     println!();
@@ -59,33 +59,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let annual_income = ticker.income_stmt(None).await?;
     if let Some(stmt) = annual_income.first() {
         println!(
-            "  Latest annual revenue: {:.2}",
-            stmt.total_revenue
-                .as_ref()
-                .map(money_to_f64)
-                .unwrap_or_default()
+            "  Latest annual revenue: {}",
+            display_opt(stmt.total_revenue.as_ref())
         );
     }
 
     let annual_balance = ticker.balance_sheet(None).await?;
     if let Some(stmt) = annual_balance.first() {
         println!(
-            "  Latest annual assets: {:.2}",
-            stmt.total_assets
-                .as_ref()
-                .map(money_to_f64)
-                .unwrap_or_default()
+            "  Latest annual assets: {}",
+            display_opt(stmt.total_assets.as_ref())
         );
     }
 
     let annual_cashflow = ticker.cashflow(None).await?;
     if let Some(stmt) = annual_cashflow.first() {
         println!(
-            "  Latest annual free cash flow: {:.2}",
-            stmt.free_cash_flow
-                .as_ref()
-                .map(money_to_f64)
-                .unwrap_or_default()
+            "  Latest annual free cash flow: {}",
+            display_opt(stmt.free_cash_flow.as_ref())
         );
     }
 

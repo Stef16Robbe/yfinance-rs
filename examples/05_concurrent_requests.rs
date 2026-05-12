@@ -1,6 +1,10 @@
 use futures::future::try_join_all;
-use yfinance_rs::core::conversions::money_to_f64;
+use std::fmt::Display;
 use yfinance_rs::{FundamentalsBuilder, SearchBuilder, Ticker, YfClient};
+
+fn display_opt<T: Display>(value: Option<&T>) -> String {
+    value.map_or_else(|| "N/A".to_string(), ToString::to_string)
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -20,10 +24,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .map(|v| format!(" (vol: {v})"))
                     .unwrap_or_default();
                 println!(
-                    "Symbol: {}, Name: {}, Price: {:.2}{}",
+                    "Symbol: {}, Name: {}, Price: {}{}",
                     info.snapshot.instrument,
                     info.snapshot.name.unwrap_or_default(),
-                    info.snapshot.last.as_ref().map_or(0.0, money_to_f64),
+                    display_opt(info.snapshot.last.as_ref()),
                     vol
                 );
                 Ok::<_, yfinance_rs::YfError>(())
@@ -38,22 +42,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let annual_income_stmt = aapl_fundamentals.income_statement(false, None).await?;
     if let Some(stmt) = annual_income_stmt.first() {
         println!(
-            "AAPL Latest Annual Revenue: {:.2} (from {})",
-            stmt.total_revenue
-                .as_ref()
-                .map(money_to_f64)
-                .unwrap_or_default(),
+            "AAPL Latest Annual Revenue: {} (from {})",
+            display_opt(stmt.total_revenue.as_ref()),
             stmt.period
         );
     }
     let annual_cashflow = aapl_fundamentals.cashflow(false, None).await?;
     if let Some(cf) = annual_cashflow.first() {
         println!(
-            "AAPL Latest Annual Free Cash Flow: {:.2}",
-            cf.free_cash_flow
-                .as_ref()
-                .map(money_to_f64)
-                .unwrap_or_default()
+            "AAPL Latest Annual Free Cash Flow: {}",
+            display_opt(cf.free_cash_flow.as_ref())
         );
     }
     println!();

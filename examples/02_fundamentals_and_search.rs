@@ -1,5 +1,9 @@
-use yfinance_rs::core::conversions::money_to_f64;
+use std::fmt::Display;
 use yfinance_rs::{FundamentalsBuilder, HoldersBuilder, SearchBuilder, YfClient};
+
+fn display_opt<T: Display>(value: Option<&T>) -> String {
+    value.map_or_else(|| "N/A".to_string(), ToString::to_string)
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -17,12 +21,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     if let Some(stmt) = annual_income_stmt.first() {
         println!(
-            "  Period End: {} | Total Revenue: {:.2}",
+            "  Period End: {} | Total Revenue: {}",
             stmt.period,
-            stmt.total_revenue
-                .as_ref()
-                .map(money_to_f64)
-                .unwrap_or_default()
+            display_opt(stmt.total_revenue.as_ref())
         );
     }
 
@@ -33,12 +34,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     if let Some(stmt) = quarterly_balance_sheet.first() {
         println!(
-            "  Period End: {} | Total Assets: {:.2}",
+            "  Period End: {} | Total Assets: {}",
             stmt.period,
-            stmt.total_assets
-                .as_ref()
-                .map(money_to_f64)
-                .unwrap_or_default()
+            display_opt(stmt.total_assets.as_ref())
         );
     }
 
@@ -46,10 +44,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Latest Earnings Summary:");
     if let Some(e) = earnings.quarterly.first() {
         println!(
-            "  Quarter {}: Revenue: {:.2} | Earnings: {:.2}",
+            "  Quarter {}: Revenue: {} | Earnings: {}",
             e.period,
-            e.revenue.as_ref().map(money_to_f64).unwrap_or_default(),
-            e.earnings.as_ref().map(money_to_f64).unwrap_or_default()
+            display_opt(e.revenue.as_ref()),
+            display_opt(e.earnings.as_ref())
         );
     }
     println!("--------------------------------------\n");

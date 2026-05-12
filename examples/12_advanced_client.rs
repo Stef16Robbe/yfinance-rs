@@ -1,9 +1,13 @@
+use std::fmt::Display;
 use std::time::Duration;
-use yfinance_rs::core::conversions::money_to_f64;
 use yfinance_rs::{
     Ticker, YfClientBuilder, YfError,
     core::client::{Backoff, RetryConfig},
 };
+
+fn display_opt<T: Display>(value: Option<&T>) -> String {
+    value.map_or_else(|| "N/A".to_string(), ToString::to_string)
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -26,15 +30,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let aapl = Ticker::new(&client, "AAPL");
     let quote1 = aapl.quote().await?;
     println!(
-        "First fetch for {}: ${:.2} (from network)",
+        "First fetch for {}: {} (from network)",
         quote1.instrument,
-        quote1.price.as_ref().map(money_to_f64).unwrap_or_default()
+        display_opt(quote1.price.as_ref())
     );
     let quote2 = aapl.quote().await?;
     println!(
-        "Second fetch for {}: ${:.2} (should be from cache)",
+        "Second fetch for {}: {} (should be from cache)",
         quote2.instrument,
-        quote2.price.as_ref().map(money_to_f64).unwrap_or_default()
+        display_opt(quote2.price.as_ref())
     );
     println!();
 
@@ -44,9 +48,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Client cache cleared.");
     let quote3 = aapl.quote().await?;
     println!(
-        "Third fetch for {}: ${:.2} (from network again)",
+        "Third fetch for {}: {} (from network again)",
         quote3.instrument,
-        quote3.price.as_ref().map(money_to_f64).unwrap_or_default()
+        display_opt(quote3.price.as_ref())
     );
     println!();
 

@@ -116,7 +116,6 @@ Then, create a `YfClient` and use a `Ticker` to fetch data.
 
 ```rust
 use yfinance_rs::{Interval, Range, Ticker, YfClient};
-use yfinance_rs::core::conversions::money_to_f64;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -125,18 +124,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Get the latest quote
     let quote = ticker.quote().await?;
-    println!(
-        "Latest price for AAPL: ${:.2}",
-        quote.price.as_ref().map(money_to_f64).unwrap_or(0.0)
-    );
+    if let Some(price) = quote.price.as_ref() {
+        println!("Latest price for AAPL: {price}");
+    }
 
     // Get historical data for the last 6 months
     let history = ticker.history(Some(Range::M6), Some(Interval::D1), false).await?;
     if let Some(last_bar) = history.last() {
         println!(
-            "Last closing price: ${:.2} on {}",
-            money_to_f64(&last_bar.close),
-            last_bar.ts
+            "Last closing price: {} on {}",
+            last_bar.close, last_bar.ts
         );
     }
 
@@ -153,15 +150,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Earnings trend
     let trends = ticker.earnings_trend(None).await?;
     if let Some(latest) = trends.first() {
-        println!(
-            "Latest earnings estimate: ${:.2}",
-            latest
-                .earnings_estimate
-                .avg
-                .as_ref()
-                .map(money_to_f64)
-                .unwrap_or(0.0)
-        );
+        if let Some(avg) = latest.earnings_estimate.avg.as_ref() {
+            println!("Latest earnings estimate: {avg}");
+        }
     }
 
     Ok(())
@@ -272,11 +263,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     while let Some(update) = receiver.recv().await {
         let vol = update.volume.map(|v| format!(" (vol Δ: {v})")).unwrap_or_default();
-        println!("{}: ${:.2}{}",
-            update.symbol,
-            update.price.as_ref().map(yfinance_rs::core::conversions::money_to_f64).unwrap_or(0.0),
-            vol);
+        let price = update
+            .price
+            .as_ref()
+            .map_or_else(|| "N/A".to_string(), ToString::to_string);
+        println!("{}: {}{}", update.instrument, price, vol);
     }
+
+    Ok(())
+}
+```
+
 #### Volume semantics
 
 Yahoo’s websocket stream provides cumulative intraday volume (`day_volume`). This crate converts it to per-update deltas on the consumer-facing `QuoteUpdate`:
@@ -287,10 +284,6 @@ Yahoo’s websocket stream provides cumulative intraday volume (`day_volume`). T
 - The low-level decoder helper `stream::decode_and_map_message` is stateless and always returns `volume = None`.
 
 If you need cumulative volume, sum the emitted per-update `volume` values, or use `Quote.day_volume` from the quote endpoints.
-
-    Ok(())
-}
-```
 
 ### Financial Statements
 
@@ -349,10 +342,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         for call in &chain.calls {
             if (money_to_f64(&call.strike) - current_price).abs() < 5.0 {
                 println!(
-                    "ATM Call: Strike ${:.2}, Bid ${:.2}, Ask ${:.2}", 
-                    money_to_f64(&call.strike),
-                    call.bid.as_ref().map(money_to_f64).unwrap_or(0.0),
-                    call.ask.as_ref().map(money_to_f64).unwrap_or(0.0)
+                    "ATM Call: Strike {}, Bid {}, Ask {}",
+                    call.strike,
+                    call.bid
+                        .as_ref()
+                        .map_or_else(|| "N/A".to_string(), ToString::to_string),
+                    call.ask
+                        .as_ref()
+                        .map_or_else(|| "N/A".to_string(), ToString::to_string)
                 );
             }
         }
@@ -376,10 +373,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let upgrades = ticker.upgrades_downgrades().await?;
     let earnings_trends = ticker.earnings_trend(None).await?;
 
-    println!(
-        "Price Target: ${:.2}",
-        price_target.mean.as_ref().map(yfinance_rs::core::conversions::money_to_f64).unwrap_or(0.0)
-    );
+    if let Some(mean) = price_target.mean.as_ref() {
+        println!("Price Target: {mean}");
+    }
     println!(
         "Recommendation: {}",
         recs_summary
@@ -452,7 +448,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ```rust
 use yfinance_rs::{YfClientBuilder, Ticker, core::client::{Backoff, CacheMode, RetryConfig}};
 use std::time::Duration;
-use yfinance_rs::core::conversions::money_to_f64;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -478,10 +473,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }));
     
     let quote = ticker.quote().await?;
-    println!(
-        "Latest price for AAPL with custom client: ${:.2}",
-        quote.price.as_ref().map(money_to_f64).unwrap_or(0.0)
-    );
+    if let Some(price) = quote.price.as_ref() {
+        println!("Latest price for AAPL with custom client: {price}");
+    }
 
     Ok(())
 }
@@ -494,7 +488,6 @@ For full control over HTTP configuration, you can provide your own reqwest clien
 
 ```rust
 use yfinance_rs::{YfClient, Ticker};
-use yfinance_rs::core::conversions::money_to_f64;
 use reqwest::Client;
 use std::time::Duration;
 
@@ -516,10 +509,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let ticker = Ticker::new(&client, "AAPL");
     let quote = ticker.quote().await?;
-    println!(
-        "Latest price for AAPL: ${:.2}",
-        quote.price.as_ref().map(money_to_f64).unwrap_or(0.0)
-    );
+    if let Some(price) = quote.price.as_ref() {
+        println!("Latest price for AAPL: {price}");
+    }
 
     Ok(())
 }
@@ -531,7 +523,6 @@ You can configure HTTP/HTTPS proxies through the builder:
 
 ```rust
 use yfinance_rs::{YfClient, YfClientBuilder, Ticker};
-use yfinance_rs::core::conversions::money_to_f64;
 use std::time::Duration;
 
 #[tokio::main]
@@ -553,10 +544,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let ticker = Ticker::new(&client, "AAPL");
     let quote = ticker.quote().await?;
-    println!(
-        "Latest price for AAPL via proxy: ${:.2}",
-        quote.price.as_ref().map(money_to_f64).unwrap_or(0.0)
-    );
+    if let Some(price) = quote.price.as_ref() {
+        println!("Latest price for AAPL via proxy: {price}");
+    }
 
     Ok(())
 }

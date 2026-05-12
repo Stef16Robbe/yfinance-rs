@@ -20,15 +20,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let stream_task = tokio::spawn(async move {
         let mut count = 0;
         while let Some(update) = receiver.recv().await {
+            let price = update
+                .price
+                .as_ref()
+                .map_or_else(|| "N/A".to_string(), ToString::to_string);
             println!(
-                "[{}] {} @ {:.2} {}",
+                "[{}] {} @ {} {}",
                 update.ts,
                 update.instrument,
-                update
-                    .price
-                    .as_ref()
-                    .map(yfinance_rs::core::conversions::money_to_f64)
-                    .unwrap_or_default(),
+                price,
                 update
                     .volume
                     .map(|v| format!("({v} delta)"))

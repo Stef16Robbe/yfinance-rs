@@ -1,11 +1,15 @@
 use chrono::{Duration, Utc};
+use std::fmt::Display;
 use std::time::Duration as StdDuration;
 use yfinance_rs::core::Interval;
-use yfinance_rs::core::conversions::money_to_f64;
 use yfinance_rs::{
     DownloadBuilder, NewsTab, StreamBuilder, StreamMethod, Ticker, YfClient, YfClientBuilder,
     YfError,
 };
+
+fn display_opt<T: Display>(value: Option<&T>) -> String {
+    value.map_or_else(|| "N/A".to_string(), ToString::to_string)
+}
 
 #[tokio::main]
 async fn main() -> Result<(), YfError> {
@@ -28,21 +32,14 @@ async fn section_info(client: &YfClient) -> Result<(), YfError> {
     let info = msft.info().await?;
     println!("--- Ticker Info for {} ---", info.snapshot.instrument);
     println!("Name: {}", info.snapshot.name.unwrap_or_default());
-    println!(
-        "Last Price: ${:.2}",
-        info.snapshot
-            .last
-            .as_ref()
-            .map(money_to_f64)
-            .unwrap_or_default()
-    );
+    println!("Last Price: {}", display_opt(info.snapshot.last.as_ref()));
     if let Some(v) = info.snapshot.volume {
         println!("Volume (day): {v}");
     }
     if let Some(pt) = info.price_target.as_ref()
         && let Some(mean) = pt.mean.as_ref()
     {
-        println!("Price target mean: ${:.2}", money_to_f64(mean));
+        println!("Price target mean: {mean}");
     }
     if let Some(rs) = info.recommendation_summary.as_ref() {
         let mean = rs.mean.unwrap_or_default();
@@ -63,9 +60,9 @@ async fn section_fast_info(client: &YfClient) -> Result<(), YfError> {
         .or_else(|| fast_info.previous_close.clone())
         .expect("last or previous_close present");
     println!(
-        "{} is trading at ${:.2} in {}",
+        "{} is trading at {} in {}",
         fast_info.instrument,
-        yfinance_rs::core::conversions::money_to_f64(&price_money),
+        price_money,
         fast_info
             .exchange
             .map(|e| e.to_string())
@@ -87,9 +84,9 @@ async fn section_batch_quotes(client: &YfClient) -> Result<(), YfError> {
             .map(|v| format!(" (vol: {v})"))
             .unwrap_or_default();
         println!(
-            "  {}: ${:.2}{}",
+            "  {}: {}{}",
             quote.instrument,
-            quote.price.as_ref().map(money_to_f64).unwrap_or_default(),
+            display_opt(quote.price.as_ref()),
             vol
         );
     }
@@ -113,10 +110,7 @@ async fn section_download(client: &YfClient) -> Result<(), YfError> {
         let candles = &entry.history.candles;
         println!("{symbol} has {} data points.", candles.len());
         if let Some(last_candle) = candles.last() {
-            println!(
-                "  Last close price: ${:.2}",
-                money_to_f64(&last_candle.close)
-            );
+            println!("  Last close price: {}", last_candle.close);
         }
     }
     println!();
@@ -136,9 +130,8 @@ async fn section_options(client: &YfClient) -> Result<(), YfError> {
         );
         if let Some(first_call) = chain.calls.first() {
             println!(
-                "  First call option: {} @ ${:.2}",
-                first_call.instrument,
-                money_to_f64(&first_call.strike)
+                "  First call option: {} @ {}",
+                first_call.instrument, first_call.strike
             );
         }
     }
@@ -162,10 +155,10 @@ async fn section_stream(client: &YfClient) -> Result<(), YfError> {
                 .map(|v| format!(" (vol Δ: {v})"))
                 .unwrap_or_default();
             println!(
-                "[{}] {} @ {:.2}{}",
+                "[{}] {} @ {}{}",
                 update.ts,
                 update.instrument,
-                update.price.as_ref().map(money_to_f64).unwrap_or_default(),
+                display_opt(update.price.as_ref()),
                 vol
             );
             count += 1;
