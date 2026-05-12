@@ -140,6 +140,8 @@ pub mod news;
 pub mod profile;
 /// Fetch quotes for multiple symbols.
 pub mod quote;
+/// Run Yahoo Finance predefined and custom screeners.
+pub mod screener;
 /// Search for tickers by name or keyword.
 pub mod search;
 /// Stream real-time quote updates via `WebSockets` or polling.
@@ -162,6 +164,12 @@ pub use news::{NewsBuilder, NewsTab};
 pub use paft::fundamentals::statistics::KeyStatistics;
 pub use paft::market::responses::download::{DownloadEntry, DownloadResponse};
 pub use quote::{QuotesBuilder, quotes};
+pub use screener::{
+    EquityQuery, EquitySector, EtfCategory, EtfQuery, FundCategory, FundQuery, PercentPoints,
+    PredefinedScreener, Rating, Region, ResultOffset, ScreenerBuilder, ScreenerCount,
+    ScreenerNumber, ScreenerResponse, ScreenerResult, SortDirection, YahooExchangeCode,
+    equity_fields, etf_fields, fund_fields, screen,
+};
 pub use search::{SearchBuilder, search};
 pub use stream::{StreamBuilder, StreamConfig, StreamHandle, StreamMethod};
 pub use ticker::{FastInfo, Info, Ticker};

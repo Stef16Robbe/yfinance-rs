@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
-## [0.8.0] - 2026-05-12
+## [0.8.0] - Unreleased
 
 ### Breaking Changes
 
@@ -17,6 +17,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- Add strongly typed Yahoo Finance screeners:
+  - `PredefinedScreener`, `screen`, and `ScreenerBuilder` for predefined Yahoo screeners;
+  - `EquityQuery`, `FundQuery`, and `EtfQuery` for custom typed screener queries;
+  - closed field/value vocabularies, typed operators, bounded count/offset values, finite numeric values, and percent-point filters;
+  - `ScreenerResponse` and `ScreenerResult` with paft identity parsing where possible and preserved Yahoo-specific extra fields.
 - Add `Ticker::key_statistics()` and re-export `KeyStatistics` from the crate root.
 - Map more Yahoo v7 quote fields into provider-agnostic `paft` models: bid/ask top-of-book levels, regular-market open/high/low/time, market cap, shares outstanding, trailing EPS, trailing PE, dividend rate/yields, 52-week high/low, three-month average volume, and beta.
 - Expand financial statement mappings from Yahoo fundamentals-timeseries:
