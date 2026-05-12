@@ -62,6 +62,6 @@ async fn history_auto_adjust_uses_splits_when_adjclose_missing() {
     // First bar should be split-adjusted (0.5x); second bar unchanged.
     assert!((money_to_f64(&resp.candles[0].close) - 50.0).abs() < 1e-9);
     assert!((money_to_f64(&resp.candles[1].close) - 100.0).abs() < 1e-9);
-    // Volume before split should be multiplied by 2 and rounded.
-    assert_eq!(resp.candles[0].volume, Some(20));
+    // Volume stays as reported by Yahoo; auto_adjust only changes prices.
+    assert_eq!(resp.candles[0].volume, Some(10));
 }

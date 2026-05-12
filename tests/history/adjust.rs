@@ -66,13 +66,13 @@ async fn history_auto_adjust_and_actions() {
     assert!(resp.adjusted);
     assert_eq!(resp.candles.len(), 3);
 
-    // t1 (1000): prices halved, volume doubled due to 2:1 split after this candle
+    // t1 (1000): prices halved, volume stays as reported by Yahoo.
     let c0 = &resp.candles[0];
     assert!((money_to_f64(&c0.open) - 50.0).abs() < 1e-9);
     assert!((money_to_f64(&c0.high) - 50.5).abs() < 1e-9);
     assert!((money_to_f64(&c0.low) - 49.5).abs() < 1e-9);
     assert!((money_to_f64(&c0.close) - 50.0).abs() < 1e-9);
-    assert_eq!(c0.volume, Some(20));
+    assert_eq!(c0.volume, Some(10));
 
     // t2 (2000): unchanged prices, unchanged volume
     let c1 = &resp.candles[1];

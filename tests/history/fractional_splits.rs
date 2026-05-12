@@ -33,7 +33,7 @@ async fn history_tolerates_fractional_split_components() {
     mock.assert();
     assert_eq!(response.candles.len(), 2);
     assert!((money_to_f64(&response.candles[0].close) - 100.0).abs() < 1e-9);
-    assert_eq!(response.candles[0].volume, Some(13));
+    assert_eq!(response.candles[0].volume, Some(10));
     assert_eq!(response.actions.len(), 1);
     assert!(
         matches!(

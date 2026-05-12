@@ -35,6 +35,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Stop split-adjusting Yahoo chart volumes during historical `auto_adjust`; Python yfinance adjusts OHLC prices but leaves reported volume unchanged. This avoids double-adjusting already split-adjusted volumes around events such as NVDA's 2024-06-10 10:1 split.
 - Tolerate fractional Yahoo split numerator/denominator values in history responses by normalizing them into gcd-simplified `u32:u32` split actions. Oversized normalized pairs are skipped instead of aborting the whole history response.
 
 ### Dependencies

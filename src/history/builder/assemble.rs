@@ -41,17 +41,6 @@ pub fn assemble_candles(
                 *v *= pf;
             }
 
-            let volume_adj = volume0.map(|v| {
-                #[allow(clippy::cast_precision_loss)]
-                let v_adj = (v as f64) * cum_split_after[i];
-                if v_adj.is_finite() && v_adj >= 0.0 {
-                    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                    (v_adj.round() as u64)
-                } else {
-                    v
-                }
-            });
-
             if let (Some(ov), Some(hv), Some(lv), Some(cv)) = (open, high, low, close) {
                 out.push(Candle {
                     ts: i64_to_datetime(t),
@@ -64,7 +53,7 @@ pub fn assemble_candles(
                     } else {
                         None
                     },
-                    volume: volume_adj,
+                    volume: volume0,
                     provider: (),
                 });
             } else if keepna {

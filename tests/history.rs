@@ -22,6 +22,8 @@ mod history_params;
 mod history_ranges_new;
 #[path = "history/smoke.rs"]
 mod history_smoke;
+#[path = "history/volume_adjustment.rs"]
+mod history_volume_adjustment;
 
 #[path = "history/keepna_true.rs"]
 mod keepna_true;
