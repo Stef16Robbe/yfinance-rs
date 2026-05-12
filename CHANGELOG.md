@@ -33,6 +33,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Convert ratio and percentage-like analysis, ESG, holder, and quote statistics to `paft::Decimal` where the updated `paft` API expects decimal values.
 - Extend range and interval conversion support for the additional variants provided by the updated `paft` market request model.
 
+### Fixed
+
+- Tolerate fractional Yahoo split numerator/denominator values in history responses by normalizing them into gcd-simplified `u32:u32` split actions. Oversized normalized pairs are skipped instead of aborting the whole history response.
+
 ### Dependencies
 
 - Switch `paft` from crates.io `0.7.1` to the `develop` branch at `c084c6d5fbfa910544c4c096bed940abdfd4a127` until the corresponding `paft` release is published.

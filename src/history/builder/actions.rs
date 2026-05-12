@@ -3,7 +3,8 @@ use crate::history::wire::Events;
 use paft::market::action::Action;
 use paft::money::Currency;
 
-#[allow(clippy::cast_possible_truncation)]
+const SPLIT_SCALE: f64 = 1_000_000.0;
+
 pub fn extract_actions(
     events: Option<&Events>,
     currency: &Currency,
@@ -42,15 +43,8 @@ pub fn extract_actions(
     if let Some(splits) = ev.splits.as_ref() {
         for (k, s) in splits {
             let ts = k.parse::<i64>().unwrap_or_else(|_| s.date.unwrap_or(0));
-            let (num, den) = if let (Some(n), Some(d)) = (s.numerator, s.denominator) {
-                (n as u32, d as u32)
-            } else if let Some(r) = s.split_ratio.as_deref() {
-                let mut it = r.split('/');
-                let n = it.next().and_then(|x| x.parse::<u32>().ok()).unwrap_or(1);
-                let d = it.next().and_then(|x| x.parse::<u32>().ok()).unwrap_or(1);
-                (n, d)
-            } else {
-                (1, 1)
+            let Some((num, den)) = normalize_split_event(s) else {
+                continue;
             };
 
             out.push(Action::Split {
@@ -76,4 +70,74 @@ pub fn extract_actions(
     split_events.sort_by_key(|(ts, _)| *ts);
 
     (out, split_events)
+}
+
+fn normalize_split_event(split: &crate::history::wire::SplitEvent) -> Option<(u32, u32)> {
+    if let (Some(numerator), Some(denominator)) = (split.numerator, split.denominator)
+        && let Some(pair) = normalize_split_pair(numerator, denominator)
+    {
+        return Some(pair);
+    }
+
+    split.split_ratio.as_deref().and_then(normalize_split_ratio)
+}
+
+fn normalize_split_ratio(ratio: &str) -> Option<(u32, u32)> {
+    let ratio = ratio.trim();
+    for separator in ['/', ':'] {
+        if let Some((numerator, denominator)) = ratio.split_once(separator) {
+            return normalize_split_pair(
+                parse_split_component(numerator)?,
+                parse_split_component(denominator)?,
+            );
+        }
+    }
+
+    normalize_split_pair(parse_split_component(ratio)?, 1.0)
+}
+
+fn parse_split_component(value: &str) -> Option<f64> {
+    let value = value.trim().parse::<f64>().ok()?;
+    value.is_finite().then_some(value)
+}
+
+fn normalize_split_pair(numerator: f64, denominator: f64) -> Option<(u32, u32)> {
+    if !numerator.is_finite() || !denominator.is_finite() || numerator <= 0.0 || denominator <= 0.0
+    {
+        return None;
+    }
+
+    let numerator = scaled_split_component(numerator)?;
+    let denominator = scaled_split_component(denominator)?;
+    if numerator == 0 || denominator == 0 {
+        return None;
+    }
+
+    let gcd = gcd(numerator, denominator);
+    let numerator = numerator / gcd;
+    let denominator = denominator / gcd;
+
+    Some((
+        u32::try_from(numerator).ok()?,
+        u32::try_from(denominator).ok()?,
+    ))
+}
+
+fn scaled_split_component(value: f64) -> Option<u128> {
+    let scaled = (value * SPLIT_SCALE).round();
+    if !scaled.is_finite() || scaled < 0.0 || scaled > u128::MAX as f64 {
+        return None;
+    }
+
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    Some(scaled as u128)
+}
+
+const fn gcd(mut a: u128, mut b: u128) -> u128 {
+    while b != 0 {
+        let remainder = a % b;
+        a = b;
+        b = remainder;
+    }
+    a
 }

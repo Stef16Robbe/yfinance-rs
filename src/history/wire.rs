@@ -86,10 +86,10 @@ pub struct DividendEvent {
 
 #[derive(Deserialize, Clone)]
 pub struct SplitEvent {
-    #[serde(default, deserialize_with = "de_opt_u64_from_mixed")]
-    pub(crate) numerator: Option<u64>,
-    #[serde(default, deserialize_with = "de_opt_u64_from_mixed")]
-    pub(crate) denominator: Option<u64>,
+    #[serde(default, deserialize_with = "de_opt_f64_from_mixed")]
+    pub(crate) numerator: Option<f64>,
+    #[serde(default, deserialize_with = "de_opt_f64_from_mixed")]
+    pub(crate) denominator: Option<f64>,
     #[serde(rename = "splitRatio")]
     pub(crate) split_ratio: Option<String>,
     pub(crate) date: Option<i64>,
@@ -101,9 +101,12 @@ pub struct CapitalGainEvent {
     pub(crate) date: Option<i64>,
 }
 
-/// Accepts u64, integer-like f64 (e.g., 4.0), numeric strings ("4"), or null/missing.
-/// Rounds floats and rejects non-finite or clearly non-integer floats.
-fn de_opt_u64_from_mixed<'de, D>(deserializer: D) -> Result<Option<u64>, D::Error>
+/// Accepts numeric split components as integers, floats, numeric strings, or null/missing.
+///
+/// Yahoo can emit fractional split components for preferred-share adjustments
+/// (for example `1.262838`). Keep the wire layer permissive and normalize the
+/// pair later, where both numerator and denominator are available together.
+fn de_opt_f64_from_mixed<'de, D>(deserializer: D) -> Result<Option<f64>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -114,43 +117,26 @@ where
     let some = match v {
         None | Some(Value::Null) => return Ok(None),
         Some(Value::Number(n)) => {
-            if let Some(u) = n.as_u64() {
-                Some(u)
-            } else if let Some(f) = n.as_f64() {
-                if !f.is_finite() {
-                    return Err(D::Error::custom("non-finite float for split field"));
-                }
-                let r = f.round();
-                // Require the float to be very close to an integer
-                if (f - r).abs() < 1e-9 && r >= 0.0 {
-                    #[allow(
-                        clippy::cast_possible_truncation,
-                        clippy::cast_sign_loss,
-                        clippy::cast_precision_loss
-                    )]
-                    Some(r as u64)
-                } else {
-                    return Err(D::Error::custom(format!(
-                        "expected integer-like float for split field, got {f}"
-                    )));
-                }
-            } else {
+            let Some(f) = n.as_f64() else {
                 return Err(D::Error::custom("unsupported number type for split field"));
+            };
+            if !f.is_finite() {
+                return Err(D::Error::custom("non-finite number for split field"));
             }
+            Some(f)
         }
         Some(Value::String(s)) => {
             let s = s.trim();
             if s.is_empty() {
                 None
             } else {
-                match s.parse::<u64>() {
-                    Ok(u) => Some(u),
-                    Err(_) => {
-                        return Err(D::Error::custom(format!(
-                            "invalid numeric string '{s}' for split field"
-                        )));
-                    }
+                let f = s.parse::<f64>().map_err(|_| {
+                    D::Error::custom(format!("invalid numeric string '{s}' for split field"))
+                })?;
+                if !f.is_finite() {
+                    return Err(D::Error::custom("non-finite string for split field"));
                 }
+                Some(f)
             }
         }
         Some(other) => {

@@ -4,6 +4,8 @@ mod common;
 mod adjust_from_splits_only;
 #[path = "history/adjust.rs"]
 mod history_adjust;
+#[path = "history/fractional_splits.rs"]
+mod history_fractional_splits;
 #[path = "history/intervals.rs"]
 mod history_intervals;
 #[path = "history/live.rs"]
