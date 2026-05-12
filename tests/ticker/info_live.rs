@@ -19,7 +19,10 @@ async fn live_info_smoke_and_or_record() {
 
     if !crate::common::is_recording() {
         // Basic sanity checks for live mode
-        assert_eq!(info.instrument.symbol.as_str(), "MSFT");
-        assert!(info.last.is_some(), "Expected a market price for MSFT");
+        assert_eq!(info.snapshot.instrument.symbol.as_str(), "MSFT");
+        assert!(
+            info.snapshot.last.is_some(),
+            "Expected a market price for MSFT"
+        );
     }
 }

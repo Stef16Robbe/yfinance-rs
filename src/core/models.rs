@@ -1,4 +1,5 @@
 // Re-export types from paft explicitly
+pub use paft::aggregates::Snapshot as FastInfo;
 pub use paft::market::action::Action;
 pub use paft::market::quote::Quote;
 pub use paft::market::requests::history::{Interval, Range};

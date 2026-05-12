@@ -138,6 +138,9 @@ pub(super) async fn income_statement(
         "GrossProfit",
         "OperatingIncome",
         "NetIncome",
+        "InterestExpense",
+        "TaxProvision",
+        "DepreciationAndAmortization",
     ];
     let endpoint_name = "income_statement";
 
@@ -179,6 +182,15 @@ pub(super) async fn income_statement(
                         value.map(|v| f64_to_money_with_currency(v, currency.clone()));
                 } else if key == format!("{prefix}NetIncome") {
                     row.net_income = value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                } else if key == format!("{prefix}InterestExpense") {
+                    row.interest_expense =
+                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                } else if key == format!("{prefix}TaxProvision") {
+                    row.income_tax_expense =
+                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                } else if key == format!("{prefix}DepreciationAndAmortization") {
+                    row.depreciation_and_amortization =
+                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
                 }
             }
         }
@@ -233,6 +245,14 @@ pub(super) async fn balance_sheet(
         "CashAndCashEquivalents",
         "LongTermDebt",
         "OrdinarySharesNumber",
+        "CurrentAssets",
+        "CurrentLiabilities",
+        "AccountsReceivable",
+        "Inventory",
+        "AccountsPayable",
+        "NetPPE",
+        "Goodwill",
+        "OtherIntangibleAssets",
     ];
     let endpoint_name = "balance_sheet";
 
@@ -299,6 +319,28 @@ pub(super) async fn balance_sheet(
                 } else if key == format!("{prefix}LongTermDebt") {
                     row.long_term_debt =
                         value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                } else if key == format!("{prefix}CurrentAssets") {
+                    row.current_assets =
+                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                } else if key == format!("{prefix}CurrentLiabilities") {
+                    row.current_liabilities =
+                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                } else if key == format!("{prefix}AccountsReceivable") {
+                    row.accounts_receivable =
+                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                } else if key == format!("{prefix}Inventory") {
+                    row.inventory = value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                } else if key == format!("{prefix}AccountsPayable") {
+                    row.accounts_payable =
+                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                } else if key == format!("{prefix}NetPPE") {
+                    row.net_property_plant_equipment =
+                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                } else if key == format!("{prefix}Goodwill") {
+                    row.goodwill = value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                } else if key == format!("{prefix}OtherIntangibleAssets") {
+                    row.intangible_assets =
+                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
                 }
             }
         }
@@ -343,6 +385,7 @@ pub(super) async fn cashflow(
         "CapitalExpenditure",
         "FreeCashFlow",
         "NetIncome",
+        "DepreciationAndAmortization",
     ];
     let endpoint_name = "cash_flow";
 
@@ -382,6 +425,9 @@ pub(super) async fn cashflow(
                         value.map(|v| f64_to_money_with_currency(v, currency.clone()));
                 } else if key == format!("{prefix}NetIncome") {
                     row.net_income = value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                } else if key == format!("{prefix}DepreciationAndAmortization") {
+                    row.depreciation_and_amortization =
+                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
                 }
             }
         }

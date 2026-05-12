@@ -6,6 +6,45 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-05-12
+
+### Breaking Changes
+
+- Bump the crate to `0.8.0` and move the public API onto the current `paft` develop model. This is a breaking release for consumers that construct or destructure exported `paft` types directly.
+- `Ticker::info()` now returns a composed, structured `Info` rather than a flat market/fundamentals struct. Market snapshot fields live under `info.snapshot`, statistics live under `info.key_statistics`, and optional modules live under `info.profile`, `info.calendar`, `info.price_target`, `info.recommendation_summary`, and `info.esg_scores`.
+- Symbol-like public surfaces now prefer `paft::domain::Instrument` over raw symbol fields where the updated `paft` model does so. This affects quotes, search results, downloads, options, streams, and examples that previously read fields such as `symbol` or `contract_symbol`.
+- `Ticker::fast_info()` returns `paft::aggregates::Snapshot`, keeping it strictly scoped to instant-in-time quote data (`last`, `previous_close`, `open`, `day_high`, `day_low`, `volume`, exchange, currency, and market state).
+
+### Added
+
+- Add `Ticker::key_statistics()` and re-export `KeyStatistics` from the crate root.
+- Map more Yahoo v7 quote fields into provider-agnostic `paft` models: bid/ask top-of-book levels, regular-market open/high/low/time, market cap, shares outstanding, trailing EPS, trailing PE, dividend rate/yields, 52-week high/low, three-month average volume, and beta.
+- Expand financial statement mappings from Yahoo fundamentals-timeseries:
+  - income statement: interest expense, income tax expense, depreciation and amortization;
+  - balance sheet: current assets/liabilities, accounts receivable, inventory, accounts payable, net PPE, goodwill, and intangible assets excluding goodwill;
+  - cash flow: depreciation and amortization.
+- Add tests covering the new quote, key-statistics, fast-info, statement, and DataFrame conversion paths.
+
+### Changed
+
+- Align `Ticker::info()` more closely with Python yfinance's broad `info` intent while keeping the output grouped by `paft`'s provider-agnostic models instead of mirroring Yahoo's raw response shape.
+- Treat optional `info()` submodules as best-effort: a valid v7 quote remains the required core, while profile, calendar, analyst, and ESG modules are included when available.
+- Preserve dividend semantics explicitly: Yahoo `calendarEvents.exDividendDate` maps to `Calendar.ex_dividend_date`, Yahoo `calendarEvents.dividendDate` maps to `Calendar.dividend_payment_date`, and v7 `dividendDate` is used only as a fallback payment date. `KeyStatistics.ex_dividend_date` remains unset unless the upstream data is actually an ex-dividend date.
+- Convert ratio and percentage-like analysis, ESG, holder, and quote statistics to `paft::Decimal` where the updated `paft` API expects decimal values.
+- Extend range and interval conversion support for the additional variants provided by the updated `paft` market request model.
+
+### Dependencies
+
+- Switch `paft` from crates.io `0.7.1` to the `develop` branch at `c084c6d5fbfa910544c4c096bed940abdfd4a127` until the corresponding `paft` release is published.
+- Bump Polars support to `0.53`.
+- Pin `chrono` to `0.4.41` for compatibility with the updated dependency graph.
+
+### Migration Notes
+
+- Replace flat `info` reads with the appropriate group, for example `info.instrument` to `info.snapshot.instrument`, `info.last` to `info.snapshot.last`, `info.volume` to `info.snapshot.volume`, and `info.market_cap` to `info.key_statistics.market_cap`.
+- Read dividend payment dates from `info.calendar.as_ref().and_then(|c| c.dividend_payment_date)` and ex-dividend dates from `info.calendar.as_ref().and_then(|c| c.ex_dividend_date)`.
+- `quote.bid` and `quote.ask` are now `Option<BookLevel>`; read prices through `level.price` and sizes through `level.size`.
+
 ## [0.7.2] - 2025-10-31
 
 ### Dependencies
@@ -316,6 +355,7 @@ Yahoo Finance appears to have removed or relocated the ESG data endpoint. As a r
 - Analysis tools: `recommendations`, `sustainability`, `major_holders`, `institutional_holders`.
 - Utilities: `DownloadBuilder`, `StreamBuilder`, `SearchBuilder`.
 
+[0.8.0]: https://github.com/gramistella/yfinance-rs/compare/v0.7.2...v0.8.0
 [0.7.2]: https://github.com/gramistella/yfinance-rs/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/gramistella/yfinance-rs/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/gramistella/yfinance-rs/compare/v0.6.1...v0.7.0

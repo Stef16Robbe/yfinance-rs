@@ -15,14 +15,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             async move {
                 let info = ticker.info().await?;
                 let vol = info
+                    .snapshot
                     .volume
                     .map(|v| format!(" (vol: {v})"))
                     .unwrap_or_default();
                 println!(
                     "Symbol: {}, Name: {}, Price: {:.2}{}",
-                    info.instrument,
-                    info.name.unwrap_or_default(),
-                    info.last.as_ref().map_or(0.0, money_to_f64),
+                    info.snapshot.instrument,
+                    info.snapshot.name.unwrap_or_default(),
+                    info.snapshot.last.as_ref().map_or(0.0, money_to_f64),
                     vol
                 );
                 Ok::<_, yfinance_rs::YfError>(())

@@ -47,22 +47,30 @@ async fn check_comprehensive_info(ticker: &Ticker, expected_currency: &str) {
     println!("  📋 Comprehensive Info:");
     match ticker.info().await {
         Ok(info) => {
-            println!("    Instrument: {}", info.instrument);
+            println!("    Instrument: {}", info.snapshot.instrument);
             println!(
                 "    Last Price: {:?}",
-                info.last
+                info.snapshot
+                    .last
                     .as_ref()
                     .map(yfinance_rs::core::conversions::money_to_f64)
             );
             println!(
                 "    Currency: {:?}",
-                info.currency.as_ref().map(std::string::ToString::to_string)
+                info.snapshot
+                    .currency
+                    .as_ref()
+                    .map(std::string::ToString::to_string)
             );
             println!(
                 "    Exchange: {:?}",
-                info.exchange.as_ref().map(std::string::ToString::to_string)
+                info.snapshot
+                    .exchange
+                    .as_ref()
+                    .map(std::string::ToString::to_string)
             );
             let currency_correct = info
+                .snapshot
                 .currency
                 .as_ref()
                 .map(std::string::ToString::to_string)
@@ -76,7 +84,8 @@ async fn check_comprehensive_info(ticker: &Ticker, expected_currency: &str) {
                 } else {
                     "INCORRECT"
                 },
-                info.currency
+                info.snapshot
+                    .currency
                     .as_ref()
                     .map(std::string::ToString::to_string)
                     .as_deref()

@@ -26,13 +26,17 @@ async fn main() -> Result<(), YfError> {
 async fn section_info(client: &YfClient) -> Result<(), YfError> {
     let msft = Ticker::new(client, "MSFT");
     let info = msft.info().await?;
-    println!("--- Ticker Info for {} ---", info.instrument);
-    println!("Name: {}", info.name.unwrap_or_default());
+    println!("--- Ticker Info for {} ---", info.snapshot.instrument);
+    println!("Name: {}", info.snapshot.name.unwrap_or_default());
     println!(
         "Last Price: ${:.2}",
-        info.last.as_ref().map(money_to_f64).unwrap_or_default()
+        info.snapshot
+            .last
+            .as_ref()
+            .map(money_to_f64)
+            .unwrap_or_default()
     );
-    if let Some(v) = info.volume {
+    if let Some(v) = info.snapshot.volume {
         println!("Volume (day): {v}");
     }
     if let Some(pt) = info.price_target.as_ref()

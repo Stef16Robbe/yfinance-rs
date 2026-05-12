@@ -30,6 +30,7 @@ use paft::fundamentals::analysis::{
     UpgradeDowngradeRow,
 };
 use paft::fundamentals::statements::{BalanceSheetRow, CashflowRow, IncomeStatementRow};
+use paft::fundamentals::statistics::KeyStatistics;
 use paft::money::Currency;
 
 /// A high-level interface for a single ticker symbol, providing convenient access to all available data.
@@ -145,29 +146,32 @@ impl Ticker {
     ///
     /// # Errors
     ///
-    /// This method will return an error if the request fails, the response cannot be parsed,
-    /// or if the last/previous price is not available in the quote.
+    /// This method will return an error if the request fails or the response cannot be parsed.
     pub async fn fast_info(&self) -> Result<FastInfo, YfError> {
-        let q = self.quote().await?;
-        Ok(FastInfo {
-            instrument: q.instrument,
-            name: q.name.clone(),
-            exchange: q.exchange,
-            currency: q
-                .price
-                .as_ref()
-                .map(|m| m.currency().clone())
-                .or_else(|| q.previous_close.as_ref().map(|m| m.currency().clone())),
-            market_state: q.market_state,
-            as_of: Some(chrono::Utc::now()),
-            last: q.price,
-            previous_close: q.previous_close,
-            open: None,
-            day_high: None,
-            day_low: None,
-            volume: q.day_volume,
-            provider: (),
-        })
+        quote::fetch_fast_info(
+            &self.client,
+            &self.symbol,
+            self.cache_mode,
+            self.retry_override.as_ref(),
+        )
+        .await
+    }
+
+    /// Fetches valuation, dividend, volume, and risk statistics for the ticker.
+    ///
+    /// The values are mapped into paft's provider-agnostic [`KeyStatistics`] model.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or the response cannot be parsed.
+    pub async fn key_statistics(&self) -> Result<KeyStatistics, YfError> {
+        quote::fetch_key_statistics(
+            &self.client,
+            &self.symbol,
+            self.cache_mode,
+            self.retry_override.as_ref(),
+        )
+        .await
     }
 
     /* ---------------- News convenience ---------------- */

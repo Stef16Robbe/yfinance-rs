@@ -85,16 +85,26 @@ async fn offline_info_uses_recorded_fixtures() {
 
     // Assert all mocks were hit
     quote_mock.assert();
-    assert_eq!(
-        profile_mock.calls(),
-        2,
-        "profile fetch should occur twice (currency + info)"
+    assert!(
+        profile_mock.calls() >= 1,
+        "profile fetch should populate structured info"
     );
     price_target_mock.assert();
     rec_summary_mock.assert();
     esg_mock.assert();
 
     // Verify data aggregation with more robust checks. Run recorders if these fail.
-    assert_eq!(info.instrument.symbol.as_str(), "MSFT");
-    assert!(info.last.is_some(), "Price missing from quote fixture.");
+    assert_eq!(info.snapshot.instrument.symbol.as_str(), "MSFT");
+    assert!(
+        info.snapshot.last.is_some(),
+        "Price missing from quote fixture."
+    );
+    assert!(info.profile.is_some());
+    assert_eq!(info.key_statistics.shares_outstanding, Some(7_433_087_554));
+    assert!(
+        info.calendar
+            .and_then(|calendar| calendar.dividend_payment_date)
+            .is_some(),
+        "dividend payment date should fall back to v7 quote dividendDate"
+    );
 }

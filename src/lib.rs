@@ -83,7 +83,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! yfinance-rs = "0.7.2"
+//! yfinance-rs = "0.8.0"
 //! tokio = { version = "1", features = ["full"] }
 //! ```
 //!
@@ -159,6 +159,7 @@ pub use fundamentals::FundamentalsBuilder;
 pub use history::HistoryBuilder;
 pub use holders::HoldersBuilder;
 pub use news::{NewsBuilder, NewsTab};
+pub use paft::fundamentals::statistics::KeyStatistics;
 pub use paft::market::responses::download::{DownloadEntry, DownloadResponse};
 pub use quote::{QuotesBuilder, quotes};
 pub use search::{SearchBuilder, search};

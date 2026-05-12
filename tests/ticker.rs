@@ -16,6 +16,8 @@ mod info_offline;
 mod isin_live;
 #[path = "ticker/isin_offline.rs"]
 mod isin_offline;
+#[path = "ticker/key_statistics.rs"]
+mod key_statistics;
 #[path = "ticker/live.rs"]
 mod live;
 #[path = "ticker/offline.rs"]

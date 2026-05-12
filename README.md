@@ -100,7 +100,7 @@ To get started, add `yfinance-rs` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-yfinance-rs = "0.7.2"
+yfinance-rs = "0.8.0"
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -108,8 +108,8 @@ To enable DataFrame conversions backed by Polars, turn on the optional `datafram
 
 ```toml
 [dependencies]
-yfinance-rs = { version = "0.7.2", features = ["dataframe"] }
-polars = "0.51"
+yfinance-rs = { version = "0.8.0", features = ["dataframe"] }
+polars = "0.53"
 ```
 
 Then, create a `YfClient` and use a `Ticker` to fetch data.
@@ -244,7 +244,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     for entry in &results.entries {
-        println!("{}: {} data points", entry.instrument.symbol(), entry.history.candles.len());
+        println!(
+            "{}: {} data points",
+            entry.instrument.symbol.as_str(),
+            entry.history.candles.len()
+        );
     }
     Ok(())
 }
