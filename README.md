@@ -183,6 +183,38 @@ Spans are added at: `Ticker` public APIs (`info`, `quote`, `history`, etc.), HTT
 
 ## Advanced Examples
 
+### Yahoo Screeners
+
+Use predefined Yahoo screeners or build strongly typed custom equity, ETF, and fund queries.
+
+```rust
+use yfinance_rs::{
+    EquityQuery, PercentPoints, PredefinedScreener, Region, ScreenerBuilder, YfClient,
+    equity_fields, screen,
+};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = YfClient::default();
+
+    let gainers = screen(&client, PredefinedScreener::DayGainers).await?;
+    println!("day gainers: {}", gainers.results.len());
+
+    let query = EquityQuery::and(vec![
+        equity_fields::REGION.eq(Region::Us),
+        equity_fields::INTRADAY_PRICE.gte(5),
+        equity_fields::PERCENT_CHANGE.gt(PercentPoints::new(2.0)?),
+    ])?;
+
+    let custom = ScreenerBuilder::equity(&client, query).fetch().await?;
+    println!("custom screen: {}", custom.results.len());
+
+    Ok(())
+}
+```
+
+See the full example: `examples/15_screeners.rs`.
+
 ### Polars DataFrames (to_dataframe)
 
 Enable the `dataframe` feature to convert paft models into a Polars `DataFrame` with `.to_dataframe()`.
