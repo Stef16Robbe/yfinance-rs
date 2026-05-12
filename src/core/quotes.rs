@@ -42,6 +42,8 @@ pub struct V7QuoteNode {
     pub(crate) quote_type: Option<String>,
     #[serde(rename = "shortName")]
     pub(crate) short_name: Option<String>,
+    #[serde(rename = "longName")]
+    pub(crate) long_name: Option<String>,
     #[serde(rename = "regularMarketPrice")]
     pub(crate) regular_market_price: Option<f64>,
     #[serde(rename = "regularMarketOpen")]
@@ -160,7 +162,7 @@ impl V7QuoteNode {
         let exchange = self.exchange();
         Snapshot {
             instrument: self.instrument(exchange.clone()),
-            name: self.short_name.clone(),
+            name: self.long_name.clone().or_else(|| self.short_name.clone()),
             exchange,
             currency: Some(self.currency()),
             market_state: self.market_state.as_deref().and_then(|s| s.parse().ok()),
@@ -350,7 +352,7 @@ impl From<V7QuoteNode> for Quote {
 
         Self {
             instrument,
-            name: n.short_name.clone(),
+            name: n.long_name.clone().or_else(|| n.short_name.clone()),
             price: n
                 .regular_market_price
                 .map(|price| f64_to_money_with_currency_str(price, n.currency.as_deref())),

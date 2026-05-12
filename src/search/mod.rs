@@ -31,7 +31,7 @@ fn parse_search_body(body: &str) -> Result<SearchResponse, YfError> {
 
             Some(SearchResult {
                 instrument,
-                name: q.shortname.or(q.longname),
+                name: q.longname.or(q.shortname),
                 exchange: exchange_opt,
                 kind,
                 provider: (),

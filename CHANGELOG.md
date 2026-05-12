@@ -23,6 +23,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - closed field/value vocabularies, typed operators, bounded count/offset values, finite numeric values, and percent-point filters;
   - `ScreenerResponse` and `ScreenerResult` with paft identity parsing where possible and preserved Yahoo-specific extra fields.
 - Add `Ticker::key_statistics()` and re-export `KeyStatistics` from the crate root.
+- Re-export common `paft::domain` types from the crate root: `AssetKind`, `Exchange`,
+  `Instrument`, `MarketState`, `Period`, and `Symbol`.
 - Map more Yahoo v7 quote fields into provider-agnostic `paft` models: bid/ask top-of-book levels, regular-market open/high/low/time, market cap, shares outstanding, trailing EPS, trailing PE, dividend rate/yields, 52-week high/low, three-month average volume, and beta.
 - Expand financial statement mappings from Yahoo fundamentals-timeseries:
   - income statement: interest expense, income tax expense, depreciation and amortization;
@@ -42,6 +44,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Stop split-adjusting Yahoo chart volumes during historical `auto_adjust`; Python yfinance adjusts OHLC prices but leaves reported volume unchanged. This avoids double-adjusting already split-adjusted volumes around events such as NVDA's 2024-06-10 10:1 split.
 - Tolerate fractional Yahoo split numerator/denominator values in history responses by normalizing them into gcd-simplified `u32:u32` split actions. Oversized normalized pairs are skipped instead of aborting the whole history response.
+- Prefer Yahoo long names over short names for search results, quotes, and fast-info snapshots
+  when both names are available.
 
 ### Dependencies
 
