@@ -217,16 +217,19 @@ impl From<V7QuoteNode> for Quote {
 
         Self {
             instrument,
-            shortname: n.short_name,
+            name: n.short_name,
             price: n
                 .regular_market_price
                 .map(|price| f64_to_money_with_currency_str(price, n.currency.as_deref())),
+            bid: None,
+            ask: None,
             previous_close: n
                 .regular_market_previous_close
                 .map(|price| f64_to_money_with_currency_str(price, n.currency.as_deref())),
             day_volume: n.regular_market_volume,
             exchange,
             market_state: n.market_state.and_then(|s| s.parse().ok()),
+            provider: (),
         }
     }
 }

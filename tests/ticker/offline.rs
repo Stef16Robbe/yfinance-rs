@@ -16,12 +16,7 @@ async fn offline_quote_uses_recorded_fixture() {
     let q = t.quote().await.unwrap();
     mock.assert();
 
-    match q.instrument.id() {
-        paft::domain::IdentifierScheme::Security(s) => assert_eq!(s.symbol.as_str(), sym),
-        paft::domain::IdentifierScheme::Prediction(_) => {
-            panic!("unexpected instrument identifier scheme")
-        }
-    }
+    assert_eq!(q.instrument.symbol.as_str(), sym);
     // Don’t assert exact prices — fixtures will be from your latest recording
     assert!(q.price.is_some() || q.previous_close.is_some());
 }

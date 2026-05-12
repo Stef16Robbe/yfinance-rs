@@ -147,6 +147,9 @@ pub(super) async fn income_statement(
         gross_profit: None,
         operating_income: None,
         net_income: None,
+        interest_expense: None,
+        income_tax_expense: None,
+        depreciation_and_amortization: None,
     };
 
     let process_item = |key: &str,
@@ -241,6 +244,14 @@ pub(super) async fn balance_sheet(
         cash: None,
         long_term_debt: None,
         shares_outstanding: None,
+        current_assets: None,
+        current_liabilities: None,
+        accounts_receivable: None,
+        inventory: None,
+        accounts_payable: None,
+        net_property_plant_equipment: None,
+        goodwill: None,
+        intangible_assets: None,
     };
 
     let process_item = |key: &str,
@@ -341,6 +352,7 @@ pub(super) async fn cashflow(
         capital_expenditures: None,
         free_cash_flow: None,
         net_income: None,
+        depreciation_and_amortization: None,
     };
 
     let process_item = |key: &str,
@@ -604,7 +616,7 @@ pub(super) async fn shares(
 
     let counts = timestamps
         .into_iter()
-        .zip(values.into_iter())
+        .zip(values)
         .filter_map(|(ts, val)| {
             val.reported_value
                 .and_then(|rv| rv.raw)

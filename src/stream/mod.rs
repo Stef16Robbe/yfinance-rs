@@ -449,6 +449,7 @@ async fn map_ws_pricing_to_update_with_delta(
             )),
             ts: timestamp,
             volume: None,
+            provider: (),
         });
     }
 
@@ -478,6 +479,7 @@ async fn map_ws_pricing_to_update_with_delta(
         )),
         ts: timestamp,
         volume,
+        provider: (),
     })
 }
 
@@ -542,6 +544,7 @@ pub fn decode_and_map_message(text: &str) -> Result<QuoteUpdate, YfError> {
         )),
         ts: timestamp,
         volume: None,
+        provider: (),
     })
 }
 
@@ -622,6 +625,7 @@ async fn run_polling_stream(
                                 previous_close: q.regular_market_previous_close.map(|v| f64_to_money_with_currency_str(v, currency_str)),
                                 ts,
                                 volume: vol_delta,
+                                provider: (),
                             }).await.is_err() {
                                 // Break outer loop if receiver is dropped
                                 break;

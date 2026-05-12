@@ -61,6 +61,7 @@ pub async fn option_chain(
         return Ok(OptionChain {
             calls: vec![],
             puts: vec![],
+            provider: (),
         });
     };
 
@@ -128,6 +129,7 @@ pub async fn option_chain(
                         .last_trade_date
                         .and_then(|ts| Utc.timestamp_opt(ts, 0).single()),
                     greeks: None,
+                    provider: (),
                 })
             })
             .collect()
@@ -136,6 +138,7 @@ pub async fn option_chain(
     Ok(OptionChain {
         calls: map_side(od.calls, &currency),
         puts: map_side(od.puts, &currency),
+        provider: (),
     })
 }
 

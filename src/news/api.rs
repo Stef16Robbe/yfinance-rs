@@ -99,6 +99,7 @@ pub(super) async fn fetch_news(
                 publisher: content.provider.and_then(|p| p.display_name),
                 link: content.canonical_url.and_then(|u| u.url),
                 published_at: i64_to_datetime(timestamp),
+                provider: (),
             })
         })
         .collect();

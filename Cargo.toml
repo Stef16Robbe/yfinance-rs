@@ -13,7 +13,7 @@ categories = ["api-bindings", "finance"]
 build = "build.rs"
 
 [dependencies]
-chrono = { version = "0.4.42", features = ["serde"] }
+chrono = { version = "0.4.41", features = ["serde"] }
 chrono-tz = { version = "0.10", features = ["serde"] }
 reqwest = { version = "0.12.24", default-features = false, features = ["json", "rustls-tls", "gzip", "brotli", "deflate", "cookies"] }
 serde = { version = "1.0.228", features = ["derive"] }
@@ -26,9 +26,8 @@ tokio-tungstenite = { version = "0.28", features = ["rustls-tls-native-roots"] }
 futures-util = "0.3"
 prost = "0.14"
 base64 = "0.22"
-polars = { version = "0.51", default-features = false, optional = true }
-#paft = { path = "../paft-workspace/paft", features = ["market", "fundamentals", "domain", "aggregates"]}
-paft = { git = "https://github.com/paft-rs/paft", rev = "87b7e5a509db3c546ff83c2da46a62d35c0c3865", features = ["market", "fundamentals", "domain", "aggregates"] }
+polars = { version = "0.53", default-features = false, optional = true }
+paft = { git = "https://github.com/paft-rs/paft", branch = "develop", features = ["market", "fundamentals", "domain", "aggregates"] }
 rust_decimal = "1.36"
 tracing = { version = "0.1", optional = true }
 
@@ -40,7 +39,7 @@ features = ["fmt", "std", "env-filter"]
 
 [dev-dependencies]
 httpmock = "0.8.2"
-polars = { version = "0.51", default-features = false, features = ["lazy", "rolling_window"] }
+polars = { version = "0.53", default-features = false, features = ["lazy", "rolling_window"] }
 
 [build-dependencies]
 prost-build = "0.14"

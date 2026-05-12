@@ -70,17 +70,11 @@ async fn batch_quotes_401_then_retry_with_crumb_succeeds() {
     assert_eq!(quotes.len(), 2);
     let aapl = quotes
         .iter()
-        .find(|q| match q.instrument.id() {
-            paft::domain::IdentifierScheme::Security(s) => s.symbol.as_str() == "AAPL",
-            paft::domain::IdentifierScheme::Prediction(_) => false,
-        })
+        .find(|q| q.instrument.symbol.as_str() == "AAPL")
         .unwrap();
     let msft = quotes
         .iter()
-        .find(|q| match q.instrument.id() {
-            paft::domain::IdentifierScheme::Security(s) => s.symbol.as_str() == "MSFT",
-            paft::domain::IdentifierScheme::Prediction(_) => false,
-        })
+        .find(|q| q.instrument.symbol.as_str() == "MSFT")
         .unwrap();
     assert_eq!(
         aapl.price,

@@ -1,6 +1,5 @@
 use httpmock::Method::GET;
 use httpmock::MockServer;
-use paft::domain::IdentifierScheme;
 use url::Url;
 use yfinance_rs::YfClient;
 use yfinance_rs::core::conversions::*;
@@ -48,10 +47,7 @@ async fn download_back_adjust_sets_close_to_raw() {
     let s = &res
         .entries
         .iter()
-        .find(|e| match e.instrument.id() {
-            IdentifierScheme::Security(s) => s.symbol.as_ref() == sym,
-            IdentifierScheme::Prediction(_) => false,
-        })
+        .find(|e| e.instrument.symbol.as_str() == sym)
         .expect("symbol data")
         .history
         .candles;

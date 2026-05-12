@@ -176,9 +176,13 @@ impl DownloadBuilder {
             entries.push(DownloadEntry {
                 instrument,
                 history: resp,
+                provider: (),
             });
         }
-        DownloadResponse { entries }
+        DownloadResponse {
+            entries,
+            provider: (),
+        }
     }
 
     /// Creates a new `DownloadBuilder`.

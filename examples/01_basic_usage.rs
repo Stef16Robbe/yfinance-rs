@@ -1,5 +1,4 @@
 use chrono::{Duration, Utc};
-use paft::domain::IdentifierScheme;
 use std::time::Duration as StdDuration;
 use yfinance_rs::core::Interval;
 use yfinance_rs::core::conversions::money_to_f64;
@@ -106,21 +105,14 @@ async fn section_download(client: &YfClient) -> Result<(), YfError> {
         .run()
         .await?;
     for entry in &results.entries {
-        match entry.instrument.id() {
-            IdentifierScheme::Security(s) => {
-                let symbol = &s.symbol;
-                let candles = &entry.history.candles;
-                println!("{:?} has {} data points.", symbol, candles.len());
-                if let Some(last_candle) = candles.last() {
-                    println!(
-                        "  Last close price: ${:.2}",
-                        money_to_f64(&last_candle.close)
-                    );
-                }
-            }
-            IdentifierScheme::Prediction(_) => {
-                println!("Unsupported instrument: {:?}", entry.instrument.id());
-            }
+        let symbol = entry.instrument.symbol.as_str();
+        let candles = &entry.history.candles;
+        println!("{symbol} has {} data points.", candles.len());
+        if let Some(last_candle) = candles.last() {
+            println!(
+                "  Last close price: ${:.2}",
+                money_to_f64(&last_candle.close)
+            );
         }
     }
     println!();

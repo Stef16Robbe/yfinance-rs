@@ -1,6 +1,5 @@
 use httpmock::Method::GET;
 use httpmock::MockServer;
-use paft::domain::IdentifierScheme;
 use rust_decimal::prelude::ToPrimitive;
 use url::Url;
 use yfinance_rs::YfClient;
@@ -58,10 +57,7 @@ async fn download_keepna_and_rounding() {
     let v = &res
         .entries
         .iter()
-        .find(|e| match e.instrument.id() {
-            IdentifierScheme::Security(s) => s.symbol.as_ref() == sym,
-            IdentifierScheme::Prediction(_) => false,
-        })
+        .find(|e| e.instrument.symbol.as_str() == sym)
         .unwrap()
         .history
         .candles;

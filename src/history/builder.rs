@@ -224,6 +224,7 @@ impl HistoryBuilder {
             actions: actions_out,
             adjusted: self.auto_adjust,
             meta: meta_out,
+            provider: (),
         })
     }
 }

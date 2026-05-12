@@ -65,6 +65,7 @@ pub fn assemble_candles(
                         None
                     },
                     volume: volume_adj,
+                    provider: (),
                 });
             } else if keepna {
                 out.push(Candle {
@@ -79,6 +80,7 @@ pub fn assemble_candles(
                         None
                     },
                     volume: volume0,
+                    provider: (),
                 });
             }
         } else if let (Some(ov), Some(hv), Some(lv), Some(cv)) = (open, high, low, close) {
@@ -94,6 +96,7 @@ pub fn assemble_candles(
                     None
                 },
                 volume: volume0,
+                provider: (),
             });
         } else if keepna {
             out.push(Candle {
@@ -108,6 +111,7 @@ pub fn assemble_candles(
                     None
                 },
                 volume: volume0,
+                provider: (),
             });
         }
     }

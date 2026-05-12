@@ -20,7 +20,7 @@ async fn live_search_smoke_and_or_record() {
         let has_aapl = resp
             .results
             .iter()
-            .any(|q| matches!(q.instrument.id(), paft::domain::IdentifierScheme::Security(s) if s.symbol.as_str() == "AAPL"));
+            .any(|q| q.instrument.symbol.as_str() == "AAPL");
         assert!(has_aapl, "expected AAPL among search results for 'apple'");
     }
 }

@@ -1,6 +1,5 @@
 use httpmock::Method::GET;
 use httpmock::MockServer;
-use paft::domain::IdentifierScheme;
 use url::Url;
 use yfinance_rs::YfClient;
 use yfinance_rs::core::conversions::*;
@@ -57,10 +56,7 @@ async fn download_repair_simple_100x_fix() {
     let v = &res
         .entries
         .iter()
-        .find(|e| match e.instrument.id() {
-            IdentifierScheme::Security(s) => s.symbol.as_ref() == sym,
-            IdentifierScheme::Prediction(_) => false,
-        })
+        .find(|e| e.instrument.symbol.as_str() == sym)
         .unwrap()
         .history
         .candles;

@@ -34,11 +34,15 @@ fn parse_search_body(body: &str) -> Result<SearchResponse, YfError> {
                 name: q.shortname.or(q.longname),
                 exchange: exchange_opt,
                 kind,
+                provider: (),
             })
         })
         .collect();
 
-    Ok(SearchResponse { results })
+    Ok(SearchResponse {
+        results,
+        provider: (),
+    })
 }
 
 /* ---------------- Public API ---------------- */

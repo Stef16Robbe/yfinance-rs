@@ -1,4 +1,3 @@
-use paft::domain::IdentifierScheme;
 use tokio::time::{Duration, timeout};
 use yfinance_rs::StreamMethod;
 
@@ -26,10 +25,7 @@ async fn live_stream_smoke() {
         .expect("stream closed without emitting");
 
     // Updated assertion for the new symbol
-    match update.instrument.id() {
-        IdentifierScheme::Security(s) => assert_eq!(s.symbol.as_str(), "BTC-USD"),
-        IdentifierScheme::Prediction(_) => panic!("unexpected instrument identifier scheme"),
-    }
+    assert_eq!(update.instrument.symbol.as_str(), "BTC-USD");
     assert!(
         update
             .price

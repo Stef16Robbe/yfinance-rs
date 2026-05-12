@@ -89,7 +89,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(sp500_quote) = search_results
         .results
         .iter()
-        .find(|q| matches!(q.instrument.id(), paft::domain::IdentifierScheme::Security(s) if s.symbol.as_str() == "SPY"))
+        .find(|q| q.instrument.symbol.as_str() == "SPY")
     {
         println!(
             "Found: {} ({})",

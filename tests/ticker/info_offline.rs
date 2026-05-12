@@ -95,11 +95,6 @@ async fn offline_info_uses_recorded_fixtures() {
     esg_mock.assert();
 
     // Verify data aggregation with more robust checks. Run recorders if these fail.
-    match info.instrument.id() {
-        paft::domain::IdentifierScheme::Security(s) => assert_eq!(s.symbol.as_str(), "MSFT"),
-        paft::domain::IdentifierScheme::Prediction(_) => {
-            panic!("unexpected instrument identifier scheme")
-        }
-    }
+    assert_eq!(info.instrument.symbol.as_str(), "MSFT");
     assert!(info.last.is_some(), "Price missing from quote fixture.");
 }

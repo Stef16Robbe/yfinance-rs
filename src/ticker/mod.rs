@@ -5,7 +5,7 @@ mod options;
 mod quote;
 
 pub use model::{Info, OptionChain, OptionContract};
-pub use paft::aggregates::FastInfo;
+pub use paft::aggregates::Snapshot as FastInfo;
 
 use crate::core::{Action, Candle, HistoryMeta, Interval, Quote, Range};
 use crate::fundamentals::{Calendar, ShareCount};
@@ -17,7 +17,7 @@ use crate::news::NewsArticle;
 use crate::{
     EsgBuilder,
     core::client::RetryConfig,
-    core::conversions::{datetime_to_i64, money_to_currency_str, money_to_f64},
+    core::conversions::{datetime_to_i64, money_to_f64},
     core::{CacheMode, YfClient, YfError},
     holders::HoldersBuilder,
     news::NewsBuilder,
@@ -151,18 +151,22 @@ impl Ticker {
         let q = self.quote().await?;
         Ok(FastInfo {
             instrument: q.instrument,
-            name: q.shortname.clone(),
+            name: q.name.clone(),
             exchange: q.exchange,
-            market_state: q.market_state,
             currency: q
                 .price
                 .as_ref()
-                .and_then(money_to_currency_str)
-                .or_else(|| q.previous_close.as_ref().and_then(money_to_currency_str))
-                .and_then(|code| code.parse().ok()),
+                .map(|m| m.currency().clone())
+                .or_else(|| q.previous_close.as_ref().map(|m| m.currency().clone())),
+            market_state: q.market_state,
+            as_of: Some(chrono::Utc::now()),
             last: q.price,
             previous_close: q.previous_close,
+            open: None,
+            day_high: None,
+            day_low: None,
             volume: q.day_volume,
+            provider: (),
         })
     }
 

@@ -4,8 +4,8 @@ use crate::{
     core::conversions::i64_to_datetime,
     esg,
     profile::Profile,
+    ticker::Info,
 };
-use paft::aggregates::Info;
 use paft::domain::{AssetKind, Instrument};
 
 /// Private helper to handle optional async results, logging errors in debug mode.
@@ -103,7 +103,7 @@ fn assemble_info(
             },
             |q| q.instrument.clone(),
         ),
-        name: quote.and_then(|q| q.shortname.clone()),
+        name: quote.and_then(|q| q.name.clone()),
         isin,
         exchange: quote.and_then(|q| q.exchange.clone()),
         market_state: quote.and_then(|q| q.market_state),

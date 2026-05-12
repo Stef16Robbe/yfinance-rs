@@ -1,7 +1,6 @@
 use std::time;
 
 use chrono::{Duration, Utc};
-use paft::domain::IdentifierScheme;
 use yfinance_rs::core::Interval;
 use yfinance_rs::{
     DownloadBuilder, QuotesBuilder, SearchBuilder, Ticker, YfClient,
@@ -65,10 +64,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .keepna(true)
         .run()
         .await?;
-    if let Some(entry) = download.entries.iter().find(|e| match e.instrument.id() {
-        IdentifierScheme::Security(s) => s.symbol.as_ref() == "TSLA",
-        IdentifierScheme::Prediction(_) => false,
-    }) {
+    if let Some(entry) = download
+        .entries
+        .iter()
+        .find(|e| e.instrument.symbol.as_str() == "TSLA")
+    {
         println!(
             "  Fetched {} 15m candles for TSLA in the last 24h (pre/post included).",
             entry.history.candles.len()
