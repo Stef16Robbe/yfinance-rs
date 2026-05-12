@@ -1,1 +1,252 @@
-{"quoteSummary":{"result":[{"assetProfile":{"address1":"One Microsoft Way","city":"Redmond","state":"WA","zip":"98052-6399","country":"United States","phone":"425 882 8080","website":"https://www.microsoft.com","industry":"Software - Infrastructure","industryKey":"software-infrastructure","industryDisp":"Software - Infrastructure","sector":"Technology","sectorKey":"technology","sectorDisp":"Technology","longBusinessSummary":"Microsoft Corporation develops and supports software, services, devices, and solutions worldwide. The company's Productivity and Business Processes segment offers Microsoft 365 Commercial, Enterprise Mobility + Security, Windows Commercial, Power BI, Exchange, SharePoint, Microsoft Teams, Security and Compliance, and Copilot; Microsoft 365 Commercial products, such as Windows Commercial on-premises and Office licensed services; Microsoft 365 Consumer products and cloud services, such as Microsoft 365 Consumer subscriptions, Office licensed on-premises, and other consumer services; LinkedIn; Dynamics products and cloud services, such as Dynamics 365, cloud-based applications, and on-premises ERP and CRM applications. Its Intelligent Cloud segment provides Server products and cloud services, such as Azure and other cloud services, GitHub, Nuance Healthcare, virtual desktop offerings, and other cloud services; Server products, including SQL and Windows Server, Visual Studio and System Center related Client Access Licenses, and other on-premises offerings; Enterprise and partner services, including Enterprise Support and Nuance professional Services, Industry Solutions, Microsoft Partner Network, and Learning Experience. The company's Personal Computing segment provides Windows and Devices, such as Windows OEM licensing and Devices and Surface and PC accessories; Gaming services and solutions, such as Xbox hardware, content, and services, first- and third-party content Xbox Game Pass, subscriptions, and Cloud Gaming, advertising, and other cloud services; search and news advertising services, such as Bing and Copilot, Microsoft News and Edge, and third-party affiliates. It sells its products through OEMs, distributors, and resellers; and online and retail stores. The company was founded in 1975 and is headquartered in Redmond, Washington.","fullTimeEmployees":228000,"companyOfficers":[{"maxAge":1,"name":"Mr. Satya  Nadella","age":57,"title":"Chairman & CEO","yearBorn":1967,"fiscalYear":2025,"totalPay":{"raw":12251294,"fmt":"12.25M","longFmt":"12,251,294"},"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}},{"maxAge":1,"name":"Mr. Bradford L. Smith LCA","age":65,"title":"President & Vice Chairman","yearBorn":1959,"fiscalYear":2025,"totalPay":{"raw":4532750,"fmt":"4.53M","longFmt":"4,532,750"},"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}},{"maxAge":1,"name":"Ms. Amy E. Hood","age":52,"title":"Executive VP & CFO","yearBorn":1972,"fiscalYear":2025,"totalPay":{"raw":4444191,"fmt":"4.44M","longFmt":"4,444,191"},"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}},{"maxAge":1,"name":"Mr. Takeshi  Numoto","age":53,"title":"Executive VP & Chief Marketing Officer","yearBorn":1971,"fiscalYear":2025,"totalPay":{"raw":2871250,"fmt":"2.87M","longFmt":"2,871,250"},"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}},{"maxAge":1,"name":"Mr. Judson B. Althoff","age":51,"title":"Executive VP & CEO of Commercial Business","yearBorn":1973,"fiscalYear":2025,"totalPay":{"raw":4490115,"fmt":"4.49M","longFmt":"4,490,115"},"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}},{"maxAge":1,"name":"Ms. Carolina  Dybeck Happe","age":52,"title":"Executive VP & COO","yearBorn":1972,"fiscalYear":2025,"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}},{"maxAge":1,"name":"Ms. Alice L. Jolla","age":58,"title":"Corporate VP & Chief Accounting Officer","yearBorn":1966,"fiscalYear":2025,"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}},{"maxAge":1,"name":"Jonathan  Neilson","title":"Vice President of Investor Relations","fiscalYear":2025,"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}},{"maxAge":1,"name":"Mr. Jonathan M. Palmer","title":"Corporate Vice President & Chief Legal Officer","fiscalYear":2025,"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}},{"maxAge":1,"name":"Mr. Frank X. Shaw","title":"Chief Communications Officer","fiscalYear":2025,"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}}],"auditRisk":9,"boardRisk":5,"compensationRisk":4,"shareHolderRightsRisk":2,"overallRisk":3,"governanceEpochDate":1759276800,"compensationAsOfEpochDate":1767139200,"irWebsite":"http://www.microsoft.com/investor/default.aspx","executiveTeam":[],"maxAge":86400},"quoteType":{"exchange":"NMS","quoteType":"EQUITY","symbol":"MSFT","underlyingSymbol":"MSFT","shortName":"Microsoft Corporation","longName":"Microsoft Corporation","firstTradeDateEpochUtc":511108200,"timeZoneFullName":"America/New_York","timeZoneShortName":"EDT","uuid":"b004b3ec-de24-385e-b2c1-923f10d3fb62","messageBoardId":"finmb_21835","gmtOffSetMilliseconds":-14400000,"maxAge":1}}],"error":null}}
+{
+  "quoteSummary": {
+    "error": null,
+    "result": [
+      {
+        "assetProfile": {
+          "address1": "One Microsoft Way",
+          "auditRisk": 9,
+          "boardRisk": 7,
+          "city": "Redmond",
+          "companyOfficers": [
+            {
+              "age": 58,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Mr. Satya  Nadella",
+              "title": "Chairman & CEO",
+              "totalPay": {
+                "fmt": "12.25M",
+                "longFmt": "12,251,294",
+                "raw": 12251294
+              },
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1967
+            },
+            {
+              "age": 66,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Mr. Bradford L. Smith LCA",
+              "title": "President & Vice Chairman",
+              "totalPay": {
+                "fmt": "4.53M",
+                "longFmt": "4,532,750",
+                "raw": 4532750
+              },
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1959
+            },
+            {
+              "age": 53,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Ms. Amy E. Hood",
+              "title": "Executive VP & CFO",
+              "totalPay": {
+                "fmt": "4.44M",
+                "longFmt": "4,444,191",
+                "raw": 4444191
+              },
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1972
+            },
+            {
+              "age": 53,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Mr. Takeshi  Numoto",
+              "title": "Executive VP & Chief Marketing Officer",
+              "totalPay": {
+                "fmt": "2.87M",
+                "longFmt": "2,871,250",
+                "raw": 2871250
+              },
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1972
+            },
+            {
+              "age": 51,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Mr. Judson B. Althoff",
+              "title": "Executive VP & CEO of Commercial Business",
+              "totalPay": {
+                "fmt": "4.49M",
+                "longFmt": "4,490,115",
+                "raw": 4490115
+              },
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1974
+            },
+            {
+              "age": 53,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Ms. Carolina  Dybeck Happe",
+              "title": "Executive VP & COO",
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1972
+            },
+            {
+              "age": 59,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Ms. Alice L. Jolla",
+              "title": "Corporate VP & Chief Accounting Officer",
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1966
+            },
+            {
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Mr. Matthew  Kerner",
+              "title": "CTO & Corporate VP of Worldwide Sales and Solutions",
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              }
+            },
+            {
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Jonathan  Neilson",
+              "title": "Vice President of Investor Relations",
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              }
+            },
+            {
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Mr. Jonathan M. Palmer",
+              "title": "Corporate Vice President & Chief Legal Officer",
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              }
+            }
+          ],
+          "compensationAsOfEpochDate": 1767139200,
+          "compensationRisk": 5,
+          "country": "United States",
+          "executiveTeam": [],
+          "fullTimeEmployees": 228000,
+          "governanceEpochDate": 1777593600,
+          "industry": "Software - Infrastructure",
+          "industryDisp": "Software - Infrastructure",
+          "industryKey": "software-infrastructure",
+          "irWebsite": "http://www.microsoft.com/investor/default.aspx",
+          "longBusinessSummary": "Microsoft Corporation develops and supports software, services, devices, and solutions worldwide. The Productivity and Business Processes segment offers Microsoft 365 commercial, enterprise mobility + security, windows commercial, power BI, exchange, sharepoint, Microsoft teams, security and compliance, and copilot; Microsoft 365 commercial products, such as Windows commercial on-premises and office licensed services; Microsoft 365 consumer products and cloud services, including Microsoft 365 consumer subscriptions, office licensed on-premises, and other consumer services; LinkedIn; dynamics products and cloud services, such as dynamics 365, cloud-based applications, and on-premises ERP and CRM applications. Its Intelligent Cloud segment provides Server products and cloud services comprising Azure and other cloud services, GitHub, Nuance Healthcare, virtual desktop offerings, and other cloud services; server products, including SQL and windows server, visual studio and system center related client access licenses, and other on-premises offerings; enterprise and partner services, such as enterprise support and nuance professional services, industry solutions, Microsoft partner network, and learning experience. The Personal Computing segment provides windows and devices, such as Windows OEM licensing and devices and surface and PC accessories; gaming services and solutions, such as Xbox hardware, content, and services, first- and third-party content Xbox game pass, subscriptions, and cloud gaming, advertising, and other cloud services; search and news advertising services that includes Bing and Copilot, Microsoft News and Edge, and third-party affiliates. It sells its products through OEMs, distributors, and resellers; and online and retail stores. The company was founded in 1975 and is headquartered in Redmond, Washington.",
+          "maxAge": 86400,
+          "overallRisk": 4,
+          "phone": "425 882 8080",
+          "sector": "Technology",
+          "sectorDisp": "Technology",
+          "sectorKey": "technology",
+          "shareHolderRightsRisk": 2,
+          "state": "WA",
+          "website": "https://www.microsoft.com",
+          "zip": "98052-6399"
+        },
+        "quoteType": {
+          "exchange": "NMS",
+          "firstTradeDateEpochUtc": 511108200,
+          "gmtOffSetMilliseconds": -14400000,
+          "longName": "Microsoft Corporation",
+          "maxAge": 1,
+          "messageBoardId": "finmb_21835",
+          "quoteType": "EQUITY",
+          "shortName": "Microsoft Corporation",
+          "symbol": "MSFT",
+          "timeZoneFullName": "America/New_York",
+          "timeZoneShortName": "EDT",
+          "underlyingSymbol": "MSFT",
+          "uuid": "b004b3ec-de24-385e-b2c1-923f10d3fb62"
+        }
+      }
+    ]
+  }
+}

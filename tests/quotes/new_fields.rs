@@ -7,6 +7,16 @@ use yfinance_rs::core::conversions::money_to_f64;
 #[tokio::test]
 async fn quote_v7_bid_ask_are_mapped_to_book_levels() {
     let server = MockServer::start();
+    let fixture = crate::common::fixture("quote_v7", "AAPL", "json");
+    let raw: serde_json::Value = serde_json::from_str(&fixture).unwrap();
+    let raw_quote = raw["quoteResponse"]["result"]
+        .as_array()
+        .and_then(|quotes| quotes.first())
+        .expect("quote fixture should contain AAPL");
+    let expected_bid = raw_quote["bid"].as_f64().expect("fixture bid");
+    let expected_bid_size = raw_quote["bidSize"].as_u64().expect("fixture bid size");
+    let expected_ask = raw_quote["ask"].as_f64().expect("fixture ask");
+    let expected_ask_size = raw_quote["askSize"].as_u64().expect("fixture ask size");
 
     let mock = server.mock(|when, then| {
         when.method(GET)
@@ -14,7 +24,7 @@ async fn quote_v7_bid_ask_are_mapped_to_book_levels() {
             .query_param("symbols", "AAPL");
         then.status(200)
             .header("content-type", "application/json")
-            .body(crate::common::fixture("quote_v7", "AAPL", "json"));
+            .body(fixture);
     });
 
     let client = YfClient::builder()
@@ -33,10 +43,10 @@ async fn quote_v7_bid_ask_are_mapped_to_book_levels() {
     let bid = quote.bid.as_ref().expect("bid should be mapped");
     let ask = quote.ask.as_ref().expect("ask should be mapped");
 
-    assert!((money_to_f64(&bid.price) - 255.72).abs() < 1e-9);
-    assert_eq!(bid.size, Some(paft::Decimal::from(1)));
-    assert!((money_to_f64(&ask.price) - 269.86).abs() < 1e-9);
-    assert_eq!(ask.size, Some(paft::Decimal::from(1)));
+    assert!((money_to_f64(&bid.price) - expected_bid).abs() < 1e-9);
+    assert_eq!(bid.size, Some(paft::Decimal::from(expected_bid_size)));
+    assert!((money_to_f64(&ask.price) - expected_ask).abs() < 1e-9);
+    assert_eq!(ask.size, Some(paft::Decimal::from(expected_ask_size)));
 
     #[cfg(feature = "dataframe")]
     {

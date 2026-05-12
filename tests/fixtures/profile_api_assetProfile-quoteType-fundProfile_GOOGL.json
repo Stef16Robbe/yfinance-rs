@@ -1,1 +1,267 @@
-{"quoteSummary":{"result":[{"assetProfile":{"address1":"1600 Amphitheatre Parkway","city":"Mountain View","state":"CA","zip":"94043","country":"United States","phone":"650-253-0000","website":"https://abc.xyz","industry":"Internet Content & Information","industryKey":"internet-content-information","industryDisp":"Internet Content & Information","sector":"Communication Services","sectorKey":"communication-services","sectorDisp":"Communication Services","longBusinessSummary":"Alphabet Inc. offers various products and platforms in the United States, Europe, the Middle East, Africa, the Asia-Pacific, Canada, and Latin America. It operates through Google Services, Google Cloud, and Other Bets segments. The Google Services segment provides products and services, including ads, Android, Chrome, devices, Gmail, Google Drive, Google Maps, Google Photos, Google Play, Search, and YouTube. It is also involved in the sale of apps and in-app purchases and digital content in the Google Play and YouTube; and devices, as well as in the provision of YouTube consumer subscription services. The Google Cloud segment offers AI infrastructure, Vertex AI platform, cybersecurity, data and analytics, and other services; Google Workspace that include cloud-based communication and collaboration tools for enterprises, such as Calendar, Gmail, Docs, Drive, and Meet; and other services for enterprise customers. The Other Bets segment sells healthcare-related and internet services. The company was incorporated in 1998 and is headquartered in Mountain View, California.","fullTimeEmployees":187103,"companyOfficers":[{"maxAge":1,"name":"Mr. Sundar  Pichai","age":51,"title":"CEO & Director","yearBorn":1973,"fiscalYear":2024,"totalPay":{"raw":10319413,"fmt":"10.32M","longFmt":"10,319,413"},"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}},{"maxAge":1,"name":"Ms. Ruth M. Porat","age":66,"title":"President & Chief Investment Officer","yearBorn":1958,"fiscalYear":2024,"totalPay":{"raw":3023363,"fmt":"3.02M","longFmt":"3,023,363"},"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}},{"maxAge":1,"name":"Dr. Lawrence Edward Page II","age":51,"title":"Co-Founder & Director","yearBorn":1973,"fiscalYear":2024,"totalPay":{"raw":1,"fmt":"1","longFmt":"1"},"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}},{"maxAge":1,"name":"Mr. Sergey  Brin","age":50,"title":"Co-Founder & Director","yearBorn":1974,"fiscalYear":2024,"totalPay":{"raw":1,"fmt":"1","longFmt":"1"},"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}},{"maxAge":1,"name":"Ms. Anat  Ashkenazi","age":51,"title":"Senior VP & CFO","yearBorn":1973,"fiscalYear":2024,"totalPay":{"raw":11455556,"fmt":"11.46M","longFmt":"11,455,556"},"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}},{"maxAge":1,"name":"Mr. J. Kent Walker","age":63,"title":"President of Global Affairs, Chief Legal Officer & Company Secretary","yearBorn":1961,"fiscalYear":2024,"totalPay":{"raw":3019696,"fmt":"3.02M","longFmt":"3,019,696"},"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}},{"maxAge":1,"name":"Mr. Philipp  Schindler","age":53,"title":"Senior Vice President & Chief Business Officer of Google","yearBorn":1971,"fiscalYear":2024,"totalPay":{"raw":3051699,"fmt":"3.05M","longFmt":"3,051,699"},"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}},{"maxAge":1,"name":"Ms. Amie Thuener O'Toole","age":49,"title":"Corporate Controller, Chief Accounting Officer & VP","yearBorn":1975,"fiscalYear":2024,"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}},{"maxAge":1,"name":"Ms. Ellen  West","title":"Vice President of Investor Relations","fiscalYear":2024,"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}},{"maxAge":1,"name":"Ms. Fiona Clare Cicconi","age":58,"title":"Chief People Officer","yearBorn":1966,"fiscalYear":2024,"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}}],"auditRisk":7,"boardRisk":9,"compensationRisk":10,"shareHolderRightsRisk":10,"overallRisk":10,"governanceEpochDate":1759276800,"compensationAsOfEpochDate":1735603200,"executiveTeam":[],"maxAge":86400},"quoteType":{"exchange":"NMS","quoteType":"EQUITY","symbol":"GOOGL","underlyingSymbol":"GOOGL","shortName":"Alphabet Inc.","longName":"Alphabet Inc.","firstTradeDateEpochUtc":1092922200,"timeZoneFullName":"America/New_York","timeZoneShortName":"EDT","uuid":"e15ce71f-f533-3912-9f11-a46c09e2412b","messageBoardId":"finmb_29096","gmtOffSetMilliseconds":-14400000,"maxAge":1}}],"error":null}}
+{
+  "quoteSummary": {
+    "error": null,
+    "result": [
+      {
+        "assetProfile": {
+          "address1": "1600 Amphitheatre Parkway",
+          "auditRisk": 7,
+          "boardRisk": 9,
+          "city": "Mountain View",
+          "companyOfficers": [
+            {
+              "age": 52,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Mr. Sundar  Pichai",
+              "title": "CEO & Director",
+              "totalPay": {
+                "fmt": "10.91M",
+                "longFmt": "10,906,079",
+                "raw": 10906079
+              },
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1973
+            },
+            {
+              "age": 67,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Ms. Ruth M. Porat",
+              "title": "President & Chief Investment Officer",
+              "totalPay": {
+                "fmt": "1.02M",
+                "longFmt": "1,015,596",
+                "raw": 1015596
+              },
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1958
+            },
+            {
+              "age": 52,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Dr. Lawrence Edward Page II",
+              "title": "Co-Founder & Director",
+              "totalPay": {
+                "fmt": "1",
+                "longFmt": "1",
+                "raw": 1
+              },
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1973
+            },
+            {
+              "age": 51,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Mr. Sergey  Brin",
+              "title": "Co-Founder & Director",
+              "totalPay": {
+                "fmt": "1",
+                "longFmt": "1",
+                "raw": 1
+              },
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1974
+            },
+            {
+              "age": 52,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Ms. Anat  Ashkenazi",
+              "title": "Senior VP & CFO",
+              "totalPay": {
+                "fmt": "1.09M",
+                "longFmt": "1,087,961",
+                "raw": 1087961
+              },
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1973
+            },
+            {
+              "age": 64,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Mr. J. Kent Walker",
+              "title": "President of Global Affairs, Chief Legal Officer & Company Secretary",
+              "totalPay": {
+                "fmt": "1.02M",
+                "longFmt": "1,015,596",
+                "raw": 1015596
+              },
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1961
+            },
+            {
+              "age": 54,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Mr. Philipp  Schindler",
+              "title": "Senior Vice President & Chief Business Officer of Google",
+              "totalPay": {
+                "fmt": "1.62M",
+                "longFmt": "1,623,997",
+                "raw": 1623997
+              },
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1971
+            },
+            {
+              "age": 55,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Mr. James H. Friedland",
+              "title": "Head of Investor Relations",
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1970
+            },
+            {
+              "age": 59,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Ms. Fiona Clare Cicconi",
+              "title": "Chief People Officer",
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1966
+            },
+            {
+              "age": 69,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Ms. Ivy  Ross",
+              "title": "VP & Head of Design for all Hardware Products",
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1956
+            }
+          ],
+          "compensationAsOfEpochDate": 1767139200,
+          "compensationRisk": 10,
+          "country": "United States",
+          "executiveTeam": [],
+          "fullTimeEmployees": 194668,
+          "governanceEpochDate": 1777593600,
+          "industry": "Internet Content & Information",
+          "industryDisp": "Internet Content & Information",
+          "industryKey": "internet-content-information",
+          "longBusinessSummary": "Alphabet Inc. offers various products and platforms in the United States, Europe, the Middle East, Africa, the Asia-Pacific, Canada, and Latin America. It operates through Google Services, Google Cloud, and Other Bets segments. The Google Services segment provides products and services, including ads, Android, Chrome, devices, Gmail, Google Drive, Google Maps, Google Photos, Google Play, Search, and YouTube. It is also involved in the sale of apps and in-app purchases and digital content in Google Play and YouTube; and devices, as well as the provision of YouTube consumer subscription services, such as YouTube TV, YouTube Music and Premium, NFL Sunday Ticket, and Google One. The Google Cloud segment offers consumption-based fees and subscriptions for AI solutions, including AI infrastructure, Vertex AI platform, and Gemini enterprise. It also provides cybersecurity, and data and analytics services; Google Workspace that include cloud-based communication and collaboration tools for enterprises, such as Calendar, Gmail, Docs, Drive, and Meet; and other enterprise services. The Other Bets segment sells transportation and internet services. Alphabet Inc. was incorporated in 1998 and is headquartered in Mountain View, California.",
+          "maxAge": 86400,
+          "overallRisk": 10,
+          "phone": "650-253-0000",
+          "sector": "Communication Services",
+          "sectorDisp": "Communication Services",
+          "sectorKey": "communication-services",
+          "shareHolderRightsRisk": 10,
+          "state": "CA",
+          "website": "https://abc.xyz",
+          "zip": "94043"
+        },
+        "quoteType": {
+          "exchange": "NMS",
+          "firstTradeDateEpochUtc": 1092922200,
+          "gmtOffSetMilliseconds": -14400000,
+          "longName": "Alphabet Inc.",
+          "maxAge": 1,
+          "messageBoardId": "finmb_29096",
+          "quoteType": "EQUITY",
+          "shortName": "Alphabet Inc.",
+          "symbol": "GOOGL",
+          "timeZoneFullName": "America/New_York",
+          "timeZoneShortName": "EDT",
+          "underlyingSymbol": "GOOGL",
+          "uuid": "e15ce71f-f533-3912-9f11-a46c09e2412b"
+        }
+      }
+    ]
+  }
+}

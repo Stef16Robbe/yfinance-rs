@@ -1,1 +1,484 @@
-{"timeseries":{"result":[{"meta":{"symbol":["GS2C.DE"],"type":["annualNetIncome"]},"timestamp":[1643587200,1675123200,1706659200,1738281600],"annualNetIncome":[{"dataId":20091,"asOfDate":"2022-01-31","periodType":"12M","currencyCode":"USD","reportedValue":{"raw":-3.813E8,"fmt":"-381.30M"}},{"dataId":20091,"asOfDate":"2023-01-31","periodType":"12M","currencyCode":"USD","reportedValue":{"raw":-3.131E8,"fmt":"-313.10M"}},{"dataId":20091,"asOfDate":"2024-01-31","periodType":"12M","currencyCode":"USD","reportedValue":{"raw":6700000.0,"fmt":"6.70M"}},{"dataId":20091,"asOfDate":"2025-01-31","periodType":"12M","currencyCode":"USD","reportedValue":{"raw":1.313E8,"fmt":"131.30M"}}]},{"meta":{"symbol":["GS2C.DE"],"type":["annualOperatingIncome"]},"timestamp":[1643587200,1675123200,1706659200,1738281600],"annualOperatingIncome":[{"dataId":20109,"asOfDate":"2022-01-31","periodType":"12M","currencyCode":"USD","reportedValue":{"raw":-3.618E8,"fmt":"-361.80M"},"geographicSegmentData":[{"dataValue":3.06E7,"segmentType":"Geographic","segmentName":"Australia","isPrimarySegment":0},{"dataValue":-1100000.0,"segmentType":"Geographic","segmentName":"Canada","isPrimarySegment":0},{"dataValue":-3.99E7,"segmentType":"Geographic","segmentName":"Europe","isPrimarySegment":0},{"dataValue":-3.581E8,"segmentType":"Geographic","segmentName":"United States","isPrimarySegment":1}]},{"dataId":20109,"asOfDate":"2023-01-31","periodType":"12M","currencyCode":"USD","reportedValue":{"raw":-3.089E8,"fmt":"-308.90M"},"geographicSegmentData":[{"dataValue":1.38E7,"segmentType":"Geographic","segmentName":"Australia","isPrimarySegment":0},{"dataValue":-8600000.0,"segmentType":"Geographic","segmentName":"Canada","isPrimarySegment":0},{"dataValue":-3.06E7,"segmentType":"Geographic","segmentName":"Europe","isPrimarySegment":0},{"dataValue":-2.862E8,"segmentType":"Geographic","segmentName":"United States","isPrimarySegment":1}]},{"dataId":20109,"asOfDate":"2024-01-31","periodType":"12M","currencyCode":"USD","reportedValue":{"raw":-2.97E7,"fmt":"-29.70M"},"geographicSegmentData":[{"dataValue":-3500000.0,"segmentType":"Geographic","segmentName":"Australia","isPrimarySegment":0},{"dataValue":-8400000.0,"segmentType":"Geographic","segmentName":"Canada","isPrimarySegment":0},{"dataValue":-2.02E7,"segmentType":"Geographic","segmentName":"Europe","isPrimarySegment":0},{"dataValue":-2400000.0,"segmentType":"Geographic","segmentName":"United States","isPrimarySegment":1}]},{"dataId":20109,"asOfDate":"2025-01-31","periodType":"12M","currencyCode":"USD","reportedValue":{"raw":-1.65E7,"fmt":"-16.50M"},"geographicSegmentData":[{"dataValue":-1.19E7,"segmentType":"Geographic","segmentName":"Australia","isPrimarySegment":0},{"dataValue":-1.0E7,"segmentType":"Geographic","segmentName":"Canada","isPrimarySegment":0},{"dataValue":-3.82E7,"segmentType":"Geographic","segmentName":"Europe","isPrimarySegment":0},{"dataValue":3.39E7,"segmentType":"Geographic","segmentName":"United States","isPrimarySegment":1}]}]},{"meta":{"symbol":["GS2C.DE"],"type":["annualTotalRevenue"]},"timestamp":[1643587200,1675123200,1706659200,1738281600],"annualTotalRevenue":[{"dataId":20100,"asOfDate":"2022-01-31","periodType":"12M","currencyCode":"USD","reportedValue":{"raw":6.0107E9,"fmt":"6.01B"}},{"dataId":20100,"asOfDate":"2023-01-31","periodType":"12M","currencyCode":"USD","reportedValue":{"raw":5.9272E9,"fmt":"5.93B"}},{"dataId":20100,"asOfDate":"2024-01-31","periodType":"12M","currencyCode":"USD","reportedValue":{"raw":5.2728E9,"fmt":"5.27B"}},{"dataId":20100,"asOfDate":"2025-01-31","periodType":"12M","currencyCode":"USD","reportedValue":{"raw":3.823E9,"fmt":"3.82B"}}]},{"meta":{"symbol":["GS2C.DE"],"type":["annualGrossProfit"]},"timestamp":[1643587200,1675123200,1706659200,1738281600],"annualGrossProfit":[{"dataId":20046,"asOfDate":"2022-01-31","periodType":"12M","currencyCode":"USD","reportedValue":{"raw":1.3478E9,"fmt":"1.35B"}},{"dataId":20046,"asOfDate":"2023-01-31","periodType":"12M","currencyCode":"USD","reportedValue":{"raw":1.3721E9,"fmt":"1.37B"}},{"dataId":20046,"asOfDate":"2024-01-31","periodType":"12M","currencyCode":"USD","reportedValue":{"raw":1.2942E9,"fmt":"1.29B"}},{"dataId":20046,"asOfDate":"2025-01-31","periodType":"12M","currencyCode":"USD","reportedValue":{"raw":1.1139E9,"fmt":"1.11B"}}]}],"error":null}}
+{
+  "timeseries": {
+    "error": null,
+    "result": [
+      {
+        "annualDepreciationAndAmortization": [
+          {
+            "asOfDate": "2023-01-31",
+            "currencyCode": "USD",
+            "dataId": 26060,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "61.70M",
+              "raw": 61700000.0
+            }
+          },
+          {
+            "asOfDate": "2024-01-31",
+            "currencyCode": "USD",
+            "dataId": 26060,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "56.20M",
+              "raw": 56200000.0
+            }
+          },
+          {
+            "asOfDate": "2025-01-31",
+            "currencyCode": "USD",
+            "dataId": 26060,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "38.90M",
+              "raw": 38900000.0
+            }
+          },
+          {
+            "asOfDate": "2026-01-31",
+            "currencyCode": "USD",
+            "dataId": 26060,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "14.60M",
+              "raw": 14600000.0
+            }
+          }
+        ],
+        "meta": {
+          "symbol": [
+            "GS2C.DE"
+          ],
+          "type": [
+            "annualDepreciationAndAmortization"
+          ]
+        },
+        "timestamp": [
+          1675123200,
+          1706659200,
+          1738281600,
+          1769817600
+        ]
+      },
+      {
+        "annualNetIncome": [
+          {
+            "asOfDate": "2023-01-31",
+            "currencyCode": "USD",
+            "dataId": 20091,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "-313.10M",
+              "raw": -313100000.0
+            }
+          },
+          {
+            "asOfDate": "2024-01-31",
+            "currencyCode": "USD",
+            "dataId": 20091,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "6.70M",
+              "raw": 6700000.0
+            }
+          },
+          {
+            "asOfDate": "2025-01-31",
+            "currencyCode": "USD",
+            "dataId": 20091,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "131.30M",
+              "raw": 131300000.0
+            }
+          },
+          {
+            "asOfDate": "2026-01-31",
+            "currencyCode": "USD",
+            "dataId": 20091,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "418.40M",
+              "raw": 418400000.0
+            }
+          }
+        ],
+        "meta": {
+          "symbol": [
+            "GS2C.DE"
+          ],
+          "type": [
+            "annualNetIncome"
+          ]
+        },
+        "timestamp": [
+          1675123200,
+          1706659200,
+          1738281600,
+          1769817600
+        ]
+      },
+      {
+        "annualOperatingIncome": [
+          {
+            "asOfDate": "2023-01-31",
+            "currencyCode": "USD",
+            "dataId": 20109,
+            "geographicSegmentData": [
+              {
+                "dataValue": 13800000.0,
+                "isPrimarySegment": 0,
+                "segmentName": "Australia",
+                "segmentType": "Geographic"
+              },
+              {
+                "dataValue": -8600000.0,
+                "isPrimarySegment": 0,
+                "segmentName": "Canada",
+                "segmentType": "Geographic"
+              },
+              {
+                "dataValue": -30600000.0,
+                "isPrimarySegment": 0,
+                "segmentName": "Europe",
+                "segmentType": "Geographic"
+              },
+              {
+                "dataValue": -286200000.0,
+                "isPrimarySegment": 1,
+                "segmentName": "United States",
+                "segmentType": "Geographic"
+              }
+            ],
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "-308.90M",
+              "raw": -308900000.0
+            }
+          },
+          {
+            "asOfDate": "2024-01-31",
+            "currencyCode": "USD",
+            "dataId": 20109,
+            "geographicSegmentData": [
+              {
+                "dataValue": -3500000.0,
+                "isPrimarySegment": 0,
+                "segmentName": "Australia",
+                "segmentType": "Geographic"
+              },
+              {
+                "dataValue": -8400000.0,
+                "isPrimarySegment": 0,
+                "segmentName": "Canada",
+                "segmentType": "Geographic"
+              },
+              {
+                "dataValue": -20200000.0,
+                "isPrimarySegment": 0,
+                "segmentName": "Europe",
+                "segmentType": "Geographic"
+              },
+              {
+                "dataValue": -2400000.0,
+                "isPrimarySegment": 1,
+                "segmentName": "United States",
+                "segmentType": "Geographic"
+              }
+            ],
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "-29.70M",
+              "raw": -29700000.0
+            }
+          },
+          {
+            "asOfDate": "2025-01-31",
+            "currencyCode": "USD",
+            "dataId": 20109,
+            "geographicSegmentData": [
+              {
+                "dataValue": -11900000.0,
+                "isPrimarySegment": 0,
+                "segmentName": "Australia",
+                "segmentType": "Geographic"
+              },
+              {
+                "dataValue": -10000000.0,
+                "isPrimarySegment": 0,
+                "segmentName": "Canada",
+                "segmentType": "Geographic"
+              },
+              {
+                "dataValue": -38200000.0,
+                "isPrimarySegment": 0,
+                "segmentName": "Europe",
+                "segmentType": "Geographic"
+              },
+              {
+                "dataValue": 33900000.0,
+                "isPrimarySegment": 1,
+                "segmentName": "United States",
+                "segmentType": "Geographic"
+              }
+            ],
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "-16.50M",
+              "raw": -16500000.0
+            }
+          },
+          {
+            "asOfDate": "2026-01-31",
+            "currencyCode": "USD",
+            "dataId": 20109,
+            "geographicSegmentData": [
+              {
+                "dataValue": 4600000.0,
+                "isPrimarySegment": 0,
+                "segmentName": "Australia",
+                "segmentType": "Geographic"
+              },
+              {
+                "dataValue": -22200000.0,
+                "isPrimarySegment": 0,
+                "segmentName": "Canada",
+                "segmentType": "Geographic"
+              },
+              {
+                "dataValue": -33500000.0,
+                "isPrimarySegment": 0,
+                "segmentName": "Europe",
+                "segmentType": "Geographic"
+              },
+              {
+                "dataValue": 283200000.0,
+                "isPrimarySegment": 1,
+                "segmentName": "United States",
+                "segmentType": "Geographic"
+              }
+            ],
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "285.90M",
+              "raw": 285900000.0
+            }
+          }
+        ],
+        "meta": {
+          "symbol": [
+            "GS2C.DE"
+          ],
+          "type": [
+            "annualOperatingIncome"
+          ]
+        },
+        "timestamp": [
+          1675123200,
+          1706659200,
+          1738281600,
+          1769817600
+        ]
+      },
+      {
+        "annualTotalRevenue": [
+          {
+            "asOfDate": "2023-01-31",
+            "currencyCode": "USD",
+            "dataId": 20100,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "5.93B",
+              "raw": 5927200000.0
+            }
+          },
+          {
+            "asOfDate": "2024-01-31",
+            "currencyCode": "USD",
+            "dataId": 20100,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "5.27B",
+              "raw": 5272800000.0
+            }
+          },
+          {
+            "asOfDate": "2025-01-31",
+            "currencyCode": "USD",
+            "dataId": 20100,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "3.82B",
+              "raw": 3823000000.0
+            }
+          },
+          {
+            "asOfDate": "2026-01-31",
+            "currencyCode": "USD",
+            "dataId": 20100,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "3.63B",
+              "raw": 3629900000.0
+            }
+          }
+        ],
+        "meta": {
+          "symbol": [
+            "GS2C.DE"
+          ],
+          "type": [
+            "annualTotalRevenue"
+          ]
+        },
+        "timestamp": [
+          1675123200,
+          1706659200,
+          1738281600,
+          1769817600
+        ]
+      },
+      {
+        "annualInterestExpense": [
+          {
+            "asOfDate": "2022-01-31",
+            "currencyCode": "USD",
+            "dataId": 20057,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "26.90M",
+              "raw": 26900000.0
+            }
+          }
+        ],
+        "meta": {
+          "symbol": [
+            "GS2C.DE"
+          ],
+          "type": [
+            "annualInterestExpense"
+          ]
+        },
+        "timestamp": [
+          1643587200
+        ]
+      },
+      {
+        "annualGrossProfit": [
+          {
+            "asOfDate": "2023-01-31",
+            "currencyCode": "USD",
+            "dataId": 20046,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "1.37B",
+              "raw": 1372100000.0
+            }
+          },
+          {
+            "asOfDate": "2024-01-31",
+            "currencyCode": "USD",
+            "dataId": 20046,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "1.29B",
+              "raw": 1294200000.0
+            }
+          },
+          {
+            "asOfDate": "2025-01-31",
+            "currencyCode": "USD",
+            "dataId": 20046,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "1.11B",
+              "raw": 1113900000.0
+            }
+          },
+          {
+            "asOfDate": "2026-01-31",
+            "currencyCode": "USD",
+            "dataId": 20046,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "1.20B",
+              "raw": 1196100000.0
+            }
+          }
+        ],
+        "meta": {
+          "symbol": [
+            "GS2C.DE"
+          ],
+          "type": [
+            "annualGrossProfit"
+          ]
+        },
+        "timestamp": [
+          1675123200,
+          1706659200,
+          1738281600,
+          1769817600
+        ]
+      },
+      {
+        "annualTaxProvision": [
+          {
+            "asOfDate": "2023-01-31",
+            "currencyCode": "USD",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "11.00M",
+              "raw": 11000000.0
+            }
+          },
+          {
+            "asOfDate": "2024-01-31",
+            "currencyCode": "USD",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "6.40M",
+              "raw": 6400000.0
+            }
+          },
+          {
+            "asOfDate": "2025-01-31",
+            "currencyCode": "USD",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "5.90M",
+              "raw": 5900000.0
+            }
+          },
+          {
+            "asOfDate": "2026-01-31",
+            "currencyCode": "USD",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "-34.40M",
+              "raw": -34400000.0
+            }
+          }
+        ],
+        "meta": {
+          "symbol": [
+            "GS2C.DE"
+          ],
+          "type": [
+            "annualTaxProvision"
+          ]
+        },
+        "timestamp": [
+          1675123200,
+          1706659200,
+          1738281600,
+          1769817600
+        ]
+      }
+    ]
+  }
+}

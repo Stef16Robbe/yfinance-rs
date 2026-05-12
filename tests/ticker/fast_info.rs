@@ -53,6 +53,12 @@ async fn fast_info_uses_previous_close_when_price_missing() {
 #[tokio::test]
 async fn fast_info_maps_snapshot_session_fields_from_v7_quote() {
     let server = MockServer::start();
+    let fixture = crate::common::fixture("quote_v7", "AAPL", "json");
+    let raw: serde_json::Value = serde_json::from_str(&fixture).unwrap();
+    let raw_quote = raw["quoteResponse"]["result"]
+        .as_array()
+        .and_then(|quotes| quotes.first())
+        .expect("quote fixture should contain AAPL");
 
     let mock = server.mock(|when, then| {
         when.method(GET)
@@ -60,7 +66,7 @@ async fn fast_info_maps_snapshot_session_fields_from_v7_quote() {
             .query_param("symbols", "AAPL");
         then.status(200)
             .header("content-type", "application/json")
-            .body(crate::common::fixture("quote_v7", "AAPL", "json"));
+            .body(fixture);
     });
 
     let client = YfClient::builder()
@@ -73,13 +79,24 @@ async fn fast_info_maps_snapshot_session_fields_from_v7_quote() {
     mock.assert();
 
     let open = money_to_f64(snapshot.open.as_ref().unwrap());
+    let expected_open = raw_quote["regularMarketOpen"].as_f64().unwrap();
     assert!(
-        (open - 269.28).abs() < 1e-9,
-        "expected open 269.28 after USD money rounding, got {open}"
+        (open - expected_open).abs() < 0.01,
+        "expected open near {expected_open} after USD money rounding, got {open}"
     );
-    assert!((money_to_f64(snapshot.day_high.as_ref().unwrap()) - 271.41).abs() < 1e-4);
-    assert!((money_to_f64(snapshot.day_low.as_ref().unwrap()) - 267.11).abs() < 1e-4);
-    assert_eq!(snapshot.volume, Some(43_332_154));
+    assert!(
+        (money_to_f64(snapshot.day_high.as_ref().unwrap())
+            - raw_quote["regularMarketDayHigh"].as_f64().unwrap())
+        .abs()
+            < 0.01
+    );
+    assert!(
+        (money_to_f64(snapshot.day_low.as_ref().unwrap())
+            - raw_quote["regularMarketDayLow"].as_f64().unwrap())
+        .abs()
+            < 0.01
+    );
+    assert_eq!(snapshot.volume, raw_quote["regularMarketVolume"].as_u64());
 
     #[cfg(feature = "dataframe")]
     {

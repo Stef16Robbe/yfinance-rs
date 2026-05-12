@@ -1,1 +1,126 @@
-{"chart":{"result":[{"meta":{"currency":"EUR","symbol":"GS2C.DE","exchangeName":"GER","fullExchangeName":"XETRA","instrumentType":"EQUITY","firstTradeDate":1198742400,"regularMarketTime":1761755744,"hasPrePostMarketData":false,"gmtoffset":3600,"timezone":"CET","exchangeTimezoneName":"Europe/Berlin","regularMarketPrice":19.948,"fiftyTwoWeekHigh":32.895,"fiftyTwoWeekLow":18.6,"regularMarketDayHigh":20.15,"regularMarketDayLow":19.786,"regularMarketVolume":9179,"longName":"GameStop Corp.","shortName":"Gamestop Corp.                R","chartPreviousClose":19.412,"priceHint":2,"currentTradingPeriod":{"pre":{"timezone":"CET","start":1761804000,"end":1761811200,"gmtoffset":3600},"regular":{"timezone":"CET","start":1761811200,"end":1761841800,"gmtoffset":3600},"post":{"timezone":"CET","start":1761841800,"end":1761852600,"gmtoffset":3600}},"dataGranularity":"1d","range":"5d","validRanges":["1d","5d","1mo","3mo","6mo","1y","2y","5y","10y","ytd","max"]},"timestamp":[1761202800,1761289200,1761552000,1761638400,1761755744],"indicators":{"quote":[{"close":[19.738000869750977,20.170000076293945,20.399999618530273,20.079999923706055,19.947999954223633],"low":[19.299999237060547,20.0,20.170000076293945,19.93000030517578,19.785999298095703],"volume":[4549,11698,32659,28989,9179],"open":[19.579999923706055,20.389999389648438,21.639999389648438,20.1200008392334,20.1299991607666],"high":[19.799999237060547,20.524999618530273,21.684999465942383,20.2450008392334,20.149999618530273]}],"adjclose":[{"adjclose":[19.738000869750977,20.170000076293945,20.399999618530273,20.079999923706055,19.947999954223633]}]}}],"error":null}}
+{
+  "chart": {
+    "error": null,
+    "result": [
+      {
+        "indicators": {
+          "adjclose": [
+            {
+              "adjclose": [
+                21.15999984741211,
+                20.719999313354492,
+                20.579999923706055,
+                19.8700008392334,
+                19.459999084472656
+              ]
+            }
+          ],
+          "quote": [
+            {
+              "close": [
+                21.15999984741211,
+                20.719999313354492,
+                20.579999923706055,
+                19.8700008392334,
+                19.459999084472656
+              ],
+              "high": [
+                21.280000686645508,
+                21.399999618530273,
+                20.579999923706055,
+                20.700000762939453,
+                19.700000762939453
+              ],
+              "low": [
+                20.420000076293945,
+                20.719999313354492,
+                20.219999313354492,
+                19.829999923706055,
+                18.489999771118164
+              ],
+              "open": [
+                20.6200008392334,
+                21.3799991607666,
+                20.440000534057617,
+                20.520000457763672,
+                18.579999923706055
+              ],
+              "volume": [
+                27619,
+                14128,
+                11622,
+                17946,
+                66533
+              ]
+            }
+          ]
+        },
+        "meta": {
+          "chartPreviousClose": 20.04,
+          "currency": "EUR",
+          "currentTradingPeriod": {
+            "post": {
+              "end": 1778610600,
+              "gmtoffset": 7200,
+              "start": 1778599800,
+              "timezone": "CEST"
+            },
+            "pre": {
+              "end": 1778569200,
+              "gmtoffset": 7200,
+              "start": 1778562000,
+              "timezone": "CEST"
+            },
+            "regular": {
+              "end": 1778599800,
+              "gmtoffset": 7200,
+              "start": 1778569200,
+              "timezone": "CEST"
+            }
+          },
+          "dataGranularity": "1d",
+          "exchangeName": "GER",
+          "exchangeTimezoneName": "Europe/Berlin",
+          "fiftyTwoWeekHigh": 32.895,
+          "fiftyTwoWeekLow": 16.98,
+          "firstTradeDate": 1198742400,
+          "fullExchangeName": "XETRA",
+          "gmtoffset": 7200,
+          "hasPrePostMarketData": false,
+          "instrumentType": "EQUITY",
+          "longName": "GameStop Corp.",
+          "priceHint": 2,
+          "range": "5d",
+          "regularMarketDayHigh": 19.7,
+          "regularMarketDayLow": 18.49,
+          "regularMarketPrice": 19.46,
+          "regularMarketTime": 1778600155,
+          "regularMarketVolume": 66533,
+          "shortName": "Gamestop Corp.                R",
+          "symbol": "GS2C.DE",
+          "timezone": "CEST",
+          "validRanges": [
+            "1d",
+            "5d",
+            "1mo",
+            "3mo",
+            "6mo",
+            "1y",
+            "2y",
+            "5y",
+            "10y",
+            "ytd",
+            "max"
+          ]
+        },
+        "timestamp": [
+          1778050800,
+          1778137200,
+          1778223600,
+          1778482800,
+          1778569200
+        ]
+      }
+    ]
+  }
+}

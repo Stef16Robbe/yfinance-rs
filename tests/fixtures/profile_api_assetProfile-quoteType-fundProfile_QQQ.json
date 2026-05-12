@@ -1,1 +1,87 @@
-{"quoteSummary":{"result":[{"assetProfile":{"longBusinessSummary":"To maintain the correspondence between the composition and weights of the securities in the trust (the \"securities\") and the stocks in the NASDAQ-100 Index®, the adviser adjusts the securities from time to time to conform to periodic changes in the identity and/or relative weights of index securities. The composition and weighting of the securities portion of a portfolio deposit are also adjusted to conform to changes in the index.","companyOfficers":[],"executiveTeam":[],"maxAge":86400},"fundProfile":{"maxAge":1,"styleBoxUrl":"https://s.yimg.com/lq/i/fi/3_0stylelargeeq3.gif","family":"Invesco","categoryName":"Large Growth","legalType":"Exchange Traded Fund","managementInfo":{"managerName":null,"managerBio":null,"startdate":{}},"feesExpensesInvestment":{"annualReportExpenseRatio":{"raw":0.002,"fmt":"0.20%"},"frontEndSalesLoad":{},"deferredSalesLoad":{},"twelveBOne":{},"netExpRatio":{},"grossExpRatio":{},"annualHoldingsTurnover":{"raw":0.080699995,"fmt":"8.07%"},"totalNetAssets":{"raw":653084.1,"fmt":"653,084.12"},"projectionValues":{}},"feesExpensesInvestmentCat":{"annualReportExpenseRatio":{"raw":0.0092221,"fmt":"0.92%"},"frontEndSalesLoad":{},"deferredSalesLoad":{},"twelveBOne":{},"annualHoldingsTurnover":{"raw":0.5102,"fmt":"51.02%"},"totalNetAssets":{"raw":653084.1,"fmt":"653,084.12"},"projectionValuesCat":{}},"initInvestment":{},"initIraInvestment":{},"initAipInvestment":{},"subseqInvestment":{},"subseqIraInvestment":{},"subseqAipInvestment":{},"brokerages":[]},"quoteType":{"exchange":"NGM","quoteType":"ETF","symbol":"QQQ","underlyingSymbol":"QQQ","shortName":"Invesco QQQ Trust, Series 1","longName":"Invesco QQQ Trust","firstTradeDateEpochUtc":921076200,"timeZoneFullName":"America/New_York","timeZoneShortName":"EDT","uuid":"714d32d4-5f6c-33bc-b36a-765119cb3c4c","messageBoardId":"finmb_8108558","gmtOffSetMilliseconds":-14400000,"maxAge":1}}],"error":null}}
+{
+  "quoteSummary": {
+    "error": null,
+    "result": [
+      {
+        "assetProfile": {
+          "companyOfficers": [],
+          "executiveTeam": [],
+          "longBusinessSummary": "To maintain the correspondence between the composition and weights of the securities in the trust (the \"securities\") and the stocks in the NASDAQ-100 Index®, the adviser adjusts the securities from time to time to conform to periodic changes in the identity and/or relative weights of index securities. The composition and weighting of the securities portion of a portfolio deposit are also adjusted to conform to changes in the index.",
+          "maxAge": 86400
+        },
+        "fundProfile": {
+          "brokerages": [],
+          "categoryName": "Large Growth",
+          "family": "Invesco",
+          "feesExpensesInvestment": {
+            "annualHoldingsTurnover": {
+              "fmt": "0.00%",
+              "raw": 0.0
+            },
+            "annualReportExpenseRatio": {
+              "fmt": "0.18%",
+              "raw": 0.0018000001
+            },
+            "deferredSalesLoad": {},
+            "frontEndSalesLoad": {},
+            "grossExpRatio": {},
+            "netExpRatio": {},
+            "projectionValues": {},
+            "totalNetAssets": {
+              "fmt": "672,559.19",
+              "raw": 672559.2
+            },
+            "twelveBOne": {}
+          },
+          "feesExpensesInvestmentCat": {
+            "annualHoldingsTurnover": {
+              "fmt": "61.56%",
+              "raw": 0.6156
+            },
+            "annualReportExpenseRatio": {
+              "fmt": "0.90%",
+              "raw": 0.0089579
+            },
+            "deferredSalesLoad": {},
+            "frontEndSalesLoad": {},
+            "projectionValuesCat": {},
+            "totalNetAssets": {
+              "fmt": "672,559.19",
+              "raw": 672559.2
+            },
+            "twelveBOne": {}
+          },
+          "initAipInvestment": {},
+          "initInvestment": {},
+          "initIraInvestment": {},
+          "legalType": "Exchange Traded Fund",
+          "managementInfo": {
+            "managerBio": null,
+            "managerName": null,
+            "startdate": {}
+          },
+          "maxAge": 1,
+          "styleBoxUrl": "https://s.yimg.com/lq/i/fi/3_0stylelargeeq3.gif",
+          "subseqAipInvestment": {},
+          "subseqInvestment": {},
+          "subseqIraInvestment": {}
+        },
+        "quoteType": {
+          "exchange": "NGM",
+          "firstTradeDateEpochUtc": 921076200,
+          "gmtOffSetMilliseconds": -14400000,
+          "longName": "Invesco QQQ Trust",
+          "maxAge": 1,
+          "messageBoardId": "finmb_8108558",
+          "quoteType": "ETF",
+          "shortName": "Invesco QQQ Trust, Series 1",
+          "symbol": "QQQ",
+          "timeZoneFullName": "America/New_York",
+          "timeZoneShortName": "EDT",
+          "underlyingSymbol": "QQQ",
+          "uuid": "714d32d4-5f6c-33bc-b36a-765119cb3c4c"
+        }
+      }
+    ]
+  }
+}

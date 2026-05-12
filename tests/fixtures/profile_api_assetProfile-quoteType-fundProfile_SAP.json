@@ -1,1 +1,276 @@
-{"quoteSummary":{"result":[{"assetProfile":{"address1":"Dietmar-Hopp-Allee 16","city":"Walldorf","zip":"69190","country":"Germany","phone":"49 6227 7 47474","fax":"49 6227 7 57575","website":"https://www.sap.com","industry":"Software - Application","industryKey":"software-application","industryDisp":"Software - Application","sector":"Technology","sectorKey":"technology","sectorDisp":"Technology","longBusinessSummary":"SAP SE, together with its subsidiaries, provides enterprise application and business solutions worldwide. It offers SAP S/4HANA that provides software capabilities for finance, risk and project management, procurement, manufacturing, supply chain and asset management, and research and development; SAP SuccessFactors solutions for human resources, including HR, time, payroll, talent and employee experience management, and analytics and planning; and spend management solutions that covers direct and indirect spend, travel and expense, and external workforce management. The company also provides SAP customer experience solutions; SAP Business Technology platform that enables customers and partners to build, integrate, and automate applications; and SAP Business Network, a business-to-business collaboration platform that helps digitalize key business processes across the supply chain and enables communication between trading partners. In addition, it offers SAP Signavio to help customers to discover, analyze, and understand their business process operations; industry solutions that provides customers and partners with industry-specific solutions; and SAP LeanIX to visualize their as-is enterprise architecture, assess interdependencies and the potential impact of IT modernization, and manage the transition toward the target landscape with established practices and a detailed roadmap. Further, the company provides WalkMe to execute workflows across various number of applications; SAP Enable Now, which offers e-learning content embedded in SAP workflows; Taulia solutions for working capital management to help businesses create and deliver the right cash flow strategy, and the flexibility to adjust it to meet liquidity challenges; and sustainability solutions and services. Additionally, it provides services and support solutions. SAP SE was founded in 1972 and is headquartered in Walldorf, Germany.","fullTimeEmployees":110730,"companyOfficers":[{"maxAge":1,"name":"Mr. Christian  Klein","age":44,"title":"CEO & Member of Executive Board","yearBorn":1980,"fiscalYear":2024,"totalPay":{"raw":5628184,"fmt":"5.63M","longFmt":"5,628,184"},"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}},{"maxAge":1,"name":"Mr. Lars  Lamade","age":53,"title":"Head of Global Sponsorships & Deputy Chairperson of the Supervisory Board","yearBorn":1971,"fiscalYear":2024,"totalPay":{"raw":372088,"fmt":"372.09k","longFmt":"372,088"},"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}},{"maxAge":1,"name":"Dr. Hasso C. Plattner","age":80,"title":"Co-Founder","yearBorn":1944,"fiscalYear":2024,"totalPay":{"raw":208892,"fmt":"208.89k","longFmt":"208,892"},"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}},{"maxAge":1,"name":"Mr. Dominik  Asam","age":55,"title":"CFO & Member of Executive Board","yearBorn":1969,"fiscalYear":2024,"totalPay":{"raw":3824745,"fmt":"3.82M","longFmt":"3,824,745"},"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}},{"maxAge":1,"name":"Mr. Thomas  Saueressig","age":39,"title":"Customer Services & Delivery and Member of Executive Board","yearBorn":1985,"fiscalYear":2024,"totalPay":{"raw":3084066,"fmt":"3.08M","longFmt":"3,084,066"},"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}},{"maxAge":1,"name":"Ms. Gina  Vargiu-Breuer","age":48,"title":"Chief People Officer, Labor Director & Member of Executive Board","yearBorn":1976,"fiscalYear":2024,"totalPay":{"raw":2535877,"fmt":"2.54M","longFmt":"2,535,877"},"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}},{"maxAge":1,"name":"Mr. Muhammad  Alam","age":46,"title":"Lead Product Engineering & Member of Executive Board","yearBorn":1978,"fiscalYear":2024,"totalPay":{"raw":2489564,"fmt":"2.49M","longFmt":"2,489,564"},"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}},{"maxAge":1,"name":"Ms. Margret  Klein-Magar","age":60,"title":"VP, Head of SAP Alumni Relations & Member of Supervisory Board","yearBorn":1964,"fiscalYear":2024,"totalPay":{"raw":308442,"fmt":"308.44k","longFmt":"308,442"},"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}},{"maxAge":1,"name":"Dr. Christine  Regitz","age":58,"title":"VP & Global Head of SAP Women in Tech","yearBorn":1966,"fiscalYear":2024,"totalPay":{"raw":135220,"fmt":"135.22k","longFmt":"135,220"},"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}},{"maxAge":1,"name":"Ms. Monika  Kovachka-Dimitrova","age":49,"title":"Chief Operations Expert","yearBorn":1975,"fiscalYear":2024,"totalPay":{"raw":131140,"fmt":"131.14k","longFmt":"131,140"},"exercisedValue":{"raw":0,"fmt":null,"longFmt":"0"},"unexercisedValue":{"raw":0,"fmt":null,"longFmt":"0"}}],"compensationAsOfEpochDate":1735603200,"executiveTeam":[],"maxAge":86400},"quoteType":{"exchange":"NYQ","quoteType":"EQUITY","symbol":"SAP","underlyingSymbol":"SAP","shortName":"SAP  SE","longName":"SAP SE","firstTradeDateEpochUtc":811431000,"timeZoneFullName":"America/New_York","timeZoneShortName":"EDT","uuid":"999bc6b1-8351-3be8-97d2-6f559ba408ae","messageBoardId":"finmb_126475","gmtOffSetMilliseconds":-14400000,"maxAge":1}}],"error":null}}
+{
+  "quoteSummary": {
+    "error": null,
+    "result": [
+      {
+        "assetProfile": {
+          "address1": "Dietmar-Hopp-Allee 16",
+          "city": "Walldorf",
+          "companyOfficers": [
+            {
+              "age": 45,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Mr. Christian  Klein",
+              "title": "CEO & Member of Executive Board",
+              "totalPay": {
+                "fmt": "6.19M",
+                "longFmt": "6,192,919",
+                "raw": 6192919
+              },
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1980
+            },
+            {
+              "age": 54,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Mr. Lars  Lamade",
+              "title": "Head of Global Sponsorships & Deputy Chairperson of the Supervisory Board",
+              "totalPay": {
+                "fmt": "341.24k",
+                "longFmt": "341,240",
+                "raw": 341240
+              },
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1971
+            },
+            {
+              "age": 56,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Mr. Dominik  Asam",
+              "title": "CFO & Member of Executive Board",
+              "totalPay": {
+                "fmt": "2.98M",
+                "longFmt": "2,977,026",
+                "raw": 2977026
+              },
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1969
+            },
+            {
+              "age": 40,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Mr. Thomas  Saueressig",
+              "title": "Member of Executive Board",
+              "totalPay": {
+                "fmt": "2.94M",
+                "longFmt": "2,935,842",
+                "raw": 2935842
+              },
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1985
+            },
+            {
+              "age": 39,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Mr. Sebastian  Steinhaeuser",
+              "title": "Chief Strategy Officer & COO and Member of Executive Board",
+              "totalPay": {
+                "fmt": "2.51M",
+                "longFmt": "2,506,350",
+                "raw": 2506350
+              },
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1986
+            },
+            {
+              "age": 49,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Ms. Gina  Vargiu-Breuer",
+              "title": "Chief People Officer, Labor Director & Member of Executive Board",
+              "totalPay": {
+                "fmt": "2.97M",
+                "longFmt": "2,971,142",
+                "raw": 2971142
+              },
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1976
+            },
+            {
+              "age": 47,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Mr. Muhammad  Alam",
+              "title": "Lead Product Engineering & Member of Executive Board",
+              "totalPay": {
+                "fmt": "2.64M",
+                "longFmt": "2,641,669",
+                "raw": 2641669
+              },
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1978
+            },
+            {
+              "age": 54,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Mr. Andreas  Hahn",
+              "title": "Chairperson of Works Council Europe & Works Council Europe Rep Member of Supervisory Board",
+              "totalPay": {
+                "fmt": "276.52k",
+                "longFmt": "276,522",
+                "raw": 276522
+              },
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1971
+            },
+            {
+              "age": 43,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Jakub  Cerny",
+              "title": "Demand Manager & Works Council Europe Representative Member of Supervisory Board",
+              "totalPay": {
+                "fmt": "276.52k",
+                "longFmt": "276,522",
+                "raw": 276522
+              },
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1982
+            },
+            {
+              "age": 58,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Mr. Pascal  Demat",
+              "title": "Solution Advisor HCM & Works Council Europe Representative Member of Supervisory Board",
+              "totalPay": {
+                "fmt": "276.52k",
+                "longFmt": "276,522",
+                "raw": 276522
+              },
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1967
+            }
+          ],
+          "compensationAsOfEpochDate": 1767139200,
+          "country": "Germany",
+          "executiveTeam": [],
+          "fax": "49 6227 7 57575",
+          "fullTimeEmployees": 111038,
+          "industry": "Software - Application",
+          "industryDisp": "Software - Application",
+          "industryKey": "software-application",
+          "longBusinessSummary": "SAP SE, together with its subsidiaries, provides enterprise application and business solutions worldwide. It offers SAP Business AI; SAP S/4HANA that provides software capabilities for finance, risk and project management, procurement, manufacturing, supply chain and asset management, and research and development; SAP SuccessFactors solutions for human resources, including HR, time, payroll, talent and employee experience management, and analytics and planning; and spend management solutions that covers direct and indirect spend, travel and expense, and external workforce management. The company also provides SAP customer experience solutions; SAP Business Technology platform that enables customers and partners to build, integrate, and automate applications; and SAP Business Network, a business-to-business collaboration platform that helps digitalize key business processes across the supply chain and enables communication between trading partners. In addition, it offers SAP Signavio to help customers to discover, analyze, and understand business process operations; industry solutions that provide customers and partners with industry-specific solutions; and SAP LeanIX to visualize enterprise architecture, assess interdependencies and the potential impact of IT modernization, and manage the transition toward the target landscape. Further, the company provides WalkMe to execute workflows; SAP Enable Now, which offers e-learning content embedded in SAP workflows; Taulia solutions for working capital management; and sustainability solutions and services. Additionally, it provides services and support solutions. SAP SE was founded in 1972 and is headquartered in Walldorf, Germany.",
+          "maxAge": 86400,
+          "phone": "49 6227 7 47474",
+          "sector": "Technology",
+          "sectorDisp": "Technology",
+          "sectorKey": "technology",
+          "website": "https://www.sap.com",
+          "zip": "69190"
+        },
+        "quoteType": {
+          "exchange": "NYQ",
+          "firstTradeDateEpochUtc": 811431000,
+          "gmtOffSetMilliseconds": -14400000,
+          "longName": "SAP SE",
+          "maxAge": 1,
+          "messageBoardId": "finmb_126475",
+          "quoteType": "EQUITY",
+          "shortName": "SAP  SE",
+          "symbol": "SAP",
+          "timeZoneFullName": "America/New_York",
+          "timeZoneShortName": "EDT",
+          "underlyingSymbol": "SAP",
+          "uuid": "999bc6b1-8351-3be8-97d2-6f559ba408ae"
+        }
+      }
+    ]
+  }
+}

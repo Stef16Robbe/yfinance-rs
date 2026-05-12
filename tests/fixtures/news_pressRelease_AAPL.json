@@ -1,1 +1,1165 @@
-{"data":{"tickerStream":{"pagination":{"requestedCount":10,"contentOverrides":{"9cb51524-3605-31c0-a112-c48e081c4fba":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"cb281070-a6ab-3041-8c8d-07d84f418aaa":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"54ee98f9-b460-3e6b-94fe-664b3bf0093a":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"e8c8d42d-c5d2-31d1-866b-96c5ed2c14db":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"41a850dc-6d1d-35d9-a614-a1f4716a3326":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"b93fc879-d86e-3499-b143-b99549625726":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"007dd305-d764-3025-8b3b-d158723a529b":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"b3c87d54-f435-3698-bfe8-8798ec5221d6":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"49050449-fd91-3ae4-9547-594fb79bfab0":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"14057ca2-14ab-3faf-ac85-f3802ad2521d":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"0b564e4e-4fea-32f7-a2c7-40eeeb21ee98":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"460f3dbb-8d83-3af6-8468-c96b2a0e8fc9":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"3bc62f89-6fba-305e-a78c-da65df34985c":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"bc24d53e-fe84-3838-8ce6-b5d5ec016bbd":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"ba881e9b-f882-366e-8cbc-2a76973ea85b":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"c5f2506b-0fdf-3a1a-a2d7-3850ab63e616":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"d6b01bce-5743-3c0b-861b-91038a0c92b8":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"55c08287-70ee-38ce-8aa6-123e3350360b":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"2d0d5eba-145f-366c-8943-855633047187":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"16c93eb0-cccb-373c-b48e-9991a3e401a2":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"e1ea04b3-0d21-3212-b666-9bc45b8a4b9d":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"cb79e71b-727c-3213-a12d-95ff3b2dbc09":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"3bf5f0a8-0840-3163-8198-39be02c74d16":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"de4cb86f-e5f8-3e34-bfdc-179a6372aba7":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"35bd20d4-8d92-3c63-8e60-6abefc8088e0":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"bcc2d5ae-b8f4-3398-bec5-e1cdaf9bb490":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"f1150eb2-9fdd-3f49-95e4-b046e5421fba":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"b5a43b11-157b-3800-8460-20b052bf50b2":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"157b9e32-2542-3c5b-b595-7d49df7fb4f5":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"3218d30f-a294-30b6-a0f6-8ff26c642646":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"22635904-da59-34ec-8e31-8827fdfce490":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"f98a7208-6fd4-3f7a-836a-a98c6db6a51e":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"b624792e-efde-3ee7-b1e0-1852107711aa":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"305c9fd9-ca03-3edd-b786-116696365807":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"d1c3fec3-3afc-369d-ae54-34c9d19d9db3":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"6c958154-d331-3b1f-a1c8-acecdab37086":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"720c1c65-bd89-3708-8f6c-faca649405a5":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"80751938-a81c-3780-9e5f-1b2b34b59897":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"38afa140-31e6-3e70-83ab-8fccdae3c38c":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"f698a0f8-c511-3e68-807f-a1e7d6df7d3b":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"4ed61071-455f-3e9f-9b92-589bfd7db7c0":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"61764b41-a88f-3b72-bbe5-82be647ce556":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"5a8add05-e9de-3052-b287-275703d5b667":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"dfc85608-45c6-3677-a1b0-23541893c3ec":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"45836dc3-583d-376d-98a4-619f5f2d6431":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"18402586-9af4-3397-9eaf-43db2a1ed202":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"6005842e-6142-371a-8d76-cc57f79185c4":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"6e8a4e57-e4a0-3a06-ad13-8eb4bbc698b6":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"3aaf9f3c-95e9-3124-9aa9-6e908c52a5c7":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"b370f509-9f93-3729-84fc-113096dbd426":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"9c6d0999-310c-33a0-88af-76294d67a641":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"357855e0-324b-3613-9da1-ab9f73ff2c96":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"04c7b291-ef76-3eef-bf91-61cad8099aa6":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"3a6e3876-a3cf-38da-ac3c-1833f8cc0b38":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"c683553a-d61e-3c38-8ff4-1de6ef5412c5":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"c10df403-218d-3ff8-8d09-026c8edd1ad7":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"b805d5eb-63e6-327b-87d2-e751c3d00752":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"0ddb6d5e-4c46-39fb-a447-e609e5e4bd56":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"18f287f5-9c05-3fa4-8864-16af46c11017":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"7d5a37c3-d041-3b76-9c78-7e639327879c":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"15717555-9cf4-3b5e-8671-99b76303c5aa":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"b409134f-9cb9-34de-92ec-7ed7a311b923":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"9ddf4118-a6e5-3a74-957b-5d688312176b":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"735f1988-3188-3e73-86d0-d53dc475e041":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"aeb7da7a-82b1-3b61-a108-a840ac19fd15":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"33ea8b8b-1abf-346e-9bcd-784e000d0067":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"1e760a26-1514-3eb5-adb3-8af89b754444":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"4d251545-3837-311d-83c6-0996ec5a6eaf":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"be290ee0-9607-3411-8804-57983d31b007":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"3551d74a-7abf-33e0-b884-6208b6d31741":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"57945427-bc9a-3c07-a97d-097e7bc140bc":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"8543f465-9d6d-32e6-9114-fa1ffb3a66fe":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"b0c1f5c6-5268-338d-a0b6-22d1c423867c":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"f0345166-6166-3a25-8c3a-861ff6921cab":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"ee011ca8-5da3-3ce7-a021-2353aa2b0f52":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"503d06a5-e340-3dca-b063-5475fea0be06":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"4f87cbd2-025c-3fd3-99c1-d90cc5ff4cc3":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"ee424cdb-f389-35bf-b451-d939f63fb6bb":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"4d409ace-adc1-362c-9a9d-575f4d69d727":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"b93e9d0f-d549-3135-b017-b93c80967314":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"ef7e37a2-03fb-36d2-b474-b7569c81a52f":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"f20b1bdb-4e0e-37c5-ab76-a7c9eefc7f39":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"173ad1b2-ee40-395e-8210-bdef1f986f00":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"98b25532-a70b-3a8e-88be-1e3a06bd0917":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"ca200c47-2981-3dc0-b8d7-1f6b3a748917":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"123e3ee3-f863-3cf2-8070-1510a8799810":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"151649fa-33b1-3396-86a8-b2b54d112711":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"f5bd69c6-54f7-3965-8b00-417883866830":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"96f9ade1-b024-3b59-8b65-733d45420e07":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"c87f41ad-0826-38ea-bc77-ab5ac538698f":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"fa0152c0-ee9d-32ae-a698-49d25229041f":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"d52e8a32-f970-3f03-b6f7-a8583d5dc31a":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"a46377af-eccc-3265-bc0f-d0de57c22e22":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"860bc45f-bdb2-3de5-b187-0d93cf29e0cb":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"c20eec0c-b0b7-3425-9da6-498a1bd18ebf":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"e6e1be01-dc26-3fe6-985a-b6718c238265":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"dfbaac4f-7211-3ec9-b852-efd86fb38301":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"4768a034-6bc8-3df4-b950-145ad97e26f1":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"ce1abbaf-ff77-35f4-b73e-2b0e1c9ca907":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"bd3f9fc1-a3b9-3fc5-a3e6-ca32c63f1f38":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"4365e98d-0593-31d0-b103-fdbc77141481":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"166530da-1951-320b-a54f-4ce038bdde4a":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"5760d5f0-af2e-32d1-9ea3-6955dd309bfa":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"692f8003-543c-304e-b63f-1bea16dbc820":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"e60e7872-d036-3396-9a5b-e6b0af9d196f":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"5f1c0443-20fa-3954-9551-d57a893b5014":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"4aea73ac-75f8-3008-b730-e785eec0885c":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"9ac8e210-5267-3689-9309-ecbc034572a4":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"89660b06-f988-3455-93bc-1aeabab7dccf":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"38e1a3ba-66de-3f01-acd1-0fe6d7dee4d0":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"3ffc51c1-7d4b-3af5-a411-27cb4d0efb2b":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"786fdfe3-f1ba-30f5-8b0b-2797b42222ea":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"7b80c725-57a1-3e2e-9169-d365a085b19d":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"b3b50554-f708-3613-aa62-e138da89e930":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"7334e847-df9d-3587-80e1-fcf8fd9bfc18":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"03f8d90d-65ec-3d04-b1f4-656dcb042cbb":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"5750fa8a-c231-3c2a-9639-a344253bba6c":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"9a2453a5-4a34-3bb1-883d-5c99cdaa859c":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"f7bda007-ff19-3408-a220-4dd8e7eb034d":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"3cd1288b-57b8-3955-af11-020f1353e6e4":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"e38ad48d-2d0d-3b14-8837-2bbc0d6970cb":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"ae61de5a-8b86-3c83-bb99-7d6a1a6414f3":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"91408cee-6620-3839-9297-0f768b5d6837":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"cb5163a6-7bc7-3e21-9d71-5a70d98664a2":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"5ea36d0e-b89f-38e9-b8c1-2da124211701":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"2980524b-2bab-3466-93bb-01ca52bb7dc9":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"67bb9901-3d96-32af-96d7-f2127859e3c2":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"755fc6cf-3ab3-338a-9c63-98ac14f581c8":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"d519e528-bc8f-335f-ac64-f54cb20e44df":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"87a913cc-06d4-3742-b883-da3d1b4f8e88":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"1ccc4971-fdfb-395a-8bb5-03edd724d8db":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"7a5ab375-e1a2-3886-b26d-f721d2c0104c":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"2e265d34-cdb6-3832-9da8-84709afdc754":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"0064f396-d687-3b5f-bde6-63df7b891f74":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"98aec07c-831c-388c-b88d-12061a9fbb40":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"fdaea5fc-503e-3740-a2c5-35f549c6aff0":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"eb5c430a-25e3-372c-9e06-26419e9331a1":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"c6769792-5651-351a-b014-161648a848bd":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"374efc90-2669-3977-bc7b-71dcdf33d7af":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"8e656719-4e97-33dc-9666-4f65b5bbade9":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"89f6167a-e01e-30a4-9e88-78172586d370":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"1b09ba25-6e50-31c9-8de3-98301a2d93e4":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"ce30337d-1bc0-3869-816e-9f4b4baaae29":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"cbcc84f3-6aa7-3879-a820-a51d99712f57":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"88ce16b8-7dd7-30ee-bbfa-e4c2201ec466":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"03b55967-0f0f-37ff-b319-445d03639a86":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"22e58487-4e16-3637-a117-8200bb727095":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"0dfde221-0bbc-396a-a59b-82a557ece4fd":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"11b801c0-6058-34b2-beff-72c8da655b2d":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"395abb90-e692-32a7-bc40-5f1eb851c83c":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"a7f3010e-714b-3305-abf1-0b13053c0efc":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"62e85f16-c3c0-3955-a13b-8d0b96fbb4d0":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"19d36dcf-6f87-32fa-b4d3-0e499b043e81":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"dac62277-3174-336f-8730-48710a53b483":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"7dd8fe6f-1b1f-31ff-8a31-6a7b49234bb5":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"7bf5d71c-a04b-30d0-80c2-ba3129b911c8":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"c5e198e0-b5e2-37b9-ba18-e99eb392c84e":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"38d90288-09d4-3bbe-9e31-1dce926db4dc":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"170416ef-5246-317e-9890-52bbe5ce039e":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"e4de8711-3eb5-3df1-b6cc-64c8aaaee72c":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"9dbc2ffc-95fe-37e7-ae0f-7d00f886f610":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"3d996f27-e1b7-3f82-b8eb-9dc8b5eb5002":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"67308b0b-2b07-3760-b4e7-31535b863400":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"3ed62c6f-b2a4-3263-a3ec-9c48c7ccf3ba":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"b3b598a9-7758-3cd7-affa-eda9885fec32":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"403d208b-fab8-3a0b-8343-7d155016bb37":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"8d497c54-490e-37da-862b-1fd0ffbdeb3c":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"e85b008c-6fb3-3da8-91f1-acfd2d2ce4ee":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"7135c5ae-8b03-3fed-a23c-a27357bb1b21":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"deb31fe4-d892-3188-bc94-ceeec11c02b9":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"87b78f20-6465-3697-abf8-262592b2b050":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"3d695399-18a4-39f8-a54c-0fd3083779aa":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"33dcd0f3-ffbe-3227-8ef6-1a5c5d15be77":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"5e999274-0251-3488-8d8c-3b1dc4d9d252":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"7b3855d0-f95b-3f10-88f9-90bc7b4d18be":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"738b3321-9c85-3770-bfae-7b503377774e":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"995c6452-2c53-3ba2-b8a1-c5e02edddd86":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"76bb86ed-f628-3c5a-b9e7-1485f5ae33a6":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"050c8eb6-02fd-393e-a44a-1cc906883bc2":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"57fbb2f1-d892-3e95-bba5-5fe4b4dccb7d":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"96f57e9a-7c60-3abe-85d5-ba32acc689d9":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"4c9f1da8-1280-30b0-a8cd-64e821991bc5":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"63f94589-1a55-3e8d-81c4-1b26d2548bef":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"643315ca-fe0e-3735-9ba1-07687baedfe5":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"cb769fbc-749b-380c-af67-3de999adadec":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"92495038-1201-3369-a2f0-425622823c0a":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"8f4dfd4d-a9d8-3e3b-8500-859ac3046831":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"de423c55-407e-3bb3-be5c-db61f7b962e6":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"f7de98cc-34d4-3015-8d1f-31e500255ce3":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"},"749620a5-7fd7-3a4d-9973-67e9518dd26c":{"list":"ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"}},"remainingCount":190,"uuids":"738b3321-9c85-3770-bfae-7b503377774e:STORY,e4de8711-3eb5-3df1-b6cc-64c8aaaee72c:STORY,98b25532-a70b-3a8e-88be-1e3a06bd0917:STORY,03f8d90d-65ec-3d04-b1f4-656dcb042cbb:STORY,e38ad48d-2d0d-3b14-8837-2bbc0d6970cb:STORY,15717555-9cf4-3b5e-8671-99b76303c5aa:STORY,33ea8b8b-1abf-346e-9bcd-784e000d0067:STORY,57fbb2f1-d892-3e95-bba5-5fe4b4dccb7d:STORY,7135c5ae-8b03-3fed-a23c-a27357bb1b21:STORY,860bc45f-bdb2-3de5-b187-0d93cf29e0cb:STORY,0064f396-d687-3b5f-bde6-63df7b891f74:STORY,2980524b-2bab-3466-93bb-01ca52bb7dc9:STORY,19d36dcf-6f87-32fa-b4d3-0e499b043e81:STORY,b805d5eb-63e6-327b-87d2-e751c3d00752:STORY,63f94589-1a55-3e8d-81c4-1b26d2548bef:STORY,1e760a26-1514-3eb5-adb3-8af89b754444:STORY,9cb51524-3605-31c0-a112-c48e081c4fba:STORY,995c6452-2c53-3ba2-b8a1-c5e02edddd86:STORY,eb5c430a-25e3-372c-9e06-26419e9331a1:STORY,d52e8a32-f970-3f03-b6f7-a8583d5dc31a:STORY,3d695399-18a4-39f8-a54c-0fd3083779aa:STORY,04c7b291-ef76-3eef-bf91-61cad8099aa6:STORY,8d497c54-490e-37da-862b-1fd0ffbdeb3c:STORY,96f57e9a-7c60-3abe-85d5-ba32acc689d9:STORY,5f1c0443-20fa-3954-9551-d57a893b5014:STORY,cb79e71b-727c-3213-a12d-95ff3b2dbc09:STORY,87a913cc-06d4-3742-b883-da3d1b4f8e88:STORY,9c6d0999-310c-33a0-88af-76294d67a641:STORY,b409134f-9cb9-34de-92ec-7ed7a311b923:STORY,bd3f9fc1-a3b9-3fc5-a3e6-ca32c63f1f38:STORY,9dbc2ffc-95fe-37e7-ae0f-7d00f886f610:STORY,11b801c0-6058-34b2-beff-72c8da655b2d:STORY,e8c8d42d-c5d2-31d1-866b-96c5ed2c14db:STORY,b93fc879-d86e-3499-b143-b99549625726:STORY,80751938-a81c-3780-9e5f-1b2b34b59897:STORY,dac62277-3174-336f-8730-48710a53b483:STORY,7b80c725-57a1-3e2e-9169-d365a085b19d:STORY,0dfde221-0bbc-396a-a59b-82a557ece4fd:STORY,3bf5f0a8-0840-3163-8198-39be02c74d16:STORY,7a5ab375-e1a2-3886-b26d-f721d2c0104c:STORY,4c9f1da8-1280-30b0-a8cd-64e821991bc5:STORY,87b78f20-6465-3697-abf8-262592b2b050:STORY,3a6e3876-a3cf-38da-ac3c-1833f8cc0b38:STORY,cbcc84f3-6aa7-3879-a820-a51d99712f57:STORY,dfbaac4f-7211-3ec9-b852-efd86fb38301:STORY,1b09ba25-6e50-31c9-8de3-98301a2d93e4:STORY,786fdfe3-f1ba-30f5-8b0b-2797b42222ea:STORY,18f287f5-9c05-3fa4-8864-16af46c11017:STORY,166530da-1951-320b-a54f-4ce038bdde4a:STORY,f5bd69c6-54f7-3965-8b00-417883866830:STORY,f98a7208-6fd4-3f7a-836a-a98c6db6a51e:STORY,22e58487-4e16-3637-a117-8200bb727095:STORY,ca200c47-2981-3dc0-b8d7-1f6b3a748917:STORY,91408cee-6620-3839-9297-0f768b5d6837:STORY,5760d5f0-af2e-32d1-9ea3-6955dd309bfa:STORY,720c1c65-bd89-3708-8f6c-faca649405a5:STORY,e85b008c-6fb3-3da8-91f1-acfd2d2ce4ee:STORY,cb5163a6-7bc7-3e21-9d71-5a70d98664a2:STORY,92495038-1201-3369-a2f0-425622823c0a:STORY,4d251545-3837-311d-83c6-0996ec5a6eaf:STORY,f20b1bdb-4e0e-37c5-ab76-a7c9eefc7f39:STORY,f1150eb2-9fdd-3f49-95e4-b046e5421fba:STORY,38d90288-09d4-3bbe-9e31-1dce926db4dc:STORY,33dcd0f3-ffbe-3227-8ef6-1a5c5d15be77:STORY,d1c3fec3-3afc-369d-ae54-34c9d19d9db3:STORY,123e3ee3-f863-3cf2-8070-1510a8799810:STORY,151649fa-33b1-3396-86a8-b2b54d112711:STORY,6c958154-d331-3b1f-a1c8-acecdab37086:STORY,b3c87d54-f435-3698-bfe8-8798ec5221d6:STORY,0ddb6d5e-4c46-39fb-a447-e609e5e4bd56:STORY,5750fa8a-c231-3c2a-9639-a344253bba6c:STORY,4f87cbd2-025c-3fd3-99c1-d90cc5ff4cc3:STORY,503d06a5-e340-3dca-b063-5475fea0be06:STORY,54ee98f9-b460-3e6b-94fe-664b3bf0093a:STORY,3aaf9f3c-95e9-3124-9aa9-6e908c52a5c7:STORY,305c9fd9-ca03-3edd-b786-116696365807:STORY,8f4dfd4d-a9d8-3e3b-8500-859ac3046831:STORY,395abb90-e692-32a7-bc40-5f1eb851c83c:STORY,3218d30f-a294-30b6-a0f6-8ff26c642646:STORY,16c93eb0-cccb-373c-b48e-9991a3e401a2:STORY,1ccc4971-fdfb-395a-8bb5-03edd724d8db:STORY,98aec07c-831c-388c-b88d-12061a9fbb40:STORY,735f1988-3188-3e73-86d0-d53dc475e041:STORY,9a2453a5-4a34-3bb1-883d-5c99cdaa859c:STORY,c6769792-5651-351a-b014-161648a848bd:STORY,4768a034-6bc8-3df4-b950-145ad97e26f1:STORY,c5f2506b-0fdf-3a1a-a2d7-3850ab63e616:STORY,aeb7da7a-82b1-3b61-a108-a840ac19fd15:STORY,b370f509-9f93-3729-84fc-113096dbd426:STORY,fdaea5fc-503e-3740-a2c5-35f549c6aff0:STORY,755fc6cf-3ab3-338a-9c63-98ac14f581c8:STORY,3ed62c6f-b2a4-3263-a3ec-9c48c7ccf3ba:STORY,b3b598a9-7758-3cd7-affa-eda9885fec32:STORY,c683553a-d61e-3c38-8ff4-1de6ef5412c5:STORY,9ddf4118-a6e5-3a74-957b-5d688312176b:STORY,ba881e9b-f882-366e-8cbc-2a76973ea85b:STORY,ee011ca8-5da3-3ce7-a021-2353aa2b0f52:STORY,a46377af-eccc-3265-bc0f-d0de57c22e22:STORY,ef7e37a2-03fb-36d2-b474-b7569c81a52f:STORY,de423c55-407e-3bb3-be5c-db61f7b962e6:STORY,4d409ace-adc1-362c-9a9d-575f4d69d727:STORY,cb281070-a6ab-3041-8c8d-07d84f418aaa:STORY,38afa140-31e6-3e70-83ab-8fccdae3c38c:STORY,e60e7872-d036-3396-9a5b-e6b0af9d196f:STORY,0b564e4e-4fea-32f7-a2c7-40eeeb21ee98:STORY,3ffc51c1-7d4b-3af5-a411-27cb4d0efb2b:STORY,cb769fbc-749b-380c-af67-3de999adadec:STORY,170416ef-5246-317e-9890-52bbe5ce039e:STORY,18402586-9af4-3397-9eaf-43db2a1ed202:STORY,45836dc3-583d-376d-98a4-619f5f2d6431:STORY,49050449-fd91-3ae4-9547-594fb79bfab0:STORY,be290ee0-9607-3411-8804-57983d31b007:STORY,c20eec0c-b0b7-3425-9da6-498a1bd18ebf:STORY,4365e98d-0593-31d0-b103-fdbc77141481:STORY,ee424cdb-f389-35bf-b451-d939f63fb6bb:STORY,88ce16b8-7dd7-30ee-bbfa-e4c2201ec466:STORY,f7bda007-ff19-3408-a220-4dd8e7eb034d:STORY,7b3855d0-f95b-3f10-88f9-90bc7b4d18be:STORY,3d996f27-e1b7-3f82-b8eb-9dc8b5eb5002:STORY,b93e9d0f-d549-3135-b017-b93c80967314:STORY,4aea73ac-75f8-3008-b730-e785eec0885c:STORY,b0c1f5c6-5268-338d-a0b6-22d1c423867c:STORY,c5e198e0-b5e2-37b9-ba18-e99eb392c84e:STORY,67bb9901-3d96-32af-96d7-f2127859e3c2:STORY,643315ca-fe0e-3735-9ba1-07687baedfe5:STORY,de4cb86f-e5f8-3e34-bfdc-179a6372aba7:STORY,89660b06-f988-3455-93bc-1aeabab7dccf:STORY,ce1abbaf-ff77-35f4-b73e-2b0e1c9ca907:STORY,61764b41-a88f-3b72-bbe5-82be647ce556:STORY,57945427-bc9a-3c07-a97d-097e7bc140bc:STORY,e1ea04b3-0d21-3212-b666-9bc45b8a4b9d:STORY,35bd20d4-8d92-3c63-8e60-6abefc8088e0:STORY,8e656719-4e97-33dc-9666-4f65b5bbade9:STORY,c87f41ad-0826-38ea-bc77-ab5ac538698f:STORY,3551d74a-7abf-33e0-b884-6208b6d31741:STORY,b5a43b11-157b-3800-8460-20b052bf50b2:STORY,f698a0f8-c511-3e68-807f-a1e7d6df7d3b:STORY,d519e528-bc8f-335f-ac64-f54cb20e44df:STORY,692f8003-543c-304e-b63f-1bea16dbc820:STORY,6005842e-6142-371a-8d76-cc57f79185c4:STORY,f0345166-6166-3a25-8c3a-861ff6921cab:STORY,ce30337d-1bc0-3869-816e-9f4b4baaae29:STORY,dfc85608-45c6-3677-a1b0-23541893c3ec:STORY,76bb86ed-f628-3c5a-b9e7-1485f5ae33a6:STORY,e6e1be01-dc26-3fe6-985a-b6718c238265:STORY,7d5a37c3-d041-3b76-9c78-7e639327879c:STORY,357855e0-324b-3613-9da1-ab9f73ff2c96:STORY,157b9e32-2542-3c5b-b595-7d49df7fb4f5:STORY,7dd8fe6f-1b1f-31ff-8a31-6a7b49234bb5:STORY,41a850dc-6d1d-35d9-a614-a1f4716a3326:STORY,deb31fe4-d892-3188-bc94-ceeec11c02b9:STORY,89f6167a-e01e-30a4-9e88-78172586d370:STORY,8543f465-9d6d-32e6-9114-fa1ffb3a66fe:STORY,5e999274-0251-3488-8d8c-3b1dc4d9d252:STORY,460f3dbb-8d83-3af6-8468-c96b2a0e8fc9:STORY,a7f3010e-714b-3305-abf1-0b13053c0efc:STORY,b624792e-efde-3ee7-b1e0-1852107711aa:STORY,3bc62f89-6fba-305e-a78c-da65df34985c:STORY,2e265d34-cdb6-3832-9da8-84709afdc754:STORY,22635904-da59-34ec-8e31-8827fdfce490:STORY,7bf5d71c-a04b-30d0-80c2-ba3129b911c8:STORY,b3b50554-f708-3613-aa62-e138da89e930:STORY,d6b01bce-5743-3c0b-861b-91038a0c92b8:STORY,96f9ade1-b024-3b59-8b65-733d45420e07:STORY,f7de98cc-34d4-3015-8d1f-31e500255ce3:STORY,6e8a4e57-e4a0-3a06-ad13-8eb4bbc698b6:STORY,fa0152c0-ee9d-32ae-a698-49d25229041f:STORY,62e85f16-c3c0-3955-a13b-8d0b96fbb4d0:STORY,4ed61071-455f-3e9f-9b92-589bfd7db7c0:STORY,ae61de5a-8b86-3c83-bb99-7d6a1a6414f3:STORY,749620a5-7fd7-3a4d-9973-67e9518dd26c:STORY,050c8eb6-02fd-393e-a44a-1cc906883bc2:STORY,55c08287-70ee-38ce-8aa6-123e3350360b:STORY,67308b0b-2b07-3760-b4e7-31535b863400:STORY,7334e847-df9d-3587-80e1-fcf8fd9bfc18:STORY,403d208b-fab8-3a0b-8343-7d155016bb37:STORY,5ea36d0e-b89f-38e9-b8c1-2da124211701:STORY,173ad1b2-ee40-395e-8210-bdef1f986f00:STORY,3cd1288b-57b8-3955-af11-020f1353e6e4:STORY,c10df403-218d-3ff8-8d09-026c8edd1ad7:STORY,2d0d5eba-145f-366c-8943-855633047187:STORY,5a8add05-e9de-3052-b287-275703d5b667:STORY,007dd305-d764-3025-8b3b-d158723a529b:STORY,03b55967-0f0f-37ff-b319-445d03639a86:STORY,bc24d53e-fe84-3838-8ce6-b5d5ec016bbd:STORY,bcc2d5ae-b8f4-3398-bec5-e1cdaf9bb490:STORY,38e1a3ba-66de-3f01-acd1-0fe6d7dee4d0:STORY,14057ca2-14ab-3faf-ac85-f3802ad2521d:STORY,9ac8e210-5267-3689-9309-ecbc034572a4:STORY,374efc90-2669-3977-bc7b-71dcdf33d7af:STORY"},"nextPage":true,"stream":[{"id":"2bb257be-7f1f-3d8b-b37d-d8b770611e51","content":{"id":"2bb257be-7f1f-3d8b-b37d-d8b770611e51","contentType":"STORY","title":"Altrata Report Finds the Total Net Worth of the Billionaire Class Surged by More Than 10%","description":"","summary":"Today Altrata, a leader in intelligence on the wealthy and well-connected, releases the Billionaire Census 2025, examining trends amongst the global billionaire population.","pubDate":"2025-10-29T13:46:00Z","displayTime":"2025-10-29T13:46:00Z","isHosted":true,"bypassModal":false,"previewUrl":null,"thumbnail":{"originalUrl":"https://media.zenfs.com/en/prnewswire.com/9f7267ea988c5c7216e7927c7bc4e76b","originalWidth":400,"originalHeight":80,"caption":"Engage the exceptional. (PRNewsfoto/Altrata)","resolutions":[{"url":"https://s.yimg.com/uu/api/res/1.2/Phn2dcnACzPNnK.0nNeMdA--~B/aD04MDt3PTQwMDthcHBpZD15dGFjaHlvbg--/https://media.zenfs.com/en/prnewswire.com/9f7267ea988c5c7216e7927c7bc4e76b","width":400,"height":80,"tag":"original"},{"url":"https://s.yimg.com/uu/api/res/1.2/JCbHQHRiebTbJNXQ4GkjcQ--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/prnewswire.com/9f7267ea988c5c7216e7927c7bc4e76b","width":170,"height":128,"tag":"170x128"}]},"provider":{"displayName":"PR Newswire","url":"https://www.prnewswire.com/"},"canonicalUrl":{"url":"https://finance.yahoo.com/news/altrata-report-finds-total-net-134600838.html","site":"finance","region":"US","lang":"en-US"},"clickThroughUrl":{"url":"https://finance.yahoo.com/news/altrata-report-finds-total-net-134600838.html","site":"finance","region":"US","lang":"en-US"},"metadata":null,"finance":{"premiumFinance":{"isPremiumNews":false,"isPremiumFreeNews":false}},"storyline":null}},{"id":"95ed65bb-4490-3cab-9c90-0a40976a91e7","content":{"id":"95ed65bb-4490-3cab-9c90-0a40976a91e7","contentType":"STORY","title":"SellYourMac Expands to Canada, Offering Canadians a Trusted Way to Sell, Reuse, and Recycle Apple Devices","description":"","summary":"MISSISSAUGA, Ontario & CINCINNATI, October 29, 2025--SellYourMac.com (SYM), a reCommerce and IT asset transition service company committed to reusing, repurposing, and recycling used Apple products, today announced the launch of SellYourMac Canada, now available at www.sellyourmac.ca. Canadian customers can now easily and securely sell their used Apple devices for top value while contributing to sustainability and responsible e-waste management.","pubDate":"2025-10-29T12:30:00Z","displayTime":"2025-10-29T12:30:00Z","isHosted":true,"bypassModal":false,"previewUrl":null,"thumbnail":{"originalUrl":"https://media.zenfs.com/en/business-wire.com/95990c0aee4bebcc0bdfa218b0d40bc9","originalWidth":480,"originalHeight":322,"caption":"","resolutions":[{"url":"https://s.yimg.com/uu/api/res/1.2/G8klFLMU7of.vlHu1z1xew--~B/aD0zMjI7dz00ODA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/business-wire.com/95990c0aee4bebcc0bdfa218b0d40bc9","width":480,"height":322,"tag":"original"},{"url":"https://s.yimg.com/uu/api/res/1.2/BoYA2t7ZW2vOzQhctGadVg--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/business-wire.com/95990c0aee4bebcc0bdfa218b0d40bc9","width":170,"height":128,"tag":"170x128"}]},"provider":{"displayName":"Business Wire","url":"http://www.businesswire.com/"},"canonicalUrl":{"url":"https://finance.yahoo.com/news/sellyourmac-expands-canada-offering-canadians-123000869.html","site":"finance","region":"US","lang":"en-US"},"clickThroughUrl":{"url":"https://finance.yahoo.com/news/sellyourmac-expands-canada-offering-canadians-123000869.html","site":"finance","region":"US","lang":"en-US"},"metadata":null,"finance":{"premiumFinance":{"isPremiumNews":false,"isPremiumFreeNews":false}},"storyline":null}},{"id":"e42cc628-fcfb-3b2b-be65-f7b4b87b9ff9","content":{"id":"e42cc628-fcfb-3b2b-be65-f7b4b87b9ff9","contentType":"STORY","title":"Jamf Enters into Definitive Agreement to be Acquired by Francisco Partners in $2.2 Billion Transaction","description":"","summary":"MINNEAPOLIS, October 29, 2025--Jamf (NASDAQ: JAMF), the standard in managing and securing Apple at work, today announced that it has entered into a definitive agreement with Francisco Partners (\"FP\") for FP to acquire all the outstanding shares of Jamf. FP is a leading global investment firm focused exclusively on technology and technology-enabled businesses.","pubDate":"2025-10-29T11:00:00Z","displayTime":"2025-10-29T11:00:00Z","isHosted":true,"bypassModal":false,"previewUrl":null,"thumbnail":{"originalUrl":"https://media.zenfs.com/en/business-wire.com/7fccff7920497f90b335e84beac3819f","originalWidth":1024,"originalHeight":512,"caption":"","resolutions":[{"url":"https://s.yimg.com/uu/api/res/1.2/AYC0n_zSLbDk_hPB91aveg--~B/aD01MTI7dz0xMDI0O2FwcGlkPXl0YWNoeW9u/https://media.zenfs.com/en/business-wire.com/7fccff7920497f90b335e84beac3819f","width":1024,"height":512,"tag":"original"},{"url":"https://s.yimg.com/uu/api/res/1.2/p6lcnsnGSskpVdc_iEk7Dg--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/business-wire.com/7fccff7920497f90b335e84beac3819f","width":170,"height":128,"tag":"170x128"}]},"provider":{"displayName":"Business Wire","url":"http://www.businesswire.com/"},"canonicalUrl":{"url":"https://finance.yahoo.com/news/jamf-enters-definitive-agreement-acquired-110000899.html","site":"finance","region":"US","lang":"en-US"},"clickThroughUrl":{"url":"https://finance.yahoo.com/news/jamf-enters-definitive-agreement-acquired-110000899.html","site":"finance","region":"US","lang":"en-US"},"metadata":null,"finance":{"premiumFinance":{"isPremiumNews":false,"isPremiumFreeNews":false}},"storyline":null}},{"id":"a71386b9-0ae6-35d8-8f6a-e00f5704d2c3","content":{"id":"a71386b9-0ae6-35d8-8f6a-e00f5704d2c3","contentType":"STORY","title":"6G and AI Investment to Drive Global Communications Industry Growth, Omdia Forecasts","description":"","summary":"LONDON, October 29, 2025--Global Communications Providers (CP) revenue is expected to reach $5.6 trillion by 2030, growing at a 6.2% CAGR from 2025, according to Omdia’s latest global forecast for CP revenue and capital expenditure (capex). This steady growth is driven by technology innovation, infrastructure expansion, and strategic investment in 6G and AI.","pubDate":"2025-10-29T09:05:00Z","displayTime":"2025-10-29T09:05:00Z","isHosted":true,"bypassModal":false,"previewUrl":null,"thumbnail":{"originalUrl":"https://media.zenfs.com/en/business-wire.com/5ca7b249d94e209ea0d708ddf59b1524","originalWidth":480,"originalHeight":442,"caption":"Yearly CP revenue, by type, 2021-30","resolutions":[{"url":"https://s.yimg.com/uu/api/res/1.2/xG0._B.z3R7Bi5DQf9ibwA--~B/aD00NDI7dz00ODA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/business-wire.com/5ca7b249d94e209ea0d708ddf59b1524","width":480,"height":442,"tag":"original"},{"url":"https://s.yimg.com/uu/api/res/1.2/l1J98CnNukZVTrcAgRiDCA--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/business-wire.com/5ca7b249d94e209ea0d708ddf59b1524","width":170,"height":128,"tag":"170x128"}]},"provider":{"displayName":"Business Wire","url":"http://www.businesswire.com/"},"canonicalUrl":{"url":"https://finance.yahoo.com/news/6g-ai-investment-drive-global-090500786.html","site":"finance","region":"US","lang":"en-US"},"clickThroughUrl":{"url":"https://finance.yahoo.com/news/6g-ai-investment-drive-global-090500786.html","site":"finance","region":"US","lang":"en-US"},"metadata":null,"finance":{"premiumFinance":{"isPremiumNews":false,"isPremiumFreeNews":false}},"storyline":null}},{"id":"a6812032-43f8-3e3e-8974-ab1ad20bbec6","content":{"id":"a6812032-43f8-3e3e-8974-ab1ad20bbec6","contentType":"STORY","title":"Simon Yueng of Biel Crystal, was awarded KPMG's \"Excellent Family Business Future Entrepreneur\"","description":"","summary":"The KPMG China Future Entrepreneur Award 2025 award ceremony was held in Shenzhen on October 24. Simon Yueng, Executive Director and Vice President of Biel Crystal, was awarded \"Excellent Family Business Future Entrepreneur\".","pubDate":"2025-10-29T02:52:00Z","displayTime":"2025-10-29T02:52:00Z","isHosted":true,"bypassModal":false,"previewUrl":null,"thumbnail":{"originalUrl":"https://media.zenfs.com/en/prnewswire.com/a336e64a3b0b8f8f515f62479e16070e","originalWidth":400,"originalHeight":267,"caption":"The award presentation scene","resolutions":[{"url":"https://s.yimg.com/uu/api/res/1.2/5lluzix2VbAdMBvaQNrX4Q--~B/aD0yNjc7dz00MDA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/prnewswire.com/a336e64a3b0b8f8f515f62479e16070e","width":400,"height":267,"tag":"original"},{"url":"https://s.yimg.com/uu/api/res/1.2/ymF4ji4adqGg7f6V1NZoWQ--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/prnewswire.com/a336e64a3b0b8f8f515f62479e16070e","width":170,"height":128,"tag":"170x128"}]},"provider":{"displayName":"PR Newswire","url":"https://www.prnewswire.com/"},"canonicalUrl":{"url":"https://finance.yahoo.com/news/simon-yueng-biel-crystal-awarded-025200496.html","site":"finance","region":"US","lang":"en-US"},"clickThroughUrl":{"url":"https://finance.yahoo.com/news/simon-yueng-biel-crystal-awarded-025200496.html","site":"finance","region":"US","lang":"en-US"},"metadata":null,"finance":{"premiumFinance":{"isPremiumNews":false,"isPremiumFreeNews":false}},"storyline":null}},{"id":"f79ca522-d638-3e19-9e52-75c16e1457b2","content":{"id":"f79ca522-d638-3e19-9e52-75c16e1457b2","contentType":"STORY","title":"Jamf's RapidIdentity Selected for Major Ohio Higher Education Consortium Contract","description":"","summary":"HOUSTON, October 28, 2025--Jamf (NASDAQ: JAMF), the standard in managing and securing Apple at work, today announced that RapidIdentity from Jamf has been awarded a transformative contract with The Inter-University Council Purchasing Group (IUC-PG) of Ohio. RapidIdentity has been selected as one of two vetted identity and access management platforms contractually available for all 86 member institutions of this prestigious consortium. This significant five-year agreement establishes pre-negotiat","pubDate":"2025-10-28T13:15:00Z","displayTime":"2025-10-28T13:15:00Z","isHosted":true,"bypassModal":false,"previewUrl":null,"thumbnail":{"originalUrl":"https://media.zenfs.com/en/business-wire.com/8f9bc884fa24f8d5d7311366924e61aa","originalWidth":1024,"originalHeight":512,"caption":"","resolutions":[{"url":"https://s.yimg.com/uu/api/res/1.2/yzSyOkiyIQ9QQD_.wgShDA--~B/aD01MTI7dz0xMDI0O2FwcGlkPXl0YWNoeW9u/https://media.zenfs.com/en/business-wire.com/8f9bc884fa24f8d5d7311366924e61aa","width":1024,"height":512,"tag":"original"},{"url":"https://s.yimg.com/uu/api/res/1.2/XtmSqCiXfPUzPuNtRPR3bQ--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/business-wire.com/8f9bc884fa24f8d5d7311366924e61aa","width":170,"height":128,"tag":"170x128"}]},"provider":{"displayName":"Business Wire","url":"http://www.businesswire.com/"},"canonicalUrl":{"url":"https://finance.yahoo.com/news/jamfs-rapididentity-selected-major-ohio-131500674.html","site":"finance","region":"US","lang":"en-US"},"clickThroughUrl":{"url":"https://finance.yahoo.com/news/jamfs-rapididentity-selected-major-ohio-131500674.html","site":"finance","region":"US","lang":"en-US"},"metadata":null,"finance":{"premiumFinance":{"isPremiumNews":false,"isPremiumFreeNews":false}},"storyline":null}},{"id":"988016e0-20be-311a-90f4-f66d381296fa","content":{"id":"988016e0-20be-311a-90f4-f66d381296fa","contentType":"STORY","title":"Corning Announces Third-Quarter 2025 Financial Results(1) with Record Core Sales and Core EPS","description":"","summary":"CORNING, N.Y., October 28, 2025--Corning Incorporated (NYSE: GLW) today announced its third-quarter 2025 results and provided its outlook for fourth-quarter 2025.","pubDate":"2025-10-28T11:00:00Z","displayTime":"2025-10-28T11:00:00Z","isHosted":true,"bypassModal":false,"previewUrl":null,"thumbnail":{"originalUrl":"https://media.zenfs.com/en/business-wire.com/5d88f380228f3337ae0a20867d63000c","originalWidth":354,"originalHeight":480,"caption":"Corning Incorporated Q3 2025 8-K Financial Tables","resolutions":[{"url":"https://s.yimg.com/uu/api/res/1.2/BOiOp5FY1.Xi7CjgvJ2GAQ--~B/aD00ODA7dz0zNTQ7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/business-wire.com/5d88f380228f3337ae0a20867d63000c","width":354,"height":480,"tag":"original"},{"url":"https://s.yimg.com/uu/api/res/1.2/z2mKoc27QmroqQy4slvCCg--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/business-wire.com/5d88f380228f3337ae0a20867d63000c","width":170,"height":128,"tag":"170x128"}]},"provider":{"displayName":"Business Wire","url":"http://www.businesswire.com/"},"canonicalUrl":{"url":"https://finance.yahoo.com/news/corning-announces-third-quarter-2025-110000584.html","site":"finance","region":"US","lang":"en-US"},"clickThroughUrl":{"url":"https://finance.yahoo.com/news/corning-announces-third-quarter-2025-110000584.html","site":"finance","region":"US","lang":"en-US"},"metadata":null,"finance":{"premiumFinance":{"isPremiumNews":false,"isPremiumFreeNews":false}},"storyline":null}},{"id":"a917755d-6b96-3207-9d94-f510790d52d1","content":{"id":"a917755d-6b96-3207-9d94-f510790d52d1","contentType":"STORY","title":"KEYNOTE MAESTRO FREDDIE RAVEL TO AWE AUDIENCE WITH LIFE IN TUNE® EXPERIENCE IN VENTURA COUNTY","description":"","summary":"Marketing Maven's new client, GRAMMY honored pianist, #1 recording artist, and thought leader Freddie Ravel, is pulling back the curtain on the transformative power of music. Having performed with legends like Earth, Wind & Fire, Madonna, Santana, and Prince, Ravel works with organizations like Google, Apple, Blue Cross, and NASA to bring teams \"back in tune,\" sparking unity, collaboration, and individual performance.","pubDate":"2025-10-28T00:04:00Z","displayTime":"2025-10-28T00:04:00Z","isHosted":true,"bypassModal":false,"previewUrl":null,"thumbnail":{"originalUrl":"https://media.zenfs.com/en/prnewswire.com/bede09f191ab526e72daba48da0dc6b6","originalWidth":284,"originalHeight":400,"caption":"Life in Tune® offers a unique and patented program that uses melody and harmony to make people and teams the best that they can be. The program allows one to enter “a symphony of solutions,” where one finds their melody for leadership, truth and personal alignment. Harmony is for collaboration, and Score is the achievement of a desired outcome. Teams can compose a unified Score that defines their vision, values and desired results.","resolutions":[{"url":"https://s.yimg.com/uu/api/res/1.2/TvFY9kllhPFPkiTFioaJTw--~B/aD00MDA7dz0yODQ7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/prnewswire.com/bede09f191ab526e72daba48da0dc6b6","width":284,"height":400,"tag":"original"},{"url":"https://s.yimg.com/uu/api/res/1.2/escOQ2ubriGTfn1H4wEhiQ--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/prnewswire.com/bede09f191ab526e72daba48da0dc6b6","width":170,"height":128,"tag":"170x128"}]},"provider":{"displayName":"PR Newswire","url":"https://www.prnewswire.com/"},"canonicalUrl":{"url":"https://finance.yahoo.com/news/keynote-maestro-freddie-ravel-awe-000400454.html","site":"finance","region":"US","lang":"en-US"},"clickThroughUrl":{"url":"https://finance.yahoo.com/news/keynote-maestro-freddie-ravel-awe-000400454.html","site":"finance","region":"US","lang":"en-US"},"metadata":null,"finance":{"premiumFinance":{"isPremiumNews":false,"isPremiumFreeNews":false}},"storyline":null}},{"id":"f59dbec1-9644-3496-99ce-586e219f079c","content":{"id":"f59dbec1-9644-3496-99ce-586e219f079c","contentType":"STORY","title":"NYSE Content Advisory: Pre-Market Update + Project Nemo named Money20/20 Grand Prix Winner","description":"","summary":"The New York Stock Exchange (NYSE) provides a daily pre-market update directly from the NYSE Trading Floor. Access today's NYSE Pre-market update for market insights before trading begins.","pubDate":"2025-10-27T12:55:00Z","displayTime":"2025-10-27T12:55:00Z","isHosted":true,"bypassModal":false,"previewUrl":null,"thumbnail":{"originalUrl":"https://media.zenfs.com/en/prnewswire.com/b9671ae7464553162e92a9c647b76a24","originalWidth":400,"originalHeight":208,"caption":"NYSE Logo (PRNewsfoto/New York Stock Exchange)","resolutions":[{"url":"https://s.yimg.com/uu/api/res/1.2/k59AkJvBAW4GqmoY_jBo5w--~B/aD0yMDg7dz00MDA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/prnewswire.com/b9671ae7464553162e92a9c647b76a24","width":400,"height":208,"tag":"original"},{"url":"https://s.yimg.com/uu/api/res/1.2/bSwHdAo13OSbQnXnne8PLw--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/prnewswire.com/b9671ae7464553162e92a9c647b76a24","width":170,"height":128,"tag":"170x128"}]},"provider":{"displayName":"PR Newswire","url":"https://www.prnewswire.com/"},"canonicalUrl":{"url":"https://finance.yahoo.com/news/nyse-content-advisory-pre-market-125500018.html","site":"finance","region":"US","lang":"en-US"},"clickThroughUrl":{"url":"https://finance.yahoo.com/news/nyse-content-advisory-pre-market-125500018.html","site":"finance","region":"US","lang":"en-US"},"metadata":null,"finance":{"premiumFinance":{"isPremiumNews":false,"isPremiumFreeNews":false}},"storyline":null}},{"id":"0262b813-e536-3fa0-9e66-ea0ccf0aaff5","content":{"id":"0262b813-e536-3fa0-9e66-ea0ccf0aaff5","contentType":"STORY","title":"Medical Care Technologies Inc. (OTC PINK:MDCE) Approved as Official Apple Developer","description":"","summary":"Company advances digital technology initiatives with approval to publish applications on Apple's App Store MESA, ARIZONA / ACCESS Newswire / October 24, 2025 / Medical Care Technologies Inc. (OTC PINK:MDCE), a technology-driven company specializing ...","pubDate":"2025-10-24T13:30:00Z","displayTime":"2025-10-24T13:30:00Z","isHosted":true,"bypassModal":false,"previewUrl":null,"thumbnail":{"originalUrl":"https://media.zenfs.com/en/accesswire.ca/21d49c456213ec3d6f592c95e9ac0196","originalWidth":750,"originalHeight":750,"caption":"<![CDATA[Company advances digital technology initiatives with approval to publish applications on Apple's App Store MESA, ARIZONA / ...]]>","resolutions":[{"url":"https://s.yimg.com/uu/api/res/1.2/.MD5kObh7lSwlavqSz9QSQ--~B/aD03NTA7dz03NTA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/accesswire.ca/21d49c456213ec3d6f592c95e9ac0196","width":750,"height":750,"tag":"original"},{"url":"https://s.yimg.com/uu/api/res/1.2/xojB4OQdjUlj.avJBsRj3Q--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/accesswire.ca/21d49c456213ec3d6f592c95e9ac0196","width":170,"height":128,"tag":"170x128"}]},"provider":{"displayName":"ACCESS Newswire","url":"https://www.accessnewswire.com/"},"canonicalUrl":{"url":"https://finance.yahoo.com/news/medical-care-technologies-inc-otc-133000105.html","site":"finance","region":"US","lang":"en-US"},"clickThroughUrl":{"url":"https://finance.yahoo.com/news/medical-care-technologies-inc-otc-133000105.html","site":"finance","region":"US","lang":"en-US"},"metadata":null,"finance":{"premiumFinance":{"isPremiumNews":false,"isPremiumFreeNews":false}},"storyline":null}}]}},"status":"OK"}
+{
+  "data": {
+    "tickerStream": {
+      "nextPage": true,
+      "pagination": {
+        "contentOverrides": {
+          "017fc6f8-17db-3d23-8144-3cfdd6ffbd27": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "019e23ed-c634-3a5f-9438-ab3e40497043": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "022fb77c-2dcf-37d9-8c59-2e1ac0ad7162": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "02549268-c3e0-3162-b444-9acb43d445a8": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "029c5381-36cd-3384-ba34-b0206e9dea86": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "07e40848-0689-3b23-9b8a-66b5f7e8eb52": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "08c26a8d-f089-3f13-af67-a5fb10b8774a": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "097b7039-369d-3d99-b7b8-5b5a5a009583": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "0d1427b5-0296-39d9-979a-39e76c0b855b": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "0e389ea4-a50d-35e2-bdb0-e0c1a623a288": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "0e5a3f7e-605a-3ef5-8f57-95b8935f1825": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "129f48e7-afe8-3c8e-a97d-65293c851087": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "131cc651-a9ff-3155-8aca-106298407cbf": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "137e7569-ffdc-322d-aa79-a9b32ca5aef9": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "143577b8-27fb-306b-88b8-54f8ba7129b6": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "14988f6e-7b34-3635-a416-1bf647871098": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "160f41fa-9ffd-3a41-bbbc-7b3f6a048e4f": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "16583e5b-6cb5-3b8c-9331-d0ad156f0117": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "166c3bc9-2d4b-3679-b837-c3bfb6ae65e4": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "16e08dd8-9eeb-33c5-bca1-6dc2f404c599": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "17da2a54-df8d-3eb5-a2ad-317cd60b65c1": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "180231ea-c518-3e58-ad05-76baeba6f3f4": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "194825ad-5e59-3ce5-9adc-80be29403679": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "1f51cfeb-2b18-323b-8a2a-207a51b18cf0": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "1f86a0e2-224c-369b-8054-dea226ea1291": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "1fb54bca-4230-3261-b0d1-3b8dc56011c8": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "20d5ead1-e315-3eb8-a8e1-8709be15eef9": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "250a6b37-d260-304e-8ad2-a92ba9173f71": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "2586c9cd-6a10-3440-a658-c852b2cc040f": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "259b83a5-82b7-3650-a700-2c162acd4a12": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "25aba54a-d75f-313d-af39-9e65f518da41": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "25cc94db-b198-3fdc-a15e-d5a8b998425b": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "25e37f61-011d-311b-b1e3-671ac0fb63cd": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "25e4d1ab-7704-36bf-9ff1-7ba360d38496": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "28bd94e2-32ea-35d2-96ed-8228b407161b": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "29c6558c-aba1-3ced-a6e6-c4b173fdae06": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "2c6c69a3-017b-3be2-926f-43db2c6522d7": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "2c94825e-b2ad-3464-8bd8-7608c23b53fe": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "2d06a5e9-9784-39a1-85b4-3382e99728a2": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "2e3fe684-4b78-39ab-9c1b-78da6ca3112f": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "2e918883-bfe1-3a19-96c5-99cc844ea2f7": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "2ef1e268-936f-3ae3-ae8b-485f3003d1ec": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "310cf680-d304-36a5-bac3-d7673af18421": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "33ba8ae2-26b1-3aae-a9a2-2c07d5b3f186": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "34331e14-6f54-3497-9d0e-9cc8a99c046d": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "390086cb-1953-321a-bd88-355fe007b1e2": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "3b2746de-e88a-37ae-9ed2-6d18a5b3819f": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "3b9955d3-90bf-3baa-80e1-c0a6ea1b07d2": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "3ed1b15c-c5c7-3af4-8f6f-81d1ec707e68": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "40a8b58d-d35f-35be-a083-fe69c9d93a7e": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "416b3366-57e7-32e0-aa21-41e70d241095": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "428df4df-65ff-34d7-af55-6bd79556fadb": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "42ff21b8-3ca8-3100-808d-77fe866b4a56": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "4563a17f-904c-37ce-b076-63854f64293c": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "45ae3ec4-f2c6-3a4f-a076-752dc955b8cd": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "46465bed-34ea-3e03-a653-114921a2ff92": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "481ce3f0-8f7a-380b-a3bb-2b11c0b72f20": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "48393a80-1921-3b92-a6bd-e4ce8fde5a2e": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "48734bd7-26b4-3c99-b194-a91cce8b9d10": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "48844806-34c7-31e4-b5fe-a3999f48660a": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "4a0979ea-3681-39df-ad8c-25cc419e2431": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "4bf173e3-2f07-3d0b-8245-6d47946d3054": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "4d7e3b5c-a64a-38b1-a474-37bca70d088d": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "4fbf2c59-42e7-3106-8c2f-81d12714c0f7": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "4fd98efd-886c-3de5-b8e0-e2dbfbee40c0": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "52e455a4-84c7-3939-ab56-bc82c04e3820": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "588f999b-e248-3192-aa73-d7ef5eba8972": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "58c00279-dc48-3d29-81f8-a452b83174be": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "5a15093b-bab3-3811-819c-3205e8341330": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "5a390aa7-f4e0-33be-a98a-0cb042b4029e": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "5bb7e446-82e6-31d8-9f66-8319f670253b": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "5d102e70-81d6-34c4-a698-21082064ee35": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "5e4655af-e281-3b2b-b28b-1fdf15233295": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "5efad2a4-da0f-317f-8fcd-34ca9da5461b": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "60d44a18-3489-3b56-837d-c1bb92837d16": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "60e84223-23c8-3a69-a266-bb16bcc1d894": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "62b653b7-a05f-339b-8053-95e096655a27": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "64a20305-bab2-3cbf-9bfb-3557e4074429": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "65db4290-aec3-3b67-850a-60819b86aa4b": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "67b35693-a1c1-3558-9c4e-f221aa67ad4d": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "6941cb6c-b8e9-347d-a2a5-bba502295416": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "6aa33f39-c8f0-3cfd-9086-da92de978e37": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "6bac6136-9ad5-3be0-8f20-16e36f50e4aa": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "6bcf78ca-13fa-3382-b88b-0cd2e904c9f5": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "6c1d5e80-e391-3440-8cc4-af6cf006fe4b": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "6cbd904d-98eb-3d11-9f6d-7ebf16acfe42": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "72b4c6e0-c7b3-3304-9f12-af703579a94d": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "72f0938b-1451-3e0e-a998-455d2ef372eb": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "75084d43-ff6d-3c90-8957-add1a0489c77": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "7584ff56-1227-3ca9-8ae2-ea014f4216ec": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "77d3c12f-f701-3399-9efb-08c57aa31fab": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "78b1bdf7-c9b5-346e-95f5-9ef639922f34": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "78bf89ed-943b-3c5c-b74a-57320508a5bd": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "7a9dfdab-d088-3f01-aaf3-034b2f8c6f9a": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "7ab0bb91-4e78-3348-8cc5-613e3d2fba37": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "7c4bb162-937d-3878-862a-5c269be3286f": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "7cb7863e-f872-363c-821f-b0c9e94ae990": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "7dab3b6b-d829-3e32-adaa-7a9a1c662313": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "7f9a9a99-d346-3d09-b104-4e145db40d44": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "7ff18b46-c713-37aa-a0e1-9e37abe98c54": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "810ccdbb-a8ce-3ecf-9884-a4f2d7fbd691": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "833b1aa1-4225-394a-8caf-ce95a978b82b": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "833cb321-0b40-3610-ad45-44dc0aa3a86b": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "8576e21e-959f-3ba5-9363-765094e87f8b": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "890dfc76-a3dd-3975-b760-34fcb3d65478": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "8b2f8d49-74be-36af-84c3-aaa81fb0762d": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "8be43d85-7947-3c49-bd4d-e7feae250eb3": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "8c905428-6546-3a82-a9fd-e381dc29d082": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "8ca342e3-79bb-39ec-9c0a-f43cad7c061b": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "8cc27d7c-8246-3938-8c2c-c336c35deb82": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "90e79f89-9f40-3c44-9a50-bb098a4d8844": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "912b4161-9a3c-3b60-b4f7-89e2a57a42fb": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "9348eede-e8aa-3c17-901f-9f8f82c85ce2": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "947d1140-29d0-363c-9b9a-610d0bef5a46": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "9664c68b-b910-363c-a6d8-eff8cab597a6": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "98243929-88d1-3bc6-99ac-a9cf1e842fe2": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "98978070-ff1e-301f-8c80-8a71e47bd98e": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "98df9c6a-6c21-3375-a8cb-af57e12c2c01": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "99d47ce7-9328-3551-a709-a86cce0456c3": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "9b57ef60-634b-3f34-bb58-29bb94c252f0": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "9bc4af1c-5398-3253-9d43-4f3e902406cb": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "9c65ccfe-3e6b-3949-bfdd-7f0d150b67ab": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "9f460c7f-d708-3f75-b889-e9714763b9fa": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "9fcdb98e-5a86-3369-8651-8cf9b6408246": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "a1b05b14-57d0-3fbf-ad35-89b69224369b": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "a326ac1c-bce1-3b92-bbc6-fd8323504410": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "a4c642a9-4e6a-35d0-97d2-5f2f350006da": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "a589b196-2899-395d-bef2-9473ce714681": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "a889dcb4-43c2-3b26-823f-a6b4ed418f24": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "ab588213-2fad-3d1e-acfc-c988144d3be0": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "aba8eddb-0bb1-3c84-87c1-f629333c6b9c": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "ae20c0d6-8548-35b8-ac44-3368ddbdbbb1": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "aef08959-51af-3902-9362-429adb319d1f": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "b0096da0-c59e-3d00-a9d1-3077e344a77d": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "b0b0ab88-0218-3d9d-afad-a5d137a4e3cc": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "b159e5a9-d0b4-30d1-9c8e-e6d4f001efd6": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "b3f744fa-e462-36c3-b3ba-986c13f2cfe8": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "b72d145b-a988-39c3-8794-22264489c868": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "b9bd6b5e-a954-3992-bbbe-f937b133c641": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "baeef728-c88e-3e4c-8fda-0cb34b3b65d1": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "be42dca0-933c-315d-be5d-456e47bf1a69": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "c0095e1d-aab1-3bad-9c11-42368d65204d": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "c16f5bfa-92a5-3015-abb4-064239c8e2f6": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "c1aa08b8-724d-38ca-a157-2ab44b87dc6b": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "c82ede80-9729-32f9-b5f2-89be85d48f68": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "ca703d49-9441-3d67-ab73-b5e3e06e79ce": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "cab63a7d-7399-3e62-a194-aa6a3a4605fb": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "cb9e9c49-299f-36df-82f3-1b5c2046f349": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "cc00f7c6-17c1-399d-96b3-af61f01bd838": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "cda24cda-da94-398c-ad6c-a43820301d48": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "cea31467-d4e9-3566-9481-4288f4a4bcb2": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "cf2752e4-6c67-3371-ab52-b531aa829cb5": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "cfca5ff7-181d-31c2-9c73-656ebb02dfe6": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "cff423a9-4602-339c-8147-b336fd0013f1": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "d0e60444-06db-30e8-8d64-5db793842ca2": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "d176d033-c85b-3ab4-80a7-6aa38adaaa0c": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "d501b346-d921-3994-8ed3-13b08585cd7f": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "d6d8ca03-7562-3956-bce1-4819dbc91776": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "d6fd64f6-e2f4-34df-9239-35d215d543ae": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "d7fd43e3-b062-3ae3-ad4b-ca79bcfc30f8": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "d93298e8-b7b1-3e42-a050-8c0a730c24f9": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "d9d85204-de09-3980-b4c5-bbc0466c6df2": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "da6d1537-7dc3-3216-b89a-e9bcaf059040": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "da9cd6a9-918a-39e3-9118-68ecba18a76c": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "db79393d-7964-3469-ab6c-f7b76be56345": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "dbfe74b3-58ec-3b4d-ac3e-19a4af1031ec": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "dcd52727-6dcb-3b5f-9af5-34406c1600ab": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "dd7d723e-3357-323f-b2aa-acc218c7d033": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "de847e63-6aa7-358d-b870-ffb47cfe590b": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "dfcc2dc9-2dab-31c0-8b3b-24eb3bb0a61b": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "e07615df-623e-3887-b4e3-9dc27599e182": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "e195136e-09d4-39fa-8b9b-f9348c4d0c23": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "e5910ef3-672e-31d0-b6e3-e99d1ffd28f3": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "eb5dec37-791b-379b-90e2-6ebc99c3e336": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "ee711982-dbcf-3d73-be97-7c20dbf002b7": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "f04cdf84-e106-3bc4-abdc-5d20a5407943": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "f2e2e89f-5718-38f8-a33e-b0045984b083": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "f400df9b-7247-3baa-a4c2-8386d3f7ad0a": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "f452a545-4f09-3c14-a9cb-125da4087094": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "f5201421-832f-3519-8a07-b13fc5d69e7f": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "f56fb6b4-edca-3163-b267-df5f0a2b0093": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "f5aba9e8-eccb-365d-aaf8-c94e0f454a23": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "f64812d7-9f7e-3311-a5c3-f9bb00da47dd": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "f6a66e1a-cf88-3d84-bece-dc0d9fccedbd": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "f7b6c287-7e49-3329-8f9c-87685b59c912": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "f95c56d6-122d-3bbd-8b7b-51a3dd9be7e6": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "fa7870b1-d494-3a9d-ba7a-53dc705e4105": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "fde0e27a-f9f2-38d4-8b22-7ad0f5aab1da": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          },
+          "ff0e5998-680e-3174-9cd1-1a6d20f2e208": {
+            "list": "ee9a71c0-d3f8-11e9-aff7-e24e68c3a35b"
+          }
+        },
+        "remainingCount": 189,
+        "requestedCount": 10,
+        "uuids": "1f51cfeb-2b18-323b-8a2a-207a51b18cf0:STORY,5bb7e446-82e6-31d8-9f66-8319f670253b:STORY,2e3fe684-4b78-39ab-9c1b-78da6ca3112f:STORY,f04cdf84-e106-3bc4-abdc-5d20a5407943:STORY,25aba54a-d75f-313d-af39-9e65f518da41:STORY,7584ff56-1227-3ca9-8ae2-ea014f4216ec:STORY,0d1427b5-0296-39d9-979a-39e76c0b855b:STORY,c82ede80-9729-32f9-b5f2-89be85d48f68:STORY,aba8eddb-0bb1-3c84-87c1-f629333c6b9c:STORY,65db4290-aec3-3b67-850a-60819b86aa4b:STORY,cc00f7c6-17c1-399d-96b3-af61f01bd838:STORY,07e40848-0689-3b23-9b8a-66b5f7e8eb52:STORY,33ba8ae2-26b1-3aae-a9a2-2c07d5b3f186:STORY,29c6558c-aba1-3ced-a6e6-c4b173fdae06:STORY,7dab3b6b-d829-3e32-adaa-7a9a1c662313:STORY,da9cd6a9-918a-39e3-9118-68ecba18a76c:STORY,9348eede-e8aa-3c17-901f-9f8f82c85ce2:STORY,f7b6c287-7e49-3329-8f9c-87685b59c912:STORY,90e79f89-9f40-3c44-9a50-bb098a4d8844:STORY,912b4161-9a3c-3b60-b4f7-89e2a57a42fb:STORY,16583e5b-6cb5-3b8c-9331-d0ad156f0117:STORY,3b9955d3-90bf-3baa-80e1-c0a6ea1b07d2:STORY,8cc27d7c-8246-3938-8c2c-c336c35deb82:STORY,5a390aa7-f4e0-33be-a98a-0cb042b4029e:STORY,67b35693-a1c1-3558-9c4e-f221aa67ad4d:STORY,0e5a3f7e-605a-3ef5-8f57-95b8935f1825:STORY,194825ad-5e59-3ce5-9adc-80be29403679:STORY,46465bed-34ea-3e03-a653-114921a2ff92:STORY,eb5dec37-791b-379b-90e2-6ebc99c3e336:STORY,fde0e27a-f9f2-38d4-8b22-7ad0f5aab1da:STORY,8ca342e3-79bb-39ec-9c0a-f43cad7c061b:STORY,28bd94e2-32ea-35d2-96ed-8228b407161b:STORY,f6a66e1a-cf88-3d84-bece-dc0d9fccedbd:STORY,02549268-c3e0-3162-b444-9acb43d445a8:STORY,4bf173e3-2f07-3d0b-8245-6d47946d3054:STORY,810ccdbb-a8ce-3ecf-9884-a4f2d7fbd691:STORY,2586c9cd-6a10-3440-a658-c852b2cc040f:STORY,947d1140-29d0-363c-9b9a-610d0bef5a46:STORY,48844806-34c7-31e4-b5fe-a3999f48660a:STORY,d6d8ca03-7562-3956-bce1-4819dbc91776:STORY,dfcc2dc9-2dab-31c0-8b3b-24eb3bb0a61b:STORY,98df9c6a-6c21-3375-a8cb-af57e12c2c01:STORY,60e84223-23c8-3a69-a266-bb16bcc1d894:STORY,5e4655af-e281-3b2b-b28b-1fdf15233295:STORY,481ce3f0-8f7a-380b-a3bb-2b11c0b72f20:STORY,f95c56d6-122d-3bbd-8b7b-51a3dd9be7e6:STORY,5a15093b-bab3-3811-819c-3205e8341330:STORY,da6d1537-7dc3-3216-b89a-e9bcaf059040:STORY,cb9e9c49-299f-36df-82f3-1b5c2046f349:STORY,08c26a8d-f089-3f13-af67-a5fb10b8774a:STORY,6aa33f39-c8f0-3cfd-9086-da92de978e37:STORY,60d44a18-3489-3b56-837d-c1bb92837d16:STORY,58c00279-dc48-3d29-81f8-a452b83174be:STORY,75084d43-ff6d-3c90-8957-add1a0489c77:STORY,2e918883-bfe1-3a19-96c5-99cc844ea2f7:STORY,ff0e5998-680e-3174-9cd1-1a6d20f2e208:STORY,2d06a5e9-9784-39a1-85b4-3382e99728a2:STORY,f2e2e89f-5718-38f8-a33e-b0045984b083:STORY,4fbf2c59-42e7-3106-8c2f-81d12714c0f7:STORY,db79393d-7964-3469-ab6c-f7b76be56345:STORY,833b1aa1-4225-394a-8caf-ce95a978b82b:STORY,aef08959-51af-3902-9362-429adb319d1f:STORY,6c1d5e80-e391-3440-8cc4-af6cf006fe4b:STORY,42ff21b8-3ca8-3100-808d-77fe866b4a56:STORY,3b2746de-e88a-37ae-9ed2-6d18a5b3819f:STORY,baeef728-c88e-3e4c-8fda-0cb34b3b65d1:STORY,259b83a5-82b7-3650-a700-2c162acd4a12:STORY,0e389ea4-a50d-35e2-bdb0-e0c1a623a288:STORY,17da2a54-df8d-3eb5-a2ad-317cd60b65c1:STORY,25e4d1ab-7704-36bf-9ff1-7ba360d38496:STORY,143577b8-27fb-306b-88b8-54f8ba7129b6:STORY,78b1bdf7-c9b5-346e-95f5-9ef639922f34:STORY,9bc4af1c-5398-3253-9d43-4f3e902406cb:STORY,9664c68b-b910-363c-a6d8-eff8cab597a6:STORY,48393a80-1921-3b92-a6bd-e4ce8fde5a2e:STORY,e07615df-623e-3887-b4e3-9dc27599e182:STORY,8576e21e-959f-3ba5-9363-765094e87f8b:STORY,f56fb6b4-edca-3163-b267-df5f0a2b0093:STORY,25cc94db-b198-3fdc-a15e-d5a8b998425b:STORY,4563a17f-904c-37ce-b076-63854f64293c:STORY,b159e5a9-d0b4-30d1-9c8e-e6d4f001efd6:STORY,129f48e7-afe8-3c8e-a97d-65293c851087:STORY,72b4c6e0-c7b3-3304-9f12-af703579a94d:STORY,cff423a9-4602-339c-8147-b336fd0013f1:STORY,097b7039-369d-3d99-b7b8-5b5a5a009583:STORY,131cc651-a9ff-3155-8aca-106298407cbf:STORY,f64812d7-9f7e-3311-a5c3-f9bb00da47dd:STORY,310cf680-d304-36a5-bac3-d7673af18421:STORY,d7fd43e3-b062-3ae3-ad4b-ca79bcfc30f8:STORY,9b57ef60-634b-3f34-bb58-29bb94c252f0:STORY,1fb54bca-4230-3261-b0d1-3b8dc56011c8:STORY,2c94825e-b2ad-3464-8bd8-7608c23b53fe:STORY,d501b346-d921-3994-8ed3-13b08585cd7f:STORY,dd7d723e-3357-323f-b2aa-acc218c7d033:STORY,e5910ef3-672e-31d0-b6e3-e99d1ffd28f3:STORY,8b2f8d49-74be-36af-84c3-aaa81fb0762d:STORY,7f9a9a99-d346-3d09-b104-4e145db40d44:STORY,d176d033-c85b-3ab4-80a7-6aa38adaaa0c:STORY,029c5381-36cd-3384-ba34-b0206e9dea86:STORY,98978070-ff1e-301f-8c80-8a71e47bd98e:STORY,6cbd904d-98eb-3d11-9f6d-7ebf16acfe42:STORY,7a9dfdab-d088-3f01-aaf3-034b2f8c6f9a:STORY,c1aa08b8-724d-38ca-a157-2ab44b87dc6b:STORY,52e455a4-84c7-3939-ab56-bc82c04e3820:STORY,de847e63-6aa7-358d-b870-ffb47cfe590b:STORY,78bf89ed-943b-3c5c-b74a-57320508a5bd:STORY,4fd98efd-886c-3de5-b8e0-e2dbfbee40c0:STORY,72f0938b-1451-3e0e-a998-455d2ef372eb:STORY,77d3c12f-f701-3399-9efb-08c57aa31fab:STORY,d0e60444-06db-30e8-8d64-5db793842ca2:STORY,6bcf78ca-13fa-3382-b88b-0cd2e904c9f5:STORY,3ed1b15c-c5c7-3af4-8f6f-81d1ec707e68:STORY,fa7870b1-d494-3a9d-ba7a-53dc705e4105:STORY,b0b0ab88-0218-3d9d-afad-a5d137a4e3cc:STORY,7ab0bb91-4e78-3348-8cc5-613e3d2fba37:STORY,2ef1e268-936f-3ae3-ae8b-485f3003d1ec:STORY,a326ac1c-bce1-3b92-bbc6-fd8323504410:STORY,7c4bb162-937d-3878-862a-5c269be3286f:STORY,d9d85204-de09-3980-b4c5-bbc0466c6df2:STORY,017fc6f8-17db-3d23-8144-3cfdd6ffbd27:STORY,390086cb-1953-321a-bd88-355fe007b1e2:STORY,99d47ce7-9328-3551-a709-a86cce0456c3:STORY,cfca5ff7-181d-31c2-9c73-656ebb02dfe6:STORY,64a20305-bab2-3cbf-9bfb-3557e4074429:STORY,b0096da0-c59e-3d00-a9d1-3077e344a77d:STORY,7cb7863e-f872-363c-821f-b0c9e94ae990:STORY,9c65ccfe-3e6b-3949-bfdd-7f0d150b67ab:STORY,5efad2a4-da0f-317f-8fcd-34ca9da5461b:STORY,a589b196-2899-395d-bef2-9473ce714681:STORY,4d7e3b5c-a64a-38b1-a474-37bca70d088d:STORY,be42dca0-933c-315d-be5d-456e47bf1a69:STORY,25e37f61-011d-311b-b1e3-671ac0fb63cd:STORY,cea31467-d4e9-3566-9481-4288f4a4bcb2:STORY,dcd52727-6dcb-3b5f-9af5-34406c1600ab:STORY,a1b05b14-57d0-3fbf-ad35-89b69224369b:STORY,c16f5bfa-92a5-3015-abb4-064239c8e2f6:STORY,a889dcb4-43c2-3b26-823f-a6b4ed418f24:STORY,b9bd6b5e-a954-3992-bbbe-f937b133c641:STORY,cab63a7d-7399-3e62-a194-aa6a3a4605fb:STORY,5d102e70-81d6-34c4-a698-21082064ee35:STORY,8c905428-6546-3a82-a9fd-e381dc29d082:STORY,14988f6e-7b34-3635-a416-1bf647871098:STORY,d6fd64f6-e2f4-34df-9239-35d215d543ae:STORY,ae20c0d6-8548-35b8-ac44-3368ddbdbbb1:STORY,ab588213-2fad-3d1e-acfc-c988144d3be0:STORY,019e23ed-c634-3a5f-9438-ab3e40497043:STORY,34331e14-6f54-3497-9d0e-9cc8a99c046d:STORY,b72d145b-a988-39c3-8794-22264489c868:STORY,cda24cda-da94-398c-ad6c-a43820301d48:STORY,9f460c7f-d708-3f75-b889-e9714763b9fa:STORY,6941cb6c-b8e9-347d-a2a5-bba502295416:STORY,160f41fa-9ffd-3a41-bbbc-7b3f6a048e4f:STORY,2c6c69a3-017b-3be2-926f-43db2c6522d7:STORY,dbfe74b3-58ec-3b4d-ac3e-19a4af1031ec:STORY,40a8b58d-d35f-35be-a083-fe69c9d93a7e:STORY,b3f744fa-e462-36c3-b3ba-986c13f2cfe8:STORY,62b653b7-a05f-339b-8053-95e096655a27:STORY,588f999b-e248-3192-aa73-d7ef5eba8972:STORY,f5201421-832f-3519-8a07-b13fc5d69e7f:STORY,8be43d85-7947-3c49-bd4d-e7feae250eb3:STORY,022fb77c-2dcf-37d9-8c59-2e1ac0ad7162:STORY,98243929-88d1-3bc6-99ac-a9cf1e842fe2:STORY,48734bd7-26b4-3c99-b194-a91cce8b9d10:STORY,16e08dd8-9eeb-33c5-bca1-6dc2f404c599:STORY,45ae3ec4-f2c6-3a4f-a076-752dc955b8cd:STORY,166c3bc9-2d4b-3679-b837-c3bfb6ae65e4:STORY,833cb321-0b40-3610-ad45-44dc0aa3a86b:STORY,890dfc76-a3dd-3975-b760-34fcb3d65478:STORY,9fcdb98e-5a86-3369-8651-8cf9b6408246:STORY,f5aba9e8-eccb-365d-aaf8-c94e0f454a23:STORY,6bac6136-9ad5-3be0-8f20-16e36f50e4aa:STORY,e195136e-09d4-39fa-8b9b-f9348c4d0c23:STORY,c0095e1d-aab1-3bad-9c11-42368d65204d:STORY,137e7569-ffdc-322d-aa79-a9b32ca5aef9:STORY,7ff18b46-c713-37aa-a0e1-9e37abe98c54:STORY,416b3366-57e7-32e0-aa21-41e70d241095:STORY,d93298e8-b7b1-3e42-a050-8c0a730c24f9:STORY,20d5ead1-e315-3eb8-a8e1-8709be15eef9:STORY,f400df9b-7247-3baa-a4c2-8386d3f7ad0a:STORY,cf2752e4-6c67-3371-ab52-b531aa829cb5:STORY,ee711982-dbcf-3d73-be97-7c20dbf002b7:STORY,428df4df-65ff-34d7-af55-6bd79556fadb:STORY,ca703d49-9441-3d67-ab73-b5e3e06e79ce:STORY,a4c642a9-4e6a-35d0-97d2-5f2f350006da:STORY,250a6b37-d260-304e-8ad2-a92ba9173f71:STORY,f452a545-4f09-3c14-a9cb-125da4087094:STORY,1f86a0e2-224c-369b-8054-dea226ea1291:STORY,4a0979ea-3681-39df-ad8c-25cc419e2431:STORY,180231ea-c518-3e58-ad05-76baeba6f3f4:STORY"
+      },
+      "stream": [
+        {
+          "content": {
+            "bypassModal": false,
+            "canonicalUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://finance.yahoo.com/sectors/technology/articles/global-home-automation-systems-market-155900203.html"
+            },
+            "clickThroughUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://finance.yahoo.com/sectors/technology/articles/global-home-automation-systems-market-155900203.html"
+            },
+            "contentType": "STORY",
+            "description": "",
+            "displayTime": "2026-05-12T15:59:00Z",
+            "finance": {
+              "premiumFinance": {
+                "isPremiumFreeNews": false,
+                "isPremiumNews": false
+              }
+            },
+            "id": "0b26c4ea-bedb-362f-a82a-3d6e8336bf94",
+            "isHosted": true,
+            "metadata": null,
+            "previewUrl": null,
+            "provider": {
+              "displayName": "GlobeNewswire",
+              "sourceId": "globenewswire.com",
+              "url": "https://www.globenewswire.com/"
+            },
+            "pubDate": "2026-05-12T15:59:00Z",
+            "storyline": null,
+            "summary": "Home Automation System Market Home Automation System Market Dublin, May 12, 2026 (GLOBE NEWSWIRE) -- The \"Home Automation System Market by Lighting Controls, Smart Speakers, Entertainment Controls, HVAC Controls, Security & Access Controls, Wired, Wireless, Behavioral, Proactive, Multi-family Residence, Single-family Residence - Global Forecast to 2032\" has been added to ResearchAndMarkets.com's offering. The global home automation system market is poised for significant growth, with an estimate",
+            "thumbnail": {
+              "caption": "Home Automation System Market",
+              "originalHeight": 400,
+              "originalUrl": "https://media.zenfs.com/en/globenewswire.com/a5007f831990f8ec309b8b5acdbe8ad3",
+              "originalWidth": 600,
+              "resolutions": [
+                {
+                  "height": 400,
+                  "tag": "original",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/nvJsf_MsQwKcqA_ZoiZ5Xw--~B/aD00MDA7dz02MDA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/globenewswire.com/a5007f831990f8ec309b8b5acdbe8ad3",
+                  "width": 600
+                },
+                {
+                  "height": 128,
+                  "tag": "170x128",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/MDLUiNm3cseMRmYoh1PeTA--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/globenewswire.com/a5007f831990f8ec309b8b5acdbe8ad3",
+                  "width": 170
+                }
+              ]
+            },
+            "title": "Global Home Automation Systems Market Report 2026-2032: Trends, Revenue Opportunities & Competitive Analysis Featuring Johnson Controls, Schneider Electric, Siemens, Honeywell, ASSA ABLOY, Apple, ABB, and More"
+          },
+          "id": "0b26c4ea-bedb-362f-a82a-3d6e8336bf94"
+        },
+        {
+          "content": {
+            "bypassModal": false,
+            "canonicalUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://finance.yahoo.com/sectors/technology/articles/video-games-strategic-intelligence-report-080900707.html"
+            },
+            "clickThroughUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://finance.yahoo.com/sectors/technology/articles/video-games-strategic-intelligence-report-080900707.html"
+            },
+            "contentType": "STORY",
+            "description": "",
+            "displayTime": "2026-05-12T08:09:00Z",
+            "finance": {
+              "premiumFinance": {
+                "isPremiumFreeNews": false,
+                "isPremiumNews": false
+              }
+            },
+            "id": "86ff50bf-50ca-3801-a14d-ca7dd7f93574",
+            "isHosted": true,
+            "metadata": null,
+            "previewUrl": null,
+            "provider": {
+              "displayName": "GlobeNewswire",
+              "sourceId": "globenewswire.com",
+              "url": "https://www.globenewswire.com/"
+            },
+            "pubDate": "2026-05-12T08:09:00Z",
+            "storyline": null,
+            "summary": "Opportunities in the gaming software market include leveraging AI to lower production costs, adopting cross-platform and remake strategies for consistent returns, and aligning with platform operators like Apple and Valve to enhance distribution. Emphasis on attracting users and optimizing monetization will be crucial.Dublin, May 12, 2026 (GLOBE NEWSWIRE) -- The \"Strategic Intelligence: Video Games\" report has been added to ResearchAndMarkets.com's offering.The gaming software market was worth $2",
+            "thumbnail": {
+              "caption": "",
+              "originalHeight": 58,
+              "originalUrl": "https://media.zenfs.com/en/globenewswire.com/93d5b27580f67db722dd7c112e43e8bc",
+              "originalWidth": 480,
+              "resolutions": [
+                {
+                  "height": 58,
+                  "tag": "original",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/HP.E8HUfnyGeLtMAKwLgAQ--~B/aD01ODt3PTQ4MDthcHBpZD15dGFjaHlvbg--/https://media.zenfs.com/en/globenewswire.com/93d5b27580f67db722dd7c112e43e8bc",
+                  "width": 480
+                },
+                {
+                  "height": 128,
+                  "tag": "170x128",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/.mYVnuZK87Md_8MYR7USkA--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/globenewswire.com/93d5b27580f67db722dd7c112e43e8bc",
+                  "width": 170
+                }
+              ]
+            },
+            "title": "Video Games Strategic Intelligence Report 2026: A $352 Billion Market by 2030 with Mobile Gaming Accounting for More Than Half of Revenue - Apple, Alphabet, and Valve Control Key Distribution Channels"
+          },
+          "id": "86ff50bf-50ca-3801-a14d-ca7dd7f93574"
+        },
+        {
+          "content": {
+            "bypassModal": false,
+            "canonicalUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://finance.yahoo.com/sectors/technology/articles/united-states-autonomous-vehicles-market-113700840.html"
+            },
+            "clickThroughUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://finance.yahoo.com/sectors/technology/articles/united-states-autonomous-vehicles-market-113700840.html"
+            },
+            "contentType": "STORY",
+            "description": "",
+            "displayTime": "2026-05-11T11:37:00Z",
+            "finance": {
+              "premiumFinance": {
+                "isPremiumFreeNews": false,
+                "isPremiumNews": false
+              }
+            },
+            "id": "c833164b-ad0f-3a88-9ae5-a674beb8112e",
+            "isHosted": true,
+            "metadata": null,
+            "previewUrl": null,
+            "provider": {
+              "displayName": "GlobeNewswire",
+              "sourceId": "globenewswire.com",
+              "url": "https://www.globenewswire.com/"
+            },
+            "pubDate": "2026-05-11T11:37:00Z",
+            "storyline": null,
+            "summary": "The United States Autonomous Vehicles Market, projected to surge from USD 28.63 billion in 2025 to USD 103.19 billion by 2034, is set for growth driven by technological advancements in AI, connectivity, and sensors. This market explores the potential for enhanced road safety and transport efficiency through applications like ride-sharing and logistics. Industry collaboration fuels innovation, illustrated by key projects from Minus Zero and partnerships like General Motors and NVIDIA. Challenges",
+            "thumbnail": {
+              "caption": "U.S. Autonomous Vehicles Market",
+              "originalHeight": 400,
+              "originalUrl": "https://media.zenfs.com/en/globenewswire.com/908c79a234141be490b8a24c2cae39e7",
+              "originalWidth": 600,
+              "resolutions": [
+                {
+                  "height": 400,
+                  "tag": "original",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/0xw9bG3Kag.3ADMiT39HRA--~B/aD00MDA7dz02MDA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/globenewswire.com/908c79a234141be490b8a24c2cae39e7",
+                  "width": 600
+                },
+                {
+                  "height": 128,
+                  "tag": "170x128",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/InxMG3DnOX39sTEUmr0TJA--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/globenewswire.com/908c79a234141be490b8a24c2cae39e7",
+                  "width": 170
+                }
+              ]
+            },
+            "title": "United States Autonomous Vehicles Market Forecast and Company Analysis Report 2026-2034 Featuring BMW, Alphabet, Ford, Amazon, Apple, Mercedes-Benz, Aptiv, Baidu, DidiChuxing, General Motor"
+          },
+          "id": "c833164b-ad0f-3a88-9ae5-a674beb8112e"
+        },
+        {
+          "content": {
+            "bypassModal": false,
+            "canonicalUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://finance.yahoo.com/sectors/technology/articles/smart-home-global-forecast-report-084300623.html"
+            },
+            "clickThroughUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://finance.yahoo.com/sectors/technology/articles/smart-home-global-forecast-report-084300623.html"
+            },
+            "contentType": "STORY",
+            "description": "",
+            "displayTime": "2026-05-11T08:43:00Z",
+            "finance": {
+              "premiumFinance": {
+                "isPremiumFreeNews": false,
+                "isPremiumNews": false
+              }
+            },
+            "id": "bc427261-3a7a-3ccc-b340-4cd647655ce9",
+            "isHosted": true,
+            "metadata": null,
+            "previewUrl": null,
+            "provider": {
+              "displayName": "GlobeNewswire",
+              "sourceId": "globenewswire.com",
+              "url": "https://www.globenewswire.com/"
+            },
+            "pubDate": "2026-05-11T08:43:00Z",
+            "storyline": null,
+            "summary": "The global smart home market is set to reach USD 139.24 billion by 2032, growing at a CAGR of 6.4% from USD 95.83 billion in 2026. This growth is driven by rising internet penetration, adoption of connected devices, and energy-efficient home systems. Smart kitchens are poised for the fastest growth, fueled by connected appliances and convenience demands. Direct sales channels are expected to dominate, providing better customer engagement and support. North America leads the market due to advance",
+            "thumbnail": {
+              "caption": "Smart Home Market",
+              "originalHeight": 400,
+              "originalUrl": "https://media.zenfs.com/en/globenewswire.com/6e00c49e750781b9c02ce27465277863",
+              "originalWidth": 600,
+              "resolutions": [
+                {
+                  "height": 400,
+                  "tag": "original",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/1nj5dHHs9f_Pjn6MroRuzA--~B/aD00MDA7dz02MDA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/globenewswire.com/6e00c49e750781b9c02ce27465277863",
+                  "width": 600
+                },
+                {
+                  "height": 128,
+                  "tag": "170x128",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/a9zc6V8OKQXeBZOR8Wazqg--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/globenewswire.com/6e00c49e750781b9c02ce27465277863",
+                  "width": 170
+                }
+              ]
+            },
+            "title": "Smart Home Global Forecast Report 2026-2032: $95+ Billion Market Driven by Ongoing Advancements in AI- and Voice-Enabled Smart Home Solutions"
+          },
+          "id": "bc427261-3a7a-3ccc-b340-4cd647655ce9"
+        },
+        {
+          "content": {
+            "bypassModal": false,
+            "canonicalUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://finance.yahoo.com/markets/stocks/articles/wlth-launches-mobile-app-ios-064000803.html"
+            },
+            "clickThroughUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://finance.yahoo.com/markets/stocks/articles/wlth-launches-mobile-app-ios-064000803.html"
+            },
+            "contentType": "STORY",
+            "description": "",
+            "displayTime": "2026-05-08T06:40:00Z",
+            "finance": {
+              "premiumFinance": {
+                "isPremiumFreeNews": false,
+                "isPremiumNews": false
+              }
+            },
+            "id": "6e6437f5-16ee-3990-ac43-0241c3688469",
+            "isHosted": true,
+            "metadata": null,
+            "previewUrl": null,
+            "provider": {
+              "displayName": "GlobeNewswire",
+              "sourceId": "globenewswire.com",
+              "url": "https://www.globenewswire.com/"
+            },
+            "pubDate": "2026-05-08T06:40:00Z",
+            "storyline": null,
+            "summary": "Now out on Apple and Google for everyone outside of the USA and UK New platform challenges who gets access to early-stage wealth creation AVARUA, Cook Islands, May 08, 2026 (GLOBE NEWSWIRE) -- WLTH.xyz has just launched its mobile app on Apple and Android, designed to give users direct access to Pre-IPO and private market opportunities in a space that has historically been difficult, opaque, and out of reach for most people. For decades, investing has followed a frustrating pattern: people disco",
+            "thumbnail": {
+              "caption": "",
+              "originalHeight": 708,
+              "originalUrl": "https://media.zenfs.com/en/globenewswire.com/b9294200fe317467cdc2c21b2f2391d9",
+              "originalWidth": 941,
+              "resolutions": [
+                {
+                  "height": 708,
+                  "tag": "original",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/R1mUPyU0Vt.JAgYVMlZEoA--~B/aD03MDg7dz05NDE7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/globenewswire.com/b9294200fe317467cdc2c21b2f2391d9",
+                  "width": 941
+                },
+                {
+                  "height": 128,
+                  "tag": "170x128",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/.GXtcqZZERiHAsL5FI9CEg--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/globenewswire.com/b9294200fe317467cdc2c21b2f2391d9",
+                  "width": 170
+                }
+              ]
+            },
+            "title": "WLTH Launches Mobile App on iOS and Android, Opening the Door to Pre-IPO Opportunities"
+          },
+          "id": "6e6437f5-16ee-3990-ac43-0241c3688469"
+        },
+        {
+          "content": {
+            "bypassModal": false,
+            "canonicalUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://finance.yahoo.com/sectors/technology/articles/logitech-rugged-combo-4c-keyboard-173200244.html"
+            },
+            "clickThroughUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://finance.yahoo.com/sectors/technology/articles/logitech-rugged-combo-4c-keyboard-173200244.html"
+            },
+            "contentType": "STORY",
+            "description": "",
+            "displayTime": "2026-05-07T17:32:00Z",
+            "finance": {
+              "premiumFinance": {
+                "isPremiumFreeNews": false,
+                "isPremiumNews": false
+              }
+            },
+            "id": "6a5e8f77-9320-3d7a-9ce0-40d7309cba0a",
+            "isHosted": true,
+            "metadata": null,
+            "previewUrl": null,
+            "provider": {
+              "displayName": "Business Wire",
+              "sourceId": "business-wire.com",
+              "url": "http://www.businesswire.com/"
+            },
+            "pubDate": "2026-05-07T17:32:00Z",
+            "storyline": null,
+            "summary": "SAN JOSE, Calif. & LAUSANNE, Switzerland, May 07, 2026--Logitech (SIX: LOGN) (NASDAQ: LOGI) today introduced Rugged Combo 4c and Rugged Combo 4c Touch for iPad (A16) and iPad (10th generation), expanding the best-selling Rugged Combo portfolio. Designed to maximize classroom time, the new keyboard cases feature a fully sealed keyboard and a versatile USB-C port that enables students to charge iPad and use a wired headset at the same time. Built to withstand the daily rigors of student life, from",
+            "thumbnail": {
+              "caption": "Logitech today introduced Rugged Combo 4c and Rugged Combo 4c Touch for iPad (A16) and iPad (10th generation), expanding the best-selling Rugged Combo portfolio.",
+              "originalHeight": 320,
+              "originalUrl": "https://media.zenfs.com/en/business-wire.com/902915f195ad12625f6f8e7b9bcd94f3",
+              "originalWidth": 480,
+              "resolutions": [
+                {
+                  "height": 320,
+                  "tag": "original",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/U4fNNwpJjcOMMt5mPY0pQg--~B/aD0zMjA7dz00ODA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/business-wire.com/902915f195ad12625f6f8e7b9bcd94f3",
+                  "width": 480
+                },
+                {
+                  "height": 128,
+                  "tag": "170x128",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/BC2TO0EFDRVq1ddIA6vqwA--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/business-wire.com/902915f195ad12625f6f8e7b9bcd94f3",
+                  "width": 170
+                }
+              ]
+            },
+            "title": "New Logitech Rugged Combo 4c Keyboard Cases Deliver Drop-Tested Durability and New USB-C Connectivity to Maximize Classroom Time"
+          },
+          "id": "6a5e8f77-9320-3d7a-9ce0-40d7309cba0a"
+        },
+        {
+          "content": {
+            "bypassModal": false,
+            "canonicalUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://finance.yahoo.com/sectors/technology/articles/rave-sues-apple-five-countries-150300204.html"
+            },
+            "clickThroughUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://finance.yahoo.com/sectors/technology/articles/rave-sues-apple-five-countries-150300204.html"
+            },
+            "contentType": "STORY",
+            "description": "",
+            "displayTime": "2026-05-07T15:03:00Z",
+            "finance": {
+              "premiumFinance": {
+                "isPremiumFreeNews": false,
+                "isPremiumNews": false
+              }
+            },
+            "id": "317086f2-06de-30ca-951b-cc0b81e004c9",
+            "isHosted": true,
+            "metadata": null,
+            "previewUrl": null,
+            "provider": {
+              "displayName": "Business Wire",
+              "sourceId": "business-wire.com",
+              "url": "http://www.businesswire.com/"
+            },
+            "pubDate": "2026-05-07T15:03:00Z",
+            "storyline": null,
+            "summary": "HAMILTON, Ontario, May 07, 2026--Rave Inc. (\"Rave\" or the \"Company\"), the developer and operator of the Rave app, a cross-platform co-viewing \"super app\" with more than 225 million downloads, today announced that it has filed antitrust lawsuits against Apple in five countries: the United States, Canada, Brazil, the Netherlands and Russia. The lawsuits challenge Apple’s unilateral and anticompetitive decision to remove Rave from its App Store, thereby distorting competition, reducing consumer cho",
+            "thumbnail": {
+              "caption": "",
+              "originalHeight": 512,
+              "originalUrl": "https://media.zenfs.com/en/business-wire.com/545408aaa0d83e9242a4519990a28c4e",
+              "originalWidth": 1024,
+              "resolutions": [
+                {
+                  "height": 512,
+                  "tag": "original",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/jbp5LSVXWYhkXNkI6gwEhA--~B/aD01MTI7dz0xMDI0O2FwcGlkPXl0YWNoeW9u/https://media.zenfs.com/en/business-wire.com/545408aaa0d83e9242a4519990a28c4e",
+                  "width": 1024
+                },
+                {
+                  "height": 128,
+                  "tag": "170x128",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/ssPQwuQHfGOyQwtqw1SbaQ--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/business-wire.com/545408aaa0d83e9242a4519990a28c4e",
+                  "width": 170
+                }
+              ]
+            },
+            "title": "Rave Sues Apple in Five Countries Over App Store Removal"
+          },
+          "id": "317086f2-06de-30ca-951b-cc0b81e004c9"
+        },
+        {
+          "content": {
+            "bypassModal": false,
+            "canonicalUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://finance.yahoo.com/sectors/technology/articles/inmobi-acquires-mobileaction-leading-ai-113700549.html"
+            },
+            "clickThroughUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://finance.yahoo.com/sectors/technology/articles/inmobi-acquires-mobileaction-leading-ai-113700549.html"
+            },
+            "contentType": "STORY",
+            "description": "",
+            "displayTime": "2026-05-07T11:37:00Z",
+            "finance": {
+              "premiumFinance": {
+                "isPremiumFreeNews": false,
+                "isPremiumNews": false
+              }
+            },
+            "id": "8afa5726-bb54-301b-9df0-b3eb85894e3d",
+            "isHosted": true,
+            "metadata": null,
+            "previewUrl": null,
+            "provider": {
+              "displayName": "Business Wire",
+              "sourceId": "business-wire.com",
+              "url": "http://www.businesswire.com/"
+            },
+            "pubDate": "2026-05-07T11:37:00Z",
+            "storyline": null,
+            "summary": "SAN FRANCISCO & BENGALURU, India, May 07, 2026--InMobi today announced the acquisition of MobileAction to help app developers and marketers maximize visibility and reach new iOS app users.",
+            "thumbnail": null,
+            "title": "InMobi Acquires MobileAction, a Leading AI Platform for iOS growth"
+          },
+          "id": "8afa5726-bb54-301b-9df0-b3eb85894e3d"
+        },
+        {
+          "content": {
+            "bypassModal": false,
+            "canonicalUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://finance.yahoo.com/sectors/technology/articles/al-chip-market-research-global-101100580.html"
+            },
+            "clickThroughUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://finance.yahoo.com/sectors/technology/articles/al-chip-market-research-global-101100580.html"
+            },
+            "contentType": "STORY",
+            "description": "",
+            "displayTime": "2026-05-07T10:11:00Z",
+            "finance": {
+              "premiumFinance": {
+                "isPremiumFreeNews": false,
+                "isPremiumNews": false
+              }
+            },
+            "id": "04e90423-aacc-328e-a960-fe2e358075f7",
+            "isHosted": true,
+            "metadata": null,
+            "previewUrl": null,
+            "provider": {
+              "displayName": "GlobeNewswire",
+              "sourceId": "globenewswire.com",
+              "url": "https://www.globenewswire.com/"
+            },
+            "pubDate": "2026-05-07T10:11:00Z",
+            "storyline": null,
+            "summary": "The AI chip market is anticipated to expand dramatically, growing from USD 203.24 billion in 2025 to USD 564.87 billion by 2032, at a CAGR of 15.7%. Key growth areas include neural processing units (NPUs), driven by high-end smartphone, AI PC, and laptop demand, and the machine learning segment, powered by AI chips optimizing predictive analytics and real-time decisions. Prominent players like NVIDIA, Intel, and Apple lead development, with Apple's latest iPhone 15 Pro featuring an advanced A17",
+            "thumbnail": {
+              "caption": "Al Chip Market",
+              "originalHeight": 400,
+              "originalUrl": "https://media.zenfs.com/en/globenewswire.com/f7a0ae5e97217337262f817576b1584f",
+              "originalWidth": 600,
+              "resolutions": [
+                {
+                  "height": 400,
+                  "tag": "original",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/owOwDUbWmjOegdkrB_lYhw--~B/aD00MDA7dz02MDA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/globenewswire.com/f7a0ae5e97217337262f817576b1584f",
+                  "width": 600
+                },
+                {
+                  "height": 128,
+                  "tag": "170x128",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/qXtNf2d3hXNagluw7Tu9xw--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/globenewswire.com/f7a0ae5e97217337262f817576b1584f",
+                  "width": 170
+                }
+              ]
+            },
+            "title": "Al Chip Market Research and Global Forecast Report 2025-2030: Lucrative Opportunities in AI-Driven Diagnostics Expansion, Cloud Infrastructure Expansion and Rising Adoption of ASIC Technologies"
+          },
+          "id": "04e90423-aacc-328e-a960-fe2e358075f7"
+        },
+        {
+          "content": {
+            "bypassModal": false,
+            "canonicalUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://finance.yahoo.com/markets/stocks/articles/peer-peer-network-otc-ptop-160000650.html"
+            },
+            "clickThroughUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://finance.yahoo.com/markets/stocks/articles/peer-peer-network-otc-ptop-160000650.html"
+            },
+            "contentType": "STORY",
+            "description": "",
+            "displayTime": "2026-05-05T16:00:00Z",
+            "finance": {
+              "premiumFinance": {
+                "isPremiumFreeNews": false,
+                "isPremiumNews": false
+              }
+            },
+            "id": "103f837b-5638-31c3-8890-74a2e955ff65",
+            "isHosted": true,
+            "metadata": null,
+            "previewUrl": null,
+            "provider": {
+              "displayName": "ACCESS Newswire",
+              "sourceId": "accesswire.ca",
+              "url": "https://www.accessnewswire.com/"
+            },
+            "pubDate": "2026-05-05T16:00:00Z",
+            "storyline": null,
+            "summary": "CAMBRIDGE, MA / ACCESS Newswire / May 5, 2026 / Peer To Peer Network, Inc. (OTC:PTOP), the first publicly traded digital business card company, today announced that MobiCard™ 1.8 will successfully be deployed to Apple's TestFlight platform for final ...",
+            "thumbnail": {
+              "caption": "CAMBRIDGE, MA / ACCESS Newswire / May 5, 2026 / Peer To Peer Network, Inc. (OTC:PTOP), the first publicly traded digital business ...",
+              "originalHeight": 1024,
+              "originalUrl": "https://media.zenfs.com/en/accesswire.ca/bf6433183bb5ffe35b8e84d15c30ce93",
+              "originalWidth": 1536,
+              "resolutions": [
+                {
+                  "height": 1024,
+                  "tag": "original",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/KlZ9qwm3f1N._PnWnOsS0w--~B/aD0xMDI0O3c9MTUzNjthcHBpZD15dGFjaHlvbg--/https://media.zenfs.com/en/accesswire.ca/bf6433183bb5ffe35b8e84d15c30ce93",
+                  "width": 1536
+                },
+                {
+                  "height": 128,
+                  "tag": "170x128",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/szcD_4X5O6IgU60bMoEytA--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/accesswire.ca/bf6433183bb5ffe35b8e84d15c30ce93",
+                  "width": 170
+                }
+              ]
+            },
+            "title": "Peer To Peer Network (OTC: PTOP) Announces Deployment of MobiCard(TM) 1.8 to TestFlight for Final Internal Beta Testing"
+          },
+          "id": "103f837b-5638-31c3-8890-74a2e955ff65"
+        }
+      ]
+    }
+  },
+  "status": "OK"
+}

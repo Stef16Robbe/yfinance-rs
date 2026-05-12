@@ -5,13 +5,13 @@
       {
         "calendarEvents": {
           "dividendDate": {
-            "fmt": "2026-03-26",
-            "raw": 1774483200
+            "fmt": "2026-06-11",
+            "raw": 1781136000
           },
           "earnings": {
             "earningsAverage": {
-              "fmt": "7.48",
-              "raw": 7.48333
+              "fmt": "4.25",
+              "raw": 4.24777
             },
             "earningsCallDate": [
               {
@@ -26,33 +26,33 @@
               }
             ],
             "earningsHigh": {
-              "fmt": "8.55",
-              "raw": 8.55
+              "fmt": "4.89",
+              "raw": 4.89
             },
             "earningsLow": {
-              "fmt": "6.80",
-              "raw": 6.8
+              "fmt": "4.07",
+              "raw": 4.07
             },
             "isEarningsDateEstimate": true,
             "revenueAverage": {
-              "fmt": "60.2B",
-              "longFmt": "60,195,733,560",
-              "raw": 60195733560
+              "fmt": "87.61B",
+              "longFmt": "87,610,832,320",
+              "raw": 87610832320
             },
             "revenueHigh": {
-              "fmt": "62.81B",
-              "longFmt": "62,812,000,000",
-              "raw": 62812000000
+              "fmt": "91.24B",
+              "longFmt": "91,239,000,000",
+              "raw": 91239000000
             },
             "revenueLow": {
-              "fmt": "59.13B",
-              "longFmt": "59,132,000,000",
-              "raw": 59132000000
+              "fmt": "86.9B",
+              "longFmt": "86,900,000,000",
+              "raw": 86900000000
             }
           },
           "exDividendDate": {
-            "fmt": "2026-03-16",
-            "raw": 1773619200
+            "fmt": "2026-05-21",
+            "raw": 1779321600
           },
           "maxAge": 1
         }

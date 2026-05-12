@@ -7,6 +7,12 @@ async fn offline_info_uses_recorded_fixtures() {
     let server = MockServer::start();
     let sym = "MSFT";
     let crumb = "test-crumb";
+    let quote_fixture = crate::common::fixture("quote_v7", sym, "json");
+    let raw_quote_fixture: serde_json::Value = serde_json::from_str(&quote_fixture).unwrap();
+    let raw_quote = raw_quote_fixture["quoteResponse"]["result"]
+        .as_array()
+        .and_then(|quotes| quotes.first())
+        .expect("quote fixture should contain MSFT");
 
     // 1. Mock for quote::fetch_quote -> uses `quote_v7_MSFT.json`
     let quote_mock = server.mock(|when, then| {
@@ -15,7 +21,7 @@ async fn offline_info_uses_recorded_fixtures() {
             .query_param("symbols", sym);
         then.status(200)
             .header("content-type", "application/json")
-            .body(crate::common::fixture("quote_v7", sym, "json"));
+            .body(quote_fixture);
     });
 
     // 2. Mock for Profile::load -> uses `profile_api_assetProfile-quoteType-fundProfile_MSFT.json`
@@ -100,7 +106,10 @@ async fn offline_info_uses_recorded_fixtures() {
         "Price missing from quote fixture."
     );
     assert!(info.profile.is_some());
-    assert_eq!(info.key_statistics.shares_outstanding, Some(7_433_087_554));
+    assert_eq!(
+        info.key_statistics.shares_outstanding,
+        raw_quote["sharesOutstanding"].as_u64()
+    );
     assert!(
         info.calendar
             .and_then(|calendar| calendar.dividend_payment_date)
