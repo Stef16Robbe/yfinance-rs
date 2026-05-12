@@ -134,7 +134,14 @@ impl ResultOffset {
 
 /// A finite numeric filter value.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ScreenerNumber(f64);
+pub enum ScreenerNumber {
+    /// Finite floating-point filter value.
+    Float(f64),
+    /// Unsigned integer filter value.
+    Unsigned(u64),
+    /// Signed integer filter value.
+    Signed(i64),
+}
 
 impl ScreenerNumber {
     /// Builds a finite screener number.
@@ -148,35 +155,41 @@ impl ScreenerNumber {
                 "screener numeric value must be finite".into(),
             ));
         }
-        Ok(Self(value))
+        Ok(Self::Float(value))
     }
 
     fn to_value(self) -> Value {
-        Value::Number(serde_json::Number::from_f64(self.0).expect("finite number"))
+        match self {
+            Self::Float(value) => {
+                Value::Number(serde_json::Number::from_f64(value).expect("finite number"))
+            }
+            Self::Unsigned(value) => Value::Number(serde_json::Number::from(value)),
+            Self::Signed(value) => Value::Number(serde_json::Number::from(value)),
+        }
     }
 }
 
 impl From<u32> for ScreenerNumber {
     fn from(value: u32) -> Self {
-        Self(f64::from(value))
+        Self::Unsigned(u64::from(value))
     }
 }
 
 impl From<i32> for ScreenerNumber {
     fn from(value: i32) -> Self {
-        Self(f64::from(value))
+        Self::Signed(i64::from(value))
     }
 }
 
 impl From<u64> for ScreenerNumber {
     fn from(value: u64) -> Self {
-        Self(value as f64)
+        Self::Unsigned(value)
     }
 }
 
 impl From<i64> for ScreenerNumber {
     fn from(value: i64) -> Self {
-        Self(value as f64)
+        Self::Signed(value)
     }
 }
 
@@ -676,7 +689,7 @@ enum QueryNode {
     },
     Logical {
         operator: &'static str,
-        operands: Vec<QueryNode>,
+        operands: Vec<Self>,
     },
 }
 
@@ -800,7 +813,7 @@ impl<U> ScreenerQuery<U> {
         })
     }
 
-    pub(crate) fn to_wire_value(&self) -> Value {
+    pub(crate) fn into_wire_value(self) -> Value {
         self.node.to_wire_value()
     }
 }
@@ -817,7 +830,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            query.to_wire_value(),
+            query.into_wire_value(),
             json!({
                 "operator": "OR",
                 "operands": [

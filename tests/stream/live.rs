@@ -16,7 +16,7 @@ async fn live_stream_smoke() {
 
     let (handle, mut rx) = builder.start().unwrap();
 
-    let got = timeout(Duration::from_secs(120), rx.recv()).await;
+    let got = timeout(Duration::from_mins(2), rx.recv()).await;
 
     handle.abort();
 

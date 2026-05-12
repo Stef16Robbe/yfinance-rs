@@ -81,16 +81,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 4: Advanced custom client configuration
     println!("4. Advanced Custom Client Configuration:");
     let advanced_client = Client::builder()
-        .timeout(Duration::from_secs(60))
+        .timeout(Duration::from_mins(1))
         .connect_timeout(Duration::from_secs(15))
-        .pool_idle_timeout(Duration::from_secs(120))
+        .pool_idle_timeout(Duration::from_mins(2))
         .pool_max_idle_per_host(10)
-        .tcp_keepalive(Some(Duration::from_secs(60)))
+        .tcp_keepalive(Some(Duration::from_mins(1)))
         .build()?;
 
     let client_with_advanced = YfClient::builder()
         .custom_client(advanced_client)
-        .cache_ttl(Duration::from_secs(300)) // 5 minutes cache
+        .cache_ttl(Duration::from_mins(5)) // 5 minutes cache
         .build()?;
 
     let ticker = Ticker::new(&client_with_advanced, "TSLA");
@@ -122,7 +122,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .timeout(Duration::from_secs(30))
         .connect_timeout(Duration::from_secs(10))
         .retry_enabled(true)
-        .cache_ttl(Duration::from_secs(60))
+        .cache_ttl(Duration::from_mins(1))
         .build()?;
 
     println!("   Successfully built client with custom configuration");

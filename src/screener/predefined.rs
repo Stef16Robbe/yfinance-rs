@@ -79,7 +79,8 @@ impl PredefinedScreener {
         }
     }
 
-    pub(crate) fn custom_parts(self) -> Result<CustomParts, YfError> {
+    #[allow(clippy::too_many_lines)]
+    pub(super) fn custom_parts(self) -> Result<CustomParts, YfError> {
         let parts = match self {
             Self::AggressiveSmallCaps => CustomParts::equity(
                 eq::EOD_VOLUME,

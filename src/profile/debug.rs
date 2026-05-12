@@ -143,7 +143,7 @@ pub fn debug_dump_html(symbol: &str, html: &str) -> std::io::Result<()> {
             .find(|p| p.starts_with("data-url="))
             .map_or("", |p| p.trim_start_matches("data-url=").trim_matches('"'));
         let label = if attrs.contains("data-sveltekit-fetched") {
-            format!("sveltekit-fetched {data_url}",)
+            format!("sveltekit-fetched {data_url}")
         } else if attrs.contains("id=\"__NEXT_DATA__\"") {
             "__NEXT_DATA__".to_string()
         } else {

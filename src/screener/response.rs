@@ -50,7 +50,7 @@ pub struct ScreenerResult {
     pub fields: BTreeMap<String, Value>,
 }
 
-pub(crate) fn parse_screener_body(body: &str) -> Result<ScreenerResponse, YfError> {
+pub(super) fn parse_screener_body(body: &str) -> Result<ScreenerResponse, YfError> {
     let env: WireEnvelope = serde_json::from_str(body)?;
     if let Some(error) = env.finance.error {
         return Err(YfError::Api(error.to_string()));

@@ -70,12 +70,12 @@ fn parse_as_json_value(body: &str, input_norm: &str, debug: bool) -> Option<Stri
     if let Ok(val) = serde_json::from_str::<serde_json::Value>(body) {
         if let Some(hit) = extract_from_json_value(&val, input_norm) {
             if debug {
-                eprintln!("YF_DEBUG(isin): ISIN extracted from JSON structures: {hit}",);
+                eprintln!("YF_DEBUG(isin): ISIN extracted from JSON structures: {hit}");
             }
             return Some(hit);
         }
     } else if debug {
-        eprintln!("YF_DEBUG(isin): failed to parse JSON response for query '{input_norm}'",);
+        eprintln!("YF_DEBUG(isin): failed to parse JSON response for query '{input_norm}'");
     }
     None
 }

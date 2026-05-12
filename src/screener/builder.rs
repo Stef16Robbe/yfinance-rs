@@ -29,7 +29,7 @@ enum RequestKind {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct CustomParts {
+pub(super) struct CustomParts {
     query: Value,
     quote_type: YahooQuoteType,
     sort_field: &'static str,
@@ -37,39 +37,39 @@ pub(crate) struct CustomParts {
 }
 
 impl CustomParts {
-    pub(crate) fn equity(
+    pub(super) fn equity(
         sort_field: SortField<Equity>,
         sort_direction: SortDirection,
         query: EquityQuery,
     ) -> Self {
         Self {
-            query: query.to_wire_value(),
+            query: query.into_wire_value(),
             quote_type: YahooQuoteType::Equity,
             sort_field: sort_field.key(),
             sort_direction,
         }
     }
 
-    pub(crate) fn fund(
+    pub(super) fn fund(
         sort_field: SortField<Fund>,
         sort_direction: SortDirection,
         query: FundQuery,
     ) -> Self {
         Self {
-            query: query.to_wire_value(),
+            query: query.into_wire_value(),
             quote_type: YahooQuoteType::MutualFund,
             sort_field: sort_field.key(),
             sort_direction,
         }
     }
 
-    pub(crate) fn etf(
+    pub(super) fn etf(
         sort_field: SortField<Etf>,
         sort_direction: SortDirection,
         query: EtfQuery,
     ) -> Self {
         Self {
-            query: query.to_wire_value(),
+            query: query.into_wire_value(),
             quote_type: YahooQuoteType::Etf,
             sort_field: sort_field.key(),
             sort_direction,
@@ -138,7 +138,7 @@ impl ScreenerBuilder<Equity> {
 
     /// Sets the custom equity sort field and direction.
     #[must_use]
-    pub fn sort_by(mut self, field: SortField<Equity>, direction: SortDirection) -> Self {
+    pub const fn sort_by(mut self, field: SortField<Equity>, direction: SortDirection) -> Self {
         self.set_sort(field.key(), direction);
         self
     }
@@ -162,7 +162,7 @@ impl ScreenerBuilder<Fund> {
 
     /// Sets the custom mutual fund sort field and direction.
     #[must_use]
-    pub fn sort_by(mut self, field: SortField<Fund>, direction: SortDirection) -> Self {
+    pub const fn sort_by(mut self, field: SortField<Fund>, direction: SortDirection) -> Self {
         self.set_sort(field.key(), direction);
         self
     }
@@ -181,13 +181,13 @@ impl ScreenerBuilder<Etf> {
 
     /// Sets the custom ETF sort field and direction.
     #[must_use]
-    pub fn sort_by(mut self, field: SortField<Etf>, direction: SortDirection) -> Self {
+    pub const fn sort_by(mut self, field: SortField<Etf>, direction: SortDirection) -> Self {
         self.set_sort(field.key(), direction);
         self
     }
 }
 
-impl<U> ScreenerBuilder<U> {
+impl<U: Send + Sync> ScreenerBuilder<U> {
     fn custom(
         client: &YfClient,
         query: ScreenerQuery<U>,
@@ -200,7 +200,7 @@ impl<U> ScreenerBuilder<U> {
             predefined_base: Url::parse(DEFAULT_PREDEFINED_SCREENER_BASE)
                 .expect("valid predefined screener URL"),
             kind: RequestKind::Custom {
-                query: query.to_wire_value(),
+                query: query.into_wire_value(),
                 quote_type,
                 sort_field: default_sort_field,
                 sort_direction: SortDirection::Desc,
@@ -255,7 +255,7 @@ impl<U> ScreenerBuilder<U> {
         self
     }
 
-    fn set_sort(&mut self, field: &'static str, direction: SortDirection) {
+    const fn set_sort(&mut self, field: &'static str, direction: SortDirection) {
         if let RequestKind::Custom {
             sort_field,
             sort_direction,

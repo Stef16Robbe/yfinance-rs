@@ -21,7 +21,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     let client = YfClientBuilder::default()
         .retry_config(custom_retry)
-        .cache_ttl(Duration::from_secs(60)) // Cache responses for 60 seconds
+        .cache_ttl(Duration::from_mins(1)) // Cache responses for 60 seconds
         .build()?;
     println!("Client built with custom retry policy.");
     println!();

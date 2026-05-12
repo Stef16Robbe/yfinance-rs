@@ -125,7 +125,8 @@ fn normalize_split_pair(numerator: f64, denominator: f64) -> Option<(u32, u32)> 
 
 fn scaled_split_component(value: f64) -> Option<u128> {
     let scaled = (value * SPLIT_SCALE).round();
-    if !scaled.is_finite() || scaled < 0.0 || scaled > u128::MAX as f64 {
+    let max_scaled = f64::from(u32::MAX) * SPLIT_SCALE;
+    if !scaled.is_finite() || scaled < 0.0 || scaled > max_scaled {
         return None;
     }
 

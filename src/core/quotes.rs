@@ -17,7 +17,7 @@ use paft::fundamentals::statements::Calendar;
 use paft::fundamentals::statistics::KeyStatistics;
 use paft::market::orderbook::BookLevel;
 use paft::market::quote::Quote;
-use paft::money::{Currency, IsoCurrency, Money};
+use paft::money::{Currency, IsoCurrency};
 use std::str::FromStr;
 
 // Centralized wire model for the v7 quote API
@@ -132,10 +132,6 @@ impl V7QuoteNode {
             .unwrap_or(Currency::Iso(IsoCurrency::USD))
     }
 
-    fn money(&self, value: Option<f64>) -> Option<Money> {
-        value.map(|v| f64_to_money_with_currency_str(v, self.currency.as_deref()))
-    }
-
     fn positive_book_level(&self, price: Option<f64>, size: Option<u64>) -> Option<BookLevel> {
         let price = price.filter(|p| p.is_finite() && *p > 0.0)?;
         Some(BookLevel::new(
@@ -160,6 +156,10 @@ impl V7QuoteNode {
 
     pub(crate) fn to_snapshot(&self) -> Snapshot {
         let exchange = self.exchange();
+        let money = |value: Option<f64>| {
+            value.map(|value| f64_to_money_with_currency_str(value, self.currency.as_deref()))
+        };
+
         Snapshot {
             instrument: self.instrument(exchange.clone()),
             name: self.long_name.clone().or_else(|| self.short_name.clone()),
@@ -167,29 +167,33 @@ impl V7QuoteNode {
             currency: Some(self.currency()),
             market_state: self.market_state.as_deref().and_then(|s| s.parse().ok()),
             as_of: self.as_of().or_else(|| Some(chrono::Utc::now())),
-            last: self.money(self.regular_market_price),
-            previous_close: self.money(self.regular_market_previous_close),
-            open: self.money(self.regular_market_open),
-            day_high: self.money(self.regular_market_day_high),
-            day_low: self.money(self.regular_market_day_low),
+            last: money(self.regular_market_price),
+            previous_close: money(self.regular_market_previous_close),
+            open: money(self.regular_market_open),
+            day_high: money(self.regular_market_day_high),
+            day_low: money(self.regular_market_day_low),
             volume: self.regular_market_volume,
             provider: (),
         }
     }
 
     pub(crate) fn to_key_statistics(&self) -> KeyStatistics {
+        let money = |value: Option<f64>| {
+            value.map(|value| f64_to_money_with_currency_str(value, self.currency.as_deref()))
+        };
+
         KeyStatistics {
             as_of: self.as_of().or_else(|| Some(chrono::Utc::now())),
-            market_cap: self.money(self.market_cap),
+            market_cap: money(self.market_cap),
             shares_outstanding: self.shares_outstanding,
-            eps_trailing_twelve_months: self.money(self.eps_trailing_twelve_months),
+            eps_trailing_twelve_months: money(self.eps_trailing_twelve_months),
             pe_trailing_twelve_months: Self::decimal(self.trailing_pe),
-            dividend_per_share_forward: self.money(self.dividend_rate),
+            dividend_per_share_forward: money(self.dividend_rate),
             dividend_yield_trailing: Self::decimal(self.trailing_annual_dividend_yield),
             dividend_yield_forward: Self::percent_to_fraction(self.dividend_yield),
             ex_dividend_date: None,
-            fifty_two_week_high: self.money(self.fifty_two_week_high),
-            fifty_two_week_low: self.money(self.fifty_two_week_low),
+            fifty_two_week_high: money(self.fifty_two_week_high),
+            fifty_two_week_low: money(self.fifty_two_week_low),
             average_daily_volume_3m: self.average_daily_volume_3_month,
             beta: Self::decimal(self.beta),
         }
