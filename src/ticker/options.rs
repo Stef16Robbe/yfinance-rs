@@ -7,7 +7,7 @@ use crate::{
     YfClient, YfError,
     core::{
         client::{CacheMode, RetryConfig},
-        conversions::{f64_to_decimal_safely, f64_to_money_with_currency, i64_to_datetime},
+        conversions::{f64_to_decimal_safely, f64_to_price_with_currency, i64_to_datetime},
         net,
     },
 };
@@ -109,16 +109,16 @@ pub async fn option_chain(
 
                 Some(OptionContract {
                     instrument,
-                    strike: f64_to_money_with_currency(c.strike.unwrap_or(0.0), currency.clone()),
+                    strike: f64_to_price_with_currency(c.strike.unwrap_or(0.0), currency.clone()),
                     price: c
                         .last_price
-                        .map(|v| f64_to_money_with_currency(v, currency.clone())),
+                        .map(|v| f64_to_price_with_currency(v, currency.clone())),
                     bid: c
                         .bid
-                        .map(|v| f64_to_money_with_currency(v, currency.clone())),
+                        .map(|v| f64_to_price_with_currency(v, currency.clone())),
                     ask: c
                         .ask
-                        .map(|v| f64_to_money_with_currency(v, currency.clone())),
+                        .map(|v| f64_to_price_with_currency(v, currency.clone())),
                     volume: c.volume,
                     open_interest: c.open_interest,
                     implied_volatility: c.implied_volatility.map(f64_to_decimal_safely),

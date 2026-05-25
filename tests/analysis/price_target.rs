@@ -50,21 +50,21 @@ async fn offline_price_target_happy() {
 
     assert_eq!(
         pt.mean,
-        Some(f64_to_money_with_currency(
+        Some(f64_to_price_with_currency(
             200.0,
             Currency::Iso(IsoCurrency::USD)
         ))
     );
     assert_eq!(
         pt.high,
-        Some(f64_to_money_with_currency(
+        Some(f64_to_price_with_currency(
             250.0,
             Currency::Iso(IsoCurrency::USD)
         ))
     );
     assert_eq!(
         pt.low,
-        Some(f64_to_money_with_currency(
+        Some(f64_to_price_with_currency(
             150.0,
             Currency::Iso(IsoCurrency::USD)
         ))
@@ -145,21 +145,21 @@ async fn price_target_invalid_crumb_then_retry_succeeds() {
 
     assert_eq!(
         pt.mean,
-        Some(f64_to_money_with_currency(
+        Some(f64_to_price_with_currency(
             123.45,
             Currency::Iso(IsoCurrency::USD)
         ))
     );
     assert_eq!(
         pt.high,
-        Some(f64_to_money_with_currency(
+        Some(f64_to_price_with_currency(
             150.0,
             Currency::Iso(IsoCurrency::USD)
         ))
     );
     assert_eq!(
         pt.low,
-        Some(f64_to_money_with_currency(
+        Some(f64_to_price_with_currency(
             100.0,
             Currency::Iso(IsoCurrency::USD)
         ))

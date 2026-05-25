@@ -1,4 +1,4 @@
-use crate::core::conversions::{f64_to_money_with_currency_str, i64_to_datetime};
+use crate::core::conversions::{f64_to_price_with_currency_str, i64_to_datetime};
 use crate::history::wire::QuoteBlock;
 use paft::market::responses::history::Candle;
 
@@ -44,12 +44,12 @@ pub fn assemble_candles(
             if let (Some(ov), Some(hv), Some(lv), Some(cv)) = (open, high, low, close) {
                 out.push(Candle {
                     ts: i64_to_datetime(t),
-                    open: f64_to_money_with_currency_str(ov, currency),
-                    high: f64_to_money_with_currency_str(hv, currency),
-                    low: f64_to_money_with_currency_str(lv, currency),
-                    close: f64_to_money_with_currency_str(cv, currency),
+                    open: f64_to_price_with_currency_str(ov, currency),
+                    high: f64_to_price_with_currency_str(hv, currency),
+                    low: f64_to_price_with_currency_str(lv, currency),
+                    close: f64_to_price_with_currency_str(cv, currency),
                     close_unadj: if raw_close_val.is_finite() {
-                        Some(f64_to_money_with_currency_str(raw_close_val, currency))
+                        Some(f64_to_price_with_currency_str(raw_close_val, currency))
                     } else {
                         None
                     },
@@ -59,12 +59,12 @@ pub fn assemble_candles(
             } else if keepna {
                 out.push(Candle {
                     ts: i64_to_datetime(t),
-                    open: f64_to_money_with_currency_str(open.unwrap_or(f64::NAN), currency),
-                    high: f64_to_money_with_currency_str(high.unwrap_or(f64::NAN), currency),
-                    low: f64_to_money_with_currency_str(low.unwrap_or(f64::NAN), currency),
-                    close: f64_to_money_with_currency_str(close.unwrap_or(f64::NAN), currency),
+                    open: f64_to_price_with_currency_str(open.unwrap_or(f64::NAN), currency),
+                    high: f64_to_price_with_currency_str(high.unwrap_or(f64::NAN), currency),
+                    low: f64_to_price_with_currency_str(low.unwrap_or(f64::NAN), currency),
+                    close: f64_to_price_with_currency_str(close.unwrap_or(f64::NAN), currency),
                     close_unadj: if raw_close_val.is_finite() {
-                        Some(f64_to_money_with_currency_str(raw_close_val, currency))
+                        Some(f64_to_price_with_currency_str(raw_close_val, currency))
                     } else {
                         None
                     },
@@ -75,12 +75,12 @@ pub fn assemble_candles(
         } else if let (Some(ov), Some(hv), Some(lv), Some(cv)) = (open, high, low, close) {
             out.push(Candle {
                 ts: i64_to_datetime(t),
-                open: f64_to_money_with_currency_str(ov, currency),
-                high: f64_to_money_with_currency_str(hv, currency),
-                low: f64_to_money_with_currency_str(lv, currency),
-                close: f64_to_money_with_currency_str(cv, currency),
+                open: f64_to_price_with_currency_str(ov, currency),
+                high: f64_to_price_with_currency_str(hv, currency),
+                low: f64_to_price_with_currency_str(lv, currency),
+                close: f64_to_price_with_currency_str(cv, currency),
                 close_unadj: if raw_close_val.is_finite() {
-                    Some(f64_to_money_with_currency_str(raw_close_val, currency))
+                    Some(f64_to_price_with_currency_str(raw_close_val, currency))
                 } else {
                     None
                 },
@@ -90,12 +90,12 @@ pub fn assemble_candles(
         } else if keepna {
             out.push(Candle {
                 ts: i64_to_datetime(t),
-                open: f64_to_money_with_currency_str(open.unwrap_or(f64::NAN), currency),
-                high: f64_to_money_with_currency_str(high.unwrap_or(f64::NAN), currency),
-                low: f64_to_money_with_currency_str(low.unwrap_or(f64::NAN), currency),
-                close: f64_to_money_with_currency_str(close.unwrap_or(f64::NAN), currency),
+                open: f64_to_price_with_currency_str(open.unwrap_or(f64::NAN), currency),
+                high: f64_to_price_with_currency_str(high.unwrap_or(f64::NAN), currency),
+                low: f64_to_price_with_currency_str(low.unwrap_or(f64::NAN), currency),
+                close: f64_to_price_with_currency_str(close.unwrap_or(f64::NAN), currency),
                 close_unadj: if raw_close_val.is_finite() {
-                    Some(f64_to_money_with_currency_str(raw_close_val, currency))
+                    Some(f64_to_price_with_currency_str(raw_close_val, currency))
                 } else {
                     None
                 },

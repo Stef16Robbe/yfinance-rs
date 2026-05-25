@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use paft::domain::{AssetKind, Exchange, Instrument};
-use paft::money::Money;
+use paft::money::{Money, Price};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -39,7 +39,7 @@ pub struct ScreenerResult {
     /// Display quote type name.
     pub type_display: Option<String>,
     /// Last market price.
-    pub price: Option<Money>,
+    pub price: Option<Price>,
     /// Regular market change percent, in percentage points.
     pub regular_market_change_percent: Option<f64>,
     /// Regular market volume.
@@ -149,7 +149,7 @@ impl From<WireQuote> for ScreenerResult {
         });
 
         let price = wire.regular_market_price.map(|price| {
-            crate::core::conversions::f64_to_money_with_currency_str(
+            crate::core::conversions::f64_to_price_with_currency_str(
                 price,
                 wire.currency.as_deref(),
             )

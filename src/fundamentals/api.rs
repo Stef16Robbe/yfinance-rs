@@ -5,7 +5,10 @@ use crate::{
     core::{
         YfClient, YfError,
         client::{CacheMode, RetryConfig},
-        conversions::{f64_to_money_with_currency, i64_to_datetime, string_to_period},
+        conversions::{
+            f64_to_money_with_currency, f64_to_price_with_currency, i64_to_datetime,
+            string_to_period,
+        },
     },
     fundamentals::wire::{TimeseriesData, TimeseriesEnvelope},
 };
@@ -531,11 +534,11 @@ pub(super) async fn earnings(
                     period: string_to_period(&q.date.clone().unwrap_or_default()),
                     actual: q.actual.as_ref().and_then(|x| {
                         x.raw
-                            .map(|v| f64_to_money_with_currency(v, currency.clone()))
+                            .map(|v| f64_to_price_with_currency(v, currency.clone()))
                     }),
                     estimate: q.estimate.as_ref().and_then(|x| {
                         x.raw
-                            .map(|v| f64_to_money_with_currency(v, currency.clone()))
+                            .map(|v| f64_to_price_with_currency(v, currency.clone()))
                     }),
                 })
                 .collect()

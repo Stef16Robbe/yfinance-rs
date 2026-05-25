@@ -41,11 +41,11 @@ async fn history_skips_points_with_null_ohlc() {
     );
     assert_eq!(
         bars[0].open,
-        f64_to_money_with_currency(100.0, Currency::Iso(IsoCurrency::USD))
+        f64_to_price_with_currency(100.0, Currency::Iso(IsoCurrency::USD))
     );
     assert_eq!(
         bars[0].close,
-        f64_to_money_with_currency(100.5, Currency::Iso(IsoCurrency::USD))
+        f64_to_price_with_currency(100.5, Currency::Iso(IsoCurrency::USD))
     );
     assert_eq!(bars[0].volume, Some(1_000_000));
 }

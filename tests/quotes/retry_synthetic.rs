@@ -78,14 +78,14 @@ async fn batch_quotes_401_then_retry_with_crumb_succeeds() {
         .unwrap();
     assert_eq!(
         aapl.price,
-        Some(f64_to_money_with_currency(
+        Some(f64_to_price_with_currency(
             123.0,
             Currency::Iso(IsoCurrency::USD)
         ))
     );
     assert_eq!(
         msft.price,
-        Some(f64_to_money_with_currency(
+        Some(f64_to_price_with_currency(
             456.0,
             Currency::Iso(IsoCurrency::USD)
         ))

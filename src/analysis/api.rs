@@ -4,7 +4,7 @@ use crate::{
         YfClient, YfError,
         client::{CacheMode, RetryConfig},
         conversions::{
-            f64_to_decimal_safely, f64_to_money_with_currency, i64_to_datetime,
+            f64_to_decimal_safely, f64_to_price_with_currency, i64_to_datetime,
             i64_to_money_with_currency, string_to_period, string_to_recommendation_action,
             string_to_recommendation_grade,
         },
@@ -164,10 +164,10 @@ pub(super) async fn analyst_price_target(
 
     Ok(PriceTarget {
         mean: from_raw(fd.target_mean_price)
-            .map(|v| f64_to_money_with_currency(v, currency.clone())),
+            .map(|v| f64_to_price_with_currency(v, currency.clone())),
         high: from_raw(fd.target_high_price)
-            .map(|v| f64_to_money_with_currency(v, currency.clone())),
-        low: from_raw(fd.target_low_price).map(|v| f64_to_money_with_currency(v, currency.clone())),
+            .map(|v| f64_to_price_with_currency(v, currency.clone())),
+        low: from_raw(fd.target_low_price).map(|v| f64_to_price_with_currency(v, currency.clone())),
         number_of_analysts: from_raw_u32_round(fd.number_of_analyst_opinions),
     })
 }
@@ -273,13 +273,13 @@ pub(super) async fn earnings_trend(
                 growth: from_raw(n.growth).map(f64_to_decimal_safely),
                 earnings_estimate: EarningsEstimate {
                     avg: earnings_estimate_avg
-                        .map(|v| f64_to_money_with_currency(v, currency.clone())),
+                        .map(|v| f64_to_price_with_currency(v, currency.clone())),
                     low: earnings_estimate_low
-                        .map(|v| f64_to_money_with_currency(v, currency.clone())),
+                        .map(|v| f64_to_price_with_currency(v, currency.clone())),
                     high: earnings_estimate_high
-                        .map(|v| f64_to_money_with_currency(v, currency.clone())),
+                        .map(|v| f64_to_price_with_currency(v, currency.clone())),
                     year_ago_eps: earnings_estimate_year_ago_eps
-                        .map(|v| f64_to_money_with_currency(v, currency.clone())),
+                        .map(|v| f64_to_price_with_currency(v, currency.clone())),
                     num_analysts: earnings_estimate_num_analysts,
                     growth: earnings_estimate_growth.map(f64_to_decimal_safely),
                 },
@@ -297,13 +297,13 @@ pub(super) async fn earnings_trend(
                 },
                 eps_trend: EpsTrend {
                     current: eps_trend_current
-                        .map(|v| f64_to_money_with_currency(v, currency.clone())),
+                        .map(|v| f64_to_price_with_currency(v, currency.clone())),
                     historical: {
                         let mut hist = Vec::new();
                         if let Some(v) = eps_trend_7_days_ago
                             && let Ok(tp) = TrendPoint::try_new_str(
                                 "7d",
-                                f64_to_money_with_currency(v, currency.clone()),
+                                f64_to_price_with_currency(v, currency.clone()),
                             )
                         {
                             hist.push(tp);
@@ -311,7 +311,7 @@ pub(super) async fn earnings_trend(
                         if let Some(v) = eps_trend_30_days_ago
                             && let Ok(tp) = TrendPoint::try_new_str(
                                 "30d",
-                                f64_to_money_with_currency(v, currency.clone()),
+                                f64_to_price_with_currency(v, currency.clone()),
                             )
                         {
                             hist.push(tp);
@@ -319,7 +319,7 @@ pub(super) async fn earnings_trend(
                         if let Some(v) = eps_trend_60_days_ago
                             && let Ok(tp) = TrendPoint::try_new_str(
                                 "60d",
-                                f64_to_money_with_currency(v, currency.clone()),
+                                f64_to_price_with_currency(v, currency.clone()),
                             )
                         {
                             hist.push(tp);
@@ -327,7 +327,7 @@ pub(super) async fn earnings_trend(
                         if let Some(v) = eps_trend_90_days_ago
                             && let Ok(tp) = TrendPoint::try_new_str(
                                 "90d",
-                                f64_to_money_with_currency(v, currency.clone()),
+                                f64_to_price_with_currency(v, currency.clone()),
                             )
                         {
                             hist.push(tp);

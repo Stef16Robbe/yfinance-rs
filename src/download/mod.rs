@@ -7,7 +7,7 @@ use crate::{
 };
 use paft::domain::{AssetKind, Instrument};
 use paft::market::responses::download::{DownloadEntry, DownloadResponse};
-use paft::money::Money;
+use paft::money::Price;
 use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
 type DateRange = (chrono::DateTime<chrono::Utc>, chrono::DateTime<chrono::Utc>);
 type MaybeDateRange = Option<DateRange>;
@@ -103,42 +103,38 @@ impl DownloadBuilder {
         }
         for c in rows {
             if c.open.amount().to_f64().is_some_and(f64::is_finite) {
-                c.open = Money::new(
+                c.open = Price::new(
                     rust_decimal::Decimal::from_f64(round2(
                         c.open.amount().to_f64().unwrap_or(0.0),
                     ))
                     .unwrap_or_default(),
                     c.open.currency().clone(),
-                )
-                .expect("currency metadata available");
+                );
             }
             if c.high.amount().to_f64().is_some_and(f64::is_finite) {
-                c.high = Money::new(
+                c.high = Price::new(
                     rust_decimal::Decimal::from_f64(round2(
                         c.high.amount().to_f64().unwrap_or(0.0),
                     ))
                     .unwrap_or_default(),
                     c.high.currency().clone(),
-                )
-                .expect("currency metadata available");
+                );
             }
             if c.low.amount().to_f64().is_some_and(f64::is_finite) {
-                c.low = Money::new(
+                c.low = Price::new(
                     rust_decimal::Decimal::from_f64(round2(c.low.amount().to_f64().unwrap_or(0.0)))
                         .unwrap_or_default(),
                     c.low.currency().clone(),
-                )
-                .expect("currency metadata available");
+                );
             }
             if c.close.amount().to_f64().is_some_and(f64::is_finite) {
-                c.close = Money::new(
+                c.close = Price::new(
                     rust_decimal::Decimal::from_f64(round2(
                         c.close.amount().to_f64().unwrap_or(0.0),
                     ))
                     .unwrap_or_default(),
                     c.close.currency().clone(),
-                )
-                .expect("currency metadata available");
+                );
             }
         }
     }

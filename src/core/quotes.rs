@@ -6,7 +6,9 @@ use crate::{
     YfClient, YfError,
     core::{
         client::{CacheMode, RetryConfig},
-        conversions::{f64_to_money_with_currency_str, i64_to_datetime},
+        conversions::{
+            f64_to_money_with_currency_str, f64_to_price_with_currency_str, i64_to_datetime,
+        },
         net,
     },
 };
@@ -135,7 +137,7 @@ impl V7QuoteNode {
     fn positive_book_level(&self, price: Option<f64>, size: Option<u64>) -> Option<BookLevel> {
         let price = price.filter(|p| p.is_finite() && *p > 0.0)?;
         Some(BookLevel::new(
-            f64_to_money_with_currency_str(price, self.currency.as_deref()),
+            f64_to_price_with_currency_str(price, self.currency.as_deref()),
             size.map(Decimal::from),
         ))
     }
@@ -156,8 +158,8 @@ impl V7QuoteNode {
 
     pub(crate) fn to_snapshot(&self) -> Snapshot {
         let exchange = self.exchange();
-        let money = |value: Option<f64>| {
-            value.map(|value| f64_to_money_with_currency_str(value, self.currency.as_deref()))
+        let price = |value: Option<f64>| {
+            value.map(|value| f64_to_price_with_currency_str(value, self.currency.as_deref()))
         };
 
         Snapshot {
@@ -167,11 +169,11 @@ impl V7QuoteNode {
             currency: Some(self.currency()),
             market_state: self.market_state.as_deref().and_then(|s| s.parse().ok()),
             as_of: self.as_of().or_else(|| Some(chrono::Utc::now())),
-            last: money(self.regular_market_price),
-            previous_close: money(self.regular_market_previous_close),
-            open: money(self.regular_market_open),
-            day_high: money(self.regular_market_day_high),
-            day_low: money(self.regular_market_day_low),
+            last: price(self.regular_market_price),
+            previous_close: price(self.regular_market_previous_close),
+            open: price(self.regular_market_open),
+            day_high: price(self.regular_market_day_high),
+            day_low: price(self.regular_market_day_low),
             volume: self.regular_market_volume,
             provider: (),
         }
@@ -181,19 +183,22 @@ impl V7QuoteNode {
         let money = |value: Option<f64>| {
             value.map(|value| f64_to_money_with_currency_str(value, self.currency.as_deref()))
         };
+        let price = |value: Option<f64>| {
+            value.map(|value| f64_to_price_with_currency_str(value, self.currency.as_deref()))
+        };
 
         KeyStatistics {
             as_of: self.as_of().or_else(|| Some(chrono::Utc::now())),
             market_cap: money(self.market_cap),
             shares_outstanding: self.shares_outstanding,
-            eps_trailing_twelve_months: money(self.eps_trailing_twelve_months),
+            eps_trailing_twelve_months: price(self.eps_trailing_twelve_months),
             pe_trailing_twelve_months: Self::decimal(self.trailing_pe),
-            dividend_per_share_forward: money(self.dividend_rate),
+            dividend_per_share_forward: price(self.dividend_rate),
             dividend_yield_trailing: Self::decimal(self.trailing_annual_dividend_yield),
             dividend_yield_forward: Self::percent_to_fraction(self.dividend_yield),
             ex_dividend_date: None,
-            fifty_two_week_high: money(self.fifty_two_week_high),
-            fifty_two_week_low: money(self.fifty_two_week_low),
+            fifty_two_week_high: price(self.fifty_two_week_high),
+            fifty_two_week_low: price(self.fifty_two_week_low),
             average_daily_volume_3m: self.average_daily_volume_3_month,
             beta: Self::decimal(self.beta),
         }
@@ -359,12 +364,12 @@ impl From<V7QuoteNode> for Quote {
             name: n.long_name.clone().or_else(|| n.short_name.clone()),
             price: n
                 .regular_market_price
-                .map(|price| f64_to_money_with_currency_str(price, n.currency.as_deref())),
+                .map(|price| f64_to_price_with_currency_str(price, n.currency.as_deref())),
             bid: n.positive_book_level(n.bid, n.bid_size),
             ask: n.positive_book_level(n.ask, n.ask_size),
             previous_close: n
                 .regular_market_previous_close
-                .map(|price| f64_to_money_with_currency_str(price, n.currency.as_deref())),
+                .map(|price| f64_to_price_with_currency_str(price, n.currency.as_deref())),
             day_volume: n.regular_market_volume,
             exchange,
             market_state: n.market_state.and_then(|s| s.parse().ok()),

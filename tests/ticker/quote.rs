@@ -58,6 +58,48 @@ async fn quote_v7_happy_path() {
 }
 
 #[tokio::test]
+async fn quote_v7_usd_crypto_price_keeps_provider_precision() {
+    let server = MockServer::start();
+
+    let body = r#"{
+      "quoteResponse": {
+        "result": [
+          {
+            "symbol":"XRPUSD",
+            "regularMarketPrice": 0.612345,
+            "regularMarketPreviousClose": 0.600001,
+            "currency": "USD",
+            "quoteType": "CRYPTOCURRENCY"
+          }
+        ],
+        "error": null
+      }
+    }"#;
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "XRPUSD");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+    let ticker = Ticker::new(&client, "XRPUSD");
+
+    let q = ticker.quote().await.unwrap();
+    mock.assert();
+
+    let price = q.price.as_ref().unwrap();
+    assert_eq!(price.amount().to_string(), "0.612345");
+    assert_eq!(price.currency().to_string(), "USD");
+}
+
+#[tokio::test]
 async fn fast_info_derives_last_price() {
     let server = MockServer::start();
 
