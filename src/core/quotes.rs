@@ -9,7 +9,8 @@ use crate::{
         conversions::{
             f64_to_money_with_currency_str, f64_to_price_with_currency_str, i64_to_datetime,
         },
-        net,
+        net, quotesummary,
+        wire::{RawNum, from_raw},
     },
 };
 use paft::Decimal;
@@ -21,6 +22,14 @@ use paft::market::orderbook::BookLevel;
 use paft::market::quote::Quote;
 use paft::money::{Currency, IsoCurrency};
 use std::str::FromStr;
+
+const KEY_STATISTICS_MODULES: &str = "summaryDetail,defaultKeyStatistics";
+
+fn finite_decimal(value: Option<f64>) -> Option<Decimal> {
+    value
+        .filter(|v| v.is_finite())
+        .and_then(|v| Decimal::try_from(v).ok())
+}
 
 // Centralized wire model for the v7 quote API
 #[derive(Deserialize)]
@@ -143,9 +152,7 @@ impl V7QuoteNode {
     }
 
     fn decimal(value: Option<f64>) -> Option<Decimal> {
-        value
-            .filter(|v| v.is_finite())
-            .and_then(|v| Decimal::try_from(v).ok())
+        finite_decimal(value)
     }
 
     fn percent_to_fraction(value: Option<f64>) -> Option<Decimal> {
@@ -211,6 +218,68 @@ impl V7QuoteNode {
             dividend_payment_date: Some(i64_to_datetime(ts)),
         })
     }
+}
+
+#[derive(Deserialize)]
+struct QuoteSummaryKeyStatistics {
+    #[serde(rename = "summaryDetail")]
+    summary_detail: Option<SummaryDetailNode>,
+    #[serde(rename = "defaultKeyStatistics")]
+    default_key_statistics: Option<DefaultKeyStatisticsNode>,
+}
+
+#[derive(Deserialize)]
+struct SummaryDetailNode {
+    beta: Option<RawNum<f64>>,
+}
+
+#[derive(Deserialize)]
+struct DefaultKeyStatisticsNode {
+    beta: Option<RawNum<f64>>,
+}
+
+impl QuoteSummaryKeyStatistics {
+    fn into_key_statistics(self) -> KeyStatistics {
+        let beta = self
+            .summary_detail
+            .and_then(|node| from_raw(node.beta))
+            .or_else(|| {
+                self.default_key_statistics
+                    .and_then(|node| from_raw(node.beta))
+            });
+
+        KeyStatistics {
+            beta: finite_decimal(beta),
+            ..KeyStatistics::default()
+        }
+    }
+}
+
+pub fn merge_key_statistics(
+    mut base: KeyStatistics,
+    quote_summary: &KeyStatistics,
+) -> KeyStatistics {
+    base.beta = base.beta.or(quote_summary.beta);
+    base
+}
+
+pub async fn fetch_quote_summary_key_statistics(
+    client: &YfClient,
+    symbol: &str,
+    cache_mode: CacheMode,
+    retry_override: Option<&RetryConfig>,
+) -> Result<KeyStatistics, YfError> {
+    let root: QuoteSummaryKeyStatistics = quotesummary::fetch_module_result(
+        client,
+        symbol,
+        KEY_STATISTICS_MODULES,
+        "key_statistics",
+        cache_mode,
+        retry_override,
+    )
+    .await?;
+
+    Ok(root.into_key_statistics())
 }
 
 /// Centralized function to fetch one or more quotes from the v7 API.

@@ -6,6 +6,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
+pub const KEY_STATISTICS_MODULES: &str = "summaryDetail,defaultKeyStatistics";
+pub const KEY_STATISTICS_FIXTURE_ENDPOINT: &str =
+    "key_statistics_api_summaryDetail-defaultKeyStatistics";
+
 #[must_use]
 pub fn setup_server() -> MockServer {
     MockServer::start()
@@ -38,6 +42,27 @@ pub fn fixture_path(endpoint: &str, symbol: &str, ext: &str) -> PathBuf {
 #[must_use]
 pub fn fixture_exists(endpoint: &str, symbol: &str, ext: &str) -> bool {
     fixture_path(endpoint, symbol, ext).exists()
+}
+
+#[must_use]
+/// Extracts beta from a recorded quoteSummary key statistics fixture.
+///
+/// # Panics
+///
+/// Panics if the fixture is not valid JSON or does not contain beta in
+/// `summaryDetail` or `defaultKeyStatistics`.
+pub fn quote_summary_beta(fixture: &str) -> paft::Decimal {
+    let raw: serde_json::Value = serde_json::from_str(fixture).unwrap();
+    let result = raw["quoteSummary"]["result"]
+        .as_array()
+        .and_then(|results| results.first())
+        .expect("quoteSummary fixture should contain a result");
+    let beta = result["summaryDetail"]["beta"]["raw"]
+        .as_f64()
+        .or_else(|| result["defaultKeyStatistics"]["beta"]["raw"].as_f64())
+        .expect("quoteSummary fixture should contain beta");
+
+    paft::Decimal::try_from(beta).unwrap()
 }
 
 #[must_use]

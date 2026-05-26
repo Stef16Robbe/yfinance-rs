@@ -20,6 +20,39 @@ async fn live_ticker_quote_for_record() {
 
 #[tokio::test]
 #[ignore = "exercise live Yahoo Finance API"]
+async fn live_ticker_key_statistics_for_record() {
+    if !crate::common::live_or_record_enabled() {
+        return;
+    }
+
+    let client = yfinance_rs::YfClient::builder().build().unwrap();
+    let sym = "MSFT";
+    let t = yfinance_rs::Ticker::new(&client, sym);
+    let stats = t.key_statistics().await.unwrap();
+
+    if crate::common::is_recording() {
+        assert!(
+            crate::common::fixture_exists(
+                crate::common::KEY_STATISTICS_FIXTURE_ENDPOINT,
+                sym,
+                "json"
+            ),
+            "recording pass should persist quoteSummary key statistics fixture for {sym}"
+        );
+        assert!(
+            stats.beta.is_some(),
+            "recording pass should capture quoteSummary beta for {sym}"
+        );
+    } else {
+        assert!(
+            stats.market_cap.is_some() || stats.beta.is_some(),
+            "live key statistics lookup for {sym} should return at least one core statistic"
+        );
+    }
+}
+
+#[tokio::test]
+#[ignore = "exercise live Yahoo Finance API"]
 async fn live_ticker_options_for_record() {
     if !crate::common::live_or_record_enabled() {
         return;
