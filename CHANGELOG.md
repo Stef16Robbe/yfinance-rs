@@ -18,7 +18,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Invalid Yahoo floats (`NaN`, infinities, and values that cannot fit the decimal backend) no longer become zero-valued financial data.
 - Optional `paft` fields now become `None` when Yahoo supplies an invalid numeric value, while valid sibling records are still preserved.
 - Malformed required records, including bad OHLC candles, option contracts with invalid strikes, and invalid dividend/capital-gain amounts, are skipped item-by-item.
+- Malformed raw OHLC rows are validated before auto-adjustment, so adjustment math cannot turn invalid Yahoo prices into emitted candles.
 - Download rounding and repair now leave values unchanged when conversion fails instead of falling back to zero.
+- Download repair now scales OHLC rows atomically, leaving the whole row unchanged if any repaired price cannot be represented.
 
 ### Changed
 

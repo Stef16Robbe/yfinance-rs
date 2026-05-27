@@ -393,16 +393,29 @@ fn scale_row_prices(c: &mut Candle, scale: f64) {
         return;
     };
 
-    scale_price(&mut c.open, scale);
-    scale_price(&mut c.high, scale);
-    scale_price(&mut c.low, scale);
-    scale_price(&mut c.close, scale);
+    let Some(open) = scaled_price(&c.open, scale) else {
+        return;
+    };
+    let Some(high) = scaled_price(&c.high, scale) else {
+        return;
+    };
+    let Some(low) = scaled_price(&c.low, scale) else {
+        return;
+    };
+    let Some(close) = scaled_price(&c.close, scale) else {
+        return;
+    };
+
+    c.open = open;
+    c.high = high;
+    c.low = low;
+    c.close = close;
 }
 
-fn scale_price(price: &mut Price, scale: rust_decimal::Decimal) {
-    if f64_from_currency_value(price).is_some_and(f64::is_finite)
-        && let Ok(scaled) = price.try_mul(scale)
-    {
-        *price = scaled;
+fn scaled_price(price: &Price, scale: rust_decimal::Decimal) -> Option<Price> {
+    if !f64_from_currency_value(price).is_some_and(f64::is_finite) {
+        return None;
     }
+
+    price.try_mul(scale).ok()
 }
