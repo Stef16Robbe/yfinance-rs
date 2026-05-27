@@ -1,25 +1,35 @@
-use paft::domain::{AssetKind, Exchange, Instrument};
+use paft::domain::{Exchange, Instrument};
 use paft::market::responses::search::{SearchResponse, SearchResult};
 use serde::Deserialize;
 use url::Url;
 
 use crate::core::client::CacheMode;
 use crate::core::client::RetryConfig;
+use crate::core::conversions::string_to_asset_kind;
 use crate::{YfClient, YfError};
 
 fn parse_search_body(body: &str) -> Result<SearchResponse, YfError> {
     let env: V1SearchEnvelope = serde_json::from_str(body).map_err(YfError::Json)?;
 
-    let quotes = env.quotes.unwrap_or_default();
+    let quotes = env
+        .quotes
+        .ok_or_else(|| YfError::MissingData("search quotes missing".into()))?;
     let results = quotes
         .into_iter()
         .filter_map(|q| {
-            let sym = q.symbol.unwrap_or_default();
+            let sym = q.symbol?.trim().to_string();
+            if sym.is_empty() {
+                return None;
+            }
             let exchange_opt = q.exchange.and_then(|s| s.parse::<Exchange>().ok());
-            let kind = q
+            let Ok(Some(kind)) = q
                 .quote_type
-                .and_then(|s| s.parse::<AssetKind>().ok())
-                .unwrap_or_default();
+                .as_deref()
+                .map(string_to_asset_kind)
+                .transpose()
+            else {
+                return None;
+            };
 
             let instrument = match exchange_opt {
                 Some(exchange) => Instrument::from_symbol_and_exchange(&sym, exchange, kind),

@@ -12,7 +12,8 @@ async fn option_chain_expiration_falls_back_to_url_date() {
     let body = r#"{
       "optionChain": {
         "result": [{
-          "quote": { "currency": "USD" },
+          "underlyingSymbol": "AAPL",
+          "quote": { "symbol": "AAPL", "quoteType": "EQUITY", "currency": "USD" },
           "options": [{
             "calls": [{
               "contractSymbol":"AAPL250117C00180000",

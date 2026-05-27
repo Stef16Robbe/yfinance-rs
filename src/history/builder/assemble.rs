@@ -18,6 +18,9 @@ pub fn assemble_candles(
     let mut out = Vec::new();
 
     for (i, &t) in ts.iter().enumerate() {
+        let Ok(ts) = i64_to_datetime(t) else {
+            continue;
+        };
         let getter_f64 = |v: &Vec<Option<f64>>| v.get(i).and_then(|x| *x);
         let open = getter_f64(&q.open);
         let high = getter_f64(&q.high);
@@ -44,7 +47,7 @@ pub fn assemble_candles(
 
         if let Some((open, high, low, close)) = candle_prices(open, high, low, close, currency) {
             out.push(Candle {
-                ts: i64_to_datetime(t),
+                ts,
                 open,
                 high,
                 low,

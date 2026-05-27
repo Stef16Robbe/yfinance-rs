@@ -73,13 +73,14 @@ pub(super) async fn fetch_news(
             let timestamp = chrono::DateTime::parse_from_rfc3339(&pub_date_str)
                 .ok()?
                 .timestamp();
+            let published_at = i64_to_datetime(timestamp).ok()?;
 
             Some(NewsArticle {
                 uuid: raw_item.id,
                 title,
                 publisher: content.provider.and_then(|p| p.display_name),
                 link: content.canonical_url.and_then(|u| u.url),
-                published_at: i64_to_datetime(timestamp),
+                published_at,
                 provider: (),
             })
         })

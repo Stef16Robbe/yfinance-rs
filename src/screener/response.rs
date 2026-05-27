@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use paft::domain::{AssetKind, Exchange, Instrument};
+use paft::domain::{Exchange, Instrument};
 use paft::money::{Money, Price};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -8,7 +8,9 @@ use serde_json::Value;
 use super::query::{YahooExchangeCode, YahooQuoteType};
 use crate::{
     YfError,
-    core::conversions::{money_from_f64_with_currency_str, price_from_f64_with_currency_str},
+    core::conversions::{
+        money_from_f64_with_currency_str, price_from_f64_with_currency_str, string_to_asset_kind,
+    },
 };
 
 /// Response from a Yahoo screener request.
@@ -68,7 +70,7 @@ pub(super) fn parse_screener_body(body: &str) -> Result<ScreenerResponse, YfErro
     let count = result.count.and_then(|c| u32::try_from(c).ok());
     let results = result
         .quotes
-        .unwrap_or_default()
+        .ok_or_else(|| YfError::MissingData("screener quotes missing".into()))?
         .into_iter()
         .map(ScreenerResult::from)
         .collect();
@@ -135,22 +137,25 @@ struct WireQuote {
 impl From<WireQuote> for ScreenerResult {
     fn from(wire: WireQuote) -> Self {
         let quote_type = wire.quote_type.as_deref().and_then(YahooQuoteType::parse);
-        let asset_kind = quote_type.map_or(AssetKind::Equity, YahooQuoteType::asset_kind);
+        let asset_kind = quote_type.map(YahooQuoteType::asset_kind).or_else(|| {
+            wire.quote_type
+                .as_deref()
+                .and_then(|value| string_to_asset_kind(value).ok())
+        });
         let exchange = wire
             .exchange
             .as_deref()
             .and_then(|exchange| exchange.parse::<Exchange>().ok());
         let yahoo_exchange = wire.exchange.as_deref().and_then(YahooExchangeCode::parse);
         let instrument = wire.symbol.as_deref().and_then(|symbol| {
-            exchange
-                .clone()
-                .map_or_else(
-                    || Instrument::from_symbol(symbol, asset_kind.clone()),
-                    |exchange| {
-                        Instrument::from_symbol_and_exchange(symbol, exchange, asset_kind.clone())
-                    },
-                )
-                .ok()
+            let asset_kind = asset_kind.clone()?;
+            match exchange.clone() {
+                Some(exchange) => {
+                    Instrument::from_symbol_and_exchange(symbol, exchange, asset_kind)
+                }
+                None => Instrument::from_symbol(symbol, asset_kind),
+            }
+            .ok()
         });
 
         let price = wire

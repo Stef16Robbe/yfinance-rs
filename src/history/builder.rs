@@ -4,9 +4,11 @@ mod assemble;
 mod fetch;
 
 use crate::core::client::{CacheMode, RetryConfig};
+use crate::core::conversions::{string_to_asset_kind, string_to_exchange};
 use crate::core::{YfClient, YfError};
 use crate::history::wire::MetaNode;
 use chrono_tz::Tz;
+use paft::domain::Instrument;
 use paft::market::action::Action;
 use paft::market::requests::history::{Interval, Range};
 use paft::market::responses::history::{Candle, HistoryMeta, HistoryResponse};
@@ -173,6 +175,8 @@ impl HistoryBuilder {
         )
         .await?;
 
+        cache_history_instrument(&self.client, &self.symbol, fetched.meta.as_ref()).await?;
+
         // 2) Corporate actions & split ratios
         let reporting_currency = self.client.reporting_currency(&self.symbol, None).await;
 
@@ -224,4 +228,57 @@ fn map_meta(m: Option<&MetaNode>) -> Option<HistoryMeta> {
             .and_then(|tz_str| tz_str.parse::<Tz>().ok()),
         utc_offset_seconds: mm.gmtoffset,
     })
+}
+
+async fn cache_history_instrument(
+    client: &YfClient,
+    requested_symbol: &str,
+    meta: Option<&MetaNode>,
+) -> Result<(), YfError> {
+    let Some(meta) = meta else {
+        return Ok(());
+    };
+    let Some(kind) = meta
+        .instrument_type
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(string_to_asset_kind)
+        .transpose()?
+    else {
+        return Ok(());
+    };
+
+    let exchange = meta
+        .full_exchange_name
+        .as_deref()
+        .or(meta.exchange_name.as_deref())
+        .and_then(|exchange| string_to_exchange(Some(exchange.to_string())));
+
+    let instrument = match exchange {
+        Some(exchange) => {
+            Instrument::from_symbol_and_exchange(requested_symbol, exchange, kind.clone())
+        }
+        None => Instrument::from_symbol(requested_symbol, kind),
+    };
+
+    let Ok(instrument) = instrument else {
+        return Ok(());
+    };
+
+    client
+        .store_instrument(requested_symbol.to_string(), instrument.clone())
+        .await;
+    if let Some(provider_symbol) = meta
+        .symbol
+        .as_deref()
+        .map(str::trim)
+        .filter(|symbol| !symbol.is_empty() && *symbol != requested_symbol)
+    {
+        client
+            .store_instrument(provider_symbol.to_string(), instrument)
+            .await;
+    }
+
+    Ok(())
 }

@@ -10,6 +10,7 @@ async fn download_drops_malformed_rows_and_rounds_valid_neighbors() {
     let body = r#"{
       "chart": {
         "result": [{
+          "meta": { "symbol": "AAPL", "instrumentType": "EQUITY" },
           "timestamp": [10, 20, 30],
           "indicators": {
             "quote": [{

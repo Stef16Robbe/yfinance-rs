@@ -90,6 +90,7 @@ async fn stream_polling_emits_on_volume_only_change_with_diff_only() {
             "result": [
                 {
                     "symbol": "MSFT",
+                    "quoteType": "EQUITY",
                     "regularMarketPrice": 420.00,
                     "regularMarketPreviousClose": 420.00,
                     "regularMarketVolume": 1000,
@@ -106,6 +107,7 @@ async fn stream_polling_emits_on_volume_only_change_with_diff_only() {
             "result": [
                 {
                     "symbol": "MSFT",
+                    "quoteType": "EQUITY",
                     "regularMarketPrice": 420.00,
                     "regularMarketPreviousClose": 420.00,
                     "regularMarketVolume": 1500,

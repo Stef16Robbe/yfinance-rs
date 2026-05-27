@@ -13,12 +13,23 @@ use crate::{
 
 use super::fetch::fetch_modules;
 use super::model::{PriceTarget, RecommendationRow, RecommendationSummary, UpgradeDowngradeRow};
-use chrono::DateTime;
 use paft::fundamentals::analysis::{
-    EarningsEstimate, EpsRevisions, EpsTrend, RevenueEstimate, RevisionPoint, TrendPoint,
+    EarningsEstimate, EpsRevisions, EpsTrend, RecommendationAction, RecommendationGrade,
+    RevenueEstimate, RevisionPoint, TrendPoint,
 };
 use paft::money::Currency;
 // Period is available via prelude or directly; we use string_to_period for parsing, so import not needed
+
+fn parse_optional<T>(
+    value: Option<&str>,
+    parse: impl FnOnce(&str) -> Result<T, YfError>,
+) -> Result<Option<T>, YfError> {
+    value
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(parse)
+        .transpose()
+}
 
 /* ---------- Public entry points (mapping wire → public models) ---------- */
 
@@ -39,20 +50,23 @@ pub(super) async fn recommendation_trend(
 
     let trend = root
         .recommendation_trend
-        .and_then(|x| x.trend)
-        .unwrap_or_default();
+        .ok_or_else(|| YfError::MissingData("recommendationTrend module missing".into()))?
+        .trend
+        .ok_or_else(|| YfError::MissingData("recommendationTrend.trend missing".into()))?;
 
     let rows = trend
         .into_iter()
-        .map(|n| RecommendationRow {
-            period: string_to_period(&n.period.unwrap_or_default()),
-            strong_buy: n.strong_buy.and_then(|v| u32::try_from(v).ok()),
-            buy: n.buy.and_then(|v| u32::try_from(v).ok()),
-            hold: n.hold.and_then(|v| u32::try_from(v).ok()),
-            sell: n.sell.and_then(|v| u32::try_from(v).ok()),
-            strong_sell: n.strong_sell.and_then(|v| u32::try_from(v).ok()),
+        .map(|n| {
+            Ok(RecommendationRow {
+                period: string_to_period(n.period.as_deref().unwrap_or(""))?,
+                strong_buy: n.strong_buy.and_then(|v| u32::try_from(v).ok()),
+                buy: n.buy.and_then(|v| u32::try_from(v).ok()),
+                hold: n.hold.and_then(|v| u32::try_from(v).ok()),
+                sell: n.sell.and_then(|v| u32::try_from(v).ok()),
+                strong_sell: n.strong_sell.and_then(|v| u32::try_from(v).ok()),
+            })
         })
-        .collect();
+        .collect::<Result<Vec<_>, YfError>>()?;
 
     Ok(rows)
 }
@@ -74,22 +88,24 @@ pub(super) async fn recommendation_summary(
 
     let trend = root
         .recommendation_trend
-        .and_then(|x| x.trend)
-        .unwrap_or_default();
+        .ok_or_else(|| YfError::MissingData("recommendationTrend module missing".into()))?
+        .trend
+        .ok_or_else(|| YfError::MissingData("recommendationTrend.trend missing".into()))?;
 
     let latest = trend.first();
 
-    let (latest_period, sb, b, h, s, ss) =
-        latest.map_or((None, None, None, None, None, None), |t| {
-            (
-                Some(string_to_period(&t.period.clone().unwrap_or_default())),
-                t.strong_buy.and_then(|v| u32::try_from(v).ok()),
-                t.buy.and_then(|v| u32::try_from(v).ok()),
-                t.hold.and_then(|v| u32::try_from(v).ok()),
-                t.sell.and_then(|v| u32::try_from(v).ok()),
-                t.strong_sell.and_then(|v| u32::try_from(v).ok()),
-            )
-        });
+    let (latest_period, sb, b, h, s, ss) = if let Some(t) = latest {
+        (
+            Some(string_to_period(t.period.as_deref().unwrap_or(""))?),
+            t.strong_buy.and_then(|v| u32::try_from(v).ok()),
+            t.buy.and_then(|v| u32::try_from(v).ok()),
+            t.hold.and_then(|v| u32::try_from(v).ok()),
+            t.sell.and_then(|v| u32::try_from(v).ok()),
+            t.strong_sell.and_then(|v| u32::try_from(v).ok()),
+        )
+    } else {
+        (None, None, None, None, None, None)
+    };
 
     let (mean, _mean_key) = root.financial_data.map_or((None, None), |fd| {
         (from_raw(fd.recommendation_mean), fd.recommendation_key)
@@ -124,26 +140,45 @@ pub(super) async fn upgrades_downgrades(
 
     let hist = root
         .upgrade_downgrade_history
-        .and_then(|x| x.history)
-        .unwrap_or_default();
+        .ok_or_else(|| YfError::MissingData("upgradeDowngradeHistory module missing".into()))?
+        .history
+        .ok_or_else(|| YfError::MissingData("upgradeDowngradeHistory.history missing".into()))?;
 
     let mut rows: Vec<UpgradeDowngradeRow> = hist
         .into_iter()
-        .map(|h| UpgradeDowngradeRow {
-            ts: h.epoch_grade_date.map_or_else(
-                || DateTime::from_timestamp(0, 0).unwrap_or_default(),
-                i64_to_datetime,
-            ),
-            firm: h.firm,
-            from_grade: h.from_grade.as_deref().map(string_to_recommendation_grade),
-            to_grade: h.to_grade.as_deref().map(string_to_recommendation_grade),
-            action: h
-                .action
-                .or(h.grade_change)
-                .as_deref()
-                .map(string_to_recommendation_action),
+        .filter_map(|h| {
+            let ts = h.epoch_grade_date.and_then(|ts| i64_to_datetime(ts).ok())?;
+            let from_grade = match parse_optional::<RecommendationGrade>(
+                h.from_grade.as_deref(),
+                string_to_recommendation_grade,
+            ) {
+                Ok(value) => value,
+                Err(err) => return Some(Err(err)),
+            };
+            let to_grade = match parse_optional::<RecommendationGrade>(
+                h.to_grade.as_deref(),
+                string_to_recommendation_grade,
+            ) {
+                Ok(value) => value,
+                Err(err) => return Some(Err(err)),
+            };
+            let action = match parse_optional::<RecommendationAction>(
+                h.action.or(h.grade_change).as_deref(),
+                string_to_recommendation_action,
+            ) {
+                Ok(value) => value,
+                Err(err) => return Some(Err(err)),
+            };
+
+            Some(Ok(UpgradeDowngradeRow {
+                ts,
+                firm: h.firm,
+                from_grade,
+                to_grade,
+                action,
+            }))
         })
-        .collect();
+        .collect::<Result<Vec<_>, YfError>>()?;
 
     rows.sort_by_key(|r| r.ts);
     Ok(rows)
@@ -181,8 +216,9 @@ pub(super) async fn earnings_trend(
 
     let trend = root
         .earnings_trend
-        .and_then(|x| x.trend)
-        .unwrap_or_default();
+        .ok_or_else(|| YfError::MissingData("earningsTrend module missing".into()))?
+        .trend
+        .ok_or_else(|| YfError::MissingData("earningsTrend.trend missing".into()))?;
 
     let rows = trend
         .into_iter()
@@ -266,7 +302,7 @@ pub(super) async fn earnings_trend(
                 .unwrap_or_default();
 
             Ok(EarningsTrendRow {
-                period: string_to_period(&n.period.unwrap_or_default()),
+                period: string_to_period(n.period.as_deref().unwrap_or(""))?,
                 growth: from_raw(n.growth).and_then(decimal_from_f64),
                 earnings_estimate: EarningsEstimate {
                     avg: earnings_estimate_avg.and_then(|v| price_from_f64(v, currency.clone())),

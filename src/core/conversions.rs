@@ -5,13 +5,13 @@
 
 use chrono::{DateTime, Utc};
 use paft::Decimal;
-use paft::domain::{Exchange, MarketState, Period};
+use paft::domain::{AssetKind, Exchange, MarketState, Period};
 use paft::fundamentals::analysis::{RecommendationAction, RecommendationGrade};
 use paft::fundamentals::holders::{InsiderPosition, TransactionType};
 use paft::fundamentals::profile::FundKind;
 use paft::money::{Currency, IsoCurrency, MonetaryAmount, Money, Price};
 use rust_decimal::prelude::ToPrimitive;
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 
 use crate::YfError;
 
@@ -141,9 +141,13 @@ pub fn money_to_currency_str(value: &impl CurrencyValue) -> Option<String> {
 }
 
 /// Convert i64 timestamp to `DateTime`<Utc>
-#[must_use]
-pub fn i64_to_datetime(timestamp: i64) -> DateTime<Utc> {
-    DateTime::from_timestamp(timestamp, 0).unwrap_or_default()
+///
+/// # Errors
+/// Returns `YfError::InvalidData` when the timestamp is outside chrono's
+/// representable range.
+pub fn i64_to_datetime(timestamp: i64) -> Result<DateTime<Utc>, YfError> {
+    DateTime::from_timestamp(timestamp, 0)
+        .ok_or_else(|| YfError::InvalidData(format!("invalid Unix timestamp: {timestamp}")))
 }
 
 /// Convert `DateTime`<Utc> to i64 timestamp
@@ -224,22 +228,22 @@ pub fn market_state_to_string(state: Option<MarketState>) -> Option<String> {
 
 /// Convert String to `FundKind` enum
 #[allow(clippy::single_option_map)]
-#[must_use]
-pub fn string_to_fund_kind(s: Option<String>) -> Option<FundKind> {
-    s.and_then(|s| {
+pub fn string_to_fund_kind(s: Option<String>) -> Result<Option<FundKind>, YfError> {
+    s.map(|s| {
         // Map Yahoo Finance legal types to paft FundKind values
         match s.as_str() {
-            "Exchange Traded Fund" => Some(FundKind::Etf),
-            "Mutual Fund" => Some(FundKind::MutualFund),
-            "Index Fund" => Some(FundKind::IndexFund),
-            "Closed-End Fund" => Some(FundKind::ClosedEndFund),
-            "Money Market Fund" => Some(FundKind::MoneyMarketFund),
-            "Hedge Fund" => Some(FundKind::HedgeFund),
-            "Real Estate Investment Trust" => Some(FundKind::Reit),
-            "Unit Investment Trust" => Some(FundKind::UnitInvestmentTrust),
-            _ => FundKind::try_from(s).ok(),
+            "Exchange Traded Fund" => Ok(FundKind::Etf),
+            "Mutual Fund" => Ok(FundKind::MutualFund),
+            "Index Fund" => Ok(FundKind::IndexFund),
+            "Closed-End Fund" => Ok(FundKind::ClosedEndFund),
+            "Money Market Fund" => Ok(FundKind::MoneyMarketFund),
+            "Hedge Fund" => Ok(FundKind::HedgeFund),
+            "Real Estate Investment Trust" => Ok(FundKind::Reit),
+            "Unit Investment Trust" => Ok(FundKind::UnitInvestmentTrust),
+            _ => parse_required_token(&s, "fund kind"),
         }
     })
+    .transpose()
 }
 
 /// Convert `FundKind` to String
@@ -249,45 +253,52 @@ pub fn fund_kind_to_string(kind: Option<FundKind>) -> Option<String> {
 }
 
 /// Convert String to `InsiderPosition` enum
-#[must_use]
-pub fn string_to_insider_position(s: &str) -> InsiderPosition {
-    let token = s.trim();
-    let token_nonempty = if token.is_empty() { "UNKNOWN" } else { token };
-    token_nonempty.parse().unwrap_or(InsiderPosition::Officer)
+pub fn string_to_insider_position(s: &str) -> Result<InsiderPosition, YfError> {
+    parse_required_token(s, "insider position")
 }
 
 /// Convert String to `TransactionType` enum
-#[must_use]
-pub fn string_to_transaction_type(s: &str) -> TransactionType {
-    let token = s.trim();
-    let token_nonempty = if token.is_empty() { "UNKNOWN" } else { token };
-    token_nonempty.parse().unwrap_or(TransactionType::Buy)
+pub fn string_to_transaction_type(s: &str) -> Result<TransactionType, YfError> {
+    parse_required_token(s, "insider transaction type")
 }
 
 /// Convert String to Period
-#[must_use]
-pub fn string_to_period(s: &str) -> Period {
-    if s.trim().is_empty() {
-        return "UNKNOWN".parse().map_or(Period::Year { year: 1970 }, |p| p);
-    }
-    s.parse()
-        .unwrap_or_else(|_| "UNKNOWN".parse().map_or(Period::Year { year: 1970 }, |p| p))
+pub fn string_to_period(s: &str) -> Result<Period, YfError> {
+    parse_required_token(s, "period")
 }
 
 /// Convert String to `RecommendationGrade` enum
-#[must_use]
-pub fn string_to_recommendation_grade(s: &str) -> RecommendationGrade {
-    let token = s.trim();
-    let token_nonempty = if token.is_empty() { "UNKNOWN" } else { token };
-    token_nonempty.parse().unwrap_or(RecommendationGrade::Hold)
+pub fn string_to_recommendation_grade(s: &str) -> Result<RecommendationGrade, YfError> {
+    parse_required_token(s, "recommendation grade")
 }
 
 /// Convert String to `RecommendationAction` enum
-#[must_use]
-pub fn string_to_recommendation_action(s: &str) -> RecommendationAction {
+pub fn string_to_recommendation_action(s: &str) -> Result<RecommendationAction, YfError> {
+    parse_required_token(s, "recommendation action")
+}
+
+/// Convert a Yahoo quote type / asset kind string to `AssetKind`.
+pub fn string_to_asset_kind(s: &str) -> Result<AssetKind, YfError> {
+    match s.trim() {
+        "ETF" | "MUTUALFUND" | "MUTUAL_FUND" => Ok(AssetKind::Fund),
+        "INDEX" => Ok(AssetKind::Index),
+        "CRYPTOCURRENCY" => Ok(AssetKind::Crypto),
+        "CURRENCY" => Ok(AssetKind::Forex),
+        token => parse_required_token(token, "asset kind"),
+    }
+}
+
+fn parse_required_token<T>(s: &str, name: &str) -> Result<T, YfError>
+where
+    T: FromStr,
+    T::Err: Display,
+{
     let token = s.trim();
-    let token_nonempty = if token.is_empty() { "UNKNOWN" } else { token };
-    token_nonempty
+    if token.is_empty() {
+        return Err(YfError::MissingData(format!("{name} missing")));
+    }
+
+    token
         .parse()
-        .unwrap_or(RecommendationAction::Maintain)
+        .map_err(|err| YfError::InvalidData(format!("invalid {name} {s:?}: {err}")))
 }

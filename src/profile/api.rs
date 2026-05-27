@@ -72,7 +72,8 @@ pub async fn load_from_quote_summary_api(
             Ok(Profile::Fund(Fund {
                 name,
                 family: fp.family,
-                kind: string_to_fund_kind(fp.legal_type).unwrap_or_default(),
+                kind: string_to_fund_kind(fp.legal_type)?
+                    .ok_or_else(|| YfError::MissingData("fundProfile.legalType missing".into()))?,
                 isin: validated_isin,
             }))
         }

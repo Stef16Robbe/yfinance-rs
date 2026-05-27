@@ -14,8 +14,8 @@ use crate::core::{
     },
     quotesummary,
 };
-use chrono::DateTime;
 use paft::Decimal;
+use paft::fundamentals::holders::{InsiderPosition, TransactionType};
 use paft::money::Currency;
 
 const MODULES: &str = "institutionOwnership,fundOwnership,majorHoldersBreakdown,insiderTransactions,insiderHolders,netSharePurchaseActivity";
@@ -84,26 +84,60 @@ pub(super) async fn major_holders(
     Ok(result)
 }
 
+fn nonempty(value: Option<String>) -> Option<String> {
+    value.filter(|value| !value.trim().is_empty())
+}
+
+fn parse_optional<T>(
+    value: Option<&str>,
+    parse: impl FnOnce(&str) -> Result<T, YfError>,
+) -> Result<Option<T>, YfError> {
+    value
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(parse)
+        .transpose()
+}
+
+fn required_row_value<T>(
+    value: Option<&str>,
+    parse: impl FnOnce(&str) -> Result<T, YfError>,
+) -> Option<Result<T, YfError>> {
+    match parse_optional(value, parse) {
+        Ok(Some(parsed)) => Some(Ok(parsed)),
+        Ok(None) => None,
+        Err(err) => Some(Err(err)),
+    }
+}
+
 fn map_ownership_list(
     node: Option<super::wire::OwnershipNode>,
+    module_name: &str,
     currency: &Currency,
 ) -> Result<Vec<InstitutionalHolder>, YfError> {
-    node.and_then(|n| n.ownership_list)
-        .unwrap_or_default()
+    node.ok_or_else(|| YfError::MissingData(format!("{module_name} missing")))?
+        .ownership_list
+        .ok_or_else(|| YfError::MissingData(format!("{module_name}.ownershipList missing")))?
         .into_iter()
-        .map(|h| {
-            Ok(InstitutionalHolder {
-                holder: h.organization.unwrap_or_default(),
+        .filter_map(|h| {
+            let holder = nonempty(h.organization)?;
+            let date_reported =
+                from_raw_date(h.date_reported).and_then(|ts| i64_to_datetime(ts).ok())?;
+            let value = match from_raw(h.value)
+                .map(|v| u64_to_money_with_currency(v, currency.clone()))
+                .transpose()
+            {
+                Ok(value) => value,
+                Err(err) => return Some(Err(err)),
+            };
+
+            Some(Ok(InstitutionalHolder {
+                holder,
                 shares: from_raw(h.shares),
-                date_reported: from_raw_date(h.date_reported).map_or_else(
-                    || DateTime::from_timestamp(0, 0).unwrap_or_default(),
-                    i64_to_datetime,
-                ),
+                date_reported,
                 pct_held: from_raw(h.pct_held).and_then(decimal_from_f64),
-                value: from_raw(h.value)
-                    .map(|v| u64_to_money_with_currency(v, currency.clone()))
-                    .transpose()?,
-            })
+                value,
+            }))
         })
         .collect()
 }
@@ -116,7 +150,11 @@ pub(super) async fn institutional_holders(
 ) -> Result<Vec<InstitutionalHolder>, YfError> {
     let root = fetch_holders_modules(client, symbol, cache_mode, retry_override).await?;
     let currency = client.reporting_currency(symbol, None).await;
-    map_ownership_list(root.institution_ownership, &currency)
+    map_ownership_list(
+        root.institution_ownership,
+        "institutionOwnership",
+        &currency,
+    )
 }
 
 pub(super) async fn mutual_fund_holders(
@@ -127,7 +165,7 @@ pub(super) async fn mutual_fund_holders(
 ) -> Result<Vec<InstitutionalHolder>, YfError> {
     let root = fetch_holders_modules(client, symbol, cache_mode, retry_override).await?;
     let currency = client.reporting_currency(symbol, None).await;
-    map_ownership_list(root.fund_ownership, &currency)
+    map_ownership_list(root.fund_ownership, "fundOwnership", &currency)
 }
 
 pub(super) async fn insider_transactions(
@@ -140,26 +178,47 @@ pub(super) async fn insider_transactions(
     let currency = client.reporting_currency(symbol, None).await;
     let transactions = root
         .insider_transactions
-        .and_then(|it| it.transactions)
-        .unwrap_or_default();
+        .ok_or_else(|| YfError::MissingData("insiderTransactions missing".into()))?
+        .transactions
+        .ok_or_else(|| YfError::MissingData("insiderTransactions.transactions missing".into()))?;
 
     transactions
         .into_iter()
-        .map(|t| {
-            Ok(InsiderTransaction {
-                insider: t.insider.unwrap_or_default(),
-                position: string_to_insider_position(&t.position.unwrap_or_default()),
-                transaction_type: string_to_transaction_type(&t.transaction.unwrap_or_default()),
+        .filter_map(|t| {
+            let insider = nonempty(t.insider)?;
+            let position = match required_row_value::<InsiderPosition>(
+                t.position.as_deref(),
+                string_to_insider_position,
+            )? {
+                Ok(value) => value,
+                Err(err) => return Some(Err(err)),
+            };
+            let transaction_type = match required_row_value::<TransactionType>(
+                t.transaction.as_deref(),
+                string_to_transaction_type,
+            )? {
+                Ok(value) => value,
+                Err(err) => return Some(Err(err)),
+            };
+            let transaction_date =
+                from_raw_date(t.start_date).and_then(|ts| i64_to_datetime(ts).ok())?;
+            let value = match from_raw(t.value)
+                .map(|v| u64_to_money_with_currency(v, currency.clone()))
+                .transpose()
+            {
+                Ok(value) => value,
+                Err(err) => return Some(Err(err)),
+            };
+
+            Some(Ok(InsiderTransaction {
+                insider,
+                position,
+                transaction_type,
                 shares: from_raw(t.shares),
-                value: from_raw(t.value)
-                    .map(|v| u64_to_money_with_currency(v, currency.clone()))
-                    .transpose()?,
-                transaction_date: from_raw_date(t.start_date).map_or_else(
-                    || DateTime::from_timestamp(0, 0).unwrap_or_default(),
-                    i64_to_datetime,
-                ),
+                value,
+                transaction_date,
                 url: t.url.unwrap_or_default(),
-            })
+            }))
         })
         .collect()
 }
@@ -173,28 +232,43 @@ pub(super) async fn insider_roster_holders(
     let root = fetch_holders_modules(client, symbol, cache_mode, retry_override).await?;
     let holders = root
         .insider_holders
-        .and_then(|ih| ih.holders)
-        .unwrap_or_default();
+        .ok_or_else(|| YfError::MissingData("insiderHolders missing".into()))?
+        .holders
+        .ok_or_else(|| YfError::MissingData("insiderHolders.holders missing".into()))?;
 
-    Ok(holders
+    holders
         .into_iter()
-        .map(|h| InsiderRosterHolder {
-            name: h.name.unwrap_or_default(),
-            position: string_to_insider_position(&h.relation.unwrap_or_default()),
-            most_recent_transaction: string_to_transaction_type(
-                &h.most_recent_transaction.unwrap_or_default(),
-            ),
-            latest_transaction_date: from_raw_date(h.latest_transaction_date).map_or_else(
-                || DateTime::from_timestamp(0, 0).unwrap_or_default(),
-                i64_to_datetime,
-            ),
-            shares_owned_directly: from_raw(h.shares_owned_directly),
-            position_direct_date: from_raw_date(h.position_direct_date).map_or_else(
-                || DateTime::from_timestamp(0, 0).unwrap_or_default(),
-                i64_to_datetime,
-            ),
+        .filter_map(|h| {
+            let name = nonempty(h.name)?;
+            let position = match required_row_value::<InsiderPosition>(
+                h.relation.as_deref(),
+                string_to_insider_position,
+            )? {
+                Ok(value) => value,
+                Err(err) => return Some(Err(err)),
+            };
+            let most_recent_transaction = match required_row_value::<TransactionType>(
+                h.most_recent_transaction.as_deref(),
+                string_to_transaction_type,
+            )? {
+                Ok(value) => value,
+                Err(err) => return Some(Err(err)),
+            };
+            let latest_transaction_date =
+                from_raw_date(h.latest_transaction_date).and_then(|ts| i64_to_datetime(ts).ok())?;
+            let position_direct_date =
+                from_raw_date(h.position_direct_date).and_then(|ts| i64_to_datetime(ts).ok())?;
+
+            Some(Ok(InsiderRosterHolder {
+                name,
+                position,
+                most_recent_transaction,
+                latest_transaction_date,
+                shares_owned_directly: from_raw(h.shares_owned_directly),
+                position_direct_date,
+            }))
         })
-        .collect())
+        .collect()
 }
 
 pub(super) async fn net_share_purchase_activity(
@@ -204,18 +278,22 @@ pub(super) async fn net_share_purchase_activity(
     retry_override: Option<&RetryConfig>,
 ) -> Result<Option<NetSharePurchaseActivity>, YfError> {
     let root = fetch_holders_modules(client, symbol, cache_mode, retry_override).await?;
-    Ok(root
-        .net_share_purchase_activity
-        .map(|n| NetSharePurchaseActivity {
-            period: crate::core::conversions::string_to_period(&n.period.unwrap_or_default()),
-            buy_shares: from_raw(n.buy_info_shares),
-            buy_count: from_raw(n.buy_info_count),
-            sell_shares: from_raw(n.sell_info_shares),
-            sell_count: from_raw(n.sell_info_count),
-            net_shares: from_raw(n.net_info_shares),
-            net_count: from_raw(n.net_info_count),
-            total_insider_shares: from_raw(n.total_insider_shares),
-            net_percent_insider_shares: from_raw(n.net_percent_insider_shares)
-                .and_then(decimal_from_f64),
-        }))
+    root.net_share_purchase_activity
+        .map(|n| {
+            Ok(NetSharePurchaseActivity {
+                period: crate::core::conversions::string_to_period(
+                    n.period.as_deref().unwrap_or(""),
+                )?,
+                buy_shares: from_raw(n.buy_info_shares),
+                buy_count: from_raw(n.buy_info_count),
+                sell_shares: from_raw(n.sell_info_shares),
+                sell_count: from_raw(n.sell_info_count),
+                net_shares: from_raw(n.net_info_shares),
+                net_count: from_raw(n.net_info_count),
+                total_insider_shares: from_raw(n.total_insider_shares),
+                net_percent_insider_shares: from_raw(n.net_percent_insider_shares)
+                    .and_then(decimal_from_f64),
+            })
+        })
+        .transpose()
 }

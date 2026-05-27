@@ -20,14 +20,18 @@ use tokio_tungstenite::{
 use crate::{
     YfClient, YfError,
     core::client::{CacheMode, RetryConfig},
-    core::conversions::price_from_f64_with_currency_str,
+    core::conversions::{price_from_f64_with_currency_str, string_to_asset_kind},
 };
-use paft::domain::{AssetKind, Instrument};
+use paft::domain::{AssetKind, Canonical, Instrument};
 use paft::market::quote::QuoteUpdate;
 
 // Yahoo Finance websocket wire types (generated from `yaticker.proto`).
 mod wire_ws {
     include!(concat!(env!("OUT_DIR"), "/yaticker.rs"));
+}
+
+fn untyped_stream_asset_kind() -> AssetKind {
+    AssetKind::Other(Canonical::try_new("YAHOO_STREAM_UNTYPED").expect("valid canonical token"))
 }
 
 // Use paft's QuoteUpdate which carries Price and DateTime<Utc>
@@ -408,7 +412,7 @@ async fn map_ws_pricing_to_update_with_delta(
     let instrument = if let Some(inst) = client.cached_instrument(&ticker.id).await {
         inst
     } else {
-        let kind = AssetKind::Equity;
+        let kind = untyped_stream_asset_kind();
         if let Ok(inst) = Instrument::from_symbol(&ticker.id, kind) {
             client
                 .store_instrument(ticker.id.clone(), inst.clone())
@@ -507,7 +511,7 @@ pub fn decode_and_map_message(text: &str) -> Result<QuoteUpdate, YfError> {
         .map_err(YfError::Base64)?;
     let ticker = wire_ws::PricingData::decode(&*decoded)?;
     let currency_str = Some(ticker.currency.as_str());
-    let instrument = Instrument::from_symbol(&ticker.id, AssetKind::Equity)
+    let instrument = Instrument::from_symbol(&ticker.id, untyped_stream_asset_kind())
         .map_err(|_| YfError::InvalidParams(format!("ws symbol invalid: {}", ticker.id)))?;
 
     let Some(timestamp) = DateTime::from_timestamp_millis(ticker.time) else {
@@ -602,7 +606,11 @@ async fn run_polling_stream(
                             let instrument = if let Some(inst) = client.cached_instrument(&sym_s).await {
                                 inst
                             } else {
-                                let kind = AssetKind::Equity;
+                                let kind = q
+                                    .quote_type
+                                    .as_deref()
+                                    .and_then(|value| string_to_asset_kind(value).ok())
+                                    .unwrap_or_else(untyped_stream_asset_kind);
                                 match Instrument::from_symbol(&sym_s, kind) {
                                     Ok(inst) => {
                                         client.store_instrument(sym_s.clone(), inst.clone()).await;

@@ -99,8 +99,13 @@ fn decode_chart(body: &str) -> Result<Fetched, crate::core::YfError> {
         .map(|a| a.adjclose.clone())
         .unwrap_or_default();
 
+    let ts = first
+        .timestamp
+        .clone()
+        .ok_or_else(|| crate::core::YfError::MissingData("missing timestamps".into()))?;
+
     Ok(Fetched {
-        ts: first.timestamp.clone().unwrap_or_default(),
+        ts,
         quote: quote.clone(),
         adjclose,
         events: first.events.clone(),

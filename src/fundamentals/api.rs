@@ -1,5 +1,5 @@
 use chrono::{Duration, Utc};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, btree_map::Entry};
 
 use crate::{
     core::{
@@ -9,6 +9,7 @@ use crate::{
     },
     fundamentals::wire::{TimeseriesData, TimeseriesEnvelope},
 };
+use paft::domain::Period;
 use paft::fundamentals::profile::ShareCount;
 use paft::money::Currency;
 
@@ -37,7 +38,6 @@ async fn fetch_timeseries_data<T, F>(
     retry_override: Option<&RetryConfig>,
     keys: &[&str],
     endpoint_name: &str,
-    _create_default_row: fn(i64) -> T,
     process_item: F,
 ) -> Result<Vec<T>, YfError>
 where
@@ -101,6 +101,25 @@ where
     Ok(rows_map.into_values().rev().collect())
 }
 
+fn period_from_timestamp(timestamp: i64) -> Result<Period, YfError> {
+    let date = i64_to_datetime(timestamp)?.format("%Y-%m-%d").to_string();
+    string_to_period(&date)
+}
+
+fn row_for_timestamp<T>(
+    rows_map: &mut BTreeMap<i64, T>,
+    timestamp: i64,
+    create: impl FnOnce(Period) -> T,
+) -> Result<&mut T, YfError> {
+    match rows_map.entry(timestamp) {
+        Entry::Occupied(entry) => Ok(entry.into_mut()),
+        Entry::Vacant(entry) => {
+            let period = period_from_timestamp(timestamp)?;
+            Ok(entry.insert(create(period)))
+        }
+    }
+}
+
 pub(super) async fn income_statement(
     client: &YfClient,
     symbol: &str,
@@ -130,8 +149,8 @@ pub(super) async fn income_statement(
     ];
     let endpoint_name = "income_statement";
 
-    let create_default_row = |period_end: i64| IncomeStatementRow {
-        period: string_to_period(&i64_to_datetime(period_end).format("%Y-%m-%d").to_string()),
+    let create_default_row = |period: Period| IncomeStatementRow {
+        period,
         total_revenue: None,
         gross_profit: None,
         operating_income: None,
@@ -149,9 +168,7 @@ pub(super) async fn income_statement(
      -> Result<(), YfError> {
         if let Ok(values) = serde_json::from_value::<Vec<TimeseriesValueF64>>(values_json.clone()) {
             for (i, ts) in timestamps.iter().enumerate() {
-                let row = rows_map
-                    .entry(*ts)
-                    .or_insert_with(|| create_default_row(*ts));
+                let row = row_for_timestamp(rows_map, *ts, create_default_row)?;
 
                 let value = values
                     .get(i)
@@ -187,7 +204,6 @@ pub(super) async fn income_statement(
         retry_override,
         &keys,
         endpoint_name,
-        create_default_row,
         process_item,
     )
     .await?;
@@ -238,8 +254,8 @@ pub(super) async fn balance_sheet(
     ];
     let endpoint_name = "balance_sheet";
 
-    let create_default_row = |period_end: i64| BalanceSheetRow {
-        period: string_to_period(&i64_to_datetime(period_end).format("%Y-%m-%d").to_string()),
+    let create_default_row = |period: Period| BalanceSheetRow {
+        period,
         total_assets: None,
         total_liabilities: None,
         total_equity: None,
@@ -267,9 +283,7 @@ pub(super) async fn balance_sheet(
                 serde_json::from_value::<Vec<TimeseriesValueU64>>(values_json.clone())
             {
                 for (i, ts) in timestamps.iter().enumerate() {
-                    let row = rows_map
-                        .entry(*ts)
-                        .or_insert_with(|| create_default_row(*ts));
+                    let row = row_for_timestamp(rows_map, *ts, create_default_row)?;
                     row.shares_outstanding = values
                         .get(i)
                         .and_then(|v| v.reported_value.and_then(|rv| rv.raw));
@@ -279,9 +293,7 @@ pub(super) async fn balance_sheet(
             serde_json::from_value::<Vec<TimeseriesValueF64>>(values_json.clone())
         {
             for (i, ts) in timestamps.iter().enumerate() {
-                let row = rows_map
-                    .entry(*ts)
-                    .or_insert_with(|| create_default_row(*ts));
+                let row = row_for_timestamp(rows_map, *ts, create_default_row)?;
 
                 let value = values
                     .get(i)
@@ -330,7 +342,6 @@ pub(super) async fn balance_sheet(
         retry_override,
         &keys,
         endpoint_name,
-        create_default_row,
         process_item,
     )
     .await
@@ -364,8 +375,8 @@ pub(super) async fn cashflow(
     ];
     let endpoint_name = "cash_flow";
 
-    let create_default_row = |period_end: i64| CashflowRow {
-        period: string_to_period(&i64_to_datetime(period_end).format("%Y-%m-%d").to_string()),
+    let create_default_row = |period: Period| CashflowRow {
+        period,
         operating_cashflow: None,
         capital_expenditures: None,
         free_cash_flow: None,
@@ -381,9 +392,7 @@ pub(super) async fn cashflow(
      -> Result<(), YfError> {
         if let Ok(values) = serde_json::from_value::<Vec<TimeseriesValueF64>>(values_json.clone()) {
             for (i, ts) in timestamps.iter().enumerate() {
-                let row = rows_map
-                    .entry(*ts)
-                    .or_insert_with(|| create_default_row(*ts));
+                let row = row_for_timestamp(rows_map, *ts, create_default_row)?;
 
                 let value = values
                     .get(i)
@@ -416,7 +425,6 @@ pub(super) async fn cashflow(
         retry_override,
         &keys,
         endpoint_name,
-        create_default_row,
         process_item,
     )
     .await?;
@@ -472,47 +480,59 @@ pub(super) async fn earnings(
         })
         .unwrap_or_default();
 
-    let quarterly = e
-        .financials_chart
-        .as_ref()
-        .and_then(|fc| fc.quarterly.as_ref())
-        .map(|v| {
-            v.iter()
-                .map(|q| EarningsQuarter {
-                    period: string_to_period(&q.date.clone().unwrap_or_default()),
-                    revenue: q
-                        .revenue
-                        .as_ref()
-                        .and_then(|x| x.raw.and_then(|v| money_from_f64(v, currency.clone()))),
-                    earnings: q
-                        .earnings
-                        .as_ref()
-                        .and_then(|x| x.raw.and_then(|v| money_from_f64(v, currency.clone()))),
-                })
-                .collect()
-        })
-        .unwrap_or_default();
+    let quarterly =
+        e.financials_chart
+            .as_ref()
+            .and_then(|fc| fc.quarterly.as_ref())
+            .map(|v| {
+                v.iter()
+                    .filter_map(|q| {
+                        let period = q.date.as_deref()?;
+                        let period = match string_to_period(period) {
+                            Ok(period) => period,
+                            Err(err) => return Some(Err(err)),
+                        };
+                        Some(Ok(EarningsQuarter {
+                            period,
+                            revenue: q.revenue.as_ref().and_then(|x| {
+                                x.raw.and_then(|v| money_from_f64(v, currency.clone()))
+                            }),
+                            earnings: q.earnings.as_ref().and_then(|x| {
+                                x.raw.and_then(|v| money_from_f64(v, currency.clone()))
+                            }),
+                        }))
+                    })
+                    .collect::<Result<Vec<_>, YfError>>()
+            })
+            .transpose()?
+            .unwrap_or_default();
 
-    let quarterly_eps = e
-        .earnings_chart
-        .as_ref()
-        .and_then(|ec| ec.quarterly.as_ref())
-        .map(|v| {
-            v.iter()
-                .map(|q| EarningsQuarterEps {
-                    period: string_to_period(&q.date.clone().unwrap_or_default()),
-                    actual: q
-                        .actual
-                        .as_ref()
-                        .and_then(|x| x.raw.and_then(|v| price_from_f64(v, currency.clone()))),
-                    estimate: q
-                        .estimate
-                        .as_ref()
-                        .and_then(|x| x.raw.and_then(|v| price_from_f64(v, currency.clone()))),
-                })
-                .collect()
-        })
-        .unwrap_or_default();
+    let quarterly_eps =
+        e.earnings_chart
+            .as_ref()
+            .and_then(|ec| ec.quarterly.as_ref())
+            .map(|v| {
+                v.iter()
+                    .filter_map(|q| {
+                        let period = q.date.as_deref()?;
+                        let period = match string_to_period(period) {
+                            Ok(period) => period,
+                            Err(err) => return Some(Err(err)),
+                        };
+                        Some(Ok(EarningsQuarterEps {
+                            period,
+                            actual: q.actual.as_ref().and_then(|x| {
+                                x.raw.and_then(|v| price_from_f64(v, currency.clone()))
+                            }),
+                            estimate: q.estimate.as_ref().and_then(|x| {
+                                x.raw.and_then(|v| price_from_f64(v, currency.clone()))
+                            }),
+                        }))
+                    })
+                    .collect::<Result<Vec<_>, YfError>>()
+            })
+            .transpose()?
+            .unwrap_or_default();
 
     Ok(Earnings {
         yearly,
@@ -537,17 +557,22 @@ pub(super) async fn calendar(
         .and_then(|e| e.earnings_date)
         .unwrap_or_default()
         .into_iter()
-        .filter_map(|d| d.raw.map(i64_to_datetime))
-        .collect();
+        .filter_map(|d| d.raw)
+        .map(i64_to_datetime)
+        .collect::<Result<Vec<_>, YfError>>()?;
 
     Ok(super::Calendar {
         earnings_dates,
         ex_dividend_date: calendar_events
             .ex_dividend_date
-            .and_then(|x| x.raw.map(i64_to_datetime)),
+            .and_then(|x| x.raw)
+            .map(i64_to_datetime)
+            .transpose()?,
         dividend_payment_date: calendar_events
             .dividend_date
-            .and_then(|x| x.raw.map(i64_to_datetime)),
+            .and_then(|x| x.raw)
+            .map(i64_to_datetime)
+            .transpose()?,
     })
 }
 
@@ -624,12 +649,9 @@ pub(super) async fn shares(
         .filter_map(|(ts, val)| {
             val.reported_value
                 .and_then(|rv| rv.raw)
-                .map(|shares| ShareCount {
-                    date: i64_to_datetime(ts),
-                    shares,
-                })
+                .map(|shares| i64_to_datetime(ts).map(|date| ShareCount { date, shares }))
         })
-        .collect();
+        .collect::<Result<Vec<_>, YfError>>()?;
 
     Ok(counts)
 }

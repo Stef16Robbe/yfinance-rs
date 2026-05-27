@@ -72,7 +72,7 @@ async fn download_multi_symbols_happy_path() {
 }
 
 #[tokio::test]
-async fn download_invalid_user_symbol_returns_error() {
+async fn download_without_usable_instrument_metadata_returns_error() {
     let server = common::setup_server();
     let symbol = "A".repeat(65);
 
@@ -97,11 +97,11 @@ async fn download_invalid_user_symbol_returns_error() {
 
     mock.assert();
     match result {
-        Err(YfError::InvalidParams(message)) => {
-            assert!(message.contains("invalid download symbol"));
+        Err(YfError::MissingData(message)) => {
+            assert!(message.contains("download instrument metadata missing"));
         }
-        Err(other) => panic!("expected invalid download symbol error, got {other:?}"),
-        Ok(_) => panic!("expected invalid download symbol error"),
+        Err(other) => panic!("expected missing instrument metadata error, got {other:?}"),
+        Ok(_) => panic!("expected missing instrument metadata error"),
     }
 }
 

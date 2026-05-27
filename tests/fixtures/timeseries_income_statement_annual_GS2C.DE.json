@@ -364,64 +364,6 @@
         ]
       },
       {
-        "annualTaxProvision": [
-          {
-            "asOfDate": "2023-01-31",
-            "currencyCode": "USD",
-            "dataId": 20145,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "11.00M",
-              "raw": 11000000.0
-            }
-          },
-          {
-            "asOfDate": "2024-01-31",
-            "currencyCode": "USD",
-            "dataId": 20145,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "6.40M",
-              "raw": 6400000.0
-            }
-          },
-          {
-            "asOfDate": "2025-01-31",
-            "currencyCode": "USD",
-            "dataId": 20145,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "5.90M",
-              "raw": 5900000.0
-            }
-          },
-          {
-            "asOfDate": "2026-01-31",
-            "currencyCode": "USD",
-            "dataId": 20145,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "-34.40M",
-              "raw": -34400000.0
-            }
-          }
-        ],
-        "meta": {
-          "symbol": [
-            "GS2C.DE"
-          ],
-          "type": [
-            "annualTaxProvision"
-          ]
-        },
-        "timestamp": [
-          1675123200,
-          1706659200,
-          1738281600,
-          1769817600
-        ]
-      },
-      {
         "annualGrossProfit": [
           {
             "asOfDate": "2023-01-31",
@@ -470,6 +412,64 @@
           ],
           "type": [
             "annualGrossProfit"
+          ]
+        },
+        "timestamp": [
+          1675123200,
+          1706659200,
+          1738281600,
+          1769817600
+        ]
+      },
+      {
+        "annualTaxProvision": [
+          {
+            "asOfDate": "2023-01-31",
+            "currencyCode": "USD",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "11.00M",
+              "raw": 11000000.0
+            }
+          },
+          {
+            "asOfDate": "2024-01-31",
+            "currencyCode": "USD",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "6.40M",
+              "raw": 6400000.0
+            }
+          },
+          {
+            "asOfDate": "2025-01-31",
+            "currencyCode": "USD",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "5.90M",
+              "raw": 5900000.0
+            }
+          },
+          {
+            "asOfDate": "2026-01-31",
+            "currencyCode": "USD",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "-34.40M",
+              "raw": -34400000.0
+            }
+          }
+        ],
+        "meta": {
+          "symbol": [
+            "GS2C.DE"
+          ],
+          "type": [
+            "annualTaxProvision"
           ]
         },
         "timestamp": [

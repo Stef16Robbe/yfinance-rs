@@ -12,6 +12,7 @@ async fn fast_info_uses_previous_close_when_price_missing() {
       "quoteResponse": {
         "result": [{
           "symbol": "AAPL",
+          "quoteType": "EQUITY",
           "regularMarketPrice": null,
           "regularMarketPreviousClose": 199.5,
           "currency": "USD",

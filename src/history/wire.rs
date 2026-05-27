@@ -33,6 +33,14 @@ pub struct ChartResult {
 #[derive(Deserialize, Clone)]
 pub struct MetaNode {
     #[serde(default)]
+    pub(crate) symbol: Option<String>,
+    #[serde(default, rename = "instrumentType")]
+    pub(crate) instrument_type: Option<String>,
+    #[serde(default, rename = "exchangeName")]
+    pub(crate) exchange_name: Option<String>,
+    #[serde(default, rename = "fullExchangeName")]
+    pub(crate) full_exchange_name: Option<String>,
+    #[serde(default)]
     pub(crate) timezone: Option<String>,
     #[serde(default)]
     pub(crate) gmtoffset: Option<i64>,

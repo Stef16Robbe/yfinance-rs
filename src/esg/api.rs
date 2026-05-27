@@ -16,7 +16,7 @@ pub(super) async fn fetch_esg_scores(
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
 ) -> Result<EsgSummary, YfError> {
-    let root: V10Result = match quotesummary::fetch_module_result(
+    let root: V10Result = quotesummary::fetch_module_result(
         client,
         symbol,
         "esgScores",
@@ -24,12 +24,7 @@ pub(super) async fn fetch_esg_scores(
         cache_mode,
         retry_override,
     )
-    .await
-    {
-        Ok(root) => root,
-        Err(err) if is_unavailable_esg_response(&err) => return Ok(EsgSummary::default()),
-        Err(err) => return Err(err),
-    };
+    .await?;
 
     let esg = root
         .esg_scores
@@ -44,41 +39,37 @@ pub(super) async fn fetch_esg_scores(
 
     // Collect involvement booleans as individual entries with simple categories.
     let mut involvement: Vec<EsgInvolvement> = Vec::new();
-    let mut push_flag = |name: &str, val: Option<bool>| {
-        if val.unwrap_or(false) {
+    let mut push_flag = |name: &str, val: Option<bool>| -> Result<(), YfError> {
+        let Some(val) = val else {
+            return Err(YfError::MissingData(format!("esgScores.{name} missing")));
+        };
+        if val {
             involvement.push(EsgInvolvement {
                 category: name.to_string(),
                 score: None,
             });
         }
+        Ok(())
     };
-    push_flag("adult", esg.adult);
-    push_flag("alcoholic", esg.alcoholic);
-    push_flag("animal_testing", esg.animal_testing);
-    push_flag("catholic", esg.catholic);
-    push_flag("controversial_weapons", esg.controversial_weapons);
-    push_flag("small_arms", esg.small_arms);
-    push_flag("fur_leather", esg.fur_leather);
-    push_flag("gambling", esg.gambling);
-    push_flag("gmo", esg.gmo);
-    push_flag("military_contract", esg.military_contract);
-    push_flag("nuclear", esg.nuclear);
-    push_flag("palm_oil", esg.palm_oil);
-    push_flag("pesticides", esg.pesticides);
-    push_flag("thermal_coal", esg.thermal_coal);
-    push_flag("tobacco", esg.tobacco);
+    push_flag("adult", esg.adult)?;
+    push_flag("alcoholic", esg.alcoholic)?;
+    push_flag("animal_testing", esg.animal_testing)?;
+    push_flag("catholic", esg.catholic)?;
+    push_flag("controversial_weapons", esg.controversial_weapons)?;
+    push_flag("small_arms", esg.small_arms)?;
+    push_flag("fur_leather", esg.fur_leather)?;
+    push_flag("gambling", esg.gambling)?;
+    push_flag("gmo", esg.gmo)?;
+    push_flag("military_contract", esg.military_contract)?;
+    push_flag("nuclear", esg.nuclear)?;
+    push_flag("palm_oil", esg.palm_oil)?;
+    push_flag("pesticides", esg.pesticides)?;
+    push_flag("thermal_coal", esg.thermal_coal)?;
+    push_flag("tobacco", esg.tobacco)?;
 
     // Return scores together with involvement in a single summary
     Ok(EsgSummary {
         scores: Some(scores),
         involvement,
     })
-}
-
-fn is_unavailable_esg_response(err: &YfError) -> bool {
-    match err {
-        YfError::NotFound { .. } => true,
-        YfError::Api(message) => message.contains("No fundamentals data found for symbol:"),
-        _ => false,
-    }
 }

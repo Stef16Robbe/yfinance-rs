@@ -7,7 +7,7 @@ use crate::{
     YfClient, YfError,
     core::{
         client::{CacheMode, RetryConfig},
-        conversions::{decimal_from_f64, price_from_f64, string_to_exchange},
+        conversions::{decimal_from_f64, price_from_f64, string_to_asset_kind, string_to_exchange},
         net,
     },
     screener::YahooQuoteType,
@@ -165,8 +165,9 @@ async fn underlying_instrument(
         return Ok(instrument);
     }
 
-    Instrument::from_symbol(symbol, AssetKind::Equity)
-        .map_err(|err| YfError::InvalidParams(format!("invalid option underlying symbol: {err}")))
+    Err(YfError::MissingData(format!(
+        "unable to determine option underlying instrument for {symbol}"
+    )))
 }
 
 fn underlying_instrument_from_result(node: &OptResultNode) -> Option<Instrument> {
@@ -177,7 +178,7 @@ fn underlying_instrument_from_result(node: &OptResultNode) -> Option<Instrument>
         .or_else(|| quote.and_then(|quote| quote.symbol.as_deref()))?;
     let kind = quote
         .and_then(|quote| quote.quote_type.as_deref())
-        .map_or(AssetKind::Equity, quote_type_to_asset_kind);
+        .and_then(|value| quote_type_to_asset_kind(value).ok())?;
     let exchange = quote.and_then(OptQuoteNode::exchange);
 
     match exchange {
@@ -187,11 +188,10 @@ fn underlying_instrument_from_result(node: &OptResultNode) -> Option<Instrument>
     .ok()
 }
 
-fn quote_type_to_asset_kind(value: &str) -> AssetKind {
+fn quote_type_to_asset_kind(value: &str) -> Result<AssetKind, YfError> {
     YahooQuoteType::parse(value)
         .map(YahooQuoteType::asset_kind)
-        .or_else(|| value.parse::<AssetKind>().ok())
-        .unwrap_or(AssetKind::Equity)
+        .map_or_else(|| string_to_asset_kind(value), Ok)
 }
 
 /* ---------------- Internal: raw fetch with auth fallback ---------------- */

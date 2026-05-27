@@ -6,7 +6,6 @@ use crate::{
     core::{Candle, HistoryResponse, Interval, Range, YfClient, YfError},
     history::HistoryBuilder,
 };
-use paft::domain::{AssetKind, Instrument};
 use paft::market::responses::download::{DownloadEntry, DownloadResponse};
 use paft::money::Price;
 use rust_decimal::prelude::FromPrimitive;
@@ -134,19 +133,9 @@ impl DownloadBuilder {
             self.maybe_repair(&mut resp.candles);
             self.apply_rounding_if_enabled(&mut resp.candles);
 
-            // get instrument from cache or fallback
-            let instrument = if let Some(inst) = self.client.cached_instrument(&sym).await {
-                inst
-            } else {
-                let kind = AssetKind::Equity;
-                let inst = Instrument::from_symbol(&sym, kind).map_err(|err| {
-                    YfError::InvalidParams(format!("invalid download symbol {sym:?}: {err}"))
-                })?;
-                self.client
-                    .store_instrument(sym.clone(), inst.clone())
-                    .await;
-                inst
-            };
+            let instrument = self.client.cached_instrument(&sym).await.ok_or_else(|| {
+                YfError::MissingData(format!("download instrument metadata missing for {sym}"))
+            })?;
 
             entries.push(DownloadEntry {
                 instrument,

@@ -218,7 +218,8 @@ async fn option_chain_skips_bad_strikes_and_keeps_valid_contracts() {
     let body = r#"{
       "optionChain": {
         "result": [{
-          "quote": { "currency": "USD" },
+          "underlyingSymbol": "AAPL",
+          "quote": { "symbol": "AAPL", "quoteType": "EQUITY", "currency": "USD" },
           "options": [{
             "expirationDate": 1737072000,
             "calls": [
@@ -397,6 +398,8 @@ async fn options_retry_with_crumb_on_403() {
           "underlyingSymbol":"MSFT",
           "expirationDates":[1737072000],
           "quote": {
+            "symbol": "MSFT",
+            "quoteType": "EQUITY",
             "currency": "USD"
           },
           "options": [{

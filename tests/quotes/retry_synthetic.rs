@@ -23,8 +23,8 @@ async fn batch_quotes_401_then_retry_with_crumb_succeeds() {
             .body(r#"{
               "quoteResponse": {
                 "result": [
-                  { "symbol":"AAPL", "regularMarketPrice": 123.0, "currency":"USD", "fullExchangeName":"NasdaqGS" },
-                  { "symbol":"MSFT", "regularMarketPrice": 456.0, "currency":"USD", "exchange":"NasdaqGS" }
+                  { "symbol":"AAPL", "quoteType":"EQUITY", "regularMarketPrice": 123.0, "currency":"USD", "fullExchangeName":"NasdaqGS" },
+                  { "symbol":"MSFT", "quoteType":"EQUITY", "regularMarketPrice": 456.0, "currency":"USD", "exchange":"NasdaqGS" }
                 ],
                 "error": null
               }

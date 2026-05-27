@@ -8,7 +8,7 @@ use crate::{
         client::{CacheMode, RetryConfig},
         conversions::{
             decimal_from_f64, i64_to_datetime, money_from_f64_with_currency_str,
-            price_from_f64_with_currency_str,
+            price_from_f64_with_currency_str, string_to_asset_kind,
         },
         net, quotesummary,
         wire::{RawNum, from_raw},
@@ -16,7 +16,7 @@ use crate::{
 };
 use paft::Decimal;
 use paft::aggregates::Snapshot;
-use paft::domain::{AssetKind, Instrument};
+use paft::domain::Instrument;
 use paft::fundamentals::statements::Calendar;
 use paft::fundamentals::statistics::KeyStatistics;
 use paft::market::orderbook::BookLevel;
@@ -126,8 +126,8 @@ impl V7QuoteNode {
         let kind = self
             .quote_type
             .as_deref()
-            .and_then(|s| s.parse::<AssetKind>().ok())
-            .unwrap_or(AssetKind::Equity);
+            .ok_or_else(|| YfError::MissingData("v7 quote node missing quoteType".into()))
+            .and_then(string_to_asset_kind)?;
 
         let instrument = match exchange {
             Some(ex) => Instrument::from_symbol_and_exchange(sym, ex, kind),
@@ -153,7 +153,8 @@ impl V7QuoteNode {
     }
 
     fn as_of(&self) -> Option<chrono::DateTime<chrono::Utc>> {
-        self.regular_market_time.map(i64_to_datetime)
+        self.regular_market_time
+            .and_then(|timestamp| i64_to_datetime(timestamp).ok())
     }
 
     pub(crate) fn to_snapshot(&self) -> Result<Snapshot, YfError> {
@@ -167,7 +168,7 @@ impl V7QuoteNode {
             instrument: self.instrument(exchange)?,
             name: self.long_name.clone().or_else(|| self.short_name.clone()),
             market_state: self.market_state.as_deref().and_then(|s| s.parse().ok()),
-            as_of: self.as_of().or_else(|| Some(chrono::Utc::now())),
+            as_of: self.as_of(),
             last: price(self.regular_market_price),
             previous_close: price(self.regular_market_previous_close),
             open: price(self.regular_market_open),
@@ -189,7 +190,7 @@ impl V7QuoteNode {
         };
 
         KeyStatistics {
-            as_of: self.as_of().or_else(|| Some(chrono::Utc::now())),
+            as_of: self.as_of(),
             market_cap: money(self.market_cap),
             shares_outstanding: self.shares_outstanding,
             eps_trailing_twelve_months: price(self.eps_trailing_twelve_months),
@@ -206,11 +207,13 @@ impl V7QuoteNode {
     }
 
     pub(crate) fn calendar_fallback(&self) -> Option<Calendar> {
-        self.dividend_date.map(|ts| Calendar {
-            earnings_dates: Vec::new(),
-            ex_dividend_date: None,
-            dividend_payment_date: Some(i64_to_datetime(ts)),
-        })
+        self.dividend_date
+            .and_then(|ts| i64_to_datetime(ts).ok())
+            .map(|ts| Calendar {
+                earnings_dates: Vec::new(),
+                ex_dividend_date: None,
+                dividend_payment_date: Some(ts),
+            })
     }
 }
 
@@ -360,8 +363,9 @@ pub async fn fetch_v7_quotes(
     let env: V7Envelope = serde_json::from_str(&body_to_parse)?;
     let nodes = env
         .quote_response
-        .and_then(|qr| qr.result)
-        .unwrap_or_default();
+        .ok_or_else(|| YfError::MissingData("v7 quoteResponse missing".into()))?
+        .result
+        .ok_or_else(|| YfError::MissingData("v7 quoteResponse.result missing".into()))?;
 
     // Populate instrument cache best-effort from v7 quote nodes
     for n in &nodes {
@@ -376,8 +380,10 @@ pub async fn fetch_v7_quotes(
             let kind = n
                 .quote_type
                 .as_deref()
-                .and_then(|s| s.parse::<AssetKind>().ok())
-                .unwrap_or(AssetKind::Equity);
+                .and_then(|s| string_to_asset_kind(s).ok());
+            let Some(kind) = kind else {
+                continue;
+            };
 
             let inst = match exch {
                 Some(ex) => Instrument::from_symbol_and_exchange(sym, ex, kind),

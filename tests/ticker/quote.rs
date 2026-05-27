@@ -2,7 +2,7 @@ use httpmock::Method::GET;
 use httpmock::MockServer;
 use url::Url;
 use yfinance_rs::core::conversions::*;
-use yfinance_rs::{Ticker, YfClient};
+use yfinance_rs::{Ticker, YfClient, YfError};
 
 #[tokio::test]
 async fn quote_v7_happy_path() {
@@ -13,6 +13,7 @@ async fn quote_v7_happy_path() {
         "result": [
           {
             "symbol":"AAPL",
+            "quoteType": "EQUITY",
             "regularMarketPrice": 190.25,
             "regularMarketPreviousClose": 189.50,
             "currency": "USD",
@@ -112,6 +113,7 @@ async fn fast_info_derives_last_price() {
         "result": [
           {
             "symbol":"MSFT",
+            "quoteType": "EQUITY",
             "regularMarketPreviousClose": 421.00,
             "currency": "USD",
             "exchange": "NasdaqGS",
@@ -156,6 +158,44 @@ async fn fast_info_derives_last_price() {
         fi.market_state.map(|s| s.to_string()).as_deref(),
         Some("CLOSED")
     );
+}
+
+#[tokio::test]
+async fn quote_v7_missing_quote_type_returns_error() {
+    let server = MockServer::start();
+
+    let body = r#"{
+      "quoteResponse": {
+        "result": [
+          {
+            "symbol":"AAPL",
+            "regularMarketPrice": 190.25,
+            "currency": "USD"
+          }
+        ],
+        "error": null
+      }
+    }"#;
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "AAPL");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+    let ticker = Ticker::new(&client, "AAPL");
+
+    let err = ticker.quote().await.unwrap_err();
+    mock.assert();
+
+    assert!(matches!(err, YfError::MissingData(message) if message.contains("quoteType")));
 }
 
 #[tokio::test]

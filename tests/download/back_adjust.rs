@@ -10,6 +10,7 @@ async fn download_back_adjust_sets_close_to_raw() {
     let body = r#"{
       "chart": {
         "result": [{
+          "meta": { "symbol": "TEST", "instrumentType": "EQUITY" },
           "timestamp":[1000,2000],
           "indicators":{
             "quote":[{ "open":[100.0,100.0], "high":[105.0,105.0], "low":[95.0,95.0], "close":[100.0,100.0], "volume":[1000,1000] }],

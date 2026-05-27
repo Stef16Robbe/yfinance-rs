@@ -2,10 +2,6 @@ use httpmock::{Method::GET, MockServer};
 use url::Url;
 use yfinance_rs::{Ticker, YfClient};
 
-fn fixture(endpoint: &str, symbol: &str) -> String {
-    crate::common::fixture(endpoint, symbol, "json")
-}
-
 fn preauthed_client(server: &MockServer) -> YfClient {
     YfClient::builder()
         .base_quote_api(
@@ -16,8 +12,18 @@ fn preauthed_client(server: &MockServer) -> YfClient {
         .unwrap()
 }
 
+const NOT_FOUND_BODY: &str = r#"{
+  "quoteSummary": {
+    "error": {
+      "code": "Not Found",
+      "description": "No fundamentals data found for symbol: MSFT"
+    },
+    "result": null
+  }
+}"#;
+
 #[tokio::test]
-async fn esg_http_not_found_returns_empty_summary() {
+async fn esg_http_not_found_returns_error() {
     let sym = "MSFT";
     let server = MockServer::start();
 
@@ -28,19 +34,18 @@ async fn esg_http_not_found_returns_empty_summary() {
             .query_param("crumb", "crumb");
         then.status(404)
             .header("content-type", "application/json")
-            .body(fixture("esg_api_esgScores", sym));
+            .body(NOT_FOUND_BODY);
     });
 
     let ticker = Ticker::new(&preauthed_client(&server), sym);
-    let summary = ticker.sustainability().await.unwrap();
+    let err = ticker.sustainability().await.unwrap_err();
 
     mock.assert();
-    assert!(summary.scores.is_none());
-    assert!(summary.involvement.is_empty());
+    assert!(err.to_string().contains("Not found"));
 }
 
 #[tokio::test]
-async fn esg_not_found_body_returns_empty_summary() {
+async fn esg_not_found_body_returns_error() {
     let sym = "MSFT";
     let server = MockServer::start();
 
@@ -51,13 +56,12 @@ async fn esg_not_found_body_returns_empty_summary() {
             .query_param("crumb", "crumb");
         then.status(200)
             .header("content-type", "application/json")
-            .body(fixture("esg_api_esgScores", sym));
+            .body(NOT_FOUND_BODY);
     });
 
     let ticker = Ticker::new(&preauthed_client(&server), sym);
-    let summary = ticker.sustainability().await.unwrap();
+    let err = ticker.sustainability().await.unwrap_err();
 
     mock.assert();
-    assert!(summary.scores.is_none());
-    assert!(summary.involvement.is_empty());
+    assert!(err.to_string().contains("No fundamentals data found"));
 }

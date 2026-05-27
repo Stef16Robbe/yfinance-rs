@@ -19,43 +19,52 @@ pub fn extract_actions(
 
     if let Some(divs) = ev.dividends.as_ref() {
         for (k, d) in divs {
-            let ts = k.parse::<i64>().unwrap_or_else(|_| d.date.unwrap_or(0));
+            let Some(ts) = event_timestamp(k, d.date) else {
+                continue;
+            };
+            let Ok(dt) = i64_to_datetime(ts) else {
+                continue;
+            };
             if let Some(amount) = d
                 .amount
                 .and_then(|amount| price_from_f64(amount, currency.clone()))
             {
-                out.push(Action::Dividend {
-                    ts: i64_to_datetime(ts),
-                    amount,
-                });
+                out.push(Action::Dividend { ts: dt, amount });
             }
         }
     }
 
     if let Some(gains) = ev.capital_gains.as_ref() {
         for (k, g) in gains {
-            let ts = k.parse::<i64>().unwrap_or_else(|_| g.date.unwrap_or(0));
+            let Some(ts) = event_timestamp(k, g.date) else {
+                continue;
+            };
+            let Ok(dt) = i64_to_datetime(ts) else {
+                continue;
+            };
             if let Some(gain) = g
                 .amount
                 .and_then(|gain| price_from_f64(gain, currency.clone()))
             {
-                out.push(Action::CapitalGain {
-                    ts: i64_to_datetime(ts),
-                    gain,
-                });
+                out.push(Action::CapitalGain { ts: dt, gain });
             }
         }
     }
 
     if let Some(splits) = ev.splits.as_ref() {
         for (k, s) in splits {
-            let ts = k.parse::<i64>().unwrap_or_else(|_| s.date.unwrap_or(0));
+            let Some(ts) = event_timestamp(k, s.date) else {
+                continue;
+            };
+            let Ok(dt) = i64_to_datetime(ts) else {
+                continue;
+            };
             let Some((num, den)) = normalize_split_event(s) else {
                 continue;
             };
 
             out.push(Action::Split {
-                ts: i64_to_datetime(ts),
+                ts: dt,
                 numerator: num,
                 denominator: den,
             });
@@ -74,6 +83,10 @@ pub fn extract_actions(
     split_events.sort_by_key(|(ts, _)| *ts);
 
     (out, split_events)
+}
+
+fn event_timestamp(key: &str, date: Option<i64>) -> Option<i64> {
+    key.parse::<i64>().ok().or(date)
 }
 
 fn normalize_split_event(

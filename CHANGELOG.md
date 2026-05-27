@@ -13,15 +13,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `YfError` has new variants for recoverable provider-data failures: `InvalidData`, `RequestNotCloneable`, and `Money`.
 - Removed `HistoryBuilder::keepna` and `DownloadBuilder::keepna`. `paft::Candle` requires valid OHLC prices, so malformed history rows are always dropped instead of fabricating placeholder prices.
 - Replaced the old lossy float-to-money/price/decimal helpers with checked conversion helpers. `core::conversions` is now hidden from public docs and remains internal Yahoo-to-`paft` adapter plumbing with no stability guarantee.
+- Missing or malformed provider classification/date fields now fail or drop the affected row instead of being coerced into plausible values such as epoch timestamps, `Hold`, `Maintain`, `Buy`, `Officer`, `Equity`, or `1970` periods.
 
 ### Fixed
 
 - Convert malformed Yahoo/user-provided symbols, missing quote symbols, missing currency metadata, and uncloneable retry requests into `Result` errors instead of panicking.
-- Match current Python yfinance behavior for unavailable Yahoo ESG data: quoteSummary `esgScores` 404 or `No fundamentals data found` responses now return an empty `EsgSummary` instead of surfacing a live provider error.
+- Surface unavailable Yahoo ESG data as an error instead of returning an empty `EsgSummary`, so missing provider data is not indistinguishable from a valid zero-involvement result.
 - Normalize HTTP status handling through shared fetch helpers so quoteSummary and fundamentals-timeseries failures return typed `YfError` variants and are not cached as parseable response bodies.
 - Invalid Yahoo floats (`NaN`, infinities, and values that cannot fit the decimal backend) no longer become zero-valued financial data.
 - Optional `paft` fields now become `None` when Yahoo supplies an invalid numeric value, while valid sibling records are still preserved.
 - Malformed required records, including bad OHLC candles, option contracts with invalid strikes, and invalid dividend/capital-gain amounts, are skipped item-by-item.
+- Missing or invalid Yahoo timestamps no longer become Unix epoch/default datetimes in quote, history, news, holder, analyst, calendar, and fundamentals mappings.
+- Missing quote/search/screener/download instrument kinds no longer default to equity; provider asset-kind metadata is required where the public model needs an instrument.
 - Malformed raw OHLC rows are validated before auto-adjustment, so adjustment math cannot turn invalid Yahoo prices into emitted candles.
 - Download rounding and repair now leave values unchanged when conversion fails instead of falling back to zero.
 - Download repair now scales OHLC rows atomically, leaving the whole row unchanged if any repaired price cannot be represented.
@@ -29,7 +32,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Changed
 
 - Clean up example output so holder rows, corporate actions, historical action dates, and handled live Yahoo errors render as user-facing text instead of debug-shaped values.
-- Update ESG examples/docs to reflect Yahoo's currently empty `esgScores` response instead of advertising unavailable live data.
+- Update ESG examples/docs to handle Yahoo's currently unavailable `esgScores` response instead of advertising unavailable live data.
 - README examples no longer advertise direct use of conversion helpers such as `money_to_f64`.
 
 ## [0.8.0] - 2026-05-27

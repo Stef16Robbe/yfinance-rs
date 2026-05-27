@@ -11,6 +11,7 @@ async fn download_repair_simple_100x_fix() {
     let body = r#"{
       "chart": {
         "result": [{
+          "meta": { "symbol": "FIX", "instrumentType": "EQUITY" },
           "timestamp": [1, 2, 3],
           "indicators": {
             "quote": [{
@@ -72,6 +73,7 @@ async fn download_repair_leaves_row_unchanged_if_any_scaled_price_fails() {
     let body = r#"{
       "chart": {
         "result": [{
+          "meta": { "symbol": "FIX", "instrumentType": "EQUITY" },
           "timestamp": [1, 2, 3],
           "indicators": {
             "quote": [{
