@@ -16,7 +16,7 @@ async fn live_profile_company() {
         Profile::Company(c) => {
             assert!(!c.name.is_empty());
         }
-        Profile::Fund(_) => panic!("expected company"),
+        _ => panic!("expected company"),
     }
 }
 

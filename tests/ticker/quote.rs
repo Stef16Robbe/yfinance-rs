@@ -44,7 +44,10 @@ async fn quote_v7_happy_path() {
 
     assert_eq!(q.instrument.symbol.as_str(), "AAPL");
     assert_eq!(
-        q.exchange.as_ref().map(std::string::ToString::to_string),
+        q.instrument
+            .exchange
+            .as_ref()
+            .map(std::string::ToString::to_string),
         Some("NASDAQ".to_string())
     );
     assert_eq!(
@@ -139,13 +142,14 @@ async fn fast_info_derives_last_price() {
 
     assert_eq!(fi.instrument.symbol.as_str(), "MSFT");
     assert!(fi.last.is_none());
+    let previous_close = fi.previous_close.as_ref().unwrap();
     assert!(
-        (money_to_f64(&fi.previous_close.unwrap()) - 421.00).abs() < 1e-9,
+        (money_to_f64(previous_close) - 421.00).abs() < 1e-9,
         "fallback to previous close"
     );
-    assert_eq!(fi.currency.map(|c| c.to_string()).as_deref(), Some("USD"));
+    assert_eq!(previous_close.currency().to_string(), "USD");
     assert_eq!(
-        fi.exchange.map(|e| e.to_string()).as_deref(),
+        fi.instrument.exchange.map(|e| e.to_string()).as_deref(),
         Some("NASDAQ")
     );
     assert_eq!(

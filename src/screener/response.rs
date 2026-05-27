@@ -142,8 +142,10 @@ impl From<WireQuote> for ScreenerResult {
             exchange
                 .clone()
                 .map_or_else(
-                    || Instrument::from_symbol(symbol, asset_kind),
-                    |ex| Instrument::from_symbol_and_exchange(symbol, ex, asset_kind),
+                    || Instrument::from_symbol(symbol, asset_kind.clone()),
+                    |exchange| {
+                        Instrument::from_symbol_and_exchange(symbol, exchange, asset_kind.clone())
+                    },
                 )
                 .ok()
         });

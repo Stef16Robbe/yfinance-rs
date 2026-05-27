@@ -90,7 +90,7 @@ async fn live_ticker_options_for_record() {
                 "recording pass should persist dated options_v7 fixture for {key}"
             );
             assert!(
-                chain.calls.iter().chain(chain.puts.iter()).next().is_some(),
+                chain.calls().chain(chain.puts()).next().is_some(),
                 "recorded chain for {sym} should include at least one contract"
             );
         }
@@ -99,15 +99,55 @@ async fn live_ticker_options_for_record() {
             // Instead of a useless `>= 0` check on usize, ensure the chain is coherent:
             // every returned contract (if any) must match the requested expiration.
             assert!(
-                chain.calls.iter().chain(chain.puts.iter()).all(|c| c
-                    .expiration_at
-                    .unwrap()
-                    .timestamp()
-                    == first),
+                chain
+                    .calls()
+                    .chain(chain.puts())
+                    .all(|c| c.expiration_at.unwrap().timestamp() == first),
                 "all option contracts should match the requested expiration for {sym}"
             );
         }
     }
+}
+
+#[tokio::test]
+#[ignore = "exercise live Yahoo Finance API"]
+async fn live_etf_options_preserve_underlying_identity() {
+    if !crate::common::live_or_record_enabled() {
+        return;
+    }
+
+    let client = yfinance_rs::YfClient::builder().build().unwrap();
+    let sym = "SPY";
+    let t = yfinance_rs::Ticker::new(&client, sym);
+    let expiries = t.options().await.unwrap();
+    let first = expiries
+        .first()
+        .copied()
+        .expect("SPY should have listed option expirations");
+    let chain = t.option_chain(Some(first)).await.unwrap();
+
+    if crate::common::is_recording() {
+        let key = format!("{sym}_{first}");
+        assert!(
+            crate::common::fixture_exists("options_v7", &key, "json"),
+            "recording pass should persist dated options_v7 fixture for {key}"
+        );
+    }
+
+    let contract = chain
+        .calls()
+        .chain(chain.puts())
+        .next()
+        .expect("SPY option chain should include contracts");
+    assert_eq!(contract.key.underlying.symbol.as_str(), sym);
+    assert!(matches!(
+        &contract.key.underlying.kind,
+        paft::domain::AssetKind::Fund
+    ));
+    assert!(
+        contract.key.underlying.exchange.is_some(),
+        "Yahoo options quote should include underlying exchange metadata"
+    );
 }
 
 #[tokio::test]

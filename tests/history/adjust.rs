@@ -86,9 +86,11 @@ async fn history_auto_adjust_and_actions() {
 
     // actions parsed and sorted
     assert_eq!(resp.actions.len(), 2);
-    assert!(
-        matches!(resp.actions[0], Action::Split { ts, numerator:2, denominator:1 } if ts.timestamp()==2000)
-    );
+    assert!(matches!(
+        resp.actions[0],
+        Action::Split { ts, numerator, denominator }
+            if ts.timestamp() == 2000 && numerator.get() == 2 && denominator.get() == 1
+    ));
     assert!(
         matches!(&resp.actions[1], Action::Dividend { ts, amount } if ts.timestamp()==3000 && (money_to_f64(amount)-1.0).abs()<1e-9)
     );

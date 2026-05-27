@@ -2,6 +2,7 @@ use crate::core::conversions::{f64_to_price_with_currency, i64_to_datetime};
 use crate::history::wire::Events;
 use paft::market::action::Action;
 use paft::money::Currency;
+use std::num::NonZeroU32;
 
 const SPLIT_SCALE: f64 = 1_000_000.0;
 
@@ -53,11 +54,7 @@ pub fn extract_actions(
                 denominator: den,
             });
 
-            let ratio = if den == 0 {
-                1.0
-            } else {
-                f64::from(num) / f64::from(den)
-            };
+            let ratio = f64::from(num.get()) / f64::from(den.get());
             split_events.push((ts, ratio));
         }
     }
@@ -66,13 +63,16 @@ pub fn extract_actions(
         Action::Dividend { ts, .. } | Action::Split { ts, .. } | Action::CapitalGain { ts, .. } => {
             ts.timestamp()
         }
+        _ => i64::MAX,
     });
     split_events.sort_by_key(|(ts, _)| *ts);
 
     (out, split_events)
 }
 
-fn normalize_split_event(split: &crate::history::wire::SplitEvent) -> Option<(u32, u32)> {
+fn normalize_split_event(
+    split: &crate::history::wire::SplitEvent,
+) -> Option<(NonZeroU32, NonZeroU32)> {
     if let (Some(numerator), Some(denominator)) = (split.numerator, split.denominator)
         && let Some(pair) = normalize_split_pair(numerator, denominator)
     {
@@ -82,7 +82,7 @@ fn normalize_split_event(split: &crate::history::wire::SplitEvent) -> Option<(u3
     split.split_ratio.as_deref().and_then(normalize_split_ratio)
 }
 
-fn normalize_split_ratio(ratio: &str) -> Option<(u32, u32)> {
+fn normalize_split_ratio(ratio: &str) -> Option<(NonZeroU32, NonZeroU32)> {
     let ratio = ratio.trim();
     for separator in ['/', ':'] {
         if let Some((numerator, denominator)) = ratio.split_once(separator) {
@@ -101,7 +101,7 @@ fn parse_split_component(value: &str) -> Option<f64> {
     value.is_finite().then_some(value)
 }
 
-fn normalize_split_pair(numerator: f64, denominator: f64) -> Option<(u32, u32)> {
+fn normalize_split_pair(numerator: f64, denominator: f64) -> Option<(NonZeroU32, NonZeroU32)> {
     if !numerator.is_finite() || !denominator.is_finite() || numerator <= 0.0 || denominator <= 0.0
     {
         return None;
@@ -118,8 +118,8 @@ fn normalize_split_pair(numerator: f64, denominator: f64) -> Option<(u32, u32)> 
     let denominator = denominator / gcd;
 
     Some((
-        u32::try_from(numerator).ok()?,
-        u32::try_from(denominator).ok()?,
+        NonZeroU32::new(u32::try_from(numerator).ok()?)?,
+        NonZeroU32::new(u32::try_from(denominator).ok()?)?,
     ))
 }
 

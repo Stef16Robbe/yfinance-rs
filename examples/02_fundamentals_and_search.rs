@@ -91,8 +91,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Found {} results:", search_results.results.len());
     for quote in search_results.results {
         let name = quote.name.unwrap_or_default();
-        let exchange = quote.exchange.map(|e| e.to_string()).unwrap_or_default();
-        let kind = quote.kind.to_string();
+        let exchange = quote
+            .instrument
+            .exchange
+            .as_ref()
+            .map(std::string::ToString::to_string)
+            .unwrap_or_default();
+        let kind = quote.instrument.kind.to_string();
         println!(
             "  - {}: {} ({}) on {}",
             quote.instrument, name, kind, exchange

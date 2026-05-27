@@ -1,3 +1,4 @@
+use paft::domain::AssetKind;
 use serde_json::Value;
 use url::Url;
 use yfinance_rs::core::conversions::money_to_currency_str;
@@ -59,24 +60,89 @@ async fn option_chain_for_specific_date() {
         "options currency should prevent quote fallback"
     );
 
+    let calls = chain.calls().collect::<Vec<_>>();
+    let puts = chain.puts().collect::<Vec<_>>();
+
     assert!(
-        !chain.calls.is_empty(),
+        !calls.is_empty(),
         "recorded {symbol} chain should include call contracts"
     );
     assert!(
-        !chain.puts.is_empty(),
+        !puts.is_empty(),
         "recorded {symbol} chain should include put contracts"
     );
 
-    let c = &chain.calls[0];
-    assert_eq!(money_to_currency_str(&c.strike).as_deref(), Some("USD"));
+    let c = calls[0];
+    assert_eq!(money_to_currency_str(&c.key.strike).as_deref(), Some("USD"));
     assert_eq!(c.expiration_at.unwrap().timestamp(), date);
 
-    let p = &chain.puts[0];
+    let p = puts[0];
     if let Some(price) = p.price.as_ref() {
         assert_eq!(money_to_currency_str(price).as_deref(), Some("USD"));
     }
     assert_eq!(p.expiration_at.unwrap().timestamp(), date);
+}
+
+#[tokio::test]
+async fn option_chain_uses_response_underlying_identity() {
+    let server = crate::common::setup_server();
+    let date = 1_737_072_000_i64;
+
+    let body = r#"{
+      "optionChain": {
+        "result": [{
+          "underlyingSymbol":"SPY",
+          "quote": {
+            "symbol":"SPY",
+            "quoteType":"ETF",
+            "fullExchangeName":"NYSE",
+            "currency":"USD"
+          },
+          "options": [{
+            "expirationDate": 1737072000,
+            "calls": [{
+              "contractSymbol":"SPY250117C00500000",
+              "strike":500.0,
+              "expiration":1737072000
+            }],
+            "puts": []
+          }]
+        }],
+        "error": null
+      }
+    }"#;
+
+    let mock = server.mock(|when, then| {
+        when.method(httpmock::Method::GET)
+            .path("/v7/finance/options/SPY")
+            .query_param("date", date.to_string());
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let client = YfClient::builder()
+        .base_options_v7(Url::parse(&format!("{}/v7/finance/options/", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+    let ticker = Ticker::new(&client, "SPY");
+
+    let chain = ticker.option_chain(Some(date)).await.unwrap();
+    mock.assert();
+
+    let contract = chain.calls().next().expect("call contract");
+    assert_eq!(contract.key.underlying.symbol.as_str(), "SPY");
+    assert!(matches!(&contract.key.underlying.kind, AssetKind::Fund));
+    assert_eq!(
+        contract
+            .key
+            .underlying
+            .exchange
+            .as_ref()
+            .map(std::string::ToString::to_string)
+            .as_deref(),
+        Some("NYSE")
+    );
 }
 
 #[tokio::test]
@@ -129,11 +195,7 @@ async fn option_chain_currency_fallback_fetches_quote() {
         "fallback should hit quote endpoint at least once"
     );
 
-    let combined = chain
-        .calls
-        .iter()
-        .chain(chain.puts.iter())
-        .collect::<Vec<_>>();
+    let combined = chain.calls().chain(chain.puts()).collect::<Vec<_>>();
     assert!(
         !combined.is_empty(),
         "recorded chain for {symbol} should include contracts"
@@ -141,7 +203,7 @@ async fn option_chain_currency_fallback_fetches_quote() {
 
     for contract in combined {
         assert_eq!(
-            money_to_currency_str(&contract.strike).as_deref(),
+            money_to_currency_str(&contract.key.strike).as_deref(),
             Some("USD")
         );
         assert_eq!(contract.expiration_at.unwrap().timestamp(), date);
@@ -288,7 +350,7 @@ async fn options_retry_with_crumb_on_403() {
     let t = Ticker::new(&client, "MSFT");
 
     let chain = t.option_chain(Some(date)).await.unwrap();
-    assert!(chain.calls.is_empty() && chain.puts.is_empty());
+    assert!(chain.calls().next().is_none() && chain.puts().next().is_none());
 
     first.assert();
     cookie.assert();

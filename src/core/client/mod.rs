@@ -414,7 +414,7 @@ fn extract_currency_from_profile(profile: &crate::profile::Profile) -> Option<Cu
             .as_ref()
             .and_then(|addr| addr.country.as_deref())
             .and_then(currency_for_country),
-        crate::profile::Profile::Fund(_) => None,
+        _ => None,
     }
 }
 

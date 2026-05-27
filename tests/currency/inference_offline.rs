@@ -192,7 +192,14 @@ async fn offline_gs2c_dual_listing_currency() {
     let ticker = Ticker::new(&client, symbol);
 
     let fast = ticker.fast_info().await.unwrap();
-    assert_eq!(fast.currency.map(|c| c.to_string()).as_deref(), Some("EUR"));
+    assert_eq!(
+        fast.last
+            .as_ref()
+            .or(fast.previous_close.as_ref())
+            .map(|price| price.currency().to_string())
+            .as_deref(),
+        Some("EUR")
+    );
 
     let fundamentals = ticker.income_stmt(None).await.unwrap();
     let fundamentals_currency = fundamentals

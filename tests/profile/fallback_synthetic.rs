@@ -39,6 +39,6 @@ async fn api_then_scrape_fallback_on_other_error() {
 
     match p {
         Profile::Company(c) => assert_eq!(c.name, "Apple Inc."),
-        Profile::Fund(_) => panic!("expected Company"),
+        _ => panic!("expected Company"),
     }
 }

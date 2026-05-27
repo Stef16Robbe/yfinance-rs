@@ -45,7 +45,7 @@ async fn fast_info_uses_previous_close_when_price_missing() {
             < 1e-9
     );
     assert_eq!(
-        fi.exchange.map(|e| e.to_string()).as_deref(),
+        fi.instrument.exchange.map(|e| e.to_string()).as_deref(),
         Some("NASDAQ")
     );
 }

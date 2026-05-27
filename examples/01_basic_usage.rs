@@ -64,8 +64,10 @@ async fn section_fast_info(client: &YfClient) -> Result<(), YfError> {
         fast_info.instrument,
         price_money,
         fast_info
+            .instrument
             .exchange
-            .map(|e| e.to_string())
+            .as_ref()
+            .map(std::string::ToString::to_string)
             .unwrap_or_default()
     );
     if let Some(v) = fast_info.volume {
@@ -125,13 +127,17 @@ async fn section_options(client: &YfClient) -> Result<(), YfError> {
         let chain = aapl.option_chain(Some(*first_expiry)).await?;
         println!(
             "  Found {} calls and {} puts.",
-            chain.calls.len(),
-            chain.puts.len()
+            chain.calls().count(),
+            chain.puts().count()
         );
-        if let Some(first_call) = chain.calls.first() {
+        if let Some(first_call) = chain.calls().next() {
+            let contract = first_call
+                .contract_instrument
+                .as_ref()
+                .unwrap_or(&first_call.key.underlying);
             println!(
                 "  First call option: {} @ {}",
-                first_call.instrument, first_call.strike
+                contract, first_call.key.strike
             );
         }
     }

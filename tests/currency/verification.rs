@@ -9,20 +9,19 @@ async fn check_fast_info(ticker: &Ticker, expected_currency: &str) {
         Ok(fi) => {
             println!("    Instrument: {}", fi.instrument);
             println!("    Last Price: {:?}", fi.last.as_ref().map(money_to_f64));
-            println!(
-                "    Currency: {:?}",
-                fi.currency.as_ref().map(std::string::ToString::to_string)
-            );
-            println!(
-                "    Exchange: {:?}",
-                fi.exchange.as_ref().map(std::string::ToString::to_string)
-            );
-            let currency_correct = fi
-                .currency
+            let currency = fi
+                .last
                 .as_ref()
-                .map(std::string::ToString::to_string)
-                .as_deref()
-                == Some(expected_currency);
+                .or(fi.previous_close.as_ref())
+                .map(|price| price.currency().to_string());
+            let exchange = fi
+                .instrument
+                .exchange
+                .as_ref()
+                .map(std::string::ToString::to_string);
+            println!("    Currency: {currency:?}");
+            println!("    Exchange: {exchange:?}");
+            let currency_correct = currency.as_deref() == Some(expected_currency);
             println!(
                 "    {} Currency {}: {} (expected {})",
                 if currency_correct { "✅" } else { "❌" },
@@ -31,11 +30,7 @@ async fn check_fast_info(ticker: &Ticker, expected_currency: &str) {
                 } else {
                     "INCORRECT"
                 },
-                fi.currency
-                    .as_ref()
-                    .map(std::string::ToString::to_string)
-                    .as_deref()
-                    .unwrap_or("None"),
+                currency.as_deref().unwrap_or("None"),
                 expected_currency
             );
         }
@@ -58,24 +53,26 @@ async fn check_comprehensive_info(ticker: &Ticker, expected_currency: &str) {
             println!(
                 "    Currency: {:?}",
                 info.snapshot
-                    .currency
+                    .last
                     .as_ref()
-                    .map(std::string::ToString::to_string)
+                    .or(info.snapshot.previous_close.as_ref())
+                    .map(|price| price.currency().to_string())
             );
             println!(
                 "    Exchange: {:?}",
                 info.snapshot
+                    .instrument
                     .exchange
                     .as_ref()
                     .map(std::string::ToString::to_string)
             );
-            let currency_correct = info
+            let currency = info
                 .snapshot
-                .currency
+                .last
                 .as_ref()
-                .map(std::string::ToString::to_string)
-                .as_deref()
-                == Some(expected_currency);
+                .or(info.snapshot.previous_close.as_ref())
+                .map(|price| price.currency().to_string());
+            let currency_correct = currency.as_deref() == Some(expected_currency);
             println!(
                 "    {} Currency {}: {} (expected {})",
                 if currency_correct { "✅" } else { "❌" },
@@ -84,12 +81,7 @@ async fn check_comprehensive_info(ticker: &Ticker, expected_currency: &str) {
                 } else {
                     "INCORRECT"
                 },
-                info.snapshot
-                    .currency
-                    .as_ref()
-                    .map(std::string::ToString::to_string)
-                    .as_deref()
-                    .unwrap_or("None"),
+                currency.as_deref().unwrap_or("None"),
                 expected_currency
             );
         }

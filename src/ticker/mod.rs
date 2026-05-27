@@ -249,10 +249,11 @@ impl Ticker {
         hb = hb.range(range.unwrap_or(Range::Max));
         let resp = hb.auto_adjust(true).actions(true).fetch_full().await?;
         let mut actions = resp.actions;
-        actions.sort_by_key(|a| match *a {
+        actions.sort_by_key(|a| match a {
             Action::Dividend { ts, .. }
             | Action::Split { ts, .. }
-            | Action::CapitalGain { ts, .. } => ts,
+            | Action::CapitalGain { ts, .. } => ts.timestamp(),
+            _ => i64::MAX,
         });
         Ok(actions)
     }
@@ -297,7 +298,7 @@ impl Ticker {
                     ts,
                     numerator,
                     denominator,
-                } => Some((datetime_to_i64(ts), numerator, denominator)),
+                } => Some((datetime_to_i64(ts), numerator.get(), denominator.get())),
                 _ => None,
             })
             .collect())

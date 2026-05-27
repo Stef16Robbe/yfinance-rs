@@ -7,15 +7,19 @@ use crate::{
     YfClient, YfError,
     core::{
         client::{CacheMode, RetryConfig},
-        conversions::{f64_to_decimal_safely, f64_to_price_with_currency, i64_to_datetime},
+        conversions::{
+            f64_to_decimal_safely, f64_to_price_with_currency, i64_to_datetime, string_to_exchange,
+        },
         net,
     },
+    screener::YahooQuoteType,
 };
 use paft::money::Currency;
 
 use super::model::{OptionChain, OptionContract};
 use chrono::{NaiveDate, TimeZone, Utc};
 use paft::domain::{AssetKind, Instrument};
+use paft::market::options::{OptionContractKey, OptionSide};
 
 /* ---------------- Public: expirations + chain ---------------- */
 
@@ -56,11 +60,11 @@ pub async fn option_chain(
         .ok_or_else(|| YfError::MissingData("empty options result".into()))?;
 
     let currency_from_response = currency_from_result(&first);
+    let underlying_from_response = underlying_instrument_from_result(&first);
 
     let Some(od) = first.options.and_then(|mut v| v.pop()) else {
         return Ok(OptionChain {
-            calls: vec![],
-            puts: vec![],
+            contracts: vec![],
             provider: (),
         });
     };
@@ -78,38 +82,47 @@ pub async fn option_chain(
         0
     });
 
-    let currency = if let Some(currency) = currency_from_response {
-        currency
+    let (currency, underlying) = if let Some(currency) = currency_from_response {
+        (
+            currency,
+            underlying_instrument(client, symbol, underlying_from_response).await?,
+        )
     } else {
         let quote = super::quote::fetch_quote(client, symbol, cache_mode, retry_override).await?;
-        quote
+        let currency = quote
             .price
             .as_ref()
             .map(|m| m.currency().clone())
             .or_else(|| quote.previous_close.as_ref().map(|m| m.currency().clone()))
             .ok_or_else(|| {
                 YfError::MissingData("unable to determine currency from options or quote".into())
-            })?
+            })?;
+        (
+            currency,
+            underlying_from_response.unwrap_or(quote.instrument),
+        )
     };
 
     let map_side = |side: Option<Vec<OptContractNode>>,
+                    option_side: OptionSide,
                     currency: &Currency|
      -> Vec<OptionContract> {
         side.unwrap_or_default()
             .into_iter()
-            .filter_map(|c| {
-                let sym = c.contract_symbol.as_deref().unwrap_or("");
-                let Ok(instrument) = Instrument::from_symbol(sym, AssetKind::Option) else {
-                    return None;
-                };
-
+            .map(|c| {
                 let exp_ts = c.expiration.unwrap_or(expiration);
                 let exp_dt = i64_to_datetime(exp_ts);
                 let exp_date: NaiveDate = exp_dt.date_naive();
+                let strike = f64_to_price_with_currency(c.strike.unwrap_or(0.0), currency.clone());
+                let key = OptionContractKey::new(underlying.clone(), option_side, strike, exp_date);
+                let contract_instrument = c
+                    .contract_symbol
+                    .as_deref()
+                    .and_then(|sym| Instrument::from_symbol(sym, AssetKind::Option).ok());
 
-                Some(OptionContract {
-                    instrument,
-                    strike: f64_to_price_with_currency(c.strike.unwrap_or(0.0), currency.clone()),
+                OptionContract {
+                    key,
+                    contract_instrument,
                     price: c
                         .last_price
                         .map(|v| f64_to_price_with_currency(v, currency.clone())),
@@ -122,24 +135,73 @@ pub async fn option_chain(
                     volume: c.volume,
                     open_interest: c.open_interest,
                     implied_volatility: c.implied_volatility.map(f64_to_decimal_safely),
-                    in_the_money: c.in_the_money.unwrap_or(false),
-                    expiration_date: exp_date,
+                    in_the_money: c.in_the_money,
                     expiration_at: Some(exp_dt),
                     last_trade_at: c
                         .last_trade_date
                         .and_then(|ts| Utc.timestamp_opt(ts, 0).single()),
                     greeks: None,
                     provider: (),
-                })
+                }
             })
             .collect()
     };
 
     Ok(OptionChain {
-        calls: map_side(od.calls, &currency),
-        puts: map_side(od.puts, &currency),
+        contracts: map_side(od.calls, OptionSide::Call, &currency)
+            .into_iter()
+            .chain(map_side(od.puts, OptionSide::Put, &currency))
+            .collect(),
         provider: (),
     })
+}
+
+async fn underlying_instrument(
+    client: &YfClient,
+    symbol: &str,
+    response_instrument: Option<Instrument>,
+) -> Result<Instrument, YfError> {
+    if let Some(instrument) = response_instrument {
+        client
+            .store_instrument(symbol.to_string(), instrument.clone())
+            .await;
+        client
+            .store_instrument(instrument.symbol.as_str().to_string(), instrument.clone())
+            .await;
+        return Ok(instrument);
+    }
+
+    if let Some(instrument) = client.cached_instrument(symbol).await {
+        return Ok(instrument);
+    }
+
+    Instrument::from_symbol(symbol, AssetKind::Equity)
+        .map_err(|err| YfError::InvalidParams(format!("invalid option underlying symbol: {err}")))
+}
+
+fn underlying_instrument_from_result(node: &OptResultNode) -> Option<Instrument> {
+    let quote = node.quote.as_ref();
+    let symbol = node
+        .underlying_symbol
+        .as_deref()
+        .or_else(|| quote.and_then(|quote| quote.symbol.as_deref()))?;
+    let kind = quote
+        .and_then(|quote| quote.quote_type.as_deref())
+        .map_or(AssetKind::Equity, quote_type_to_asset_kind);
+    let exchange = quote.and_then(OptQuoteNode::exchange);
+
+    match exchange {
+        Some(exchange) => Instrument::from_symbol_and_exchange(symbol, exchange, kind),
+        None => Instrument::from_symbol(symbol, kind),
+    }
+    .ok()
+}
+
+fn quote_type_to_asset_kind(value: &str) -> AssetKind {
+    YahooQuoteType::parse(value)
+        .map(YahooQuoteType::asset_kind)
+        .or_else(|| value.parse::<AssetKind>().ok())
+        .unwrap_or(AssetKind::Equity)
 }
 
 /* ---------------- Internal: raw fetch with auth fallback ---------------- */
@@ -257,6 +319,8 @@ struct OptChainNode {
 
 #[derive(Deserialize)]
 struct OptResultNode {
+    #[serde(rename = "underlyingSymbol")]
+    underlying_symbol: Option<String>,
     #[serde(rename = "expirationDates")]
     expiration_dates: Option<Vec<i64>>,
     quote: Option<OptQuoteNode>,
@@ -265,7 +329,28 @@ struct OptResultNode {
 
 #[derive(Deserialize)]
 struct OptQuoteNode {
+    symbol: Option<String>,
+    #[serde(rename = "quoteType")]
+    quote_type: Option<String>,
+    #[serde(rename = "fullExchangeName")]
+    full_exchange_name: Option<String>,
+    exchange: Option<String>,
+    market: Option<String>,
+    #[serde(rename = "marketCapFigureExchange")]
+    market_cap_figure_exchange: Option<String>,
     currency: Option<String>,
+}
+
+impl OptQuoteNode {
+    fn exchange(&self) -> Option<paft::domain::Exchange> {
+        string_to_exchange(
+            self.full_exchange_name
+                .clone()
+                .or_else(|| self.exchange.clone())
+                .or_else(|| self.market.clone())
+                .or_else(|| self.market_cap_figure_exchange.clone()),
+        )
+    }
 }
 
 #[derive(Deserialize)]

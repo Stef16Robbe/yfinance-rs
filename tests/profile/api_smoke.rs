@@ -45,7 +45,7 @@ async fn profile_api_company_happy() {
             assert_eq!(c.industry.as_deref(), Some("Consumer Electronics"));
             assert_eq!(c.website.as_deref(), Some("https://www.apple.com"));
         }
-        Profile::Fund(_) => panic!("expected Company"),
+        _ => panic!("expected Company"),
     }
 }
 
@@ -89,6 +89,6 @@ async fn profile_api_fund_happy() {
             assert_eq!(f.family.as_deref(), Some("Invesco"));
             assert_eq!(f.kind.to_string(), "ETF");
         }
-        Profile::Company(_) => panic!("expected Fund"),
+        _ => panic!("expected Fund"),
     }
 }

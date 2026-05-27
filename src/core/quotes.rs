@@ -20,8 +20,6 @@ use paft::fundamentals::statements::Calendar;
 use paft::fundamentals::statistics::KeyStatistics;
 use paft::market::orderbook::BookLevel;
 use paft::market::quote::Quote;
-use paft::money::{Currency, IsoCurrency};
-use std::str::FromStr;
 
 const KEY_STATISTICS_MODULES: &str = "summaryDetail,defaultKeyStatistics";
 
@@ -128,19 +126,11 @@ impl V7QuoteNode {
             .and_then(|s| s.parse::<AssetKind>().ok())
             .unwrap_or(AssetKind::Equity);
 
-        exchange
-            .map_or_else(
-                || Instrument::from_symbol(sym, kind),
-                |ex| Instrument::from_symbol_and_exchange(sym, ex, kind),
-            )
-            .expect("v7 quote node had invalid/missing symbol")
-    }
-
-    fn currency(&self) -> Currency {
-        self.currency
-            .as_deref()
-            .and_then(|s| Currency::from_str(s).ok())
-            .unwrap_or(Currency::Iso(IsoCurrency::USD))
+        match exchange {
+            Some(ex) => Instrument::from_symbol_and_exchange(sym, ex, kind),
+            None => Instrument::from_symbol(sym, kind),
+        }
+        .expect("v7 quote node had invalid/missing symbol")
     }
 
     fn positive_book_level(&self, price: Option<f64>, size: Option<u64>) -> Option<BookLevel> {
@@ -170,10 +160,8 @@ impl V7QuoteNode {
         };
 
         Snapshot {
-            instrument: self.instrument(exchange.clone()),
+            instrument: self.instrument(exchange),
             name: self.long_name.clone().or_else(|| self.short_name.clone()),
-            exchange,
-            currency: Some(self.currency()),
             market_state: self.market_state.as_deref().and_then(|s| s.parse().ok()),
             as_of: self.as_of().or_else(|| Some(chrono::Utc::now())),
             last: price(self.regular_market_price),
@@ -410,10 +398,10 @@ pub async fn fetch_v7_quotes(
                 .and_then(|s| s.parse::<AssetKind>().ok())
                 .unwrap_or(AssetKind::Equity);
 
-            let inst = exch.map_or_else(
-                || Instrument::from_symbol(sym, kind),
-                |ex| Instrument::from_symbol_and_exchange(sym, ex, kind),
-            );
+            let inst = match exch {
+                Some(ex) => Instrument::from_symbol_and_exchange(sym, ex, kind),
+                None => Instrument::from_symbol(sym, kind),
+            };
             if let Ok(inst) = inst {
                 client.store_instrument(sym.to_string(), inst).await;
             }
@@ -426,7 +414,7 @@ pub async fn fetch_v7_quotes(
 impl From<V7QuoteNode> for Quote {
     fn from(n: V7QuoteNode) -> Self {
         let exchange = n.exchange();
-        let instrument = n.instrument(exchange.clone());
+        let instrument = n.instrument(exchange);
 
         Self {
             instrument,
@@ -440,8 +428,8 @@ impl From<V7QuoteNode> for Quote {
                 .regular_market_previous_close
                 .map(|price| f64_to_price_with_currency_str(price, n.currency.as_deref())),
             day_volume: n.regular_market_volume,
-            exchange,
-            market_state: n.market_state.and_then(|s| s.parse().ok()),
+            market_state: n.market_state.as_deref().and_then(|s| s.parse().ok()),
+            as_of: n.as_of(),
             provider: (),
         }
     }

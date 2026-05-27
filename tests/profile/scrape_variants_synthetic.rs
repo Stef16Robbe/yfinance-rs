@@ -48,7 +48,7 @@ async fn scrape_sveltekit_equity() {
             assert_eq!(c.name, "Demo Co");
             assert_eq!(c.sector.as_deref(), Some("Tech"));
         }
-        Profile::Fund(_) => panic!("expected Company"),
+        _ => panic!("expected Company"),
     }
 }
 

@@ -40,9 +40,11 @@ async fn history_tolerates_fractional_split_components() {
             response.actions[0],
             Action::Split {
                 ts,
-                numerator: 631_419,
-                denominator: 500_000,
+                numerator,
+                denominator,
             } if ts.timestamp() == 2000
+                && numerator.get() == 631_419
+                && denominator.get() == 500_000
         ),
         "fractional split should be normalized and gcd-simplified"
     );

@@ -91,11 +91,17 @@ async fn batch_quotes_401_then_retry_with_crumb_succeeds() {
         ))
     );
     assert_eq!(
-        aapl.exchange.as_ref().map(std::string::ToString::to_string),
+        aapl.instrument
+            .exchange
+            .as_ref()
+            .map(std::string::ToString::to_string),
         Some("NASDAQ".to_string())
     );
     assert_eq!(
-        msft.exchange.as_ref().map(std::string::ToString::to_string),
+        msft.instrument
+            .exchange
+            .as_ref()
+            .map(std::string::ToString::to_string),
         Some("NASDAQ".to_string())
     );
 }

@@ -47,12 +47,11 @@ async fn option_chain_expiration_falls_back_to_url_date() {
 
     mock.assert();
 
-    assert!(!chain.calls.is_empty() && !chain.puts.is_empty());
+    assert!(chain.calls().next().is_some() && chain.puts().next().is_some());
     assert!(
         chain
-            .calls
-            .iter()
-            .chain(chain.puts.iter())
+            .calls()
+            .chain(chain.puts())
             .all(|c| c.expiration_at.unwrap().timestamp() == date),
         "expiration must fall back to 'date' query param"
     );

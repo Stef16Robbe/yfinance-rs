@@ -214,6 +214,7 @@ impl HistoryBuilder {
             Action::Dividend { ts, .. }
             | Action::Split { ts, .. }
             | Action::CapitalGain { ts, .. } => ts.timestamp(),
+            _ => i64::MAX,
         });
 
         // 5) Map metadata

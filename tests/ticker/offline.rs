@@ -51,7 +51,7 @@ async fn offline_options_uses_recorded_fixtures() {
     mock_chain.assert();
 
     // Contracts, if present, should carry the requested expiration
-    for c in chain.calls.iter().chain(chain.puts.iter()) {
+    for c in chain.calls().chain(chain.puts()) {
         assert_eq!(c.expiration_at.unwrap().timestamp(), d);
     }
 }

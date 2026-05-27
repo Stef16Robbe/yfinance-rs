@@ -21,19 +21,15 @@ fn parse_search_body(body: &str) -> Result<SearchResponse, YfError> {
                 .and_then(|s| s.parse::<AssetKind>().ok())
                 .unwrap_or_default();
 
-            let instrument = exchange_opt
-                .clone()
-                .map_or_else(
-                    || Instrument::from_symbol(&sym, kind),
-                    |ex| Instrument::from_symbol_and_exchange(&sym, ex, kind),
-                )
-                .ok()?;
+            let instrument = match exchange_opt {
+                Some(exchange) => Instrument::from_symbol_and_exchange(&sym, exchange, kind),
+                None => Instrument::from_symbol(&sym, kind),
+            }
+            .ok()?;
 
             Some(SearchResult {
                 instrument,
                 name: q.longname.or(q.shortname),
-                exchange: exchange_opt,
-                kind,
                 provider: (),
             })
         })
