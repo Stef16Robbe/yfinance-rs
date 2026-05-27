@@ -93,6 +93,6 @@ impl QuotesBuilder {
         )
         .await?;
 
-        Ok(results.into_iter().map(Into::into).collect())
+        results.into_iter().map(TryInto::try_into).collect()
     }
 }

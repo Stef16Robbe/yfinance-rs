@@ -10,13 +10,13 @@
             {
               "earningsEstimate": {
                 "avg": {
-                  "fmt": "1.89",
-                  "raw": 1.89077
+                  "fmt": "1.9",
+                  "raw": 1.89541
                 },
                 "earningsCurrency": "USD",
                 "growth": {
-                  "fmt": "20.43%",
-                  "raw": 0.2043
+                  "fmt": "20.73%",
+                  "raw": 0.20729999
                 },
                 "high": {
                   "fmt": "1.99",
@@ -27,9 +27,9 @@
                   "raw": 1.83
                 },
                 "numberOfAnalysts": {
-                  "fmt": "30",
-                  "longFmt": "30",
-                  "raw": 30
+                  "fmt": "32",
+                  "longFmt": "32",
+                  "raw": 32
                 },
                 "yearAgoEps": {
                   "fmt": "1.57",
@@ -51,59 +51,59 @@
                 "downLast90days": {},
                 "epsRevisionsCurrency": "USD",
                 "upLast30days": {
-                  "fmt": "22",
-                  "longFmt": "22",
-                  "raw": 22
+                  "fmt": "24",
+                  "longFmt": "24",
+                  "raw": 24
                 },
                 "upLast7days": {
-                  "fmt": "22",
-                  "longFmt": "22",
-                  "raw": 22
+                  "fmt": null,
+                  "longFmt": "0",
+                  "raw": 0
                 }
               },
               "epsTrend": {
                 "30daysAgo": {
-                  "fmt": "1.73",
-                  "raw": 1.72877
+                  "fmt": "1.74",
+                  "raw": 1.7358
                 },
                 "60daysAgo": {
-                  "fmt": "1.72",
-                  "raw": 1.724
+                  "fmt": "1.73",
+                  "raw": 1.73386
                 },
                 "7daysAgo": {
-                  "fmt": "1.86",
-                  "raw": 1.86059
+                  "fmt": "1.9",
+                  "raw": 1.89541
                 },
                 "90daysAgo": {
                   "fmt": "1.73",
-                  "raw": 1.72959
+                  "raw": 1.73134
                 },
                 "current": {
-                  "fmt": "1.89",
-                  "raw": 1.89077
+                  "fmt": "1.9",
+                  "raw": 1.89541
                 },
                 "epsTrendCurrency": "USD"
               },
               "growth": {
-                "fmt": "20.43%",
-                "raw": 0.2043
+                "fmt": "20.73%",
+                "raw": 0.20729999
               },
               "maxAge": 1,
               "period": "0q",
               "revenueEstimate": {
                 "avg": {
-                  "fmt": "108.79B",
-                  "longFmt": "108,790,845,560",
-                  "raw": 108790845560
+                  "fmt": "109.02B",
+                  "longFmt": "109,015,606,590",
+                  "raw": 109015606590
                 },
                 "growth": {
-                  "fmt": "15.69%",
-                  "raw": 0.15689999
+                  "fmt": "15.93%",
+                  "raw": 0.1593
                 },
                 "high": {
-                  "fmt": "112B",
-                  "longFmt": "112,000,000,000",
-                  "raw": 112000000000
+                  "fmt": "112.17B",
+                  "longFmt": "112,168,000,000",
+                  "raw": 112168000000
                 },
                 "low": {
                   "fmt": "107.5B",
@@ -111,9 +111,9 @@
                   "raw": 107501000000
                 },
                 "numberOfAnalysts": {
-                  "fmt": "26",
-                  "longFmt": "26",
-                  "raw": 26
+                  "fmt": "28",
+                  "longFmt": "28",
+                  "raw": 28
                 },
                 "revenueCurrency": "USD",
                 "yearAgoRevenue": {
@@ -127,12 +127,12 @@
               "earningsEstimate": {
                 "avg": {
                   "fmt": "2.01",
-                  "raw": 2.00723
+                  "raw": 2.01074
                 },
                 "earningsCurrency": "USD",
                 "growth": {
-                  "fmt": "8.50%",
-                  "raw": 0.085
+                  "fmt": "8.69%",
+                  "raw": 0.086899996
                 },
                 "high": {
                   "fmt": "2.14",
@@ -143,9 +143,9 @@
                   "raw": 1.86
                 },
                 "numberOfAnalysts": {
-                  "fmt": "28",
-                  "longFmt": "28",
-                  "raw": 28
+                  "fmt": "30",
+                  "longFmt": "30",
+                  "raw": 30
                 },
                 "yearAgoEps": {
                   "fmt": "1.85",
@@ -160,9 +160,9 @@
                   "raw": 3
                 },
                 "downLast7Days": {
-                  "fmt": "4",
-                  "longFmt": "4",
-                  "raw": 4
+                  "fmt": null,
+                  "longFmt": "0",
+                  "raw": 0
                 },
                 "downLast90days": {},
                 "epsRevisionsCurrency": "USD",
@@ -172,49 +172,49 @@
                   "raw": 20
                 },
                 "upLast7days": {
-                  "fmt": "20",
-                  "longFmt": "20",
-                  "raw": 20
+                  "fmt": null,
+                  "longFmt": "0",
+                  "raw": 0
                 }
               },
               "epsTrend": {
                 "30daysAgo": {
                   "fmt": "1.97",
-                  "raw": 1.97094
+                  "raw": 1.96945
                 },
                 "60daysAgo": {
-                  "fmt": "1.98",
-                  "raw": 1.9764
+                  "fmt": "1.97",
+                  "raw": 1.9748
                 },
                 "7daysAgo": {
-                  "fmt": "2",
-                  "raw": 2.00031
+                  "fmt": "2.01",
+                  "raw": 2.01074
                 },
                 "90daysAgo": {
-                  "fmt": "1.98",
-                  "raw": 1.98394
+                  "fmt": "1.99",
+                  "raw": 1.98608
                 },
                 "current": {
                   "fmt": "2.01",
-                  "raw": 2.00723
+                  "raw": 2.01074
                 },
                 "epsTrendCurrency": "USD"
               },
               "growth": {
-                "fmt": "8.50%",
-                "raw": 0.085
+                "fmt": "8.69%",
+                "raw": 0.086899996
               },
               "maxAge": 1,
               "period": "+1q",
               "revenueEstimate": {
                 "avg": {
-                  "fmt": "114.08B",
-                  "longFmt": "114,081,423,730",
-                  "raw": 114081423730
+                  "fmt": "114.21B",
+                  "longFmt": "114,207,466,420",
+                  "raw": 114207466420
                 },
                 "growth": {
-                  "fmt": "11.34%",
-                  "raw": 0.113400005
+                  "fmt": "11.46%",
+                  "raw": 0.1146
                 },
                 "high": {
                   "fmt": "118.98B",
@@ -227,9 +227,9 @@
                   "raw": 104929122250
                 },
                 "numberOfAnalysts": {
-                  "fmt": "25",
-                  "longFmt": "25",
-                  "raw": 25
+                  "fmt": "27",
+                  "longFmt": "27",
+                  "raw": 27
                 },
                 "revenueCurrency": "USD",
                 "yearAgoRevenue": {
@@ -242,13 +242,13 @@
             {
               "earningsEstimate": {
                 "avg": {
-                  "fmt": "8.73",
-                  "raw": 8.72795
+                  "fmt": "8.75",
+                  "raw": 8.75324
                 },
                 "earningsCurrency": "USD",
                 "growth": {
-                  "fmt": "17.00%",
-                  "raw": 0.17
+                  "fmt": "17.34%",
+                  "raw": 0.1734
                 },
                 "high": {
                   "fmt": "9.01",
@@ -259,9 +259,9 @@
                   "raw": 8.29
                 },
                 "numberOfAnalysts": {
-                  "fmt": "41",
-                  "longFmt": "41",
-                  "raw": 41
+                  "fmt": "42",
+                  "longFmt": "42",
+                  "raw": 42
                 },
                 "yearAgoEps": {
                   "fmt": "7.46",
@@ -271,66 +271,66 @@
               "endDate": "2026-09-30",
               "epsRevisions": {
                 "downLast30days": {
-                  "fmt": "1",
-                  "longFmt": "1",
-                  "raw": 1
-                },
-                "downLast7Days": {
                   "fmt": "2",
                   "longFmt": "2",
                   "raw": 2
                 },
+                "downLast7Days": {
+                  "fmt": "1",
+                  "longFmt": "1",
+                  "raw": 1
+                },
                 "downLast90days": {},
                 "epsRevisionsCurrency": "USD",
                 "upLast30days": {
-                  "fmt": "32",
-                  "longFmt": "32",
-                  "raw": 32
+                  "fmt": "35",
+                  "longFmt": "35",
+                  "raw": 35
                 },
                 "upLast7days": {
-                  "fmt": "31",
-                  "longFmt": "31",
-                  "raw": 31
+                  "fmt": "1",
+                  "longFmt": "1",
+                  "raw": 1
                 }
               },
               "epsTrend": {
                 "30daysAgo": {
-                  "fmt": "8.49",
-                  "raw": 8.49459
+                  "fmt": "8.51",
+                  "raw": 8.50635
                 },
                 "60daysAgo": {
-                  "fmt": "8.48",
-                  "raw": 8.48431
+                  "fmt": "8.5",
+                  "raw": 8.49816
                 },
                 "7daysAgo": {
-                  "fmt": "8.71",
-                  "raw": 8.7111
+                  "fmt": "8.74",
+                  "raw": 8.73895
                 },
                 "90daysAgo": {
-                  "fmt": "8.47",
-                  "raw": 8.46517
+                  "fmt": "8.49",
+                  "raw": 8.49254
                 },
                 "current": {
-                  "fmt": "8.73",
-                  "raw": 8.72795
+                  "fmt": "8.75",
+                  "raw": 8.75324
                 },
                 "epsTrendCurrency": "USD"
               },
               "growth": {
-                "fmt": "16.93%",
-                "raw": 0.1693
+                "fmt": "17.27%",
+                "raw": 0.1727
               },
               "maxAge": 1,
               "period": "0y",
               "revenueEstimate": {
                 "avg": {
-                  "fmt": "477.69B",
-                  "longFmt": "477,691,926,180",
-                  "raw": 477691926180
+                  "fmt": "478.08B",
+                  "longFmt": "478,083,853,080",
+                  "raw": 478083853080
                 },
                 "growth": {
-                  "fmt": "14.79%",
-                  "raw": 0.1479
+                  "fmt": "14.88%",
+                  "raw": 0.1488
                 },
                 "high": {
                   "fmt": "485.2B",
@@ -343,9 +343,9 @@
                   "raw": 468452000000
                 },
                 "numberOfAnalysts": {
-                  "fmt": "33",
-                  "longFmt": "33",
-                  "raw": 33
+                  "fmt": "37",
+                  "longFmt": "37",
+                  "raw": 37
                 },
                 "revenueCurrency": "USD",
                 "yearAgoRevenue": {
@@ -358,13 +358,13 @@
             {
               "earningsEstimate": {
                 "avg": {
-                  "fmt": "9.61",
-                  "raw": 9.60696
+                  "fmt": "9.66",
+                  "raw": 9.65517
                 },
                 "earningsCurrency": "USD",
                 "growth": {
-                  "fmt": "10.07%",
-                  "raw": 0.1007
+                  "fmt": "10.30%",
+                  "raw": 0.103
                 },
                 "high": {
                   "fmt": "10.96",
@@ -375,13 +375,13 @@
                   "raw": 8.81
                 },
                 "numberOfAnalysts": {
-                  "fmt": "42",
-                  "longFmt": "42",
-                  "raw": 42
+                  "fmt": "43",
+                  "longFmt": "43",
+                  "raw": 43
                 },
                 "yearAgoEps": {
-                  "fmt": "8.73",
-                  "raw": 8.72795
+                  "fmt": "8.75",
+                  "raw": 8.75324
                 }
               },
               "endDate": "2027-09-30",
@@ -392,61 +392,61 @@
                   "raw": 2
                 },
                 "downLast7Days": {
-                  "fmt": "3",
-                  "longFmt": "3",
-                  "raw": 3
+                  "fmt": "1",
+                  "longFmt": "1",
+                  "raw": 1
                 },
                 "downLast90days": {},
                 "epsRevisionsCurrency": "USD",
                 "upLast30days": {
-                  "fmt": "29",
-                  "longFmt": "29",
-                  "raw": 29
+                  "fmt": "31",
+                  "longFmt": "31",
+                  "raw": 31
                 },
                 "upLast7days": {
-                  "fmt": "28",
-                  "longFmt": "28",
-                  "raw": 28
+                  "fmt": "2",
+                  "longFmt": "2",
+                  "raw": 2
                 }
               },
               "epsTrend": {
                 "30daysAgo": {
-                  "fmt": "9.35",
-                  "raw": 9.34627
+                  "fmt": "9.38",
+                  "raw": 9.38199
                 },
                 "60daysAgo": {
-                  "fmt": "9.33",
-                  "raw": 9.3331
+                  "fmt": "9.35",
+                  "raw": 9.35488
                 },
                 "7daysAgo": {
-                  "fmt": "9.54",
-                  "raw": 9.54042
+                  "fmt": "9.63",
+                  "raw": 9.63284
                 },
                 "90daysAgo": {
-                  "fmt": "9.29",
-                  "raw": 9.28953
+                  "fmt": "9.32",
+                  "raw": 9.32395
                 },
                 "current": {
-                  "fmt": "9.61",
-                  "raw": 9.60696
+                  "fmt": "9.66",
+                  "raw": 9.65517
                 },
                 "epsTrendCurrency": "USD"
               },
               "growth": {
-                "fmt": "9.59%",
-                "raw": 0.0959
+                "fmt": "9.83%",
+                "raw": 0.0983
               },
               "maxAge": 1,
               "period": "+1y",
               "revenueEstimate": {
                 "avg": {
-                  "fmt": "515B",
-                  "longFmt": "515,002,128,060",
-                  "raw": 515002128060
+                  "fmt": "517.82B",
+                  "longFmt": "517,815,320,250",
+                  "raw": 517815320250
                 },
                 "growth": {
-                  "fmt": "7.81%",
-                  "raw": 0.078099996
+                  "fmt": "8.31%",
+                  "raw": 0.083100006
                 },
                 "high": {
                   "fmt": "594.86B",
@@ -459,15 +459,15 @@
                   "raw": 483566000000
                 },
                 "numberOfAnalysts": {
-                  "fmt": "41",
-                  "longFmt": "41",
-                  "raw": 41
+                  "fmt": "42",
+                  "longFmt": "42",
+                  "raw": 42
                 },
                 "revenueCurrency": "USD",
                 "yearAgoRevenue": {
-                  "fmt": "477.69B",
-                  "longFmt": "477,691,926,180",
-                  "raw": 477691926180
+                  "fmt": "478.08B",
+                  "longFmt": "478,083,853,080",
+                  "raw": 478083853080
                 }
               }
             }

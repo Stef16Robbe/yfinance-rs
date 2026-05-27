@@ -1,6 +1,8 @@
 use crate::common::{mock_quote_v7_multi, setup_server};
+use httpmock::Method::GET;
 use std::path::Path;
 use url::Url;
+use yfinance_rs::YfError;
 
 #[tokio::test]
 async fn offline_multi_quotes_uses_recorded_fixture() {
@@ -36,4 +38,68 @@ async fn offline_multi_quotes_uses_recorded_fixture() {
         .collect();
     assert!(syms.contains(&"AAPL"));
     assert!(syms.contains(&"MSFT"));
+}
+
+#[tokio::test]
+async fn malformed_quote_node_missing_symbol_returns_error() {
+    let server = setup_server();
+    let _mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "AAPL");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{"quoteResponse":{"result":[{"quoteType":"EQUITY","regularMarketPrice":190.0}]}}"#,
+            );
+    });
+
+    let base = Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap();
+    let client = yfinance_rs::YfClient::builder()
+        .base_quote_v7(base)
+        .build()
+        .unwrap();
+
+    let result = yfinance_rs::QuotesBuilder::new(client)
+        .symbols(["AAPL"])
+        .fetch()
+        .await;
+
+    match result {
+        Err(YfError::MissingData(message)) => assert!(message.contains("missing symbol")),
+        Err(other) => panic!("expected missing symbol error, got {other:?}"),
+        Ok(_) => panic!("expected missing symbol error"),
+    }
+}
+
+#[tokio::test]
+async fn malformed_quote_node_invalid_symbol_returns_error() {
+    let server = setup_server();
+    let _mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "BAD");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{"quoteResponse":{"result":[{"symbol":"BAD SYMBOL","quoteType":"EQUITY","regularMarketPrice":190.0}]}}"#,
+            );
+    });
+
+    let base = Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap();
+    let client = yfinance_rs::YfClient::builder()
+        .base_quote_v7(base)
+        .build()
+        .unwrap();
+
+    let result = yfinance_rs::QuotesBuilder::new(client)
+        .symbols(["BAD"])
+        .fetch()
+        .await;
+
+    match result {
+        Err(YfError::InvalidData(message)) => assert!(message.contains("BAD SYMBOL")),
+        Err(other) => panic!("expected invalid symbol error, got {other:?}"),
+        Ok(_) => panic!("expected invalid symbol error"),
+    }
 }

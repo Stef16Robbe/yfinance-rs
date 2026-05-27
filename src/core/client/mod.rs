@@ -279,12 +279,9 @@ impl YfClient {
             err,
             fields(
                 url = %{
-                    let b = req
-                        .try_clone()
-                        .expect("cloneable")
-                        .build()
-                        .unwrap();
-                    b.url().clone()
+                    req.try_clone()
+                        .and_then(|builder| builder.build().ok())
+                        .map_or_else(|| "<uncloneable>".to_string(), |request| request.url().to_string())
                 }
             )
         )
@@ -293,18 +290,21 @@ impl YfClient {
         &self,
         mut req: reqwest::RequestBuilder,
         override_retry: Option<&RetryConfig>,
-    ) -> Result<reqwest::Response, reqwest::Error> {
+    ) -> Result<reqwest::Response, YfError> {
         // Always set User-Agent header explicitly
         req = req.header("User-Agent", &self.user_agent);
 
         let cfg = override_retry.unwrap_or(&self.retry);
         if !cfg.enabled {
-            return req.send().await;
+            return Ok(req.send().await?);
         }
 
         let mut attempt = 0u32;
         loop {
-            let response = req.try_clone().expect("cloneable request").send().await;
+            let Some(cloned_req) = req.try_clone() else {
+                return Err(YfError::RequestNotCloneable);
+            };
+            let response = cloned_req.send().await;
 
             match response {
                 Ok(resp) => {
@@ -357,7 +357,7 @@ impl YfClient {
                         attempt += 1;
                         continue;
                     }
-                    return Err(e);
+                    return Err(e.into());
                 }
             }
         }

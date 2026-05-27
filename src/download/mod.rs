@@ -126,7 +126,7 @@ impl DownloadBuilder {
         &self,
         joined: Vec<(String, HistoryResponse)>,
         _need_adjust_in_fetch: bool,
-    ) -> DownloadResponse {
+    ) -> Result<DownloadResponse, YfError> {
         let mut entries: Vec<DownloadEntry> = Vec::with_capacity(joined.len());
         for (sym, mut resp) in joined {
             // apply transforms to candles
@@ -139,7 +139,9 @@ impl DownloadBuilder {
                 inst
             } else {
                 let kind = AssetKind::Equity;
-                let inst = Instrument::from_symbol(&sym, kind).expect("valid symbol");
+                let inst = Instrument::from_symbol(&sym, kind).map_err(|err| {
+                    YfError::InvalidParams(format!("invalid download symbol {sym:?}: {err}"))
+                })?;
                 self.client
                     .store_instrument(sym.clone(), inst.clone())
                     .await;
@@ -152,10 +154,10 @@ impl DownloadBuilder {
                 provider: (),
             });
         }
-        DownloadResponse {
+        Ok(DownloadResponse {
             entries,
             provider: (),
-        }
+        })
     }
 
     /// Creates a new `DownloadBuilder`.
@@ -306,9 +308,8 @@ impl DownloadBuilder {
         });
 
         let joined: Vec<(String, HistoryResponse)> = try_join_all(futures).await?;
-        Ok(self
-            .process_joined_results(joined, need_adjust_in_fetch)
-            .await)
+        self.process_joined_results(joined, need_adjust_in_fetch)
+            .await
     }
 }
 
@@ -341,7 +342,9 @@ fn repair_scale_outliers(rows: &mut [Candle]) {
 
         // Now split the right side so we can mutably borrow the “current” bar
         // and (immutably) the remainder where “next” lives, without overlap.
-        let (cur, rem) = right.split_first_mut().expect("right has at least 1");
+        let Some((cur, rem)) = right.split_first_mut() else {
+            continue;
+        };
         let next = &rem[0]; // safe because len >= 2 overall ⇒ rem has at least one
 
         let p = &prev.close;

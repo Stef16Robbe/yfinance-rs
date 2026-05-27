@@ -32,7 +32,7 @@ pub async fn fetch_quote(
     })?;
 
     // Use the same currency-aware conversion as the batch quotes API
-    Ok(result.into())
+    result.try_into()
 }
 
 pub async fn fetch_fast_info(
@@ -48,7 +48,7 @@ pub async fn fetch_fast_info(
         YfError::MissingData(format!("no quote result found for symbol {symbol}"))
     })?;
 
-    Ok(result.to_snapshot())
+    result.to_snapshot()
 }
 
 pub async fn fetch_key_statistics(

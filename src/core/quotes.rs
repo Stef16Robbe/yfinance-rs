@@ -117,19 +117,25 @@ impl V7QuoteNode {
         )
     }
 
-    fn instrument(&self, exchange: Option<paft::domain::Exchange>) -> Instrument {
-        let sym = self.symbol.as_deref().unwrap_or_default();
+    fn instrument(&self, exchange: Option<paft::domain::Exchange>) -> Result<Instrument, YfError> {
+        let sym = self
+            .symbol
+            .as_deref()
+            .filter(|symbol| !symbol.trim().is_empty())
+            .ok_or_else(|| YfError::MissingData("v7 quote node missing symbol".into()))?;
         let kind = self
             .quote_type
             .as_deref()
             .and_then(|s| s.parse::<AssetKind>().ok())
             .unwrap_or(AssetKind::Equity);
 
-        match exchange {
+        let instrument = match exchange {
             Some(ex) => Instrument::from_symbol_and_exchange(sym, ex, kind),
             None => Instrument::from_symbol(sym, kind),
-        }
-        .expect("v7 quote node had invalid/missing symbol")
+        };
+
+        instrument
+            .map_err(|err| YfError::InvalidData(format!("invalid v7 quote symbol {sym:?}: {err}")))
     }
 
     fn positive_book_level(&self, price: Option<f64>, size: Option<u64>) -> Option<BookLevel> {
@@ -150,15 +156,15 @@ impl V7QuoteNode {
         self.regular_market_time.map(i64_to_datetime)
     }
 
-    pub(crate) fn to_snapshot(&self) -> Snapshot {
+    pub(crate) fn to_snapshot(&self) -> Result<Snapshot, YfError> {
         let exchange = self.exchange();
         let price = |value: Option<f64>| {
             value
                 .and_then(|value| price_from_f64_with_currency_str(value, self.currency.as_deref()))
         };
 
-        Snapshot {
-            instrument: self.instrument(exchange),
+        Ok(Snapshot {
+            instrument: self.instrument(exchange)?,
             name: self.long_name.clone().or_else(|| self.short_name.clone()),
             market_state: self.market_state.as_deref().and_then(|s| s.parse().ok()),
             as_of: self.as_of().or_else(|| Some(chrono::Utc::now())),
@@ -169,7 +175,7 @@ impl V7QuoteNode {
             day_low: price(self.regular_market_day_low),
             volume: self.regular_market_volume,
             provider: (),
-        }
+        })
     }
 
     pub(crate) fn to_key_statistics(&self) -> KeyStatistics {
@@ -386,12 +392,14 @@ pub async fn fetch_v7_quotes(
     Ok(nodes)
 }
 
-impl From<V7QuoteNode> for Quote {
-    fn from(n: V7QuoteNode) -> Self {
-        let exchange = n.exchange();
-        let instrument = n.instrument(exchange);
+impl TryFrom<V7QuoteNode> for Quote {
+    type Error = YfError;
 
-        Self {
+    fn try_from(n: V7QuoteNode) -> Result<Self, Self::Error> {
+        let exchange = n.exchange();
+        let instrument = n.instrument(exchange)?;
+
+        Ok(Self {
             instrument,
             name: n.long_name.clone().or_else(|| n.short_name.clone()),
             price: n
@@ -406,6 +414,6 @@ impl From<V7QuoteNode> for Quote {
             market_state: n.market_state.as_deref().and_then(|s| s.parse().ok()),
             as_of: n.as_of(),
             provider: (),
-        }
+        })
     }
 }

@@ -77,9 +77,21 @@ pub enum YfError {
     #[error("Missing data in response: {0}")]
     MissingData(String),
 
+    /// Indicates that provider data was present but could not be mapped into the public model.
+    #[error("Invalid data in response: {0}")]
+    InvalidData(String),
+
     /// An error indicating that the parameters provided by the caller were invalid.
     #[error("Invalid parameters: {0}")]
     InvalidParams(String),
+
+    /// An error indicating that an HTTP request could not be cloned for retry.
+    #[error("Request cannot be cloned for retry")]
+    RequestNotCloneable,
+
+    /// An error originating from `paft` money modeling.
+    #[error("Money data error: {0}")]
+    Money(#[from] paft::money::MoneyError),
 
     /// An error indicating that the provided date range is invalid (e.g., start date after end date).
     #[error("Invalid date range: start date must be before end date")]

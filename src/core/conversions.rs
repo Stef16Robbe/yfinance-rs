@@ -13,6 +13,8 @@ use paft::money::{Currency, IsoCurrency, MonetaryAmount, Money, Price};
 use rust_decimal::prelude::ToPrimitive;
 use std::str::FromStr;
 
+use crate::YfError;
+
 /// Converts a finite `f64` value to `Decimal`.
 ///
 /// Returns `None` if the value is non-finite or does not fit in the decimal
@@ -34,24 +36,24 @@ pub fn money_from_f64(value: f64, currency: Currency) -> Option<Money> {
     decimal_from_f64(value).and_then(|decimal| Money::new(decimal, currency).ok())
 }
 
-/// Convert i64 to Money with specified currency (no precision loss)
+/// Convert i64 to Money with specified currency (no precision loss).
 ///
-/// # Panics
-/// Panics if currency metadata is not registered for non-ISO currencies.
-#[must_use]
-pub fn i64_to_money_with_currency(value: i64, currency: Currency) -> Money {
+/// # Errors
+/// Returns `YfError::Money` if currency metadata is not registered for the
+/// provided currency.
+pub fn i64_to_money_with_currency(value: i64, currency: Currency) -> Result<Money, YfError> {
     let decimal = rust_decimal::Decimal::from_i128_with_scale(i128::from(value), 0);
-    Money::new(decimal, currency).expect("currency metadata available")
+    Ok(Money::new(decimal, currency)?)
 }
 
-/// Convert u64 to Money with specified currency (no precision loss)
+/// Convert u64 to Money with specified currency (no precision loss).
 ///
-/// # Panics
-/// Panics if currency metadata is not registered for non-ISO currencies.
-#[must_use]
-pub fn u64_to_money_with_currency(value: u64, currency: Currency) -> Money {
+/// # Errors
+/// Returns `YfError::Money` if currency metadata is not registered for the
+/// provided currency.
+pub fn u64_to_money_with_currency(value: u64, currency: Currency) -> Result<Money, YfError> {
     let decimal = rust_decimal::Decimal::from_i128_with_scale(i128::from(value), 0);
-    Money::new(decimal, currency).expect("currency metadata available")
+    Ok(Money::new(decimal, currency)?)
 }
 
 /// Convert a finite `f64` to `Money` with a parsed currency string.

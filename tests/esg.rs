@@ -1,5 +1,8 @@
 mod common;
 
+#[path = "esg/status_synthetic.rs"]
+mod status_synthetic;
+
 // These are disabled because the endpoint is not available anymore.
 // These might be able to be enabled again if we can find a way to get the data.
 // #[path = "esg/live.rs"]

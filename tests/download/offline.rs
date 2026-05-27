@@ -5,7 +5,7 @@ use url::Url;
 use crate::common;
 use yfinance_rs::core::conversions::*;
 use yfinance_rs::core::{Interval, Range};
-use yfinance_rs::{DownloadBuilder, YfClient};
+use yfinance_rs::{DownloadBuilder, YfClient, YfError};
 
 fn has_more_than_two_decimals(x: f64) -> bool {
     if !x.is_finite() {
@@ -69,6 +69,40 @@ async fn download_multi_symbols_happy_path() {
         .collect();
     assert!(keys.iter().any(|s| s == "AAPL"));
     assert!(keys.iter().any(|s| s == "MSFT"));
+}
+
+#[tokio::test]
+async fn download_invalid_user_symbol_returns_error() {
+    let server = common::setup_server();
+    let symbol = "A".repeat(65);
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v8/finance/chart/{symbol}"))
+            .query_param("range", "6mo")
+            .query_param("interval", "1d")
+            .query_param("includePrePost", "false")
+            .query_param("events", "div|split|capitalGains");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(common::fixture("history_chart", "AAPL", "json"));
+    });
+
+    let client = YfClient::builder()
+        .base_chart(Url::parse(&format!("{}/v8/finance/chart/", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+
+    let result = DownloadBuilder::new(&client).symbols([symbol]).run().await;
+
+    mock.assert();
+    match result {
+        Err(YfError::InvalidParams(message)) => {
+            assert!(message.contains("invalid download symbol"));
+        }
+        Err(other) => panic!("expected invalid download symbol error, got {other:?}"),
+        Ok(_) => panic!("expected invalid download symbol error"),
+    }
 }
 
 #[tokio::test]

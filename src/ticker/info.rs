@@ -41,9 +41,10 @@ pub(super) async fn fetch_info(
             crate::core::quotes::merge_key_statistics(quote.to_key_statistics(), &quote_summary)
         },
     );
+    let snapshot = quote.to_snapshot()?;
 
     Ok(Info {
-        snapshot: quote.to_snapshot(),
+        snapshot,
         key_statistics,
         profile,
         calendar: calendar.or_else(|| quote.calendar_fallback()),

@@ -83,6 +83,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let advanced_client = Client::builder()
         .timeout(Duration::from_mins(1))
         .connect_timeout(Duration::from_secs(15))
+        .cookie_store(true)
         .pool_idle_timeout(Duration::from_mins(2))
         .pool_max_idle_per_host(10)
         .tcp_keepalive(Some(Duration::from_mins(1)))
@@ -136,7 +137,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //     .timeout(Duration::from_secs(30))
     //     .build()?;
 
-    println!("=== All examples completed successfully! ===");
+    println!("=== Custom client examples completed ===");
     println!();
     println!("Key points:");
     println!("- Use .custom_client() for full reqwest control");

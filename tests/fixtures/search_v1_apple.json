@@ -11,60 +11,56 @@
       "exchange": "NMS",
       "index": "quotes",
       "industry": "Consumer Electronics",
-      "industryDisp": "Consumer Electronics",
       "isYahooFinance": true,
       "longname": "Apple Inc.",
       "quoteType": "EQUITY",
-      "score": 32403.0,
+      "score": 32614.0,
       "sector": "Technology",
-      "sectorDisp": "Technology",
       "shortname": "Apple Inc.",
       "symbol": "AAPL",
-      "typeDisp": "equity"
+      "typeDisp": "Equity"
     },
     {
       "exchDisp": "NYSE",
       "exchange": "NYQ",
       "index": "quotes",
       "industry": "REIT—Hotel & Motel",
-      "industryDisp": "REIT—Hotel & Motel",
       "isYahooFinance": true,
       "longname": "Apple Hospitality REIT, Inc.",
       "quoteType": "EQUITY",
-      "score": 20091.0,
+      "score": 20039.0,
       "sector": "Real Estate",
-      "sectorDisp": "Real Estate",
       "shortname": "Apple Hospitality REIT, Inc.",
       "symbol": "APLE",
-      "typeDisp": "equity"
+      "typeDisp": "Equity"
     },
     {
-      "exchDisp": "CCC",
-      "exchange": "CCC",
-      "index": "quotes",
-      "isYahooFinance": true,
-      "longname": "dog with apple in mouth USD",
-      "quoteType": "CRYPTOCURRENCY",
-      "score": 20008.0,
-      "shortname": "dog with apple in mouth USD",
-      "symbol": "APPLE31391-USD",
-      "typeDisp": "cryptocurrency"
-    },
-    {
-      "exchDisp": "Frankfurt",
-      "exchange": "FRA",
+      "exchDisp": "XETRA",
+      "exchange": "GER",
       "index": "quotes",
       "industry": "Consumer Electronics",
-      "industryDisp": "Consumer Electronics",
       "isYahooFinance": true,
       "longname": "Apple Inc.",
       "quoteType": "EQUITY",
-      "score": 20005.0,
+      "score": 20018.0,
       "sector": "Technology",
-      "sectorDisp": "Technology",
       "shortname": "Apple Inc.                    R",
-      "symbol": "APC.F",
-      "typeDisp": "equity"
+      "symbol": "APC.DE",
+      "typeDisp": "Equity"
+    },
+    {
+      "exchDisp": "Tokyo Stock Exchange",
+      "exchange": "JPX",
+      "index": "quotes",
+      "industry": "Auto & Truck Dealerships",
+      "isYahooFinance": true,
+      "longname": "Apple International Co., Ltd.",
+      "quoteType": "EQUITY",
+      "score": 20003.0,
+      "sector": "Consumer Cyclical",
+      "shortname": "APPLE INTERNATIONAL CO LTD",
+      "symbol": "2788.T",
+      "typeDisp": "Equity"
     },
     {
       "exchDisp": "Toronto",
@@ -76,7 +72,7 @@
       "score": 20003.0,
       "shortname": "HARVEST APPLE ENHNCD HIGH INCM ",
       "symbol": "APLE.TO",
-      "typeDisp": "etf"
+      "typeDisp": "ETF"
     },
     {
       "exchDisp": "TLX Exchange",
@@ -87,19 +83,19 @@
       "score": 20002.0,
       "shortname": "APPLE",
       "symbol": "4AAPL.TI",
-      "typeDisp": "equity"
+      "typeDisp": "Equity"
     },
     {
       "exchDisp": "Amsterdam",
       "exchange": "AMS",
       "index": "quotes",
       "isYahooFinance": true,
-      "longname": "Leverage Shares 3x Apple ETC",
+      "longname": "Leverage Shares 2x Apple ETP Scs",
       "quoteType": "ETF",
       "score": 20002.0,
-      "shortname": "Leverage Shares 3x Apple ETP Se",
-      "symbol": "3AAP.AS",
-      "typeDisp": "etf"
+      "shortname": "Leverage Shares 2x Apple ETP Se",
+      "symbol": "2AAP.AS",
+      "typeDisp": "ETF"
     }
   ],
   "researchReports": [],
@@ -110,9 +106,9 @@
   "timeTakenForNav": 400,
   "timeTakenForNews": 0,
   "timeTakenForPredefinedScreener": 400,
-  "timeTakenForQuotes": 437,
+  "timeTakenForQuotes": 428,
   "timeTakenForResearchReports": 0,
   "timeTakenForScreenerField": 0,
   "timeTakenForSearchLists": 0,
-  "totalTime": 53
+  "totalTime": 35
 }

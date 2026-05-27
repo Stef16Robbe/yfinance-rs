@@ -26,7 +26,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     section_quote_df(&ticker).await?;
     section_recommendations_df(&ticker).await?;
     section_income_df(&ticker).await?;
-    section_esg(&ticker).await?;
     section_holders_df(&ticker).await?;
     section_analysis_df(&ticker).await?;
 
@@ -106,27 +105,8 @@ async fn section_income_df(ticker: &Ticker) -> Result<(), Box<dyn std::error::Er
 }
 
 #[cfg(feature = "dataframe")]
-async fn section_esg(ticker: &Ticker) -> Result<(), Box<dyn std::error::Error>> {
-    println!("🌱 5. ESG Scores");
-    match ticker.sustainability().await {
-        Ok(summary) => {
-            if let Some(scores) = summary.scores {
-                println!("   Environmental: {:?}", scores.environmental);
-                println!("   Social: {:?}", scores.social);
-                println!("   Governance: {:?}", scores.governance);
-            } else {
-                println!("   No ESG component scores available");
-            }
-        }
-        Err(e) => println!("   ESG data not available for this ticker: {e}"),
-    }
-    println!();
-    Ok(())
-}
-
-#[cfg(feature = "dataframe")]
 async fn section_holders_df(ticker: &Ticker) -> Result<(), Box<dyn std::error::Error>> {
-    println!("🏛️ 6. Institutional Holders to DataFrame");
+    println!("🏛️ 5. Institutional Holders to DataFrame");
     match ticker.institutional_holders().await {
         Ok(holders) => {
             if holders.is_empty() {
@@ -145,7 +125,7 @@ async fn section_holders_df(ticker: &Ticker) -> Result<(), Box<dyn std::error::E
 
 #[cfg(feature = "dataframe")]
 async fn section_analysis_df(ticker: &Ticker) -> Result<(), Box<dyn std::error::Error>> {
-    println!("🔍 7. Simple Analysis with Polars");
+    println!("🔍 6. Simple Analysis with Polars");
     let history = ticker
         .history(Some(Range::M6), Some(Interval::D1), false)
         .await?;

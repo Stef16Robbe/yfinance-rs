@@ -48,8 +48,8 @@
 //! * **Net Share Activity**: Summary of insider purchase/sale activity.
 //!
 //! ### ESG & Sustainability
-//! * **ESG Scores**: Fetch detailed Environmental, Social, and Governance ratings.
-//! * **ESG Involvement**: Specific ESG involvement and controversy data.
+//! * **ESG Scores**: Fetch Environmental, Social, and Governance ratings when Yahoo returns them.
+//! * **ESG Involvement**: Specific ESG involvement and controversy data when Yahoo returns it.
 //!
 //! ### News & Information
 //! * **Company News**: Retrieve the latest articles and press releases for a ticker.

@@ -186,7 +186,7 @@ pub(super) async fn earnings_trend(
 
     let rows = trend
         .into_iter()
-        .map(|n| {
+        .map(|n| -> Result<EarningsTrendRow, YfError> {
             let (
                 earnings_estimate_avg,
                 earnings_estimate_low,
@@ -265,7 +265,7 @@ pub(super) async fn earnings_trend(
                 })
                 .unwrap_or_default();
 
-            EarningsTrendRow {
+            Ok(EarningsTrendRow {
                 period: string_to_period(&n.period.unwrap_or_default()),
                 growth: from_raw(n.growth).and_then(decimal_from_f64),
                 earnings_estimate: EarningsEstimate {
@@ -279,13 +279,17 @@ pub(super) async fn earnings_trend(
                 },
                 revenue_estimate: RevenueEstimate {
                     avg: revenue_estimate_avg
-                        .map(|v| i64_to_money_with_currency(v, currency.clone())),
+                        .map(|v| i64_to_money_with_currency(v, currency.clone()))
+                        .transpose()?,
                     low: revenue_estimate_low
-                        .map(|v| i64_to_money_with_currency(v, currency.clone())),
+                        .map(|v| i64_to_money_with_currency(v, currency.clone()))
+                        .transpose()?,
                     high: revenue_estimate_high
-                        .map(|v| i64_to_money_with_currency(v, currency.clone())),
+                        .map(|v| i64_to_money_with_currency(v, currency.clone()))
+                        .transpose()?,
                     year_ago_revenue: revenue_estimate_year_ago_revenue
-                        .map(|v| i64_to_money_with_currency(v, currency.clone())),
+                        .map(|v| i64_to_money_with_currency(v, currency.clone()))
+                        .transpose()?,
                     num_analysts: revenue_estimate_num_analysts,
                     growth: revenue_estimate_growth.and_then(decimal_from_f64),
                 },
@@ -339,9 +343,9 @@ pub(super) async fn earnings_trend(
                         hist
                     },
                 },
-            }
+            })
         })
-        .collect();
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok(rows)
 }

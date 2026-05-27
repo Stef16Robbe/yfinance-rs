@@ -19,9 +19,9 @@
               "name": "Mr. Christian  Klein",
               "title": "CEO & Member of Executive Board",
               "totalPay": {
-                "fmt": "6.19M",
-                "longFmt": "6,192,919",
-                "raw": 6192919
+                "fmt": "6.12M",
+                "longFmt": "6,123,764",
+                "raw": 6123764
               },
               "unexercisedValue": {
                 "fmt": null,
@@ -42,9 +42,9 @@
               "name": "Mr. Lars  Lamade",
               "title": "Head of Global Sponsorships & Deputy Chairperson of the Supervisory Board",
               "totalPay": {
-                "fmt": "341.24k",
-                "longFmt": "341,240",
-                "raw": 341240
+                "fmt": "337.43k",
+                "longFmt": "337,430",
+                "raw": 337430
               },
               "unexercisedValue": {
                 "fmt": null,
@@ -65,9 +65,9 @@
               "name": "Mr. Dominik  Asam",
               "title": "CFO & Member of Executive Board",
               "totalPay": {
-                "fmt": "2.98M",
-                "longFmt": "2,977,026",
-                "raw": 2977026
+                "fmt": "2.94M",
+                "longFmt": "2,943,782",
+                "raw": 2943782
               },
               "unexercisedValue": {
                 "fmt": null,
@@ -88,9 +88,9 @@
               "name": "Mr. Thomas  Saueressig",
               "title": "Member of Executive Board",
               "totalPay": {
-                "fmt": "2.94M",
-                "longFmt": "2,935,842",
-                "raw": 2935842
+                "fmt": "2.9M",
+                "longFmt": "2,903,057",
+                "raw": 2903057
               },
               "unexercisedValue": {
                 "fmt": null,
@@ -111,9 +111,9 @@
               "name": "Mr. Sebastian  Steinhaeuser",
               "title": "Chief Strategy Officer & COO and Member of Executive Board",
               "totalPay": {
-                "fmt": "2.51M",
-                "longFmt": "2,506,350",
-                "raw": 2506350
+                "fmt": "2.48M",
+                "longFmt": "2,478,362",
+                "raw": 2478362
               },
               "unexercisedValue": {
                 "fmt": null,
@@ -134,9 +134,9 @@
               "name": "Ms. Gina  Vargiu-Breuer",
               "title": "Chief People Officer, Labor Director & Member of Executive Board",
               "totalPay": {
-                "fmt": "2.97M",
-                "longFmt": "2,971,142",
-                "raw": 2971142
+                "fmt": "2.94M",
+                "longFmt": "2,937,964",
+                "raw": 2937964
               },
               "unexercisedValue": {
                 "fmt": null,
@@ -157,9 +157,9 @@
               "name": "Mr. Muhammad  Alam",
               "title": "Lead Product Engineering & Member of Executive Board",
               "totalPay": {
-                "fmt": "2.64M",
-                "longFmt": "2,641,669",
-                "raw": 2641669
+                "fmt": "2.61M",
+                "longFmt": "2,612,170",
+                "raw": 2612170
               },
               "unexercisedValue": {
                 "fmt": null,
@@ -180,9 +180,9 @@
               "name": "Mr. Andreas  Hahn",
               "title": "Chairperson of Works Council Europe & Works Council Europe Rep Member of Supervisory Board",
               "totalPay": {
-                "fmt": "276.52k",
-                "longFmt": "276,522",
-                "raw": 276522
+                "fmt": "273.43k",
+                "longFmt": "273,434",
+                "raw": 273434
               },
               "unexercisedValue": {
                 "fmt": null,
@@ -203,9 +203,9 @@
               "name": "Jakub  Cerny",
               "title": "Demand Manager & Works Council Europe Representative Member of Supervisory Board",
               "totalPay": {
-                "fmt": "276.52k",
-                "longFmt": "276,522",
-                "raw": 276522
+                "fmt": "273.43k",
+                "longFmt": "273,434",
+                "raw": 273434
               },
               "unexercisedValue": {
                 "fmt": null,
@@ -226,9 +226,9 @@
               "name": "Mr. Pascal  Demat",
               "title": "Solution Advisor HCM & Works Council Europe Representative Member of Supervisory Board",
               "totalPay": {
-                "fmt": "276.52k",
-                "longFmt": "276,522",
-                "raw": 276522
+                "fmt": "273.43k",
+                "longFmt": "273,434",
+                "raw": 273434
               },
               "unexercisedValue": {
                 "fmt": null,
@@ -246,7 +246,7 @@
           "industry": "Software - Application",
           "industryDisp": "Software - Application",
           "industryKey": "software-application",
-          "longBusinessSummary": "SAP SE, together with its subsidiaries, provides enterprise application and business solutions worldwide. It offers SAP Business AI; SAP S/4HANA that provides software capabilities for finance, risk and project management, procurement, manufacturing, supply chain and asset management, and research and development; SAP SuccessFactors solutions for human resources, including HR, time, payroll, talent and employee experience management, and analytics and planning; and spend management solutions that covers direct and indirect spend, travel and expense, and external workforce management. The company also provides SAP customer experience solutions; SAP Business Technology platform that enables customers and partners to build, integrate, and automate applications; and SAP Business Network, a business-to-business collaboration platform that helps digitalize key business processes across the supply chain and enables communication between trading partners. In addition, it offers SAP Signavio to help customers to discover, analyze, and understand business process operations; industry solutions that provide customers and partners with industry-specific solutions; and SAP LeanIX to visualize enterprise architecture, assess interdependencies and the potential impact of IT modernization, and manage the transition toward the target landscape. Further, the company provides WalkMe to execute workflows; SAP Enable Now, which offers e-learning content embedded in SAP workflows; Taulia solutions for working capital management; and sustainability solutions and services. Additionally, it provides services and support solutions. SAP SE was founded in 1972 and is headquartered in Walldorf, Germany.",
+          "longBusinessSummary": "SAP SE, together with its subsidiaries, provides enterprise application and business solutions worldwide. It offers SAP Business AI; SAP S/4HANA that provides software capabilities for finance, risk and project management, procurement, manufacturing, supply chain and asset management, and research and development; SAP SuccessFactors solutions for human resources, including HR, time, payroll, talent and employee experience management, and analytics and planning; and spend management solutions that covers direct and indirect spend, travel and expense, and external workforce management. The company also provides SAP customer experience solutions; SAP Business Technology platform that enables customers and partners to build, integrate, and automate applications; and SAP Business Network, a business-to-business collaboration platform that helps digitalize key business processes across the supply chain and enables communication between trading partners. In addition, it offers SAP Signavio to help customers to discover, analyze, and understand business process operations; industry solutions that provide customers and partners with industry-specific solutions; and SAP LeanIX to visualize enterprise architecture, assess interdependencies and the potential impact of IT modernization, and manage the transition toward the target landscape. Further, the company provides WalkMe to execute workflows; SAP Enable Now, which offers e-learning content embedded in SAP workflows; Taulia solutions for working capital management; and sustainability solutions and services. Additionally, it provides services and support solutions. The company has a strategic collaboration with Fresenius SE & Co. KGaA and Avelios Medical GmbH for the development of a cloud-native, hospital information system that enables digitalization of clinical and administrative processes with AI integration. SAP SE was founded in 1972 and is headquartered in Walldorf, Germany.",
           "maxAge": 86400,
           "phone": "49 6227 7 47474",
           "sector": "Technology",

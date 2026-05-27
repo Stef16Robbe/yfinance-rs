@@ -5,6 +5,13 @@ fn display_opt<T: Display>(value: Option<&T>) -> String {
     value.map_or_else(|| "N/A".to_string(), ToString::to_string)
 }
 
+fn display_epoch_date(timestamp: i64) -> String {
+    chrono::DateTime::from_timestamp(timestamp, 0).map_or_else(
+        || timestamp.to_string(),
+        |date| date.date_naive().to_string(),
+    )
+}
+
 #[tokio::main]
 async fn main() -> Result<(), YfError> {
     let client = YfClient::default();
@@ -23,9 +30,9 @@ async fn section_earnings_and_shares(symbol: &str, ticker: &Ticker) -> Result<()
     println!("--- Fetching Advanced Analysis for {symbol} ---");
     let earnings_trend = ticker.earnings_trend(None).await?;
     println!("Earnings Trend ({} periods):", earnings_trend.len());
-    if let Some(trend) = earnings_trend.iter().find(|t| t.period.to_string() == "0y") {
+    if let Some(trend) = earnings_trend.first() {
         println!(
-            "  Current Year ({}): Earnings Est. Avg: {}, Revenue Est. Avg: {}",
+            "  {}: Earnings Est. Avg: {}, Revenue Est. Avg: {}",
             trend.period,
             display_opt(trend.earnings_estimate.avg.as_ref()),
             display_opt(trend.revenue_estimate.avg.as_ref())
@@ -56,7 +63,10 @@ async fn section_capital_gains() -> Result<(), YfError> {
         capital_gains.len()
     );
     if let Some((date, gain)) = capital_gains.last() {
-        println!("  Most Recent Gain: ${gain:.2} on {date}");
+        println!(
+            "  Most Recent Gain: ${gain:.2} on {}",
+            display_epoch_date(*date)
+        );
     }
     Ok(())
 }

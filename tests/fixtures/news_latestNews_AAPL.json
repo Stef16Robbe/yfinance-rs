@@ -4,762 +4,758 @@
       "nextPage": true,
       "pagination": {
         "contentOverrides": {
-          "04227cdd-e778-3415-8afb-421a113c1344": {
+          "03158ae0-fc88-3d9e-a82c-3cef1c7dc26d": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "0517a5d1-8b82-349a-802f-5fb9eda48dbe": {
+          "035fc76e-b37d-3da5-b9c4-e70a129d2a68": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "075fb943-8918-3237-a816-6e5b1efe45b5": {
+          "03a1bb2f-5d30-31a1-803b-d5b37f3bdbf2": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "093ef3a0-be3e-3ce0-800e-b422714a46d2": {
+          "03e6fca6-1a94-3d07-b86b-a598a03dc9ce": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "099bf186-4d99-3883-85c6-59ba5c8fc1c6": {
+          "040a12d7-0acc-3fcd-8dc4-a9dbf72f7c40": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "0b2d5658-b362-3c38-a9da-f11c5b578bee": {
+          "0546c49f-f50f-3b9f-bb55-a9ea17571be4": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "0eb457af-b34c-3ac2-8210-33f10e673cb0": {
+          "0ae46de2-4321-3ddd-ade3-9b1c7b012f27": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "111e10ac-0c67-35bc-855f-6162b20523d7": {
+          "0b6519f2-1ed2-3363-983d-f5c9cba7d09e": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "11d660d6-d5c2-37ff-bb05-ab6a72b3f8b5": {
+          "0c1c639b-b162-349e-9731-75753ffe2344": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "135a52e0-0f7b-35a7-bf30-79e66f1207a0": {
+          "0ce5a1a8-473c-332a-beba-012a28e31d58": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "13ff0c25-855d-345b-afe6-03ad14d58e9e": {
+          "0cf9769b-026a-381c-a04a-7a8c0fbe8a23": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "14dccb9f-4552-35ca-a179-e4f1e97a440c": {
+          "0f9e15a6-d6e7-3e39-b601-ed5a73e1158b": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "15019676-d19e-3269-b46e-2da6a4e895e0": {
+          "0fe4e1e6-0a18-3468-a66b-d736d2113063": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "16375cb1-2978-3741-b6c6-519ce55cb6a7": {
+          "10a79f66-67f4-3faf-a207-19916875da2f": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "17a887f3-aee4-4538-8cad-1fb75e1342ac": {
+          "116457c8-ef14-3e6e-841a-b99cd79d0ba3": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "17edc2ac-4e6e-30d8-ab75-6b37b260edbd": {
+          "1287a8cc-0cb6-3605-838b-c9cf4597103b": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "18f68de7-603c-344c-a8a0-eab471bc77d5": {
+          "12ea1edf-82e5-32d2-9948-151ae40c0d4f": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "1afa1f22-2f01-3666-988e-7e7bcaa2d9be": {
+          "15bdcd6d-2e1f-3f7a-8ddd-9b9bad36d9bb": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "1d192f9f-2bb1-3471-988c-2e4429f09aea": {
+          "18eee7ca-2e5c-3786-a9c3-798d6f1a8ec1": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "2112caf8-070f-3409-ac52-4b00793c2d31": {
+          "1901eb87-3fa1-39ef-a89e-078ab9fd476c": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "224c3e88-97ec-37e4-82e4-16456169c7e2": {
+          "1a8da987-a074-3d13-8ca4-546f545d9ba5": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "2344ee52-91c2-36e3-8b04-fbf543561762": {
+          "1f61b360-ab77-3895-9b64-4c9cc45984da": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "2414b352-5931-3326-8b81-b46fc5b08827": {
+          "20ef7306-4981-3042-8b60-05e2e554e574": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "25b74fbe-55fd-3bb3-a67c-da4c9f757e9e": {
+          "20f7fa70-6009-3376-a339-4348c48a6723": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "25dab25f-0afb-3f04-805a-78bcb4f17049": {
+          "21016e07-2b22-39aa-891f-9a1f038849b8": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "25e71872-22c0-36cc-8af2-043e9304ba47": {
+          "23c4cf76-25a7-3731-b094-72aa11ce5476": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "264f0653-66c1-4269-91f9-9988f980b3fe": {
+          "23d002cd-e0f2-3a74-9198-9d42e2cc6770": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "2889148d-0d84-31bf-96c4-3040cbd10704": {
+          "253cc50f-2f44-341f-8de8-209e63f112b6": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "293fc7e7-4df6-362f-b1c7-067ff7ef54e4": {
+          "25b825ef-27db-3ccb-b5f0-aa553c82794c": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "29626242-0d1e-323d-9743-9431a92de0bb": {
+          "282e80c5-3511-3c4e-b477-c9027cb67adf": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "29960f88-ce82-3209-82e0-a4322949cde4": {
+          "283be957-c38d-3669-a8b3-c77b0df2bac1": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "2b328ea1-40f3-3e62-a4ba-cb053d5a1ba7": {
+          "2976f7af-4aeb-3114-8d13-15b60572a006": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "2cba985f-67c2-36df-967a-81a2436d5a4d": {
+          "2b590634-4b35-3454-a513-1d2f2efa33cb": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "2d30bef0-2312-3be4-a12c-d3f0462d94f0": {
+          "2b74329c-72d7-3199-b344-4cf850239d67": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "2da3b0c0-3eba-32b3-a063-3625b2c120f3": {
+          "2bfee681-65fa-3a8e-8cd8-a28e0931faf0": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "33f058fb-c70b-3169-b945-bf352644719e": {
+          "2dd92b81-3170-35d0-9746-a9dd8676be7d": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "35300099-29ba-3262-ab35-f291c674b548": {
+          "2f88cb34-ce2f-3259-9d25-f4202b85b6c1": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "356f3671-8cf5-36ef-9d65-4cdaeb6e72d8": {
+          "31eac3d1-90d3-341d-b6ff-540bfff24816": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "359e7670-5764-3d06-a534-85e107e4ca08": {
+          "3462abbf-8507-30ea-80c7-58611746d45f": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "37dcf159-78a2-3280-8067-68d033f4d7ba": {
+          "359c6980-3e3d-3143-9eac-bcf4f8905da8": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "3a776d49-1fdb-355d-aaca-6fb12d94e525": {
+          "392e68f1-ada0-32a9-9b4c-6b5b0953f434": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "3b6772e0-5b5a-3427-917f-650fa8ce7ecb": {
+          "3c7f0d58-6584-3d74-acc6-40094ea3617e": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "3c499f92-7bc4-3a3b-9402-eee1feaec08c": {
+          "3d3646c4-d4ba-3c00-a591-a2480ecba71d": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "3c87ad20-46fe-3fa1-b0f6-18598006109b": {
+          "3ec94b53-6d94-336a-8ffb-9a3e5082ef22": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "3d622745-380c-413a-a2ec-6dd0cd1b2d75": {
+          "3f57d5f6-d5eb-35a7-b67c-bc71a097de96": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "3e02a6b9-1baa-340d-b06e-e987823f3dd8": {
+          "3f6f9c83-848f-38d0-a877-52c7bd10eec4": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "421bac1e-301a-4bbf-972a-c9652a799ae1": {
+          "3f7e5195-e48d-384f-9523-b4468cfc089a": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "42221983-619e-309e-a1e5-775b5921f47f": {
+          "416ba91e-a404-385f-b3c9-7d010cd520cb": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "43944e48-d902-345f-8cde-70fa751aa021": {
+          "41c7f982-9b8f-3f30-bf41-b555c8dc5413": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "43e846fc-d46c-369d-9e19-8d3e1dfaa28f": {
+          "43008863-39bd-38f1-969a-4335c3a5f4a1": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "450edb92-4f98-3186-816c-535a2b9cb292": {
+          "43328911-7d1b-3df5-ac10-75cbeda9ee8e": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "4511b1ce-1c3d-376a-8e71-83272fdf97f4": {
+          "4390460c-1cfa-343a-8ab9-69a096965d73": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "452f3eec-524e-35cd-b126-d65eceefaa34": {
+          "45739fb7-5abe-32cd-9fd7-dd9398f674b4": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "45a21fec-b276-3d2d-8386-3fbef6cb9332": {
+          "46e5d03c-235d-3996-a235-61491169a840": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "46126680-aa8d-37f4-a8d4-94cdb1619f20": {
+          "4777d2bf-09e0-462d-ad84-8027df53e259": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "46b5195c-43ac-35af-95bc-943ca72dcd67": {
+          "477cad0a-c84c-321c-8b4f-bb418bfd36b0": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "47632e5d-0cfc-3a85-83e4-5de0cc5617d2": {
+          "48c8bcd5-bddc-3084-8358-7258a49df030": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "4905fe0e-5e08-317b-98ae-18a4e5a531f0": {
+          "4a367f94-a29a-4b87-bbb7-a2b2798639fc": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "4988ae04-7f7c-3243-bbed-4ff93b8e739c": {
+          "4b62852e-fb6e-3dc4-8cd6-bcbeb63ba4da": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "4a65be05-81f6-31f0-9080-3e327408f250": {
+          "4bf4cab6-25a9-328f-ac10-e0e4a941ec55": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "4a73230c-d9b1-34b9-8ed2-6e46f6bd3178": {
+          "4c4ce601-5fb5-3874-b1af-335361e83d89": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "4a89494e-c13b-32c7-b59f-1229520af23b": {
+          "525f2bda-f948-308f-aa0e-9c46135c669b": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "4d5bc085-36dd-3449-9868-cb96f121d36c": {
+          "52cf50d1-12b4-3df8-b57f-f0593302fac0": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "4e89ee50-520e-3ab2-b259-016ed4605fb3": {
+          "5573faa1-bf28-4613-b523-c876f04e73be": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "4fecf235-52fe-37f6-aca2-3ac35835df65": {
+          "56d43c1b-3465-3ee7-b77b-12ed01d73ec8": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "4ff03f80-56a0-3fe6-9d30-8a456dc074f8": {
+          "57fde021-112d-39ee-933b-2f4d81a83109": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "50317d82-5aa0-3f61-9619-e23b80fd4482": {
+          "5997084a-2ca2-348e-b4f1-7f63a798de48": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "50df854f-bb6d-3b93-99d0-908c3f1389a8": {
+          "5a45616b-6792-31f9-a50c-b397ce9c1a61": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "51ec4bce-c535-34db-b6aa-d41d5ded577c": {
+          "5c1eeb74-866c-3957-bd83-77aa9f88ff4e": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "533b1bdd-fe36-3e06-a8f7-1bf27d70073f": {
+          "5c22dd64-421f-3af6-a720-53c25729a59e": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "534396eb-ff84-365d-8344-20180535e629": {
+          "6116d633-dbd1-31c2-b5ec-b760a7ac44fc": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "53604e91-3987-3b0d-8762-aa3b4728523c": {
+          "6571c206-7af8-305b-a1bb-b6211ffa772c": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "557e85b2-771f-3e79-9b30-777536aafec9": {
+          "6623e8d8-acaa-34ed-8572-a6f12c7aac97": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "5612c098-23bd-3382-a61a-ec8d81375bc5": {
+          "66365d21-553e-3c90-b7de-3097c46b0043": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "565c1187-788d-34c8-913e-83e432f255b4": {
+          "66bfcf13-6061-35e5-b46a-597a52491a5c": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "5cbc864f-3625-3fe7-96ac-9c25a2b9d7ae": {
+          "69c91d43-1bc4-39e1-8ae9-2830a3094a6a": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "5d03d5cf-ca4e-319b-aa1b-f31b44144ef5": {
+          "6b6450a4-48c2-3f26-92aa-e5df454b1526": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "5e20d84f-266d-3597-a06a-223fe887c18a": {
+          "6bf3a845-f74c-3e47-9777-869fff9f0cb7": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "5f4a1471-3158-3f7c-b765-2992fa396b66": {
+          "6ca3c68d-4f89-3754-b9d3-79bdac9d1e3e": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "6599abd2-f8d9-3dc7-a895-0fbe9688bf85": {
+          "6ccb4988-111f-37a7-9188-825e002a54cb": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "65a6a1f1-4161-3a0b-b682-886e40f8527d": {
+          "6da26026-88fc-382e-b023-27e56796f60a": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "65b8d9b6-e019-369f-b24b-9948e024f2a4": {
+          "6e7ae002-b731-3e82-a0f0-8a83539aa8ea": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "672385a6-dde5-320a-977e-4908967f25ba": {
+          "709fc122-4fe3-3d94-8f20-e9c646b66c53": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "690f1400-7b80-396f-84f4-4681a7d60168": {
+          "71aaf321-c9a1-3e7f-94fd-23789bf077b5": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "6a5daf14-cf44-3e2d-b9b0-6930bb5a80da": {
+          "727fadd0-eb55-3072-a579-3baf960cdcb2": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "6a6171d5-fb6b-3e81-bbda-453261f6b2cf": {
+          "731e7001-39eb-3ecf-9f90-0ef1056d186b": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "6e0864ec-d76e-3e3d-a052-be2749b7b1d6": {
+          "75958f42-1db8-32fe-9ead-3a630b70a063": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "6f7944de-64cd-36cb-bd00-78adf515829d": {
+          "760c1fbb-ea0d-3717-9848-411e052ad7ac": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "707ef010-51b1-3fb3-9c03-c4272184b8e4": {
+          "775e5539-62d3-4868-8bc7-a2e19c4f57cd": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "7229a083-2391-4049-a9a1-ff24b8786f38": {
+          "77658466-25ac-3212-9626-ffe6098b0c9a": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "72425f9c-129a-31d2-bbc1-649a8e930846": {
+          "78cb21bb-bc10-3002-9a48-4002ff57d6ea": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "7311c744-9487-38d8-8d38-929bdd53d82f": {
+          "78f18d6c-f457-3971-a3b5-6d13e68b17c5": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "75e3d1d4-8729-30de-b01a-9dd5786e9c90": {
+          "79fdd491-a5e5-3f9e-acd3-79e9db3f572b": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "786ba98a-f0b0-383d-a75a-dbd83583b10d": {
+          "7a2939ba-141b-3b09-a13b-4449788db02b": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "78aeaf4a-dbf8-3675-b522-d5ce060bc6cc": {
+          "7d595973-d81a-3b10-a4f8-9b994a5f7bc8": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "790cf349-a84a-3341-b582-208f9d5e98a3": {
+          "7e4845c8-58f8-3464-826b-bce2c25d60fd": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "798a194e-a936-318b-8188-ce92c46f264e": {
+          "8019242d-a9bf-3be0-9b5f-ad5f4229be1f": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "7a904811-2e79-4e31-a863-45f49f944810": {
+          "8072c017-4383-3c70-a75b-b9aa748489e8": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "7ca364ff-1893-3939-aa3f-5f8c4b7d3f35": {
+          "81981fa5-97b8-3100-9a29-e15013aba587": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "7eb41cea-0a5d-363b-911a-8e5345db0d11": {
+          "825bfc6e-d380-319c-9895-777f98ebf2d4": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "80955a8d-333a-3bc3-9f4d-b1273f0b831c": {
+          "82b2ac1e-db5c-3196-a2a4-80d151a527ae": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "848b5a97-355d-3912-ba63-2443f8a7531d": {
+          "8435c0d8-64e1-36be-9ec8-8bfd458e0dae": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "84eab64f-c62d-37e5-b8f0-ebff71e6fd07": {
+          "844bdc04-b9da-3ced-8eb5-919515d057e2": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "85ab0fe5-c49d-3f4f-b8d5-c3c4a52ab42a": {
+          "84de7ca8-4c89-3e50-aa59-e87b466692a9": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "8a3d3eb6-9ea4-3834-bb03-e6938132ae07": {
+          "869ba034-85c8-3179-abba-8396a892f80f": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "8bbabf3f-f948-44b0-911f-37aa25ac474c": {
+          "8884375f-11f5-3f91-b617-70c4ac4d320b": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "8cc2de6e-c47c-32d9-b444-ce068f59bdd5": {
+          "88951021-f277-3999-88ba-01af402d1463": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "8eb39bb2-38fa-3c2a-982e-9b9817c6b736": {
+          "88dc8b00-3389-303f-8e21-f6554b930367": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "8f5c96ed-28fc-31b7-bac2-221910bec5e0": {
+          "8a78cc2a-fa04-4864-8265-2858ea6018bb": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "90918ec8-da97-3ad4-9fd5-ddfc2a796ce0": {
+          "8b0e58df-3806-350b-9255-8806ff86c665": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "91e08e3c-5dd1-3620-b2ab-1c7bb660ed3b": {
+          "8c2abe2a-3228-3134-9aeb-c02e8425d790": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "92a89e0c-c301-399a-8bd8-8ef9d4fc1508": {
+          "8c36b888-eda8-3d4e-8957-b2fb014c3bae": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "9317ec34-d7a6-3034-84d6-2a2dc880a189": {
+          "8de17353-7913-3c76-9175-304067fe59cc": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "964ea30d-37c8-3204-9790-488b99f1adf9": {
+          "90376ef6-f37d-30c4-8bfa-ba8f55dbdde1": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "96d7dad1-9247-355c-b483-d03f725f928f": {
+          "931506c9-9e99-38e2-a49e-18e3405cf510": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "977f1f74-2e80-341d-b89a-b15d41281c22": {
+          "945679e1-9504-37e4-be47-df7a65c2a3f1": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "97d60a04-22e7-3e5e-90fa-8c8105265aad": {
+          "94b4a63d-12b7-3d79-a80d-2877eb16736d": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "99caf1d1-bf02-342e-a610-963edfe19ef2": {
+          "94c22e89-1e38-3c60-bef7-0bfd14139d5a": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "99cdeb8c-ed9a-392a-95f0-cedf61a4d928": {
+          "95d55df1-ec69-3c8c-8996-0f37000f8ca8": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "9d2daee2-fae2-3def-af6e-59f7ea43151f": {
+          "9691deb8-af06-3be6-9ba8-7df3636c90d1": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "a078dd75-a761-3d6d-93ba-c1761a265bd1": {
+          "985c99e0-71bf-3f58-a6fc-2eb5da51694f": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "a0ae0817-5e1c-3e57-af52-011bce0875d7": {
+          "9a619c56-f352-4f0b-aa80-37e659bdcbaf": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "a0e94489-6dd8-3443-bb53-f3ef388ec897": {
+          "9fe7a56e-8e38-3901-b9b0-a4ff3feefb08": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "a1a5e340-787e-33f5-8a5b-95e970093f64": {
+          "a0ffc14c-2ffa-38bd-a26d-98a16356bc98": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "a1bf0739-0556-3121-8a0d-64b400686738": {
+          "a10c93ae-f67c-3ce4-9997-d530f76676dc": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "a5293806-8496-31fe-82f3-24836e48924a": {
+          "a26309de-1ecd-3ae0-90ca-6432dd0f3cd5": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "a9de2c09-849b-3348-81e0-121a13308fb0": {
+          "a2f76011-c506-4881-ae9b-9041fc6ceef2": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "aa5c66b0-8afd-3cc8-bf8f-14f61492fd69": {
+          "a567a4da-85b2-3fa7-9601-4a0a937fc044": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "aa88dd47-a686-3a53-be11-fe59116615ef": {
+          "a5b0ac44-5123-3ac8-a86b-cb5c900221c6": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "aad9e371-efd4-30b4-9ec7-ebc922b57fe8": {
+          "a6a25e32-b817-3497-9c7e-78006ed77c1b": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "ac7c8e11-2749-32c8-9195-00131002da1b": {
+          "a7dfd4b5-b37b-342c-b101-ca1cbecc82a6": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "ac801993-bd20-36ed-84e4-46ff9ec05ba0": {
+          "a9cb3919-2ec5-3183-869a-91bbc51c225e": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "ad1f7ae4-623d-3f23-83d7-7d3f26d8bbae": {
+          "aae61932-3bc3-3263-b199-e93672b9945f": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "ad425a98-666f-3adf-b358-80865cbde42a": {
+          "ac13f368-f41f-3b94-aedc-4379d7ea6ca1": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "ad7f4867-0de2-3fc1-a9cc-e066412831a3": {
+          "ae629e01-1ccc-34b6-bbae-f8a2170e61b4": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "ade25efd-e31f-312d-81ae-beccc1445da9": {
+          "b042bacd-7632-36d2-b4a7-cb05acf455a2": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "aeaff27e-f0f5-3356-a2db-24e62eb39341": {
+          "b061461b-06c0-389f-960a-f5a912247774": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "afa4d0d0-4b39-3772-82bc-383fb5b7fdb6": {
+          "b2d0aad4-43ae-3900-88f7-86467c13ab1f": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "b2765358-625c-3e6f-b869-7a3c37a9e424": {
+          "b3f996f0-b0dc-3b21-a638-8e7fc8b09330": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "b3a563ed-fadd-34ef-be57-a92dc96bf211": {
+          "b48c2a2d-bcfa-3bc6-a9de-40e9bf89da23": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "b51a5302-483c-3062-a63f-5de15e90af0d": {
+          "b5d7b737-5bf9-30d0-84d3-b5e96b3f9790": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "b5a7ab3f-803c-3b52-a512-d450be9d5aa6": {
+          "b64576c3-8d8d-3ecf-bcf9-4b65167ba706": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "b717ed57-c26d-3f68-82d9-fcdb5783af17": {
+          "b7b4e88d-e963-3f8b-939f-1197a2dfea13": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "bbc14093-bcba-3598-bce3-0c55ae84ae07": {
+          "b8a936db-38c3-3fc8-8b58-c22c16414a7e": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "bc11440c-1bdc-3efc-a7e4-ee2821e4284f": {
+          "b8fcd66a-1ce9-3c01-86f7-beb98447a4a4": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "bd2863ca-53c8-306f-af3a-831f374b3149": {
+          "b9c2d48c-73c5-34db-b32e-b9ccb9673bae": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "bdbcf432-ce0d-3bc2-a2fa-f5a111b272ec": {
+          "ba0257b6-ce2f-3985-bed1-88e9a1214e30": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "be55e781-f8d2-333f-9e97-bad3ddf4d8aa": {
+          "bc8aeb2c-c899-3f27-97d5-6323fcd312b6": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "bf8db5e7-3763-3e76-84bd-8a8983f41de8": {
+          "c12878e0-08e9-3985-ac1c-330e14e798ce": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "c0412446-301a-3635-9328-8ea1c382b70c": {
+          "c553a44f-7a90-30bb-90cd-e5d4b84f6c27": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "c47c58e2-5472-4f50-a1da-9f3048d5f756": {
+          "c70ea2b1-b0e2-39eb-a53c-ccca99ead580": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "c544634a-9e0a-341a-86b3-1bcc230574c7": {
+          "c8006821-7b40-3d8f-8720-312e9022e4f7": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "c55e02d4-64ea-3d66-b2e8-7cb5ec3552ca": {
+          "c829e025-b953-391e-9eef-232a6e195e69": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "c77b8c11-f546-3a88-829e-0863f53bbd07": {
+          "c952441f-9b4b-345d-b9da-5c7f74bf9290": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "c919770c-f757-30be-b484-31ecfe768beb": {
+          "cbe0e11e-3a0b-3e30-b858-200f10311b04": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "caf9f890-1f4d-3965-9a37-84d6158621c1": {
+          "cf7b85b2-84e3-3561-a588-8281a17a5e1d": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "cb83fd42-f698-3aa7-bcfb-4d8e7a81b48b": {
+          "d15acd99-0648-320b-b6b9-e894f8bb5096": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "cdc4ce9c-04f9-3003-9993-302ead71fee0": {
+          "d2764b75-1f49-3e4e-b295-92db70696c24": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "ce6f897a-b2aa-318f-b336-9283b9a1a8f0": {
+          "d64ae82c-b111-3f20-a99e-b72cffbc7847": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "cea41dfc-3810-3347-92cd-68e62c746607": {
+          "db81e645-731b-3345-9f5f-c52dff11c460": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "d07a5b64-f2fa-3e69-bda0-0e376589cb3d": {
+          "defc5482-a175-3985-847a-948024fe3c75": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "d222bebf-32a4-394d-a9e6-28329abef5e4": {
+          "df2c8fbf-f8c1-3568-8cae-b0507c3c440f": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "d298c34b-7aa1-3618-81cb-db9fa60d8b67": {
+          "df433717-bbdc-39d5-9975-396c9b569557": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "d2ee42ec-e2ba-30f3-9530-dd50a51931f6": {
+          "e0bbef37-9b84-3687-ba5f-bf93070657f3": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "d5580f49-376d-31af-9716-2d896675340f": {
+          "e0cc200d-c03d-3c43-a90e-d9ccc7f4a513": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "d7f01962-f038-31a4-8b4c-00047479796c": {
+          "e0d96949-2190-3023-8a4a-b1737ea44d77": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "d987c0e2-13fb-3c4a-aa59-062d6b7638ec": {
+          "e2c0b21e-91db-350f-aced-fbd5c48e0367": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "d9a791a0-2127-3960-b0ec-2def54895e2d": {
+          "e35e3629-ea86-3d7c-84d2-f9ebae36c0a7": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "de645e70-b33c-3fec-9a0c-7bcba34bf488": {
+          "e3f96123-19c4-3df5-8c3a-645cc4c1a38f": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "df10a2c6-0b81-39cc-9887-19262414d6bb": {
+          "e4d94239-9e7f-3885-935c-84fc954ef054": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "e0511dbc-3de4-38d0-83cd-89298edc7343": {
+          "e56e4b08-85b0-3d13-b6f6-47c150ad7597": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "e195d1cf-0e64-37fb-b0f2-1b19277da6fc": {
+          "e63e3c93-178e-35ec-8819-4a9616bf0c11": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "e2975d43-bc7f-3920-973a-d137098ad7c7": {
+          "ea4b7918-99b1-3121-9e12-737ed03bcdf8": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "e3f5049c-02ee-3aff-b88f-a54bd2d860fb": {
+          "ef2cfb1d-3fb4-3956-9e24-b17f82a1a7c7": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "e8975bff-0c37-3cec-9fc6-6a60ab7700dd": {
+          "f070a8b7-52d9-4d20-83f2-9d149258aa17": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "e961c254-863d-3a49-be6e-f450be4369ff": {
+          "f16d694f-6cd0-3c4f-8512-54360a76df97": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "eb861412-9d20-3ab3-a726-6e7cd7458055": {
+          "f39531e7-7d1a-39ac-825f-5fdff9b2f7fc": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "ebb20316-0974-31c1-b70c-2d09d0c19425": {
+          "f6d3b1f2-1343-3012-993d-2f7e1bd1347e": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "ecf17c8a-78d8-3739-bab7-d415f60f6919": {
+          "f718716a-965a-3cc7-8aaa-f66b130d8ba1": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "f42a29ff-bfaf-3506-b8d9-df0a93f0a684": {
+          "f734afb9-0621-382e-a271-25983db84eef": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "f42bf5a2-bda6-3df7-a49f-2ae0089c31c0": {
+          "f7d85e8a-bbd5-49e2-8ecf-b5632eff27cc": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "f7577ad5-5899-3cf2-824e-bb7513d96b6d": {
+          "f8bf48b6-73fe-3182-99c8-8200edb9f3b9": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "f7e96b1d-0044-37de-bea5-805809223f8a": {
+          "f9cafa2a-1886-3c5d-ba9f-b59474f6a131": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "fb5758ab-d5cd-330e-aed0-46e515c90039": {
+          "fc86c695-9da8-3e8d-8f12-573c1a7b78e3": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "fc3db00a-85a1-3d99-91df-a0a18ad775ef": {
+          "fc8c0629-c493-3422-9192-dace9dcdb24e": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "fd11e686-9a45-3110-a645-b1c9776a10cf": {
+          "fd5588ad-0c14-30fe-aa09-05d69a50c417": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           },
-          "fda4ae4f-67d1-33b5-a3be-4a7ec1ac1434": {
-            "editorsPick": false,
-            "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
-          },
-          "ff03729d-d5d0-343f-acce-c562e98452d6": {
+          "fe81cd41-6995-3b41-ad7e-869cdb618768": {
             "editorsPick": false,
             "list": "9815e400-c5fd-11e9-9fff-40d60c11b0a1"
           }
         },
-        "remainingCount": 188,
+        "remainingCount": 187,
         "requestedCount": 10,
-        "uuids": "ce6f897a-b2aa-318f-b336-9283b9a1a8f0:STORY,e0511dbc-3de4-38d0-83cd-89298edc7343:STORY,15019676-d19e-3269-b46e-2da6a4e895e0:STORY,6a6171d5-fb6b-3e81-bbda-453261f6b2cf:STORY,8f5c96ed-28fc-31b7-bac2-221910bec5e0:STORY,359e7670-5764-3d06-a534-85e107e4ca08:STORY,0517a5d1-8b82-349a-802f-5fb9eda48dbe:STORY,9d2daee2-fae2-3def-af6e-59f7ea43151f:STORY,35300099-29ba-3262-ab35-f291c674b548:STORY,093ef3a0-be3e-3ce0-800e-b422714a46d2:STORY,135a52e0-0f7b-35a7-bf30-79e66f1207a0:STORY,bd2863ca-53c8-306f-af3a-831f374b3149:STORY,707ef010-51b1-3fb3-9c03-c4272184b8e4:STORY,29960f88-ce82-3209-82e0-a4322949cde4:STORY,6e0864ec-d76e-3e3d-a052-be2749b7b1d6:STORY,534396eb-ff84-365d-8344-20180535e629:STORY,ad1f7ae4-623d-3f23-83d7-7d3f26d8bbae:STORY,6599abd2-f8d9-3dc7-a895-0fbe9688bf85:STORY,eb861412-9d20-3ab3-a726-6e7cd7458055:STORY,5f4a1471-3158-3f7c-b765-2992fa396b66:STORY,d298c34b-7aa1-3618-81cb-db9fa60d8b67:STORY,18f68de7-603c-344c-a8a0-eab471bc77d5:STORY,75e3d1d4-8729-30de-b01a-9dd5786e9c90:STORY,bc11440c-1bdc-3efc-a7e4-ee2821e4284f:STORY,96d7dad1-9247-355c-b483-d03f725f928f:STORY,421bac1e-301a-4bbf-972a-c9652a799ae1:STORY,2cba985f-67c2-36df-967a-81a2436d5a4d:STORY,45a21fec-b276-3d2d-8386-3fbef6cb9332:STORY,111e10ac-0c67-35bc-855f-6162b20523d7:STORY,9317ec34-d7a6-3034-84d6-2a2dc880a189:STORY,964ea30d-37c8-3204-9790-488b99f1adf9:STORY,3c87ad20-46fe-3fa1-b0f6-18598006109b:STORY,aeaff27e-f0f5-3356-a2db-24e62eb39341:STORY,c0412446-301a-3635-9328-8ea1c382b70c:STORY,72425f9c-129a-31d2-bbc1-649a8e930846:STORY,bdbcf432-ce0d-3bc2-a2fa-f5a111b272ec:STORY,4d5bc085-36dd-3449-9868-cb96f121d36c:STORY,264f0653-66c1-4269-91f9-9988f980b3fe:VIDEO,2414b352-5931-3326-8b81-b46fc5b08827:STORY,2b328ea1-40f3-3e62-a4ba-cb053d5a1ba7:STORY,42221983-619e-309e-a1e5-775b5921f47f:STORY,fc3db00a-85a1-3d99-91df-a0a18ad775ef:STORY,7311c744-9487-38d8-8d38-929bdd53d82f:STORY,1afa1f22-2f01-3666-988e-7e7bcaa2d9be:STORY,b2765358-625c-3e6f-b869-7a3c37a9e424:STORY,0b2d5658-b362-3c38-a9da-f11c5b578bee:STORY,29626242-0d1e-323d-9743-9431a92de0bb:STORY,ac801993-bd20-36ed-84e4-46ff9ec05ba0:STORY,b3a563ed-fadd-34ef-be57-a92dc96bf211:STORY,c77b8c11-f546-3a88-829e-0863f53bbd07:STORY,848b5a97-355d-3912-ba63-2443f8a7531d:STORY,84eab64f-c62d-37e5-b8f0-ebff71e6fd07:STORY,43944e48-d902-345f-8cde-70fa751aa021:STORY,43e846fc-d46c-369d-9e19-8d3e1dfaa28f:STORY,5d03d5cf-ca4e-319b-aa1b-f31b44144ef5:STORY,11d660d6-d5c2-37ff-bb05-ab6a72b3f8b5:STORY,a1bf0739-0556-3121-8a0d-64b400686738:STORY,e2975d43-bc7f-3920-973a-d137098ad7c7:STORY,533b1bdd-fe36-3e06-a8f7-1bf27d70073f:STORY,452f3eec-524e-35cd-b126-d65eceefaa34:STORY,c47c58e2-5472-4f50-a1da-9f3048d5f756:STORY,97d60a04-22e7-3e5e-90fa-8c8105265aad:STORY,6a5daf14-cf44-3e2d-b9b0-6930bb5a80da:STORY,afa4d0d0-4b39-3772-82bc-383fb5b7fdb6:STORY,99caf1d1-bf02-342e-a610-963edfe19ef2:STORY,2d30bef0-2312-3be4-a12c-d3f0462d94f0:STORY,92a89e0c-c301-399a-8bd8-8ef9d4fc1508:STORY,37dcf159-78a2-3280-8067-68d033f4d7ba:STORY,4511b1ce-1c3d-376a-8e71-83272fdf97f4:STORY,d9a791a0-2127-3960-b0ec-2def54895e2d:STORY,d5580f49-376d-31af-9716-2d896675340f:STORY,4a65be05-81f6-31f0-9080-3e327408f250:STORY,4a73230c-d9b1-34b9-8ed2-6e46f6bd3178:STORY,c55e02d4-64ea-3d66-b2e8-7cb5ec3552ca:STORY,7229a083-2391-4049-a9a1-ff24b8786f38:STORY,4988ae04-7f7c-3243-bbed-4ff93b8e739c:STORY,790cf349-a84a-3341-b582-208f9d5e98a3:STORY,90918ec8-da97-3ad4-9fd5-ddfc2a796ce0:STORY,293fc7e7-4df6-362f-b1c7-067ff7ef54e4:STORY,4905fe0e-5e08-317b-98ae-18a4e5a531f0:STORY,99cdeb8c-ed9a-392a-95f0-cedf61a4d928:STORY,ebb20316-0974-31c1-b70c-2d09d0c19425:STORY,690f1400-7b80-396f-84f4-4681a7d60168:STORY,50df854f-bb6d-3b93-99d0-908c3f1389a8:STORY,a078dd75-a761-3d6d-93ba-c1761a265bd1:STORY,7eb41cea-0a5d-363b-911a-8e5345db0d11:STORY,5612c098-23bd-3382-a61a-ec8d81375bc5:STORY,df10a2c6-0b81-39cc-9887-19262414d6bb:STORY,e8975bff-0c37-3cec-9fc6-6a60ab7700dd:STORY,7ca364ff-1893-3939-aa3f-5f8c4b7d3f35:STORY,565c1187-788d-34c8-913e-83e432f255b4:VIDEO,4fecf235-52fe-37f6-aca2-3ac35835df65:STORY,2344ee52-91c2-36e3-8b04-fbf543561762:STORY,798a194e-a936-318b-8188-ce92c46f264e:STORY,d222bebf-32a4-394d-a9e6-28329abef5e4:STORY,a5293806-8496-31fe-82f3-24836e48924a:STORY,65a6a1f1-4161-3a0b-b682-886e40f8527d:STORY,a0ae0817-5e1c-3e57-af52-011bce0875d7:STORY,d987c0e2-13fb-3c4a-aa59-062d6b7638ec:STORY,47632e5d-0cfc-3a85-83e4-5de0cc5617d2:STORY,3a776d49-1fdb-355d-aaca-6fb12d94e525:STORY,aa5c66b0-8afd-3cc8-bf8f-14f61492fd69:STORY,4ff03f80-56a0-3fe6-9d30-8a456dc074f8:STORY,d07a5b64-f2fa-3e69-bda0-0e376589cb3d:STORY,caf9f890-1f4d-3965-9a37-84d6158621c1:STORY,ac7c8e11-2749-32c8-9195-00131002da1b:STORY,3e02a6b9-1baa-340d-b06e-e987823f3dd8:STORY,3d622745-380c-413a-a2ec-6dd0cd1b2d75:STORY,13ff0c25-855d-345b-afe6-03ad14d58e9e:STORY,14dccb9f-4552-35ca-a179-e4f1e97a440c:STORY,b5a7ab3f-803c-3b52-a512-d450be9d5aa6:STORY,4e89ee50-520e-3ab2-b259-016ed4605fb3:STORY,a1a5e340-787e-33f5-8a5b-95e970093f64:STORY,46126680-aa8d-37f4-a8d4-94cdb1619f20:STORY,5cbc864f-3625-3fe7-96ac-9c25a2b9d7ae:STORY,0eb457af-b34c-3ac2-8210-33f10e673cb0:STORY,e3f5049c-02ee-3aff-b88f-a54bd2d860fb:STORY,33f058fb-c70b-3169-b945-bf352644719e:STORY,8a3d3eb6-9ea4-3834-bb03-e6938132ae07:STORY,2889148d-0d84-31bf-96c4-3040cbd10704:STORY,f7577ad5-5899-3cf2-824e-bb7513d96b6d:STORY,786ba98a-f0b0-383d-a75a-dbd83583b10d:STORY,cdc4ce9c-04f9-3003-9993-302ead71fee0:STORY,3c499f92-7bc4-3a3b-9402-eee1feaec08c:STORY,ff03729d-d5d0-343f-acce-c562e98452d6:STORY,f7e96b1d-0044-37de-bea5-805809223f8a:STORY,25dab25f-0afb-3f04-805a-78bcb4f17049:STORY,3b6772e0-5b5a-3427-917f-650fa8ce7ecb:STORY,672385a6-dde5-320a-977e-4908967f25ba:STORY,8eb39bb2-38fa-3c2a-982e-9b9817c6b736:STORY,ecf17c8a-78d8-3739-bab7-d415f60f6919:STORY,53604e91-3987-3b0d-8762-aa3b4728523c:STORY,bbc14093-bcba-3598-bce3-0c55ae84ae07:STORY,8cc2de6e-c47c-32d9-b444-ce068f59bdd5:STORY,d2ee42ec-e2ba-30f3-9530-dd50a51931f6:STORY,5e20d84f-266d-3597-a06a-223fe887c18a:STORY,aad9e371-efd4-30b4-9ec7-ebc922b57fe8:STORY,a9de2c09-849b-3348-81e0-121a13308fb0:STORY,1d192f9f-2bb1-3471-988c-2e4429f09aea:STORY,4a89494e-c13b-32c7-b59f-1229520af23b:STORY,04227cdd-e778-3415-8afb-421a113c1344:STORY,51ec4bce-c535-34db-b6aa-d41d5ded577c:STORY,ad7f4867-0de2-3fc1-a9cc-e066412831a3:STORY,85ab0fe5-c49d-3f4f-b8d5-c3c4a52ab42a:STORY,099bf186-4d99-3883-85c6-59ba5c8fc1c6:STORY,de645e70-b33c-3fec-9a0c-7bcba34bf488:STORY,8bbabf3f-f948-44b0-911f-37aa25ac474c:VIDEO,a0e94489-6dd8-3443-bb53-f3ef388ec897:STORY,356f3671-8cf5-36ef-9d65-4cdaeb6e72d8:STORY,2112caf8-070f-3409-ac52-4b00793c2d31:STORY,075fb943-8918-3237-a816-6e5b1efe45b5:STORY,80955a8d-333a-3bc3-9f4d-b1273f0b831c:STORY,7a904811-2e79-4e31-a863-45f49f944810:VIDEO,be55e781-f8d2-333f-9e97-bad3ddf4d8aa:STORY,50317d82-5aa0-3f61-9619-e23b80fd4482:STORY,557e85b2-771f-3e79-9b30-777536aafec9:STORY,e195d1cf-0e64-37fb-b0f2-1b19277da6fc:STORY,46b5195c-43ac-35af-95bc-943ca72dcd67:STORY,cb83fd42-f698-3aa7-bcfb-4d8e7a81b48b:STORY,b51a5302-483c-3062-a63f-5de15e90af0d:STORY,fd11e686-9a45-3110-a645-b1c9776a10cf:STORY,91e08e3c-5dd1-3620-b2ab-1c7bb660ed3b:STORY,fb5758ab-d5cd-330e-aed0-46e515c90039:STORY,25b74fbe-55fd-3bb3-a67c-da4c9f757e9e:STORY,16375cb1-2978-3741-b6c6-519ce55cb6a7:STORY,f42bf5a2-bda6-3df7-a49f-2ae0089c31c0:STORY,6f7944de-64cd-36cb-bd00-78adf515829d:STORY,78aeaf4a-dbf8-3675-b522-d5ce060bc6cc:STORY,2da3b0c0-3eba-32b3-a063-3625b2c120f3:STORY,224c3e88-97ec-37e4-82e4-16456169c7e2:STORY,f42a29ff-bfaf-3506-b8d9-df0a93f0a684:STORY,17edc2ac-4e6e-30d8-ab75-6b37b260edbd:STORY,c919770c-f757-30be-b484-31ecfe768beb:STORY,fda4ae4f-67d1-33b5-a3be-4a7ec1ac1434:STORY,e961c254-863d-3a49-be6e-f450be4369ff:STORY,25e71872-22c0-36cc-8af2-043e9304ba47:STORY,bf8db5e7-3763-3e76-84bd-8a8983f41de8:STORY,65b8d9b6-e019-369f-b24b-9948e024f2a4:STORY,aa88dd47-a686-3a53-be11-fe59116615ef:STORY,d7f01962-f038-31a4-8b4c-00047479796c:STORY,c544634a-9e0a-341a-86b3-1bcc230574c7:STORY,17a887f3-aee4-4538-8cad-1fb75e1342ac:VIDEO,450edb92-4f98-3186-816c-535a2b9cb292:STORY,977f1f74-2e80-341d-b89a-b15d41281c22:STORY,b717ed57-c26d-3f68-82d9-fcdb5783af17:STORY,cea41dfc-3810-3347-92cd-68e62c746607:STORY,ade25efd-e31f-312d-81ae-beccc1445da9:STORY,ad425a98-666f-3adf-b358-80865cbde42a:STORY"
+        "uuids": "775e5539-62d3-4868-8bc7-a2e19c4f57cd:VIDEO,1287a8cc-0cb6-3605-838b-c9cf4597103b:STORY,78cb21bb-bc10-3002-9a48-4002ff57d6ea:STORY,5c1eeb74-866c-3957-bd83-77aa9f88ff4e:STORY,a567a4da-85b2-3fa7-9601-4a0a937fc044:STORY,b3f996f0-b0dc-3b21-a638-8e7fc8b09330:STORY,2b590634-4b35-3454-a513-1d2f2efa33cb:STORY,5c22dd64-421f-3af6-a720-53c25729a59e:STORY,3ec94b53-6d94-336a-8ffb-9a3e5082ef22:STORY,ef2cfb1d-3fb4-3956-9e24-b17f82a1a7c7:STORY,b8a936db-38c3-3fc8-8b58-c22c16414a7e:STORY,18eee7ca-2e5c-3786-a9c3-798d6f1a8ec1:STORY,2b74329c-72d7-3199-b344-4cf850239d67:STORY,cbe0e11e-3a0b-3e30-b858-200f10311b04:STORY,f16d694f-6cd0-3c4f-8512-54360a76df97:STORY,10a79f66-67f4-3faf-a207-19916875da2f:STORY,7e4845c8-58f8-3464-826b-bce2c25d60fd:STORY,1f61b360-ab77-3895-9b64-4c9cc45984da:STORY,31eac3d1-90d3-341d-b6ff-540bfff24816:STORY,8de17353-7913-3c76-9175-304067fe59cc:STORY,6b6450a4-48c2-3f26-92aa-e5df454b1526:STORY,71aaf321-c9a1-3e7f-94fd-23789bf077b5:STORY,2bfee681-65fa-3a8e-8cd8-a28e0931faf0:STORY,4b62852e-fb6e-3dc4-8cd6-bcbeb63ba4da:STORY,b48c2a2d-bcfa-3bc6-a9de-40e9bf89da23:STORY,3462abbf-8507-30ea-80c7-58611746d45f:STORY,760c1fbb-ea0d-3717-9848-411e052ad7ac:STORY,525f2bda-f948-308f-aa0e-9c46135c669b:STORY,6da26026-88fc-382e-b023-27e56796f60a:STORY,21016e07-2b22-39aa-891f-9a1f038849b8:STORY,8435c0d8-64e1-36be-9ec8-8bfd458e0dae:STORY,040a12d7-0acc-3fcd-8dc4-a9dbf72f7c40:STORY,ba0257b6-ce2f-3985-bed1-88e9a1214e30:STORY,9691deb8-af06-3be6-9ba8-7df3636c90d1:STORY,a10c93ae-f67c-3ce4-9997-d530f76676dc:STORY,a2f76011-c506-4881-ae9b-9041fc6ceef2:STORY,0b6519f2-1ed2-3363-983d-f5c9cba7d09e:STORY,e56e4b08-85b0-3d13-b6f6-47c150ad7597:STORY,8a78cc2a-fa04-4864-8265-2858ea6018bb:VIDEO,4390460c-1cfa-343a-8ab9-69a096965d73:STORY,5a45616b-6792-31f9-a50c-b397ce9c1a61:STORY,a9cb3919-2ec5-3183-869a-91bbc51c225e:STORY,c12878e0-08e9-3985-ac1c-330e14e798ce:STORY,f7d85e8a-bbd5-49e2-8ecf-b5632eff27cc:VIDEO,3c7f0d58-6584-3d74-acc6-40094ea3617e:STORY,731e7001-39eb-3ecf-9f90-0ef1056d186b:STORY,12ea1edf-82e5-32d2-9948-151ae40c0d4f:STORY,94c22e89-1e38-3c60-bef7-0bfd14139d5a:STORY,2dd92b81-3170-35d0-9746-a9dd8676be7d:STORY,b5d7b737-5bf9-30d0-84d3-b5e96b3f9790:STORY,cf7b85b2-84e3-3561-a588-8281a17a5e1d:STORY,0ae46de2-4321-3ddd-ade3-9b1c7b012f27:STORY,20f7fa70-6009-3376-a339-4348c48a6723:STORY,ac13f368-f41f-3b94-aedc-4379d7ea6ca1:STORY,d2764b75-1f49-3e4e-b295-92db70696c24:STORY,d64ae82c-b111-3f20-a99e-b72cffbc7847:STORY,48c8bcd5-bddc-3084-8358-7258a49df030:STORY,57fde021-112d-39ee-933b-2f4d81a83109:STORY,fc8c0629-c493-3422-9192-dace9dcdb24e:STORY,88dc8b00-3389-303f-8e21-f6554b930367:STORY,1a8da987-a074-3d13-8ca4-546f545d9ba5:STORY,f9cafa2a-1886-3c5d-ba9f-b59474f6a131:STORY,931506c9-9e99-38e2-a49e-18e3405cf510:STORY,3f7e5195-e48d-384f-9523-b4468cfc089a:VIDEO,23d002cd-e0f2-3a74-9198-9d42e2cc6770:STORY,4c4ce601-5fb5-3874-b1af-335361e83d89:STORY,fd5588ad-0c14-30fe-aa09-05d69a50c417:STORY,43328911-7d1b-3df5-ac10-75cbeda9ee8e:STORY,f734afb9-0621-382e-a271-25983db84eef:STORY,6623e8d8-acaa-34ed-8572-a6f12c7aac97:STORY,82b2ac1e-db5c-3196-a2a4-80d151a527ae:STORY,945679e1-9504-37e4-be47-df7a65c2a3f1:STORY,b061461b-06c0-389f-960a-f5a912247774:STORY,ea4b7918-99b1-3121-9e12-737ed03bcdf8:STORY,727fadd0-eb55-3072-a579-3baf960cdcb2:STORY,e4d94239-9e7f-3885-935c-84fc954ef054:STORY,116457c8-ef14-3e6e-841a-b99cd79d0ba3:STORY,844bdc04-b9da-3ced-8eb5-919515d057e2:STORY,b2d0aad4-43ae-3900-88f7-86467c13ab1f:STORY,79fdd491-a5e5-3f9e-acd3-79e9db3f572b:STORY,95d55df1-ec69-3c8c-8996-0f37000f8ca8:STORY,8c36b888-eda8-3d4e-8957-b2fb014c3bae:STORY,90376ef6-f37d-30c4-8bfa-ba8f55dbdde1:STORY,7a2939ba-141b-3b09-a13b-4449788db02b:STORY,3f6f9c83-848f-38d0-a877-52c7bd10eec4:STORY,db81e645-731b-3345-9f5f-c52dff11c460:STORY,41c7f982-9b8f-3f30-bf41-b555c8dc5413:STORY,253cc50f-2f44-341f-8de8-209e63f112b6:STORY,77658466-25ac-3212-9626-ffe6098b0c9a:STORY,df433717-bbdc-39d5-9975-396c9b569557:STORY,a0ffc14c-2ffa-38bd-a26d-98a16356bc98:STORY,66365d21-553e-3c90-b7de-3097c46b0043:STORY,985c99e0-71bf-3f58-a6fc-2eb5da51694f:STORY,a26309de-1ecd-3ae0-90ca-6432dd0f3cd5:STORY,359c6980-3e3d-3143-9eac-bcf4f8905da8:STORY,a6a25e32-b817-3497-9c7e-78006ed77c1b:STORY,6e7ae002-b731-3e82-a0f0-8a83539aa8ea:STORY,282e80c5-3511-3c4e-b477-c9027cb67adf:STORY,283be957-c38d-3669-a8b3-c77b0df2bac1:STORY,75958f42-1db8-32fe-9ead-3a630b70a063:STORY,94b4a63d-12b7-3d79-a80d-2877eb16736d:STORY,8b0e58df-3806-350b-9255-8806ff86c665:STORY,f39531e7-7d1a-39ac-825f-5fdff9b2f7fc:STORY,1901eb87-3fa1-39ef-a89e-078ab9fd476c:STORY,6bf3a845-f74c-3e47-9777-869fff9f0cb7:STORY,84de7ca8-4c89-3e50-aa59-e87b466692a9:STORY,8c2abe2a-3228-3134-9aeb-c02e8425d790:STORY,78f18d6c-f457-3971-a3b5-6d13e68b17c5:STORY,4bf4cab6-25a9-328f-ac10-e0e4a941ec55:STORY,6571c206-7af8-305b-a1bb-b6211ffa772c:STORY,0546c49f-f50f-3b9f-bb55-a9ea17571be4:STORY,defc5482-a175-3985-847a-948024fe3c75:STORY,b8fcd66a-1ce9-3c01-86f7-beb98447a4a4:STORY,6ccb4988-111f-37a7-9188-825e002a54cb:STORY,69c91d43-1bc4-39e1-8ae9-2830a3094a6a:STORY,8884375f-11f5-3f91-b617-70c4ac4d320b:STORY,e0cc200d-c03d-3c43-a90e-d9ccc7f4a513:STORY,c8006821-7b40-3d8f-8720-312e9022e4f7:STORY,b042bacd-7632-36d2-b4a7-cb05acf455a2:STORY,6116d633-dbd1-31c2-b5ec-b760a7ac44fc:STORY,2976f7af-4aeb-3114-8d13-15b60572a006:STORY,b64576c3-8d8d-3ecf-bcf9-4b65167ba706:STORY,ae629e01-1ccc-34b6-bbae-f8a2170e61b4:STORY,8072c017-4383-3c70-a75b-b9aa748489e8:STORY,b7b4e88d-e963-3f8b-939f-1197a2dfea13:STORY,477cad0a-c84c-321c-8b4f-bb418bfd36b0:STORY,4a367f94-a29a-4b87-bbb7-a2b2798639fc:STORY,709fc122-4fe3-3d94-8f20-e9c646b66c53:STORY,43008863-39bd-38f1-969a-4335c3a5f4a1:STORY,03e6fca6-1a94-3d07-b86b-a598a03dc9ce:STORY,d15acd99-0648-320b-b6b9-e894f8bb5096:STORY,56d43c1b-3465-3ee7-b77b-12ed01d73ec8:STORY,88951021-f277-3999-88ba-01af402d1463:STORY,f6d3b1f2-1343-3012-993d-2f7e1bd1347e:STORY,52cf50d1-12b4-3df8-b57f-f0593302fac0:STORY,0c1c639b-b162-349e-9731-75753ffe2344:STORY,25b825ef-27db-3ccb-b5f0-aa553c82794c:STORY,3d3646c4-d4ba-3c00-a591-a2480ecba71d:STORY,e63e3c93-178e-35ec-8819-4a9616bf0c11:STORY,a7dfd4b5-b37b-342c-b101-ca1cbecc82a6:STORY,df2c8fbf-f8c1-3568-8cae-b0507c3c440f:STORY,66bfcf13-6061-35e5-b46a-597a52491a5c:STORY,869ba034-85c8-3179-abba-8396a892f80f:STORY,5573faa1-bf28-4613-b523-c876f04e73be:VIDEO,03a1bb2f-5d30-31a1-803b-d5b37f3bdbf2:STORY,e2c0b21e-91db-350f-aced-fbd5c48e0367:STORY,c70ea2b1-b0e2-39eb-a53c-ccca99ead580:STORY,2f88cb34-ce2f-3259-9d25-f4202b85b6c1:STORY,0fe4e1e6-0a18-3468-a66b-d736d2113063:STORY,e35e3629-ea86-3d7c-84d2-f9ebae36c0a7:STORY,46e5d03c-235d-3996-a235-61491169a840:STORY,0f9e15a6-d6e7-3e39-b601-ed5a73e1158b:STORY,4777d2bf-09e0-462d-ad84-8027df53e259:VIDEO,9fe7a56e-8e38-3901-b9b0-a4ff3feefb08:STORY,7d595973-d81a-3b10-a4f8-9b994a5f7bc8:STORY,0cf9769b-026a-381c-a04a-7a8c0fbe8a23:STORY,c829e025-b953-391e-9eef-232a6e195e69:STORY,e0d96949-2190-3023-8a4a-b1737ea44d77:STORY,45739fb7-5abe-32cd-9fd7-dd9398f674b4:STORY,6ca3c68d-4f89-3754-b9d3-79bdac9d1e3e:STORY,9a619c56-f352-4f0b-aa80-37e659bdcbaf:STORY,e0bbef37-9b84-3687-ba5f-bf93070657f3:STORY,23c4cf76-25a7-3731-b094-72aa11ce5476:STORY,c952441f-9b4b-345d-b9da-5c7f74bf9290:STORY,bc8aeb2c-c899-3f27-97d5-6323fcd312b6:STORY,fc86c695-9da8-3e8d-8f12-573c1a7b78e3:STORY,a5b0ac44-5123-3ac8-a86b-cb5c900221c6:STORY,aae61932-3bc3-3263-b199-e93672b9945f:STORY,8019242d-a9bf-3be0-9b5f-ad5f4229be1f:STORY,392e68f1-ada0-32a9-9b4c-6b5b0953f434:STORY,20ef7306-4981-3042-8b60-05e2e554e574:STORY,3f57d5f6-d5eb-35a7-b67c-bc71a097de96:STORY,825bfc6e-d380-319c-9895-777f98ebf2d4:STORY,15bdcd6d-2e1f-3f7a-8ddd-9b9bad36d9bb:STORY,03158ae0-fc88-3d9e-a82c-3cef1c7dc26d:STORY,5997084a-2ca2-348e-b4f1-7f63a798de48:STORY,fe81cd41-6995-3b41-ad7e-869cdb618768:STORY,f8bf48b6-73fe-3182-99c8-8200edb9f3b9:STORY,035fc76e-b37d-3da5-b9c4-e70a129d2a68:STORY,416ba91e-a404-385f-b3c9-7d010cd520cb:STORY,e3f96123-19c4-3df5-8c3a-645cc4c1a38f:STORY,81981fa5-97b8-3100-9a29-e15013aba587:STORY,c553a44f-7a90-30bb-90cd-e5d4b84f6c27:STORY,0ce5a1a8-473c-332a-beba-012a28e31d58:STORY,b9c2d48c-73c5-34db-b32e-b9ccb9673bae:STORY,f070a8b7-52d9-4d20-83f2-9d149258aa17:VIDEO,f718716a-965a-3cc7-8aaa-f66b130d8ba1:STORY"
       },
       "stream": [
         {
@@ -769,16 +765,16 @@
               "lang": "en-US",
               "region": "US",
               "site": "finance",
-              "url": "https://finance.yahoo.com/video/alibaba-earnings-trump--xi-meet-ppi-data-what-to-watch-204946768.html"
+              "url": "https://finance.yahoo.com/video/why-android-takes-a-bigger-hit-than-apple-from-ai-memory-shortages-212846995.html"
             },
             "clickThroughUrl": {
               "lang": "en-US",
               "region": "US",
               "site": "finance",
-              "url": "https://finance.yahoo.com/video/alibaba-earnings-trump--xi-meet-ppi-data-what-to-watch-204946768.html"
+              "url": "https://finance.yahoo.com/video/why-android-takes-a-bigger-hit-than-apple-from-ai-memory-shortages-212846995.html"
             },
             "contentType": "VIDEO",
-            "description": "<p>Market Domination Overtime host Josh Lipton takes a look at the top stories for investors to watch on Wednesday, May 13, including President Trump's meeting with Chinese President Xi, Alibaba (<a target=\"_blank\" rel=\"\" class=\"link\" href=\"https://finance.yahoo.com/quote/BABA/\" data-i13n=\"slk:BABA;cpos:1;pos:1\">BABA</a>) and Cisco (<a target=\"_blank\" rel=\"\" class=\"link\" href=\"https://finance.yahoo.com/quote/CSCO/\" data-i13n=\"slk:CSCO;cpos:2;pos:1\">CSCO</a>) earnings, April's Producer Price Index (PPI) data, and commentary from Federal Reserve officials.</p>",
+            "description": "<p>Yahoo Finance Tech Editor Dan Howley joins Josh Lipton on Market Domination to break down new data showing the steepest decline in smartphone sales on record, as soaring demand for AI memory chips reshapes the semiconductor market.</p>\n<p></p>",
             "displayTime": "",
             "finance": {
               "premiumFinance": {
@@ -786,7 +782,7 @@
                 "isPremiumNews": false
               }
             },
-            "id": "f3b20f64-0b7e-4564-ae63-d839b41e7d5c",
+            "id": "cf4c0217-2477-45d4-846b-fdeb4057983c",
             "isHosted": true,
             "metadata": {
               "editorsPick": true
@@ -797,46 +793,19 @@
               "sourceId": "video.yahoofinance.com",
               "url": "https://finance.yahoo.com/"
             },
-            "pubDate": "2026-05-12T20:49:46Z",
+            "pubDate": "2026-05-27T21:28:46Z",
             "storyline": {
               "storylineItems": [
                 {
                   "content": {
                     "canonicalUrl": {
-                      "url": "https://finance.yahoo.com/video/why-netflix-spent-so-much-money-over-the-past-decade-193324990.html"
+                      "url": "https://finance.yahoo.com/markets/stocks/article/best-buy-earnings-preview-wall-street-expects-sales-boost-from-apple-macbook-neo-launch-bigger-tax-refunds-212025071.html"
                     },
                     "clickThroughUrl": {
-                      "url": "https://finance.yahoo.com/video/why-netflix-spent-so-much-money-over-the-past-decade-193324990.html"
-                    },
-                    "contentType": "VIDEO",
-                    "id": "f7a3bbf0-e73a-40a8-9290-131adb23367e",
-                    "isHosted": true,
-                    "previewUrl": null,
-                    "provider": {
-                      "displayName": "Yahoo Finance Video",
-                      "sourceId": "video.yahoofinance.com"
-                    },
-                    "providerContentUrl": "",
-                    "thumbnail": {
-                      "caption": "",
-                      "originalHeight": 2812,
-                      "originalUrl": "https://s.yimg.com/uu/api/res/1.2/lSlEhUTJmBikXEd8cD.jCQ--~B/aD0yODEyO3c9NTAwMDthcHBpZD15dGFjaHlvbg--/https://d29szjachogqwa.cloudfront.net/images/user-uploaded/f6ef7b0c-2879-4fb0-8d8e-e9135bfb0e7d_a99e7f6ded376c187afd0d4a02bb2c2f01eb6dfc268de5ac0ea48a09f85a65f5.jpg",
-                      "originalWidth": 5000,
-                      "resolutions": null
-                    },
-                    "title": "Why Netflix spent so much money over the past decade"
-                  }
-                },
-                {
-                  "content": {
-                    "canonicalUrl": {
-                      "url": "https://finance.yahoo.com/sectors/technology/article/tesla-stock-slips-ahead-of-musks-trip-to-china-with-trump-trade-delegation-152048424.html"
-                    },
-                    "clickThroughUrl": {
-                      "url": "https://finance.yahoo.com/sectors/technology/article/tesla-stock-slips-ahead-of-musks-trip-to-china-with-trump-trade-delegation-152048424.html"
+                      "url": "https://finance.yahoo.com/markets/stocks/article/best-buy-earnings-preview-wall-street-expects-sales-boost-from-apple-macbook-neo-launch-bigger-tax-refunds-212025071.html"
                     },
                     "contentType": "STORY",
-                    "id": "7deebc61-a50c-45a7-aede-cd3c4a9b4b0a",
+                    "id": "920eba4b-cebe-498c-beec-7d4ba0cba83a",
                     "isHosted": true,
                     "previewUrl": null,
                     "provider": {
@@ -846,40 +815,67 @@
                     "providerContentUrl": "",
                     "thumbnail": {
                       "caption": "",
-                      "originalHeight": 1519,
-                      "originalUrl": "https://s.yimg.com/uu/api/res/1.2/4WYSz5tTzqhuVmjuWFF4gA--~B/aD0xNTE5O3c9MjcwMTthcHBpZD15dGFjaHlvbg--/https://d29szjachogqwa.cloudfront.net/images/user-uploaded/ed18aaa3-0e30-4c03-b4cb-1df0cd686b0e_ecd9a15e8720e87647fc286e8f3b8d3eadd99b86ded7480413764ce81e074c53.jpg",
-                      "originalWidth": 2701,
+                      "originalHeight": 4000,
+                      "originalUrl": "https://s.yimg.com/uu/api/res/1.2/pOA3v0JeX9cPofyV9CvCrQ--~B/aD00MDAwO3c9NjAwMDthcHBpZD15dGFjaHlvbg--/https://d29szjachogqwa.cloudfront.net/images/2026-05/ec628153-b2b7-49ae-9576-071245db1e85",
+                      "originalWidth": 6000,
                       "resolutions": null
                     },
-                    "title": "Tesla stock slips ahead of Musk's trip to China with Trump trade delegation"
+                    "title": "Best Buy earnings preview: Wall Street expects sales boost from Apple MacBook Neo launch, bigger tax refunds"
+                  }
+                },
+                {
+                  "content": {
+                    "canonicalUrl": {
+                      "url": "https://finance.yahoo.com/video/how-apples-ai-weakness-could-become-its-biggest-agentic-advantage-200853250.html"
+                    },
+                    "clickThroughUrl": {
+                      "url": "https://finance.yahoo.com/video/how-apples-ai-weakness-could-become-its-biggest-agentic-advantage-200853250.html"
+                    },
+                    "contentType": "VIDEO",
+                    "id": "3156bc7c-cb1a-49ad-af12-e93f9aa924ca",
+                    "isHosted": true,
+                    "previewUrl": null,
+                    "provider": {
+                      "displayName": "Yahoo Finance Video",
+                      "sourceId": "video.yahoofinance.com"
+                    },
+                    "providerContentUrl": "",
+                    "thumbnail": {
+                      "caption": "",
+                      "originalHeight": 4320,
+                      "originalUrl": "https://s.yimg.com/uu/api/res/1.2/FRWjMypQjtPCxN89WKj5Rg--~B/aD00MzIwO3c9NzY4MDthcHBpZD15dGFjaHlvbg--/https://d29szjachogqwa.cloudfront.net/images/2026-05/5dbf5097-f8d6-4d67-8090-a19f16fc7698",
+                      "originalWidth": 7680,
+                      "resolutions": null
+                    },
+                    "title": "How Apple's AI weakness could become its biggest 'agentic advantage'"
                   }
                 }
               ]
             },
-            "summary": "Market Domination Overtime host Josh Lipton takes a look at the top stories for investors to watch on Wednesday, May 13, including President Trump's meeting with Chinese President Xi, Alibaba (BABA) and Cisco (CSCO) earnings, April's Producer Price Index (PPI) data, and commentary from Federal Reserve officials.",
+            "summary": "Yahoo Finance Tech Editor Dan Howley joins Josh Lipton on Market Domination to break down new data showing the steepest decline in smartphone sales on record, as soaring demand for AI memory chips reshapes the semiconductor market.",
             "thumbnail": {
               "caption": "",
-              "originalHeight": 1080,
-              "originalUrl": "https://s.yimg.com/uu/api/res/1.2/yfte4MlaHo10cu5Qe5tNVA--~B/aD0xMDgwO3c9MTkyMDthcHBpZD15dGFjaHlvbg--/https://d29szjachogqwa.cloudfront.net/images/user-uploaded/wtw-whattowatchthumb-trumpxi_2536.png",
-              "originalWidth": 1920,
+              "originalHeight": 3024,
+              "originalUrl": "https://s.yimg.com/uu/api/res/1.2/AkEItkF5wDAQ7xomNe_3Ww--~B/aD0zMDI0O3c9NDUzNjthcHBpZD15dGFjaHlvbg--/https://d29szjachogqwa.cloudfront.net/images/2026-05/38a7f518-2693-4365-88db-ab09120457e2",
+              "originalWidth": 4536,
               "resolutions": [
                 {
-                  "height": 1080,
+                  "height": 3024,
                   "tag": "original",
-                  "url": "https://s.yimg.com/uu/api/res/1.2/yfte4MlaHo10cu5Qe5tNVA--~B/aD0xMDgwO3c9MTkyMDthcHBpZD15dGFjaHlvbg--/https://d29szjachogqwa.cloudfront.net/images/user-uploaded/wtw-whattowatchthumb-trumpxi_2536.png",
-                  "width": 1920
+                  "url": "https://s.yimg.com/uu/api/res/1.2/AkEItkF5wDAQ7xomNe_3Ww--~B/aD0zMDI0O3c9NDUzNjthcHBpZD15dGFjaHlvbg--/https://d29szjachogqwa.cloudfront.net/images/2026-05/38a7f518-2693-4365-88db-ab09120457e2",
+                  "width": 4536
                 },
                 {
                   "height": 128,
                   "tag": "170x128",
-                  "url": "https://s.yimg.com/uu/api/res/1.2/wYgXYQhRcJ6u7iSRuRZLSA--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://d29szjachogqwa.cloudfront.net/images/user-uploaded/wtw-whattowatchthumb-trumpxi_2536.png",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/Ny_8waNIih9.lNkIDD1FEQ--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://d29szjachogqwa.cloudfront.net/images/2026-05/38a7f518-2693-4365-88db-ab09120457e2",
                   "width": 170
                 }
               ]
             },
-            "title": "Alibaba earnings, Trump & Xi meet, PPI data: What to Watch"
+            "title": "Why Android takes a bigger hit than Apple from AI memory shortages"
           },
-          "id": "f3b20f64-0b7e-4564-ae63-d839b41e7d5c"
+          "id": "cf4c0217-2477-45d4-846b-fdeb4057983c"
         },
         {
           "content": {
@@ -888,298 +884,60 @@
               "lang": "en-US",
               "region": "US",
               "site": "finance",
-              "url": "https://finance.yahoo.com/video/the-fast-food-stocks-benefitting-from-value-premium-offerings-144117531.html"
+              "url": "https://finance.yahoo.com/markets/stocks/articles/top-analyst-reports-alphabet-apple-201300052.html"
             },
             "clickThroughUrl": {
               "lang": "en-US",
               "region": "US",
               "site": "finance",
-              "url": "https://finance.yahoo.com/video/the-fast-food-stocks-benefitting-from-value-premium-offerings-144117531.html"
-            },
-            "contentType": "VIDEO",
-            "description": "<p>Fast food companies reported strong first quarter earnings, their respective chief executives emphasizing the value being offered to consumers amid rising food costs, oil (<a target=\"_blank\" rel=\"\" class=\"link\" href=\"https://finance.yahoo.com/quote/CL=F/\" data-i13n=\"cpos:1;pos:1\">CL=F</a>, <a target=\"_blank\" rel=\"\" class=\"link\" href=\"https://finance.yahoo.com/quote/BZ=F/\" data-i13n=\"cpos:2;pos:1\">BZ=F</a>) and gas prices (<a target=\"_blank\" rel=\"\" class=\"link\" href=\"https://finance.yahoo.com/quote/RB=F/\" data-i13n=\"cpos:3;pos:1\">RB=F</a>), and overall costs of living.</p>\n<p>Yahoo Finance Executive Editor Brian Sozzi brings on Senior Reporters Brooke DiPalma and Ines Ferré and B. Riley Wealth chief market strategist Art Hogan to talk more about the performance of fast food stocks.</p>",
-            "displayTime": "",
-            "finance": {
-              "premiumFinance": {
-                "isPremiumFreeNews": false,
-                "isPremiumNews": false
-              }
-            },
-            "id": "5e9d3194-f383-43f5-a128-2c0d6ce361ef",
-            "isHosted": true,
-            "metadata": {
-              "editorsPick": true
-            },
-            "previewUrl": null,
-            "provider": {
-              "displayName": "Yahoo Finance Video",
-              "sourceId": "video.yahoofinance.com",
-              "url": "https://finance.yahoo.com/"
-            },
-            "pubDate": "2026-05-12T14:41:17Z",
-            "storyline": null,
-            "summary": "Fast food companies reported strong first quarter earnings, their respective chief executives emphasizing the value being offered to consumers amid rising food costs, oil (CL=F, BZ=F) and gas prices (RB=F), and overall costs of living. Yahoo Finance Executive Editor Brian Sozzi brings on Senior Reporters Brooke DiPalma and Ines Ferré and B. Riley Wealth chief market strategist Art Hogan to talk more about the performance of fast food stocks.",
-            "thumbnail": {
-              "caption": "",
-              "originalHeight": 3238,
-              "originalUrl": "https://s.yimg.com/uu/api/res/1.2/YjgykyS89EsMsmL0TXkOtQ--~B/aD0zMjM4O3c9NTc1NzthcHBpZD15dGFjaHlvbg--/https://d29szjachogqwa.cloudfront.net/images/user-uploaded/8fe776a0-102b-11e9-bdb4-d59c45a05fa9_97fe870474fb79d8160fbecb4ea5ffdb67e065a7931a9210dacabddeeb0025ae.jpg",
-              "originalWidth": 5757,
-              "resolutions": [
-                {
-                  "height": 3238,
-                  "tag": "original",
-                  "url": "https://s.yimg.com/uu/api/res/1.2/YjgykyS89EsMsmL0TXkOtQ--~B/aD0zMjM4O3c9NTc1NzthcHBpZD15dGFjaHlvbg--/https://d29szjachogqwa.cloudfront.net/images/user-uploaded/8fe776a0-102b-11e9-bdb4-d59c45a05fa9_97fe870474fb79d8160fbecb4ea5ffdb67e065a7931a9210dacabddeeb0025ae.jpg",
-                  "width": 5757
-                },
-                {
-                  "height": 128,
-                  "tag": "170x128",
-                  "url": "https://s.yimg.com/uu/api/res/1.2/8FzHn7K02qRTAT4qrX58aw--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://d29szjachogqwa.cloudfront.net/images/user-uploaded/8fe776a0-102b-11e9-bdb4-d59c45a05fa9_97fe870474fb79d8160fbecb4ea5ffdb67e065a7931a9210dacabddeeb0025ae.jpg",
-                  "width": 170
-                }
-              ]
-            },
-            "title": "The fast food stocks benefitting from value, premium offerings"
-          },
-          "id": "5e9d3194-f383-43f5-a128-2c0d6ce361ef"
-        },
-        {
-          "content": {
-            "bypassModal": false,
-            "canonicalUrl": {
-              "lang": "en-US",
-              "region": "US",
-              "site": "finance",
-              "url": "https://www.investors.com/market-trend/stock-market-today/dow-jones-futures-ai-stocks-sandisk-micron-intel/?src=A00220&yptr=yahoo"
-            },
-            "clickThroughUrl": null,
-            "contentType": "STORY",
-            "description": "",
-            "displayTime": "2026-05-12T21:12:55Z",
-            "finance": {
-              "premiumFinance": {
-                "isPremiumFreeNews": false,
-                "isPremiumNews": false
-              }
-            },
-            "id": "aaff5e7b-727a-3550-9b4c-da4c80e4c232",
-            "isHosted": false,
-            "metadata": {
-              "editorsPick": false
-            },
-            "previewUrl": "https://finance.yahoo.com/m/aaff5e7b-727a-3550-9b4c-da4c80e4c232/dow-jones-futures-ai-stocks.html",
-            "provider": {
-              "displayName": "Investor's Business Daily",
-              "sourceId": "ibd.com",
-              "url": "http://www.investors.com/"
-            },
-            "pubDate": "2026-05-12T21:12:55Z",
-            "storyline": null,
-            "summary": "The Nasdaq fell as AI and chip stocks retreated, but they came off lows. Investors need sell rules for big AI winners such as Sandisk, Micron and Intel.",
-            "thumbnail": {
-              "caption": "",
-              "originalHeight": 563,
-              "originalUrl": "https://media.zenfs.com/en/ibd.com/3826e92f3377fe4f6423471532770973",
-              "originalWidth": 1000,
-              "resolutions": [
-                {
-                  "height": 563,
-                  "tag": "original",
-                  "url": "https://s.yimg.com/uu/api/res/1.2/rTMYzAx76Jg8GFrqEW40GQ--~B/aD01NjM7dz0xMDAwO2FwcGlkPXl0YWNoeW9u/https://media.zenfs.com/en/ibd.com/3826e92f3377fe4f6423471532770973",
-                  "width": 1000
-                },
-                {
-                  "height": 128,
-                  "tag": "170x128",
-                  "url": "https://s.yimg.com/uu/api/res/1.2/6GXOVfbFzbmMQnEQ1F6UmQ--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/ibd.com/3826e92f3377fe4f6423471532770973",
-                  "width": 170
-                }
-              ]
-            },
-            "title": "Dow Jones Futures: AI Stocks Pare Big Losses; How To Handle Sandisk, Micron, Intel"
-          },
-          "id": "aaff5e7b-727a-3550-9b4c-da4c80e4c232"
-        },
-        {
-          "content": {
-            "bypassModal": false,
-            "canonicalUrl": {
-              "lang": "en-US",
-              "region": "US",
-              "site": "finance",
-              "url": "https://www.investors.com/news/elon-musk-donald-trump-china-visit-tesla-boeing-rare-earths/?src=A00220&yptr=yahoo"
-            },
-            "clickThroughUrl": null,
-            "contentType": "STORY",
-            "description": "",
-            "displayTime": "2026-05-12T20:02:51Z",
-            "finance": {
-              "premiumFinance": {
-                "isPremiumFreeNews": false,
-                "isPremiumNews": false
-              }
-            },
-            "id": "0c4def8a-1076-3ea6-8d8a-c14160950959",
-            "isHosted": false,
-            "metadata": {
-              "editorsPick": false
-            },
-            "previewUrl": "https://finance.yahoo.com/m/0c4def8a-1076-3ea6-8d8a-c14160950959/elon-musk-to-join-trump-on.html",
-            "provider": {
-              "displayName": "Investor's Business Daily",
-              "sourceId": "ibd.com",
-              "url": "http://www.investors.com/"
-            },
-            "pubDate": "2026-05-12T20:02:51Z",
-            "storyline": null,
-            "summary": "Tesla CEO Elon Musk will be among a group of business leaders joining President Donald Trump's state visit to China.",
-            "thumbnail": {
-              "caption": "",
-              "originalHeight": 511,
-              "originalUrl": "https://media.zenfs.com/en/ibd.com/a1ed16622608dc69945bc0e11d61e125",
-              "originalWidth": 1000,
-              "resolutions": [
-                {
-                  "height": 511,
-                  "tag": "original",
-                  "url": "https://s.yimg.com/uu/api/res/1.2/MXgxY9_vH9RIyObnG6PWPA--~B/aD01MTE7dz0xMDAwO2FwcGlkPXl0YWNoeW9u/https://media.zenfs.com/en/ibd.com/a1ed16622608dc69945bc0e11d61e125",
-                  "width": 1000
-                },
-                {
-                  "height": 128,
-                  "tag": "170x128",
-                  "url": "https://s.yimg.com/uu/api/res/1.2/9zI9sP3pd9DcfGVdjsY85A--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/ibd.com/a1ed16622608dc69945bc0e11d61e125",
-                  "width": 170
-                }
-              ]
-            },
-            "title": "Elon Musk To Join Trump On China State Visit. Tesla Stock Sinks."
-          },
-          "id": "0c4def8a-1076-3ea6-8d8a-c14160950959"
-        },
-        {
-          "content": {
-            "bypassModal": false,
-            "canonicalUrl": {
-              "lang": "en-US",
-              "region": "US",
-              "site": "finance",
-              "url": "https://www.proactiveinvestors.com/companies/news/1092159/tower-semiconductor-poised-for-q1-earnings-beat-on-strong-industry-trends-wedbush-1092159.html"
-            },
-            "clickThroughUrl": {
-              "lang": "en-US",
-              "region": "US",
-              "site": "finance",
-              "url": "https://finance.yahoo.com/news/tower-semiconductor-poised-q1-earnings-191200599.html"
+              "url": "https://finance.yahoo.com/markets/stocks/articles/top-analyst-reports-alphabet-apple-201300052.html"
             },
             "contentType": "STORY",
             "description": "",
-            "displayTime": "2026-05-12T19:12:00Z",
+            "displayTime": "2026-05-27T20:13:00Z",
             "finance": {
               "premiumFinance": {
                 "isPremiumFreeNews": false,
                 "isPremiumNews": false
               }
             },
-            "id": "caca947a-c7cc-3484-8f51-f4fbd079009e",
+            "id": "1b0fbf86-f5ef-3c6a-95c2-42fe165188d9",
             "isHosted": true,
             "metadata": {
               "editorsPick": false
             },
             "previewUrl": null,
             "provider": {
-              "displayName": "Proactive",
-              "sourceId": "proactive_us_504",
-              "url": "https://www.proactiveinvestors.com/"
+              "displayName": "Zacks",
+              "sourceId": "zacks.com",
+              "url": "http://www.zacks.com/"
             },
-            "pubDate": "2026-05-12T19:12:00Z",
+            "pubDate": "2026-05-27T20:13:00Z",
             "storyline": null,
-            "summary": "Tower Semiconductor (NASDAQ:TSEM) is set to report first quarter earnings before the market opens Wednesday, with investors expected to focus closely on the company’s long-term growth outlook and management commentary around future capacity expansion. Wedbush analysts wrote that they expect...",
-            "thumbnail": {
-              "caption": "Tower Semiconductor poised for Q1 earnings beat on strong industry trends: Wedbush",
-              "originalHeight": 720,
-              "originalUrl": "https://media.zenfs.com/en/proactive_us_504/b898d94cf5d242b41e7d05e75e8edb9e",
-              "originalWidth": 1279,
-              "resolutions": [
-                {
-                  "height": 720,
-                  "tag": "original",
-                  "url": "https://s.yimg.com/uu/api/res/1.2/ZKqqOgHwZLLMju5IRZglZA--~B/aD03MjA7dz0xMjc5O2FwcGlkPXl0YWNoeW9u/https://media.zenfs.com/en/proactive_us_504/b898d94cf5d242b41e7d05e75e8edb9e",
-                  "width": 1279
-                },
-                {
-                  "height": 128,
-                  "tag": "170x128",
-                  "url": "https://s.yimg.com/uu/api/res/1.2/eYmIdugXQOaI3kVBCOx8Ng--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/proactive_us_504/b898d94cf5d242b41e7d05e75e8edb9e",
-                  "width": 170
-                }
-              ]
-            },
-            "title": "Tower Semiconductor poised for Q1 earnings beat on strong industry trends: Wedbush"
-          },
-          "id": "caca947a-c7cc-3484-8f51-f4fbd079009e"
-        },
-        {
-          "content": {
-            "bypassModal": false,
-            "canonicalUrl": {
-              "lang": "en-US",
-              "region": "US",
-              "site": "finance",
-              "url": "https://finance.yahoo.com/video/u-ceos-seek-china-business-181630337.html"
-            },
-            "clickThroughUrl": {
-              "lang": "en-US",
-              "region": "US",
-              "site": "finance",
-              "url": "https://finance.yahoo.com/video/u-ceos-seek-china-business-181630337.html"
-            },
-            "contentType": "VIDEO",
-            "description": "<title><body><p>STORY: It’s a who’s who of the business world heading to China with U.S. President Donald Trump this week as he meets with Chinese President Xi Jinping. </p><p>Elon Musk, Apple’s Tim Cook and others will make the trip, according to a White House official.</p><p>Sources say the companies hope the summit will generate enough political goodwill to unlock regulatory approvals, market access and investment opportunities.</p><p>One of the sources said a critical precondition for companies to join the trip was having a (QUOTE) \"tangible ask\" that promised a concrete outcome or handshake deal during or after the summit.</p><p>None of the companies responded to requests for comment on their goals for outcomes from the summit.</p><p>In Musk’s case, China is weighing curbs on exports of solar manufacturing equipment to the United States, which could threaten plans by Tesla to build new factories or expand existing ones to boost local production.</p><p>In March, Reuters reported that Tesla was looking to buy $2.9 billion of equipment for making solar panels from Chinese suppliers.</p><p>Tesla is also seeking Chinese regulatory clearance to expand the adoption of its Full Self-Driving assistance system in the world's largest auto market.</p><p>Boeing’s CEO Kelly Ortberg told Reuters last month that the U.S. plane maker was counting on the Trump administration to help unlock a long-awaited major order from China.</p><p>China and Boeing have been in prolonged talks for a deal that industry sources say could include 500 737 MAX jets, plus dozens of widebody jets powered by GE engines.</p><p>One CEO not making the trip is Nvidia’s Jensen Huang, a person familiar with the matter said on Monday.</p><p>Huang was not invited, the source said, with the White House focusing more on agriculture and commercial aviation matters on the current trip. </p><p>Nvidia has been pushing the administration to allow it to sell some of its AI chips to Beijing.</p><p>The White House did not immediately respond to a request for comment.</p></body></title>",
-            "displayTime": "",
-            "finance": {
-              "premiumFinance": {
-                "isPremiumFreeNews": false,
-                "isPremiumNews": false
-              }
-            },
-            "id": "e57747fa-4e58-3713-a10f-48f63a13eebd",
-            "isHosted": true,
-            "metadata": {
-              "editorsPick": false
-            },
-            "previewUrl": null,
-            "provider": {
-              "displayName": "Reuters Videos",
-              "sourceId": "video.reutersnews.com",
-              "url": "http://www.reuters.com/"
-            },
-            "pubDate": "2026-05-12T18:16:30Z",
-            "storyline": null,
-            "summary": "<body><p>STORY: It’s a who’s who of the business world heading to China with U.S. President Donald Trump this week as he meets with Chinese President Xi Jinping.&nbsp;</p><p>Elon Musk, Apple’s Tim Cook and others will make the trip, according to a White House official.</p><p>Sources say the companies hope the summit will generate enough political goodwill to unlock regulatory approvals, market access and investment opportunities.</p><p>One of the sources said a critical precondition for companies to join the trip was having a (QUOTE) \"tangible ask\" that promised a concrete outcome or handshake deal during or after the summit.</p><p>None of the companies responded to requests for comment on their goals for outcomes from the summit.</p><p>In Musk’s case, China is weighing curbs on exports of solar manufacturing equipment to the United States, which could threaten plans by Tesla to build new factories or expand existing ones to boost local production.</p><p>In March, Reuters reported that Tesla was looking to buy $2.9 billion of equipment for making solar panels from Chinese suppliers.</p><p>Tesla is also seeking Chinese regulatory clearance to expand the adoption of its Full Self-Driving assistance system in the world's largest auto market.</p><p>Boeing’s CEO Kelly Ortberg told Reuters last month that the U.S. plane maker was counting on the Trump administration to help unlock a long-awaited major order from China.</p><p>China and Boeing have been in prolonged talks for a deal that industry sources say could include 500 737 MAX jets, plus dozens of widebody jets powered by GE engines.</p><p>One CEO not making the trip is Nvidia’s Jensen Huang, a person familiar with the matter said on Monday.</p><p>Huang was not invited, the source said, with the White House focusing more on agriculture and commercial aviation matters on the current trip.&nbsp;</p><p>Nvidia has been pushing the administration to allow it to sell some of its AI chips to Beijing.</p><p>The White House did not immediately respond to a request for comment.</p></body>",
+            "summary": "Alphabet's AI-driven growth in Search, Cloud and subscriptions is boosting momentum, though spending and legal risks remain in focus.",
             "thumbnail": {
               "caption": "",
-              "originalHeight": 720,
-              "originalUrl": "https://s.yimg.com/uu/api/res/1.2/2vfARHS2CBozkBlMDtBjVQ--~B/aD03MjA7dz0xMjgwO2FwcGlkPXl0YWNoeW9u/https://cf-images.us-east-1.prod.boltdns.net/v1/jit/6415665815001/dd5040d5-f1e9-4dcd-9752-99370115d46e/main/1280x720/1m3s104ms/match/image.jpg",
-              "originalWidth": 1280,
+              "originalHeight": 400,
+              "originalUrl": "https://media.zenfs.com/en/zacks.com/fe0bb862ce8ec337ec15424c5a7a040e",
+              "originalWidth": 635,
               "resolutions": [
                 {
-                  "height": 720,
+                  "height": 400,
                   "tag": "original",
-                  "url": "https://s.yimg.com/uu/api/res/1.2/2vfARHS2CBozkBlMDtBjVQ--~B/aD03MjA7dz0xMjgwO2FwcGlkPXl0YWNoeW9u/https://cf-images.us-east-1.prod.boltdns.net/v1/jit/6415665815001/dd5040d5-f1e9-4dcd-9752-99370115d46e/main/1280x720/1m3s104ms/match/image.jpg",
-                  "width": 1280
+                  "url": "https://s.yimg.com/uu/api/res/1.2/INE_mOVZesT5CbM88jMNjg--~B/aD00MDA7dz02MzU7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/zacks.com/fe0bb862ce8ec337ec15424c5a7a040e",
+                  "width": 635
                 },
                 {
                   "height": 128,
                   "tag": "170x128",
-                  "url": "https://s.yimg.com/uu/api/res/1.2/XYeUZG989tl.DmhR5j9STw--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://cf-images.us-east-1.prod.boltdns.net/v1/jit/6415665815001/dd5040d5-f1e9-4dcd-9752-99370115d46e/main/1280x720/1m3s104ms/match/image.jpg",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/1tDgeglSHyAWnwIlwEmPqg--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/zacks.com/fe0bb862ce8ec337ec15424c5a7a040e",
                   "width": 170
                 }
               ]
             },
-            "title": "U.S. CEOs seek China business gains from Trump-Xi summit"
+            "title": "Top Analyst Reports for Alphabet, Apple & Micron Technology"
           },
-          "id": "e57747fa-4e58-3713-a10f-48f63a13eebd"
+          "id": "1b0fbf86-f5ef-3c6a-95c2-42fe165188d9"
         },
         {
           "content": {
@@ -1188,86 +946,24 @@
               "lang": "en-US",
               "region": "US",
               "site": "finance",
-              "url": "https://finance.yahoo.com/sectors/energy/articles/apple-inc-aapl-partners-cleanmax-181405337.html"
+              "url": "https://247wallst.com/investing/2026/05/27/buy-sell-or-hold-vanguards-mega-cap-growth-etf-right-now-mgk/"
             },
             "clickThroughUrl": {
               "lang": "en-US",
               "region": "US",
               "site": "finance",
-              "url": "https://finance.yahoo.com/sectors/energy/articles/apple-inc-aapl-partners-cleanmax-181405337.html"
+              "url": "https://finance.yahoo.com/markets/stocks/articles/buy-sell-hold-vanguard-mega-194518686.html"
             },
             "contentType": "STORY",
             "description": "",
-            "displayTime": "2026-05-12T18:14:05Z",
+            "displayTime": "2026-05-27T19:45:18Z",
             "finance": {
               "premiumFinance": {
                 "isPremiumFreeNews": false,
                 "isPremiumNews": false
               }
             },
-            "id": "449b1336-ed09-35ad-833b-ff9b30ee2943",
-            "isHosted": true,
-            "metadata": {
-              "editorsPick": false
-            },
-            "previewUrl": null,
-            "provider": {
-              "displayName": "Insider Monkey",
-              "sourceId": "insidermonkey.com",
-              "url": "http://www.insidermonkey.com"
-            },
-            "pubDate": "2026-05-12T18:14:05Z",
-            "storyline": null,
-            "summary": "Apple Inc. (NASDAQ:AAPL) is one of the top tech stocks in Louis Navellier’s portfolio. On May 7, Apple unveiled new initiatives aimed at expanding renewable energy infrastructure, reducing plastic pollution, and fostering green entrepreneurship in India. The company has inked a strategic partnership with clean energy developer CleanMax as part of a new effort to […]",
-            "thumbnail": {
-              "caption": "Apple Inc (AAPL) Partners with CleanMax to Enhance Renewable Energy Capacity in India",
-              "originalHeight": 512,
-              "originalUrl": "https://media.zenfs.com/en/insidermonkey.com/a05564366cf0c2e41fa9afec9644152b",
-              "originalWidth": 768,
-              "resolutions": [
-                {
-                  "height": 512,
-                  "tag": "original",
-                  "url": "https://s.yimg.com/uu/api/res/1.2/v.UWue.L3lFGrhyGjcv73A--~B/aD01MTI7dz03Njg7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/insidermonkey.com/a05564366cf0c2e41fa9afec9644152b",
-                  "width": 768
-                },
-                {
-                  "height": 128,
-                  "tag": "170x128",
-                  "url": "https://s.yimg.com/uu/api/res/1.2/SUzhk_jnlvXRMeqB6p_iVA--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/insidermonkey.com/a05564366cf0c2e41fa9afec9644152b",
-                  "width": 170
-                }
-              ]
-            },
-            "title": "Apple Inc (AAPL) Partners with CleanMax to Enhance Renewable Energy Capacity in India"
-          },
-          "id": "449b1336-ed09-35ad-833b-ff9b30ee2943"
-        },
-        {
-          "content": {
-            "bypassModal": false,
-            "canonicalUrl": {
-              "lang": "en-US",
-              "region": "US",
-              "site": "finance",
-              "url": "https://247wallst.com/investing/2026/05/12/intel-crashes-10-amd-slides-5-as-chip-trade-cools-after-parabolic-run/"
-            },
-            "clickThroughUrl": {
-              "lang": "en-US",
-              "region": "US",
-              "site": "finance",
-              "url": "https://finance.yahoo.com/markets/stocks/articles/intel-crashes-10-amd-slides-175833292.html"
-            },
-            "contentType": "STORY",
-            "description": "",
-            "displayTime": "2026-05-12T17:58:33Z",
-            "finance": {
-              "premiumFinance": {
-                "isPremiumFreeNews": false,
-                "isPremiumNews": false
-              }
-            },
-            "id": "2f5cd2b3-8075-32b7-8280-40dee4baf389",
+            "id": "3ae0e168-f808-3cd3-b1d8-65098f0f7dbb",
             "isHosted": true,
             "metadata": {
               "editorsPick": false
@@ -1278,32 +974,32 @@
               "sourceId": "24_7_wall_st__718",
               "url": "https://247wallst.com/"
             },
-            "pubDate": "2026-05-12T17:58:33Z",
+            "pubDate": "2026-05-27T19:45:18Z",
             "storyline": null,
-            "summary": "Shares of Intel (NASDAQ:INTC) are down 10% in Tuesday trading, changing hands near $116 after closing at $129.44 on Monday. Advanced Micro Devices (NASDAQ:AMD) is sliding alongside, off 5% at roughly $436. The selloff lands after both names ripped through a parabolic stretch. Intel stock gained 35% in the week ending May 11, while AMD ... Intel Crashes 10%, AMD Slides 5% as Chip Trade Cools After Parabolic Run",
+            "summary": "There’s a tech ETF that has been almost neck-and-neck with the S&P 500 in the past year and has built up a meaningful lead over the past five years. It’s the Vanguard’s Mega Cap Growth ETF (NYSEARCA:MGK). This ETF tracks the price of the CRSP US Mega Cap Growth Index, which in turn tracks companies ... Buy, Sell, or Hold Vanguard’s Mega Cap Growth ETF Right Now | MGK",
             "thumbnail": {
               "caption": "",
-              "originalHeight": 767,
-              "originalUrl": "https://media.zenfs.com/en/24_7_wall_st__718/7783e41c30214bb008f5dc1d2e8c89e8",
-              "originalWidth": 1366,
+              "originalHeight": 683,
+              "originalUrl": "https://media.zenfs.com/en/24_7_wall_st__718/1aefc5bec377b56838e35377b7eafa4b",
+              "originalWidth": 1024,
               "resolutions": [
                 {
-                  "height": 767,
+                  "height": 683,
                   "tag": "original",
-                  "url": "https://s.yimg.com/uu/api/res/1.2/ws.4bYRIj1redPwhZkWs5Q--~B/aD03Njc7dz0xMzY2O2FwcGlkPXl0YWNoeW9u/https://media.zenfs.com/en/24_7_wall_st__718/7783e41c30214bb008f5dc1d2e8c89e8",
-                  "width": 1366
+                  "url": "https://s.yimg.com/uu/api/res/1.2/A9WC_9SCLAmP30CrpbMM_w--~B/aD02ODM7dz0xMDI0O2FwcGlkPXl0YWNoeW9u/https://media.zenfs.com/en/24_7_wall_st__718/1aefc5bec377b56838e35377b7eafa4b",
+                  "width": 1024
                 },
                 {
                   "height": 128,
                   "tag": "170x128",
-                  "url": "https://s.yimg.com/uu/api/res/1.2/M2Y7uA1hiZINgh0N17Wz5A--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/24_7_wall_st__718/7783e41c30214bb008f5dc1d2e8c89e8",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/k6sQKNw8qIIB2ex1qONxDA--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/24_7_wall_st__718/1aefc5bec377b56838e35377b7eafa4b",
                   "width": 170
                 }
               ]
             },
-            "title": "Intel Crashes 10%, AMD Slides 5% as Chip Trade Cools After Parabolic Run"
+            "title": "Buy, Sell, or Hold Vanguard’s Mega Cap Growth ETF Right Now | MGK"
           },
-          "id": "2f5cd2b3-8075-32b7-8280-40dee4baf389"
+          "id": "3ae0e168-f808-3cd3-b1d8-65098f0f7dbb"
         },
         {
           "content": {
@@ -1312,24 +1008,148 @@
               "lang": "en-US",
               "region": "US",
               "site": "finance",
-              "url": "https://finance.yahoo.com/sectors/technology/articles/nvidia-ceo-left-off-trumps-173256695.html"
+              "url": "https://www.trefis.com/articles/600367/dells-growth-story-comes-with-risk-but-also-a-unique-edge/2026-05-27"
             },
             "clickThroughUrl": {
               "lang": "en-US",
               "region": "US",
               "site": "finance",
-              "url": "https://finance.yahoo.com/sectors/technology/articles/nvidia-ceo-left-off-trumps-173256695.html"
+              "url": "https://finance.yahoo.com/markets/stocks/articles/dell-growth-story-comes-risk-190613075.html"
             },
             "contentType": "STORY",
             "description": "",
-            "displayTime": "2026-05-12T17:32:56Z",
+            "displayTime": "2026-05-27T19:06:13Z",
             "finance": {
               "premiumFinance": {
                 "isPremiumFreeNews": false,
                 "isPremiumNews": false
               }
             },
-            "id": "b138f115-afa2-3d01-9eea-dce828a3e3c4",
+            "id": "212d73b7-e5dc-3b1f-ab8f-b80ac9891874",
+            "isHosted": true,
+            "metadata": {
+              "editorsPick": false
+            },
+            "previewUrl": null,
+            "provider": {
+              "displayName": "Trefis",
+              "sourceId": "trefis_142",
+              "url": "https://www.trefis.com/"
+            },
+            "pubDate": "2026-05-27T19:06:13Z",
+            "storyline": null,
+            "summary": "Dell Technologies (DELL) stock has surged 30% in just the last five trading days. And whenever a move like that happens, the instinct for a lot of investors is obvious: chase the momentum before it disappears.",
+            "thumbnail": {
+              "caption": "keyboard, laptop, computer, pc, typing, technology, dell, closeup",
+              "originalHeight": 682,
+              "originalUrl": "https://media.zenfs.com/en/trefis_142/9f7af3fe9ec7b7fd99a46273d115b165",
+              "originalWidth": 1024,
+              "resolutions": [
+                {
+                  "height": 682,
+                  "tag": "original",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/NcFlktyP6HdKGj8EOfhwvw--~B/aD02ODI7dz0xMDI0O2FwcGlkPXl0YWNoeW9u/https://media.zenfs.com/en/trefis_142/9f7af3fe9ec7b7fd99a46273d115b165",
+                  "width": 1024
+                },
+                {
+                  "height": 128,
+                  "tag": "170x128",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/BwzazrPBWRpqtYpVm1BB6w--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/trefis_142/9f7af3fe9ec7b7fd99a46273d115b165",
+                  "width": 170
+                }
+              ]
+            },
+            "title": "Dell’s Growth Story Comes With Risk, But Also a Unique Edge"
+          },
+          "id": "212d73b7-e5dc-3b1f-ab8f-b80ac9891874"
+        },
+        {
+          "content": {
+            "bypassModal": false,
+            "canonicalUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://www.nbcnews.com/business/markets/micron-hits-trillion-dollar-value-ai-euphoria-rcna347159"
+            },
+            "clickThroughUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://finance.yahoo.com/markets/stocks/articles/red-hot-ai-demand-pushes-183546071.html"
+            },
+            "contentType": "STORY",
+            "description": "",
+            "displayTime": "2026-05-27T18:35:46Z",
+            "finance": {
+              "premiumFinance": {
+                "isPremiumFreeNews": false,
+                "isPremiumNews": false
+              }
+            },
+            "id": "1d58649e-fa4d-3e81-8f08-222157b3b74c",
+            "isHosted": true,
+            "metadata": {
+              "editorsPick": false
+            },
+            "previewUrl": null,
+            "provider": {
+              "displayName": "NBC News",
+              "sourceId": "nbc_news_122",
+              "url": "https://www.nbcnews.com/"
+            },
+            "pubDate": "2026-05-27T18:35:46Z",
+            "storyline": null,
+            "summary": "Micron Technologies and SK Hynix joined the trillion-dollar club, which includes Apple, Meta and Tesla.",
+            "thumbnail": {
+              "caption": "Micron hq. (Jeremy Erickson / Bloomberg via Getty Images file)",
+              "originalHeight": 1000,
+              "originalUrl": "https://media.zenfs.com/en/nbc_news_122/b97c794c05290ccee0afe9a8422bea12",
+              "originalWidth": 1500,
+              "resolutions": [
+                {
+                  "height": 1000,
+                  "tag": "original",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/ywis1sNMBQzsU4ZO4JUcgQ--~B/aD0xMDAwO3c9MTUwMDthcHBpZD15dGFjaHlvbg--/https://media.zenfs.com/en/nbc_news_122/b97c794c05290ccee0afe9a8422bea12",
+                  "width": 1500
+                },
+                {
+                  "height": 128,
+                  "tag": "170x128",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/isc3yf7cn5O7TgmQ.TrAKQ--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/nbc_news_122/b97c794c05290ccee0afe9a8422bea12",
+                  "width": 170
+                }
+              ]
+            },
+            "title": "Red hot AI demand pushes more companies into the $1 trillion club"
+          },
+          "id": "1d58649e-fa4d-3e81-8f08-222157b3b74c"
+        },
+        {
+          "content": {
+            "bypassModal": false,
+            "canonicalUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://finance.yahoo.com/markets/stocks/articles/apple-keeps-smartphone-lead-183213195.html"
+            },
+            "clickThroughUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://finance.yahoo.com/markets/stocks/articles/apple-keeps-smartphone-lead-183213195.html"
+            },
+            "contentType": "STORY",
+            "description": "",
+            "displayTime": "2026-05-27T18:32:13Z",
+            "finance": {
+              "premiumFinance": {
+                "isPremiumFreeNews": false,
+                "isPremiumNews": false
+              }
+            },
+            "id": "8968013e-9c61-3ba7-a368-74d958e8b761",
             "isHosted": true,
             "metadata": {
               "editorsPick": false
@@ -1340,13 +1160,13 @@
               "sourceId": "us.finance.gurufocus",
               "url": "http://www.gurufocus.com/"
             },
-            "pubDate": "2026-05-12T17:32:56Z",
+            "pubDate": "2026-05-27T18:32:13Z",
             "storyline": null,
-            "summary": "Jensen Huang will not join Trump's China trip as Nvidia's AI chip sales remain tied to export controls.",
+            "summary": "U.S. smartphone shipments fell 3% in the first quarter, but Apple stayed on top.",
             "thumbnail": null,
-            "title": "Nvidia CEO Left Off Trump's China Delegation Despite $50 Billion Opportunity"
+            "title": "Apple Keeps Smartphone Lead"
           },
-          "id": "b138f115-afa2-3d01-9eea-dce828a3e3c4"
+          "id": "8968013e-9c61-3ba7-a368-74d958e8b761"
         },
         {
           "content": {
@@ -1355,55 +1175,236 @@
               "lang": "en-US",
               "region": "US",
               "site": "finance",
-              "url": "https://www.barrons.com/articles/nvidia-stock-price-huang-trump-china-ff6adbb1?siteid=yhoof2&yptr=yahoo"
+              "url": "https://www.wsj.com/finance/investing/the-app-for-trump-accounts-will-launch-thursday-heres-what-to-know-47f1e983?siteid=yhoof2&yptr=yahoo"
             },
             "clickThroughUrl": null,
             "contentType": "STORY",
             "description": "",
-            "displayTime": "2026-05-12T16:46:00Z",
+            "displayTime": "2026-05-27T18:28:00Z",
             "finance": {
               "premiumFinance": {
                 "isPremiumFreeNews": false,
                 "isPremiumNews": false
               }
             },
-            "id": "ada8551c-b52b-3b3d-b885-01ea8a9cadb6",
+            "id": "a9396629-1bc3-31a7-a9d8-5925ec3dd4fd",
             "isHosted": false,
             "metadata": {
               "editorsPick": false
             },
-            "previewUrl": "https://finance.yahoo.com/m/ada8551c-b52b-3b3d-b885-01ea8a9cadb6/nvidia%E2%80%99s-huang-wants-to-sell.html",
+            "previewUrl": "https://finance.yahoo.com/m/a9396629-1bc3-31a7-a9d8-5925ec3dd4fd/the-app-for-trump-accounts.html",
             "provider": {
-              "displayName": "Barrons.com",
-              "sourceId": "Barrons.com",
-              "url": "http://www.barrons.com/"
+              "displayName": "The Wall Street Journal",
+              "sourceId": "wsj.com",
+              "url": "http://www.wsj.com/"
             },
-            "pubDate": "2026-05-12T16:46:00Z",
+            "pubDate": "2026-05-27T18:28:00Z",
             "storyline": null,
-            "summary": "Nvidia  CEO Jensen Huang won’t be among the business leaders accompanying President Donald Trump on this week’s visit to China, according to media reports.  It might be a sign that the White House is giving up on hopes of opening up the Chinese market for U.S. chip companies.  The recent strength of the semiconductor sector has been a boon for Nvidia, as investors warm again to the prospects for its artificial-intelligence chips.",
+            "summary": "The app where millions of Americans will be able to manage new Trump accounts for their children is set to launch Thursday, a Treasury Department spokeswoman said.  Account activation will begin for families who have already enrolled in the program.  The app, built by   Bank of New York Mellon  and  Robinhood  will be available in the Apple and Google app stores.",
             "thumbnail": {
               "caption": "",
               "originalHeight": 640,
-              "originalUrl": "https://media.zenfs.com/en/Barrons.com/654fcd13be4e43dca7e6ff6e8e2b2942",
+              "originalUrl": "https://media.zenfs.com/en/wsj.com/db3a11e4c02294bcba09f351c74f3e5f",
               "originalWidth": 1280,
               "resolutions": [
                 {
                   "height": 640,
                   "tag": "original",
-                  "url": "https://s.yimg.com/uu/api/res/1.2/byS8qTApAAhYoKVD4Qlzuw--~B/aD02NDA7dz0xMjgwO2FwcGlkPXl0YWNoeW9u/https://media.zenfs.com/en/Barrons.com/654fcd13be4e43dca7e6ff6e8e2b2942",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/a0xpvqiS.dlGu5_c0cl05g--~B/aD02NDA7dz0xMjgwO2FwcGlkPXl0YWNoeW9u/https://media.zenfs.com/en/wsj.com/db3a11e4c02294bcba09f351c74f3e5f",
                   "width": 1280
                 },
                 {
                   "height": 128,
                   "tag": "170x128",
-                  "url": "https://s.yimg.com/uu/api/res/1.2/_iFqAW10UDXJSJv7sF4OkQ--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/Barrons.com/654fcd13be4e43dca7e6ff6e8e2b2942",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/iTRF8crNTJZOB6PtDG5YgA--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/wsj.com/db3a11e4c02294bcba09f351c74f3e5f",
                   "width": 170
                 }
               ]
             },
-            "title": "Nvidia’s Huang Wants to Sell Chips to China. Trump Has Other Priorities."
+            "title": "The App for Trump Accounts Will Launch Thursday. Here’s What to Know."
           },
-          "id": "ada8551c-b52b-3b3d-b885-01ea8a9cadb6"
+          "id": "a9396629-1bc3-31a7-a9d8-5925ec3dd4fd"
+        },
+        {
+          "content": {
+            "bypassModal": false,
+            "canonicalUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://www.barrons.com/articles/apple-iphone-smartphone-sales-falling-8bacb8d6?siteid=yhoof2&yptr=yahoo"
+            },
+            "clickThroughUrl": null,
+            "contentType": "STORY",
+            "description": "",
+            "displayTime": "2026-05-27T17:48:00Z",
+            "finance": {
+              "premiumFinance": {
+                "isPremiumFreeNews": false,
+                "isPremiumNews": false
+              }
+            },
+            "id": "1ef063db-437f-3f1d-b38f-42bf79aceb3d",
+            "isHosted": false,
+            "metadata": {
+              "editorsPick": false
+            },
+            "previewUrl": "https://finance.yahoo.com/m/1ef063db-437f-3f1d-b38f-42bf79aceb3d/smartphone-sales-are-tumbling.html",
+            "provider": {
+              "displayName": "Barrons.com",
+              "sourceId": "Barrons.com",
+              "url": "http://www.barrons.com/"
+            },
+            "pubDate": "2026-05-27T17:48:00Z",
+            "storyline": null,
+            "summary": "Sales of everyone’s favorite device could see the largest decline on record this year, according to market tracker IDC.  There’s one potential ray of light: While the industry outlook might be getting worse, estimates for  Apple  iPhone sales are actually improving.  IDC now expects iPhone shipments to decline 5.2% this year, better than the previous forecast for an 8.1% decline.",
+            "thumbnail": {
+              "caption": "",
+              "originalHeight": 640,
+              "originalUrl": "https://media.zenfs.com/en/Barrons.com/b2ebb819c590528e95c04d5e1a1eac48",
+              "originalWidth": 1280,
+              "resolutions": [
+                {
+                  "height": 640,
+                  "tag": "original",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/vIaCtLaCgC6QWfb6xh7zWw--~B/aD02NDA7dz0xMjgwO2FwcGlkPXl0YWNoeW9u/https://media.zenfs.com/en/Barrons.com/b2ebb819c590528e95c04d5e1a1eac48",
+                  "width": 1280
+                },
+                {
+                  "height": 128,
+                  "tag": "170x128",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/PhL1uD0heoCuhmzFJ509zg--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/Barrons.com/b2ebb819c590528e95c04d5e1a1eac48",
+                  "width": 170
+                }
+              ]
+            },
+            "title": "Smartphone Sales Are Tumbling"
+          },
+          "id": "1ef063db-437f-3f1d-b38f-42bf79aceb3d"
+        },
+        {
+          "content": {
+            "bypassModal": false,
+            "canonicalUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://247wallst.com/investing/2026/05/27/prediction-these-5-companies-will-be-worth-more-than-10-trillion-by-2030/"
+            },
+            "clickThroughUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://finance.yahoo.com/markets/stocks/articles/prediction-5-companies-worth-more-170655355.html"
+            },
+            "contentType": "STORY",
+            "description": "",
+            "displayTime": "2026-05-27T17:06:55Z",
+            "finance": {
+              "premiumFinance": {
+                "isPremiumFreeNews": false,
+                "isPremiumNews": false
+              }
+            },
+            "id": "3a8e0d10-c133-3f38-8bc8-976da665b299",
+            "isHosted": true,
+            "metadata": {
+              "editorsPick": false
+            },
+            "previewUrl": null,
+            "provider": {
+              "displayName": "24/7 Wall St.",
+              "sourceId": "24_7_wall_st__718",
+              "url": "https://247wallst.com/"
+            },
+            "pubDate": "2026-05-27T17:06:55Z",
+            "storyline": null,
+            "summary": "It wasn’t long ago that crossing $1 trillion in market capitalization felt like a once-in-a-generation event. Today, 14 companies have already crossed that line, and the conversation has shifted to the next milestone: $10 trillion. Five mega-caps look like the most credible candidates to reach $10 trillion by 2030. Each combines massive scale, durable cash ... Prediction: These 5 Companies Will Be Worth More Than $10 Trillion By 2030",
+            "thumbnail": {
+              "caption": "",
+              "originalHeight": 791,
+              "originalUrl": "https://media.zenfs.com/en/24_7_wall_st__718/904c54f7b786d10796d9b4f58e8860be",
+              "originalWidth": 1500,
+              "resolutions": [
+                {
+                  "height": 791,
+                  "tag": "original",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/.CTTMnogrQS2fWU45iMPhQ--~B/aD03OTE7dz0xNTAwO2FwcGlkPXl0YWNoeW9u/https://media.zenfs.com/en/24_7_wall_st__718/904c54f7b786d10796d9b4f58e8860be",
+                  "width": 1500
+                },
+                {
+                  "height": 128,
+                  "tag": "170x128",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/jgPPpOZHheKe1jDBd4.zqA--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://media.zenfs.com/en/24_7_wall_st__718/904c54f7b786d10796d9b4f58e8860be",
+                  "width": 170
+                }
+              ]
+            },
+            "title": "Prediction: These 5 Companies Will Be Worth More Than $10 Trillion By 2030"
+          },
+          "id": "3a8e0d10-c133-3f38-8bc8-976da665b299"
+        },
+        {
+          "content": {
+            "bypassModal": false,
+            "canonicalUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://finance.yahoo.com/video/129b-bitcoin-dark-pool-trade-what-to-know-163306835.html"
+            },
+            "clickThroughUrl": {
+              "lang": "en-US",
+              "region": "US",
+              "site": "finance",
+              "url": "https://finance.yahoo.com/video/129b-bitcoin-dark-pool-trade-what-to-know-163306835.html"
+            },
+            "contentType": "VIDEO",
+            "description": "<p>Scott Melker discusses a massive $1.29 billion dark pool trade of BlackRock's bitcoin ETF, Donald Trump's endorsement of the CFTC regulating crypto prediction markets,  Tom Lee's BitMine executing its largest ethereum purchase of the year, and other big crypto headlines of the day.</p>\n<p>“The Daily Wolf with Scott Melker” airs on Yahoo Finance every day at 12:00 p.m. Tune in for your daily dose of all things crypto.<br><br>Make sure to also check out Yahoo Finance's new <a target=\"_blank\" rel=\"\" class=\"link\" href=\"https://finance.yahoo.com/markets/crypto/\" data-i13n=\"slk:crypto hub;cpos:1;pos:1\">crypto hub</a> to find the latest crypto-related news.</p>",
+            "displayTime": "",
+            "finance": {
+              "premiumFinance": {
+                "isPremiumFreeNews": false,
+                "isPremiumNews": false
+              }
+            },
+            "id": "9d73c683-044f-4b7d-9b38-95777c56570f",
+            "isHosted": true,
+            "metadata": {
+              "editorsPick": false
+            },
+            "previewUrl": null,
+            "provider": {
+              "displayName": "Yahoo Finance Video",
+              "sourceId": "video.yahoofinance.com",
+              "url": "https://finance.yahoo.com/"
+            },
+            "pubDate": "2026-05-27T16:33:06Z",
+            "storyline": null,
+            "summary": "Scott Melker discusses a massive $1.29 billion dark pool trade of BlackRock's bitcoin ETF, Donald Trump's endorsement of the CFTC regulating crypto prediction markets, Tom Lee's BitMine executing its largest ethereum purchase of the year, and other big crypto headlines of the day. “The Daily Wolf with Scott Melker” airs on Yahoo Finance every day at 12:00 p.m. Tune in for your daily dose of all things crypto.Make sure to also check out Yahoo Finance's new crypto hub to find the latest crypto-related news.",
+            "thumbnail": {
+              "caption": "",
+              "originalHeight": 1080,
+              "originalUrl": "https://s.yimg.com/uu/api/res/1.2/SvyEcUguDFjTfumljpvfuA--~B/aD0xMDgwO3c9MTkyMDthcHBpZD15dGFjaHlvbg--/https://d29szjachogqwa.cloudfront.net/images/user-uploaded/dw-btc-drops-77k-no-w-noheadline-0518_3778.png",
+              "originalWidth": 1920,
+              "resolutions": [
+                {
+                  "height": 1080,
+                  "tag": "original",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/SvyEcUguDFjTfumljpvfuA--~B/aD0xMDgwO3c9MTkyMDthcHBpZD15dGFjaHlvbg--/https://d29szjachogqwa.cloudfront.net/images/user-uploaded/dw-btc-drops-77k-no-w-noheadline-0518_3778.png",
+                  "width": 1920
+                },
+                {
+                  "height": 128,
+                  "tag": "170x128",
+                  "url": "https://s.yimg.com/uu/api/res/1.2/Q4noSFBYltBdS23XcKzyjw--~B/Zmk9c3RyaW07aD0xMjg7dz0xNzA7YXBwaWQ9eXRhY2h5b24-/https://d29szjachogqwa.cloudfront.net/images/user-uploaded/dw-btc-drops-77k-no-w-noheadline-0518_3778.png",
+                  "width": 170
+                }
+              ]
+            },
+            "title": "$1.29B bitcoin dark pool trade: What to know"
+          },
+          "id": "9d73c683-044f-4b7d-9b38-95777c56570f"
         }
       ]
     }

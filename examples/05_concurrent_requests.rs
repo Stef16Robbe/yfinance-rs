@@ -6,6 +6,10 @@ fn display_opt<T: Display>(value: Option<&T>) -> String {
     value.map_or_else(|| "N/A".to_string(), ToString::to_string)
 }
 
+fn display_value<T: Display>(value: Option<T>) -> String {
+    value.map_or_else(|| "N/A".to_string(), |value| value.to_string())
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = YfClient::default();
@@ -77,8 +81,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let institutional_holders = msft_ticker.institutional_holders().await?;
     if let Some(holder) = institutional_holders.first() {
         println!(
-            "MSFT Top institutional holder: {} with {:?} shares",
-            holder.holder, holder.shares
+            "MSFT Top institutional holder: {} with {} shares",
+            holder.holder,
+            display_value(holder.shares)
         );
     }
     println!();

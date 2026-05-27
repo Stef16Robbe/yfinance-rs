@@ -16,14 +16,14 @@
                 "longFmt": "0",
                 "raw": 0
               },
-              "fiscalYear": 2024,
+              "fiscalYear": 2025,
               "maxAge": 1,
               "name": "Mr. Ryan  Cohen",
               "title": "President, CEO & Executive Chairman",
               "totalPay": {
-                "fmt": "228.23k",
-                "longFmt": "228,227",
-                "raw": 228227
+                "fmt": "1.51M",
+                "longFmt": "1,513,014",
+                "raw": 1513014
               },
               "unexercisedValue": {
                 "fmt": null,
@@ -39,14 +39,14 @@
                 "longFmt": "0",
                 "raw": 0
               },
-              "fiscalYear": 2024,
+              "fiscalYear": 2025,
               "maxAge": 1,
               "name": "Mr. Daniel William Moore",
               "title": "Principal Accounting Officer & Principal Financial Officer",
               "totalPay": {
-                "fmt": "188.23k",
-                "longFmt": "188,233",
-                "raw": 188233
+                "fmt": "240.64k",
+                "longFmt": "240,643",
+                "raw": 240643
               },
               "unexercisedValue": {
                 "fmt": null,
@@ -62,14 +62,14 @@
                 "longFmt": "0",
                 "raw": 0
               },
-              "fiscalYear": 2024,
+              "fiscalYear": 2025,
               "maxAge": 1,
               "name": "Mr. Mark Haymond Robinson",
               "title": "General Counsel & Secretary",
               "totalPay": {
-                "fmt": "169.97k",
-                "longFmt": "169,968",
-                "raw": 169968
+                "fmt": "171.89k",
+                "longFmt": "171,888",
+                "raw": 171888
               },
               "unexercisedValue": {
                 "fmt": null,
@@ -79,7 +79,7 @@
               "yearBorn": 1978
             }
           ],
-          "compensationAsOfEpochDate": 1735603200,
+          "compensationAsOfEpochDate": 1767139200,
           "compensationRisk": 4,
           "country": "United States",
           "executiveTeam": [],

@@ -3,133 +3,7 @@
     "error": null,
     "result": [
       {
-        "annualTotalRevenue": [
-          {
-            "asOfDate": "2022-03-31",
-            "currencyCode": "JPY",
-            "dataId": 20100,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "31.38T",
-              "raw": 31379507000000.0
-            }
-          },
-          {
-            "asOfDate": "2023-03-31",
-            "currencyCode": "JPY",
-            "dataId": 20100,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "37.15T",
-              "raw": 37154298000000.0
-            }
-          },
-          {
-            "asOfDate": "2024-03-31",
-            "currencyCode": "JPY",
-            "dataId": 20100,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "45.10T",
-              "raw": 45095325000000.0
-            }
-          },
-          {
-            "asOfDate": "2025-03-31",
-            "currencyCode": "JPY",
-            "dataId": 20100,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "48.04T",
-              "raw": 48036704000000.0
-            }
-          }
-        ],
-        "meta": {
-          "symbol": [
-            "7203.T"
-          ],
-          "type": [
-            "annualTotalRevenue"
-          ]
-        },
-        "timestamp": [
-          1648684800,
-          1680220800,
-          1711843200,
-          1743379200
-        ]
-      },
-      {
-        "annualTaxProvision": [
-          {
-            "asOfDate": "2022-03-31",
-            "currencyCode": "JPY",
-            "dataId": 20145,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "1.12T",
-              "raw": 1115918000000.0
-            }
-          },
-          {
-            "asOfDate": "2023-03-31",
-            "currencyCode": "JPY",
-            "dataId": 20145,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "1.18T",
-              "raw": 1175765000000.0
-            }
-          },
-          {
-            "asOfDate": "2024-03-31",
-            "currencyCode": "JPY",
-            "dataId": 20145,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "1.89T",
-              "raw": 1893665000000.0
-            }
-          },
-          {
-            "asOfDate": "2025-03-31",
-            "currencyCode": "JPY",
-            "dataId": 20145,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "1.62T",
-              "raw": 1624835000000.0
-            }
-          }
-        ],
-        "meta": {
-          "symbol": [
-            "7203.T"
-          ],
-          "type": [
-            "annualTaxProvision"
-          ]
-        },
-        "timestamp": [
-          1648684800,
-          1680220800,
-          1711843200,
-          1743379200
-        ]
-      },
-      {
         "annualGrossProfit": [
-          {
-            "asOfDate": "2022-03-31",
-            "currencyCode": "JPY",
-            "dataId": 20046,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "5.97T",
-              "raw": 5971673000000.0
-            }
-          },
           {
             "asOfDate": "2023-03-31",
             "currencyCode": "JPY",
@@ -159,6 +33,16 @@
               "fmt": "9.58T",
               "raw": 9578038000000.0
             }
+          },
+          {
+            "asOfDate": "2026-03-31",
+            "currencyCode": "JPY",
+            "dataId": 20046,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "8.46T",
+              "raw": 8463740000000.0
+            }
           }
         ],
         "meta": {
@@ -170,24 +54,130 @@
           ]
         },
         "timestamp": [
-          1648684800,
           1680220800,
           1711843200,
-          1743379200
+          1743379200,
+          1774915200
+        ]
+      },
+      {
+        "annualTotalRevenue": [
+          {
+            "asOfDate": "2023-03-31",
+            "currencyCode": "JPY",
+            "dataId": 20100,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "37.15T",
+              "raw": 37154298000000.0
+            }
+          },
+          {
+            "asOfDate": "2024-03-31",
+            "currencyCode": "JPY",
+            "dataId": 20100,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "45.10T",
+              "raw": 45095325000000.0
+            }
+          },
+          {
+            "asOfDate": "2025-03-31",
+            "currencyCode": "JPY",
+            "dataId": 20100,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "48.04T",
+              "raw": 48036704000000.0
+            }
+          },
+          {
+            "asOfDate": "2026-03-31",
+            "currencyCode": "JPY",
+            "dataId": 20100,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "50.68T",
+              "raw": 50684952000000.0
+            }
+          }
+        ],
+        "meta": {
+          "symbol": [
+            "7203.T"
+          ],
+          "type": [
+            "annualTotalRevenue"
+          ]
+        },
+        "timestamp": [
+          1680220800,
+          1711843200,
+          1743379200,
+          1774915200
+        ]
+      },
+      {
+        "annualTaxProvision": [
+          {
+            "asOfDate": "2023-03-31",
+            "currencyCode": "JPY",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "1.18T",
+              "raw": 1175765000000.0
+            }
+          },
+          {
+            "asOfDate": "2024-03-31",
+            "currencyCode": "JPY",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "1.89T",
+              "raw": 1893665000000.0
+            }
+          },
+          {
+            "asOfDate": "2025-03-31",
+            "currencyCode": "JPY",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "1.62T",
+              "raw": 1624835000000.0
+            }
+          },
+          {
+            "asOfDate": "2026-03-31",
+            "currencyCode": "JPY",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "1.17T",
+              "raw": 1167234000000.0
+            }
+          }
+        ],
+        "meta": {
+          "symbol": [
+            "7203.T"
+          ],
+          "type": [
+            "annualTaxProvision"
+          ]
+        },
+        "timestamp": [
+          1680220800,
+          1711843200,
+          1743379200,
+          1774915200
         ]
       },
       {
         "annualNetIncome": [
-          {
-            "asOfDate": "2022-03-31",
-            "currencyCode": "JPY",
-            "dataId": 20091,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "2.85T",
-              "raw": 2850110000000.0
-            }
-          },
           {
             "asOfDate": "2023-03-31",
             "currencyCode": "JPY",
@@ -217,6 +207,16 @@
               "fmt": "4.77T",
               "raw": 4765086000000.0
             }
+          },
+          {
+            "asOfDate": "2026-03-31",
+            "currencyCode": "JPY",
+            "dataId": 20091,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "3.85T",
+              "raw": 3848098000000.0
+            }
           }
         ],
         "meta": {
@@ -228,50 +228,14 @@
           ]
         },
         "timestamp": [
-          1648684800,
           1680220800,
           1711843200,
-          1743379200
+          1743379200,
+          1774915200
         ]
       },
       {
         "annualOperatingIncome": [
-          {
-            "asOfDate": "2022-03-31",
-            "businessSegmentData": [
-              {
-                "dataValue": 42302000000.0,
-                "isPrimarySegment": 0,
-                "segmentName": "All Other",
-                "segmentType": "Business"
-              },
-              {
-                "dataValue": 2284290000000.0,
-                "isPrimarySegment": 1,
-                "segmentName": "Automotive",
-                "segmentType": "Business"
-              },
-              {
-                "dataValue": 657001000000.0,
-                "isPrimarySegment": 0,
-                "segmentName": "Financial Services",
-                "segmentType": "Business"
-              },
-              {
-                "dataValue": 12104000000.0,
-                "isPrimarySegment": 0,
-                "segmentName": "Inter-segment Elimination/ Unallocated Amount",
-                "segmentType": "Business"
-              }
-            ],
-            "currencyCode": "JPY",
-            "dataId": 20109,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "3.00T",
-              "raw": 2995696000000.0
-            }
-          },
           {
             "asOfDate": "2023-03-31",
             "businessSegmentData": [
@@ -379,6 +343,42 @@
               "fmt": "4.80T",
               "raw": 4795586000000.0
             }
+          },
+          {
+            "asOfDate": "2026-03-31",
+            "businessSegmentData": [
+              {
+                "dataValue": 132079000000.0,
+                "isPrimarySegment": 0,
+                "segmentName": "All Other",
+                "segmentType": "Business"
+              },
+              {
+                "dataValue": 2777049000000.0,
+                "isPrimarySegment": 1,
+                "segmentName": "Automotive",
+                "segmentType": "Business"
+              },
+              {
+                "dataValue": 851722000000.0,
+                "isPrimarySegment": 0,
+                "segmentName": "Financial Services",
+                "segmentType": "Business"
+              },
+              {
+                "dataValue": 5366000000.0,
+                "isPrimarySegment": 0,
+                "segmentName": "Inter-segment Elimination/ Unallocated Amount",
+                "segmentType": "Business"
+              }
+            ],
+            "currencyCode": "JPY",
+            "dataId": 20109,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "3.77T",
+              "raw": 3766216000000.0
+            }
           }
         ],
         "meta": {
@@ -390,24 +390,14 @@
           ]
         },
         "timestamp": [
-          1648684800,
           1680220800,
           1711843200,
-          1743379200
+          1743379200,
+          1774915200
         ]
       },
       {
         "annualDepreciationAndAmortization": [
-          {
-            "asOfDate": "2022-03-31",
-            "currencyCode": "JPY",
-            "dataId": 26060,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "1.82T",
-              "raw": 1821880000000.0
-            }
-          },
           {
             "asOfDate": "2023-03-31",
             "currencyCode": "JPY",
@@ -437,6 +427,16 @@
               "fmt": "2.25T",
               "raw": 2251233000000.0
             }
+          },
+          {
+            "asOfDate": "2026-03-31",
+            "currencyCode": "JPY",
+            "dataId": 26060,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "2.39T",
+              "raw": 2392519000000.0
+            }
           }
         ],
         "meta": {
@@ -448,24 +448,14 @@
           ]
         },
         "timestamp": [
-          1648684800,
           1680220800,
           1711843200,
-          1743379200
+          1743379200,
+          1774915200
         ]
       },
       {
         "annualInterestExpense": [
-          {
-            "asOfDate": "2022-03-31",
-            "currencyCode": "JPY",
-            "dataId": 20057,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "32.46B",
-              "raw": 32458000000.0
-            }
-          },
           {
             "asOfDate": "2023-03-31",
             "currencyCode": "JPY",
@@ -492,8 +482,18 @@
             "dataId": 20057,
             "periodType": "12M",
             "reportedValue": {
-              "fmt": "84.11B",
-              "raw": 84106000000.0
+              "fmt": "190.71B",
+              "raw": 190711000000.0
+            }
+          },
+          {
+            "asOfDate": "2026-03-31",
+            "currencyCode": "JPY",
+            "dataId": 20057,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "86.75B",
+              "raw": 86746000000.0
             }
           }
         ],
@@ -506,10 +506,10 @@
           ]
         },
         "timestamp": [
-          1648684800,
           1680220800,
           1711843200,
-          1743379200
+          1743379200,
+          1774915200
         ]
       }
     ]

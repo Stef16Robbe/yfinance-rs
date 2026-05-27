@@ -10,8 +10,8 @@
           },
           "earnings": {
             "earningsAverage": {
-              "fmt": "4.25",
-              "raw": 4.24777
+              "fmt": "4.24",
+              "raw": 4.23636
             },
             "earningsCallDate": [
               {
@@ -35,9 +35,9 @@
             },
             "isEarningsDateEstimate": true,
             "revenueAverage": {
-              "fmt": "87.61B",
-              "longFmt": "87,610,832,320",
-              "raw": 87610832320
+              "fmt": "87.66B",
+              "longFmt": "87,656,176,510",
+              "raw": 87656176510
             },
             "revenueHigh": {
               "fmt": "91.24B",

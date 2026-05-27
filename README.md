@@ -59,8 +59,8 @@ An ergonomic, async-first Rust client for the unofficial Yahoo Finance API. It p
 
 ### ESG & Sustainability
 
-* **ESG Scores**: Fetch detailed Environmental, Social, and Governance ratings.
-* **ESG Involvement**: Specific ESG involvement and controversy data.
+* **ESG Scores**: Fetch Environmental, Social, and Governance ratings when Yahoo returns them.
+* **ESG Involvement**: Specific ESG involvement and controversy data when Yahoo returns it.
 
 ### News & Information
 
@@ -443,8 +443,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ### ESG Scores & Involvement
 
+Yahoo currently returns empty ESG responses for common symbols. `Ticker::sustainability()` mirrors
+Python yfinance for that provider response by returning an empty summary instead of treating it as
+a hard failure.
+
 ```rust
+use std::fmt::Display;
 use yfinance_rs::{Ticker, YfClient};
+
+fn display_opt<T: Display>(value: Option<T>) -> String {
+    value.map_or_else(|| "N/A".to_string(), |value| value.to_string())
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -452,19 +461,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ticker = Ticker::new(&client, "AAPL");
 
     let summary = ticker.sustainability().await?;
-    let parts = summary
-        .scores
-        .as_ref()
-        .map(|s| [s.environmental, s.social, s.governance])
-        .unwrap_or([None, None, None]);
-    let vals = parts.into_iter().flatten().collect::<Vec<_>>();
-    let total = if vals.is_empty() { 0.0 } else { vals.iter().copied().sum::<f64>() / (vals.len() as f64) };
-    println!("Total ESG Score: {:.2}", total);
+
     if let Some(scores) = summary.scores.as_ref() {
-        println!("Environmental Score: {:.2}", scores.environmental.unwrap_or(0.0));
-        println!("Social Score: {:.2}", scores.social.unwrap_or(0.0));
-        println!("Governance Score: {:.2}", scores.governance.unwrap_or(0.0));
+        println!("Environmental Score: {}", display_opt(scores.environmental));
+        println!("Social Score: {}", display_opt(scores.social));
+        println!("Governance Score: {}", display_opt(scores.governance));
+    } else {
+        println!("No ESG scores returned by Yahoo for this ticker.");
     }
+
     Ok(())
 }
 ```

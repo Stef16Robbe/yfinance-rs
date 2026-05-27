@@ -5,6 +5,10 @@ fn display_opt<T: Display>(value: Option<&T>) -> String {
     value.map_or_else(|| "N/A".to_string(), ToString::to_string)
 }
 
+fn display_value<T: Display>(value: Option<T>) -> String {
+    value.map_or_else(|| "N/A".to_string(), |value| value.to_string())
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = YfClient::default();
@@ -66,15 +70,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\nTop 5 Institutional Holders:");
     for holder in inst_holders.iter().take(5) {
         println!(
-            "  - {}: {:?} shares ({:?}%)",
-            holder.holder, holder.shares, holder.pct_held
+            "  - {}: {} shares ({} held)",
+            holder.holder,
+            display_value(holder.shares),
+            display_opt(holder.pct_held.as_ref())
         );
     }
 
     let net_activity = holders_builder.net_share_purchase_activity().await?;
     if let Some(activity) = net_activity {
         println!("\nNet Insider Purchase Activity ({}):", activity.period);
-        println!("  Net shares bought/sold: {:?}", activity.net_shares);
+        println!(
+            "  Net shares bought/sold: {}",
+            display_value(activity.net_shares)
+        );
     }
     println!("--------------------------------------\n");
 

@@ -87,19 +87,23 @@ pub(super) async fn major_holders(
 fn map_ownership_list(
     node: Option<super::wire::OwnershipNode>,
     currency: &Currency,
-) -> Vec<InstitutionalHolder> {
+) -> Result<Vec<InstitutionalHolder>, YfError> {
     node.and_then(|n| n.ownership_list)
         .unwrap_or_default()
         .into_iter()
-        .map(|h| InstitutionalHolder {
-            holder: h.organization.unwrap_or_default(),
-            shares: from_raw(h.shares),
-            date_reported: from_raw_date(h.date_reported).map_or_else(
-                || DateTime::from_timestamp(0, 0).unwrap_or_default(),
-                i64_to_datetime,
-            ),
-            pct_held: from_raw(h.pct_held).and_then(decimal_from_f64),
-            value: from_raw(h.value).map(|v| u64_to_money_with_currency(v, currency.clone())),
+        .map(|h| {
+            Ok(InstitutionalHolder {
+                holder: h.organization.unwrap_or_default(),
+                shares: from_raw(h.shares),
+                date_reported: from_raw_date(h.date_reported).map_or_else(
+                    || DateTime::from_timestamp(0, 0).unwrap_or_default(),
+                    i64_to_datetime,
+                ),
+                pct_held: from_raw(h.pct_held).and_then(decimal_from_f64),
+                value: from_raw(h.value)
+                    .map(|v| u64_to_money_with_currency(v, currency.clone()))
+                    .transpose()?,
+            })
         })
         .collect()
 }
@@ -112,7 +116,7 @@ pub(super) async fn institutional_holders(
 ) -> Result<Vec<InstitutionalHolder>, YfError> {
     let root = fetch_holders_modules(client, symbol, cache_mode, retry_override).await?;
     let currency = client.reporting_currency(symbol, None).await;
-    Ok(map_ownership_list(root.institution_ownership, &currency))
+    map_ownership_list(root.institution_ownership, &currency)
 }
 
 pub(super) async fn mutual_fund_holders(
@@ -123,7 +127,7 @@ pub(super) async fn mutual_fund_holders(
 ) -> Result<Vec<InstitutionalHolder>, YfError> {
     let root = fetch_holders_modules(client, symbol, cache_mode, retry_override).await?;
     let currency = client.reporting_currency(symbol, None).await;
-    Ok(map_ownership_list(root.fund_ownership, &currency))
+    map_ownership_list(root.fund_ownership, &currency)
 }
 
 pub(super) async fn insider_transactions(
@@ -139,21 +143,25 @@ pub(super) async fn insider_transactions(
         .and_then(|it| it.transactions)
         .unwrap_or_default();
 
-    Ok(transactions
+    transactions
         .into_iter()
-        .map(|t| InsiderTransaction {
-            insider: t.insider.unwrap_or_default(),
-            position: string_to_insider_position(&t.position.unwrap_or_default()),
-            transaction_type: string_to_transaction_type(&t.transaction.unwrap_or_default()),
-            shares: from_raw(t.shares),
-            value: from_raw(t.value).map(|v| u64_to_money_with_currency(v, currency.clone())),
-            transaction_date: from_raw_date(t.start_date).map_or_else(
-                || DateTime::from_timestamp(0, 0).unwrap_or_default(),
-                i64_to_datetime,
-            ),
-            url: t.url.unwrap_or_default(),
+        .map(|t| {
+            Ok(InsiderTransaction {
+                insider: t.insider.unwrap_or_default(),
+                position: string_to_insider_position(&t.position.unwrap_or_default()),
+                transaction_type: string_to_transaction_type(&t.transaction.unwrap_or_default()),
+                shares: from_raw(t.shares),
+                value: from_raw(t.value)
+                    .map(|v| u64_to_money_with_currency(v, currency.clone()))
+                    .transpose()?,
+                transaction_date: from_raw_date(t.start_date).map_or_else(
+                    || DateTime::from_timestamp(0, 0).unwrap_or_default(),
+                    i64_to_datetime,
+                ),
+                url: t.url.unwrap_or_default(),
+            })
         })
-        .collect())
+        .collect()
 }
 
 pub(super) async fn insider_roster_holders(

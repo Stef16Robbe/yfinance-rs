@@ -16,7 +16,7 @@ pub(super) async fn fetch_esg_scores(
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
 ) -> Result<EsgSummary, YfError> {
-    let root: V10Result = quotesummary::fetch_module_result(
+    let root: V10Result = match quotesummary::fetch_module_result(
         client,
         symbol,
         "esgScores",
@@ -24,7 +24,12 @@ pub(super) async fn fetch_esg_scores(
         cache_mode,
         retry_override,
     )
-    .await?;
+    .await
+    {
+        Ok(root) => root,
+        Err(err) if is_unavailable_esg_response(&err) => return Ok(EsgSummary::default()),
+        Err(err) => return Err(err),
+    };
 
     let esg = root
         .esg_scores
@@ -68,4 +73,12 @@ pub(super) async fn fetch_esg_scores(
         scores: Some(scores),
         involvement,
     })
+}
+
+fn is_unavailable_esg_response(err: &YfError) -> bool {
+    match err {
+        YfError::NotFound { .. } => true,
+        YfError::Api(message) => message.contains("No fundamentals data found for symbol:"),
+        _ => false,
+    }
 }

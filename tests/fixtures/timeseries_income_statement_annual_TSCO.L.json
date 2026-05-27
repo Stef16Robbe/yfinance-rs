@@ -5,16 +5,6 @@
       {
         "annualTotalRevenue": [
           {
-            "asOfDate": "2022-02-28",
-            "currencyCode": "GBP",
-            "dataId": 20100,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "61.34B",
-              "raw": 61344000000.0
-            }
-          },
-          {
             "asOfDate": "2023-02-28",
             "currencyCode": "GBP",
             "dataId": 20100,
@@ -43,6 +33,16 @@
               "fmt": "69.92B",
               "raw": 69916000000.0
             }
+          },
+          {
+            "asOfDate": "2026-02-28",
+            "currencyCode": "GBP",
+            "dataId": 20100,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "73.71B",
+              "raw": 73712000000.0
+            }
           }
         ],
         "meta": {
@@ -54,24 +54,14 @@
           ]
         },
         "timestamp": [
-          1646006400,
           1677542400,
           1709164800,
-          1740700800
+          1740700800,
+          1772236800
         ]
       },
       {
         "annualInterestExpense": [
-          {
-            "asOfDate": "2022-02-28",
-            "currencyCode": "GBP",
-            "dataId": 20057,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "652.00M",
-              "raw": 652000000.0
-            }
-          },
           {
             "asOfDate": "2023-02-28",
             "currencyCode": "GBP",
@@ -98,8 +88,18 @@
             "dataId": 20057,
             "periodType": "12M",
             "reportedValue": {
-              "fmt": "781.00M",
-              "raw": 781000000.0
+              "fmt": "774.00M",
+              "raw": 774000000.0
+            }
+          },
+          {
+            "asOfDate": "2026-02-28",
+            "currencyCode": "GBP",
+            "dataId": 20057,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "756.00M",
+              "raw": 756000000.0
             }
           }
         ],
@@ -112,24 +112,14 @@
           ]
         },
         "timestamp": [
-          1646006400,
           1677542400,
           1709164800,
-          1740700800
+          1740700800,
+          1772236800
         ]
       },
       {
         "annualDepreciationAndAmortization": [
-          {
-            "asOfDate": "2022-02-28",
-            "currencyCode": "GBP",
-            "dataId": 26060,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "1.72B",
-              "raw": 1718000000.0
-            }
-          },
           {
             "asOfDate": "2023-02-28",
             "currencyCode": "GBP",
@@ -159,6 +149,16 @@
               "fmt": "1.77B",
               "raw": 1775000000.0
             }
+          },
+          {
+            "asOfDate": "2026-02-28",
+            "currencyCode": "GBP",
+            "dataId": 26060,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "1.90B",
+              "raw": 1895000000.0
+            }
           }
         ],
         "meta": {
@@ -170,24 +170,14 @@
           ]
         },
         "timestamp": [
-          1646006400,
           1677542400,
           1709164800,
-          1740700800
+          1740700800,
+          1772236800
         ]
       },
       {
         "annualGrossProfit": [
-          {
-            "asOfDate": "2022-02-28",
-            "currencyCode": "GBP",
-            "dataId": 20046,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "4.63B",
-              "raw": 4633000000.0
-            }
-          },
           {
             "asOfDate": "2023-02-28",
             "currencyCode": "GBP",
@@ -217,6 +207,16 @@
               "fmt": "5.05B",
               "raw": 5051000000.0
             }
+          },
+          {
+            "asOfDate": "2026-02-28",
+            "currencyCode": "GBP",
+            "dataId": 20046,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "5.54B",
+              "raw": 5538000000.0
+            }
           }
         ],
         "meta": {
@@ -228,24 +228,14 @@
           ]
         },
         "timestamp": [
-          1646006400,
           1677542400,
           1709164800,
-          1740700800
+          1740700800,
+          1772236800
         ]
       },
       {
         "annualTaxProvision": [
-          {
-            "asOfDate": "2022-02-28",
-            "currencyCode": "GBP",
-            "dataId": 20145,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "510.00M",
-              "raw": 510000000.0
-            }
-          },
           {
             "asOfDate": "2023-02-28",
             "currencyCode": "GBP",
@@ -275,6 +265,16 @@
               "fmt": "611.00M",
               "raw": 611000000.0
             }
+          },
+          {
+            "asOfDate": "2026-02-28",
+            "currencyCode": "GBP",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "616.00M",
+              "raw": 616000000.0
+            }
           }
         ],
         "meta": {
@@ -286,58 +286,14 @@
           ]
         },
         "timestamp": [
-          1646006400,
           1677542400,
           1709164800,
-          1740700800
+          1740700800,
+          1772236800
         ]
       },
       {
         "annualOperatingIncome": [
-          {
-            "asOfDate": "2022-02-28",
-            "businessSegmentData": [
-              {
-                "dataValue": 2384000000.0,
-                "isPrimarySegment": 1,
-                "segmentName": "Retail",
-                "segmentType": "Business"
-              },
-              {
-                "dataValue": 176000000.0,
-                "isPrimarySegment": 0,
-                "segmentName": "Tesco Bank",
-                "segmentType": "Business"
-              }
-            ],
-            "currencyCode": "GBP",
-            "dataId": 20109,
-            "geographicSegmentData": [
-              {
-                "dataValue": 193000000.0,
-                "isPrimarySegment": 0,
-                "segmentName": "Central Europe",
-                "segmentType": "Geographic"
-              },
-              {
-                "dataValue": 176000000.0,
-                "isPrimarySegment": 0,
-                "segmentName": "Tesco bank",
-                "segmentType": "Geographic"
-              },
-              {
-                "dataValue": 2191000000.0,
-                "isPrimarySegment": 1,
-                "segmentName": "United Kingdom & Republic of Ireland (UK & ROI)",
-                "segmentType": "Geographic"
-              }
-            ],
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "2.65B",
-              "raw": 2649000000.0
-            }
-          },
           {
             "asOfDate": "2023-02-28",
             "businessSegmentData": [
@@ -354,7 +310,7 @@
                 "segmentType": "Business"
               },
               {
-                "dataValue": 124000000.0,
+                "dataValue": 132000000.0,
                 "isPrimarySegment": 0,
                 "segmentName": "Tesco Bank",
                 "segmentType": "Business"
@@ -467,6 +423,68 @@
               "fmt": "2.81B",
               "raw": 2809000000.0
             }
+          },
+          {
+            "asOfDate": "2026-02-28",
+            "businessSegmentData": [
+              {
+                "dataValue": 211000000.0,
+                "isPrimarySegment": 0,
+                "segmentName": "Booker",
+                "segmentType": "Business"
+              },
+              {
+                "dataValue": 83000000.0,
+                "isPrimarySegment": 0,
+                "segmentName": "Central Europe",
+                "segmentType": "Business"
+              },
+              {
+                "dataValue": 30000000.0,
+                "isPrimarySegment": 0,
+                "segmentName": "Include 53rd week",
+                "segmentType": "Business"
+              },
+              {
+                "dataValue": 2661000000.0,
+                "isPrimarySegment": 1,
+                "segmentName": "United Kingdom and Republic of Ireland (UK & ROI)",
+                "segmentType": "Business"
+              }
+            ],
+            "currencyCode": "GBP",
+            "dataId": 20109,
+            "geographicSegmentData": [
+              {
+                "dataValue": 211000000.0,
+                "isPrimarySegment": 0,
+                "segmentName": "Booker",
+                "segmentType": "Geographic"
+              },
+              {
+                "dataValue": 83000000.0,
+                "isPrimarySegment": 0,
+                "segmentName": "Central Europe",
+                "segmentType": "Geographic"
+              },
+              {
+                "dataValue": 30000000.0,
+                "isPrimarySegment": 0,
+                "segmentName": "Include 53rd week",
+                "segmentType": "Geographic"
+              },
+              {
+                "dataValue": 2661000000.0,
+                "isPrimarySegment": 1,
+                "segmentName": "United Kingdom & Republic of Ireland (UK & ROI)",
+                "segmentType": "Geographic"
+              }
+            ],
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "3.10B",
+              "raw": 3103000000.0
+            }
           }
         ],
         "meta": {
@@ -478,24 +496,14 @@
           ]
         },
         "timestamp": [
-          1646006400,
           1677542400,
           1709164800,
-          1740700800
+          1740700800,
+          1772236800
         ]
       },
       {
         "annualNetIncome": [
-          {
-            "asOfDate": "2022-02-28",
-            "currencyCode": "GBP",
-            "dataId": 20091,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "1.48B",
-              "raw": 1481000000.0
-            }
-          },
           {
             "asOfDate": "2023-02-28",
             "currencyCode": "GBP",
@@ -525,6 +533,16 @@
               "fmt": "1.63B",
               "raw": 1626000000.0
             }
+          },
+          {
+            "asOfDate": "2026-02-28",
+            "currencyCode": "GBP",
+            "dataId": 20091,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "1.79B",
+              "raw": 1787000000.0
+            }
           }
         ],
         "meta": {
@@ -536,10 +554,10 @@
           ]
         },
         "timestamp": [
-          1646006400,
           1677542400,
           1709164800,
-          1740700800
+          1740700800,
+          1772236800
         ]
       }
     ]

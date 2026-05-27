@@ -5,8 +5,8 @@
       {
         "financialData": {
           "currentPrice": {
-            "fmt": "407.77",
-            "raw": 407.77
+            "fmt": "412.67",
+            "raw": 412.67
           },
           "currentRatio": {
             "fmt": "1.28",
@@ -97,12 +97,12 @@
             "raw": 400.0
           },
           "targetMeanPrice": {
-            "fmt": "561.56",
-            "raw": 561.5561
+            "fmt": "560.63",
+            "raw": 560.6302
           },
           "targetMedianPrice": {
-            "fmt": "562.50",
-            "raw": 562.5
+            "fmt": "557.50",
+            "raw": 557.5
           },
           "totalCash": {
             "fmt": "78.23B",

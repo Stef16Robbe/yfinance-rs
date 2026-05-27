@@ -7,6 +7,56 @@
           "history": [
             {
               "action": "main",
+              "currentPriceTarget": 393.0,
+              "epochGradeDate": 1779367231,
+              "firm": "Rosenblatt",
+              "fromGrade": "Neutral",
+              "priceTargetAction": "Maintains",
+              "priorPriceTarget": 393.0,
+              "toGrade": "Neutral"
+            },
+            {
+              "action": "reit",
+              "currentPriceTarget": 425.0,
+              "epochGradeDate": 1779288409,
+              "firm": "Keybanc",
+              "fromGrade": "Overweight",
+              "priceTargetAction": "Maintains",
+              "priorPriceTarget": 425.0,
+              "toGrade": "Overweight"
+            },
+            {
+              "action": "reit",
+              "currentPriceTarget": 515.0,
+              "epochGradeDate": 1779287857,
+              "firm": "Citizens",
+              "fromGrade": "Market Outperform",
+              "priceTargetAction": "Maintains",
+              "priorPriceTarget": 515.0,
+              "toGrade": "Market Outperform"
+            },
+            {
+              "action": "main",
+              "currentPriceTarget": 435.0,
+              "epochGradeDate": 1779284153,
+              "firm": "Wells Fargo",
+              "fromGrade": "Overweight",
+              "priceTargetAction": "Raises",
+              "priorPriceTarget": 427.0,
+              "toGrade": "Overweight"
+            },
+            {
+              "action": "reit",
+              "currentPriceTarget": 450.0,
+              "epochGradeDate": 1779270390,
+              "firm": "Needham",
+              "fromGrade": "Buy",
+              "priceTargetAction": "Maintains",
+              "priorPriceTarget": 450.0,
+              "toGrade": "Buy"
+            },
+            {
+              "action": "main",
               "currentPriceTarget": 460.0,
               "epochGradeDate": 1778071614,
               "firm": "Mizuho",
@@ -9763,56 +9813,6 @@
               "fromGrade": "",
               "priceTargetAction": "Lowers",
               "priorPriceTarget": 875.0,
-              "toGrade": "Buy"
-            },
-            {
-              "action": "main",
-              "currentPriceTarget": 920.0,
-              "epochGradeDate": 1460973466,
-              "firm": "Credit Suisse",
-              "fromGrade": "",
-              "priceTargetAction": "Lowers",
-              "priorPriceTarget": 930.0,
-              "toGrade": "Outperform"
-            },
-            {
-              "action": "up",
-              "currentPriceTarget": 0.0,
-              "epochGradeDate": 1460368781,
-              "firm": "Pivotal Research",
-              "fromGrade": "Hold",
-              "priceTargetAction": "",
-              "priorPriceTarget": 0.0,
-              "toGrade": "Buy"
-            },
-            {
-              "action": "main",
-              "currentPriceTarget": 900.0,
-              "epochGradeDate": 1460018441,
-              "firm": "Morgan Stanley",
-              "fromGrade": "",
-              "priceTargetAction": "Raises",
-              "priorPriceTarget": 880.0,
-              "toGrade": "Overweight"
-            },
-            {
-              "action": "main",
-              "currentPriceTarget": 900.0,
-              "epochGradeDate": 1459507158,
-              "firm": "Citigroup",
-              "fromGrade": "",
-              "priceTargetAction": "Lowers",
-              "priorPriceTarget": 924.0,
-              "toGrade": "Neutral"
-            },
-            {
-              "action": "main",
-              "currentPriceTarget": 925.0,
-              "epochGradeDate": 1454440278,
-              "firm": "Nomura",
-              "fromGrade": "",
-              "priceTargetAction": "Raises",
-              "priorPriceTarget": 900.0,
               "toGrade": "Buy"
             },
             {

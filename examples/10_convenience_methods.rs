@@ -1,9 +1,26 @@
 use std::fmt::Display;
-use yfinance_rs::core::{Interval, Range};
+use yfinance_rs::core::{Action, Interval, Range};
 use yfinance_rs::{Ticker, YfClient};
 
 fn display_opt<T: Display>(value: Option<&T>) -> String {
     value.map_or_else(|| "N/A".to_string(), ToString::to_string)
+}
+
+fn display_action(action: &Action) -> String {
+    match action {
+        Action::Dividend { ts, amount } => {
+            format!("dividend of {amount} on {}", ts.date_naive())
+        }
+        Action::Split {
+            ts,
+            numerator,
+            denominator,
+        } => format!("split {numerator}:{denominator} on {}", ts.date_naive()),
+        Action::CapitalGain { ts, gain } => {
+            format!("capital gain of {gain} on {}", ts.date_naive())
+        }
+        _ => "other corporate action".to_string(),
+    }
 }
 
 #[tokio::main]
@@ -51,7 +68,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let actions = ticker.actions(Some(Range::Ytd)).await?;
     println!("  Found {} actions (dividends/splits) YTD.", actions.len());
     if let Some(action) = actions.last() {
-        println!("  Most recent action: {action:?}");
+        println!("  Most recent action: {}", display_action(action));
     }
     println!();
 

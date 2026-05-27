@@ -1,5 +1,14 @@
 use paft::Decimal;
+use std::fmt::Display;
 use yfinance_rs::{Ticker, YfClient};
+
+fn display_opt<T: Display>(value: Option<T>) -> String {
+    value.map_or_else(|| "N/A".to_string(), |value| value.to_string())
+}
+
+fn display_label(value: &impl Display) -> String {
+    value.to_string().replace('_', " ")
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -13,9 +22,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\nTop 5 Mutual Fund Holders:");
     for holder in mf_holders.iter().take(5) {
         println!(
-            "  - {}: {:?} shares ({:.2}%)",
+            "  - {}: {} shares ({:.2}%)",
             holder.holder,
-            holder.shares,
+            display_opt(holder.shares),
             holder.pct_held.unwrap_or(Decimal::ZERO) * Decimal::from(100)
         );
     }
@@ -25,10 +34,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\nLatest 5 Insider Transactions:");
     for txn in insider_txns.iter().take(5) {
         println!(
-            "  - {}: {} {:?} shares on {}",
+            "  - {}: {} {} shares on {}",
             txn.insider,
-            txn.transaction_type,
-            txn.shares,
+            display_label(&txn.transaction_type),
+            display_opt(txn.shares),
             txn.transaction_date.date_naive()
         );
     }
@@ -38,8 +47,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\nTop 5 Insider Roster:");
     for insider in insider_roster.iter().take(5) {
         println!(
-            "  - {} ({}): {:?} shares",
-            insider.name, insider.position, insider.shares_owned_directly
+            "  - {} ({}): {} shares",
+            insider.name,
+            display_label(&insider.position),
+            display_opt(insider.shares_owned_directly)
         );
     }
 
