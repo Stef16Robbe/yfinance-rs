@@ -23,22 +23,16 @@ pub async fn load_from_scrape(client: &YfClient, symbol: &str) -> Result<Profile
         qp.append_pair("p", symbol);
     }
 
-    let body = if let Some(body) = client.cache_get(&url).await {
-        body
-    } else {
-        let req = client.http().get(url.clone());
-        let quote_page_resp = client.send_with_retry(req, None).await?;
-        if !quote_page_resp.status().is_success() {
-            return Err(YfError::Status {
-                status: quote_page_resp.status().as_u16(),
-                url: url.to_string(),
-            });
-        }
-        let body =
-            crate::core::net::get_text(quote_page_resp, "profile_html", symbol, "html").await?;
-        client.cache_put(&url, &body, None).await;
-        body
-    };
+    let body = crate::core::net::fetch_text_cached(
+        client,
+        &url,
+        crate::core::client::CacheMode::Use,
+        None,
+        "profile_html",
+        symbol,
+        "html",
+    )
+    .await?;
 
     #[cfg(feature = "debug-dumps")]
     {

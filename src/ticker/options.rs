@@ -225,7 +225,7 @@ async fn fetch_options_raw(
 
     if resp.status().is_success() {
         let fixture_key = date.map_or_else(|| symbol.to_string(), |d| format!("{symbol}_{d}"));
-        let body = net::get_text(resp, "options_v7", &fixture_key, "json").await?;
+        let body = net::get_success_text(resp, &url, "options_v7", &fixture_key, "json").await?;
         if cache_mode != CacheMode::Bypass {
             client.cache_put(&url, &body, None).await;
         }
@@ -234,26 +234,14 @@ async fn fetch_options_raw(
 
     let code = resp.status().as_u16();
     if code != 401 && code != 403 {
-        let url_s = url.to_string();
-        return Err(match code {
-            404 => YfError::NotFound { url: url_s },
-            429 => YfError::RateLimited { url: url_s },
-            500..=599 => YfError::ServerError {
-                status: code,
-                url: url_s,
-            },
-            _ => YfError::Status {
-                status: code,
-                url: url_s,
-            },
-        });
+        return Err(net::status_error_code(code, &url));
     }
 
     client.ensure_credentials().await?;
-    let crumb = client.crumb().await.ok_or_else(|| YfError::Status {
-        status: code,
-        url: url.to_string(),
-    })?;
+    let crumb = client
+        .crumb()
+        .await
+        .ok_or_else(|| net::status_error_code(code, &url))?;
 
     let mut url2 = base.join(symbol)?;
     {
@@ -268,24 +256,11 @@ async fn fetch_options_raw(
     resp = client.send_with_retry(req2, retry_override).await?;
 
     if !resp.status().is_success() {
-        let code = resp.status().as_u16();
-        let url_s = url2.to_string();
-        return Err(match code {
-            404 => YfError::NotFound { url: url_s },
-            429 => YfError::RateLimited { url: url_s },
-            500..=599 => YfError::ServerError {
-                status: code,
-                url: url_s,
-            },
-            _ => YfError::Status {
-                status: code,
-                url: url_s,
-            },
-        });
+        return Err(net::status_error(resp.status(), &url2));
     }
 
     let fixture_key = date.map_or_else(|| symbol.to_string(), |d| format!("{symbol}_{d}"));
-    let body = net::get_text(resp, "options_v7", &fixture_key, "json").await?;
+    let body = net::get_success_text(resp, &url2, "options_v7", &fixture_key, "json").await?;
     if cache_mode != CacheMode::Bypass {
         client.cache_put(&url2, &body, None).await;
     }

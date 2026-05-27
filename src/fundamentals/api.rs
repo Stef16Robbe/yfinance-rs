@@ -64,31 +64,17 @@ where
         url.query_pairs_mut().append_pair("crumb", &crumb);
     }
 
-    let body = if cache_mode == CacheMode::Use {
-        if let Some(cached) = client.cache_get(&url).await {
-            cached
-        } else {
-            let resp = client
-                .send_with_retry(client.http().get(url.clone()), retry_override)
-                .await?;
-            let endpoint = format!("timeseries_{endpoint_name}_{prefix}");
-            let text = crate::core::net::get_text(resp, &endpoint, symbol, "json").await?;
-            if cache_mode != CacheMode::Bypass {
-                client.cache_put(&url, &text, None).await;
-            }
-            text
-        }
-    } else {
-        let resp = client
-            .send_with_retry(client.http().get(url.clone()), retry_override)
-            .await?;
-        let endpoint = format!("timeseries_{endpoint_name}_{prefix}");
-        let text = crate::core::net::get_text(resp, &endpoint, symbol, "json").await?;
-        if cache_mode != CacheMode::Bypass {
-            client.cache_put(&url, &text, None).await;
-        }
-        text
-    };
+    let endpoint = format!("timeseries_{endpoint_name}_{prefix}");
+    let body = crate::core::net::fetch_text_cached(
+        client,
+        &url,
+        cache_mode,
+        retry_override,
+        &endpoint,
+        symbol,
+        "json",
+    )
+    .await?;
 
     let envelope: TimeseriesEnvelope = serde_json::from_str(&body).map_err(YfError::Json)?;
 
@@ -597,31 +583,17 @@ pub(super) async fn shares(
         url.query_pairs_mut().append_pair("crumb", &crumb);
     }
 
-    let body = if cache_mode == CacheMode::Use {
-        if let Some(cached) = client.cache_get(&url).await {
-            cached
-        } else {
-            let resp = client
-                .send_with_retry(client.http().get(url.clone()), retry_override)
-                .await?;
-            let endpoint = format!("timeseries_{type_key}");
-            let text = crate::core::net::get_text(resp, &endpoint, symbol, "json").await?;
-            if cache_mode != CacheMode::Bypass {
-                client.cache_put(&url, &text, None).await;
-            }
-            text
-        }
-    } else {
-        let resp = client
-            .send_with_retry(client.http().get(url.clone()), retry_override)
-            .await?;
-        let endpoint = format!("timeseries_{type_key}");
-        let text = crate::core::net::get_text(resp, &endpoint, symbol, "json").await?;
-        if cache_mode != CacheMode::Bypass {
-            client.cache_put(&url, &text, None).await;
-        }
-        text
-    };
+    let endpoint = format!("timeseries_{type_key}");
+    let body = crate::core::net::fetch_text_cached(
+        client,
+        &url,
+        cache_mode,
+        retry_override,
+        &endpoint,
+        symbol,
+        "json",
+    )
+    .await?;
 
     let envelope: TimeseriesEnvelope = serde_json::from_str(&body).map_err(YfError::Json)?;
 

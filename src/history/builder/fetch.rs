@@ -49,37 +49,16 @@ pub async fn fetch_chart(
         );
     }
 
-    if cache_mode == CacheMode::Use
-        && let Some(body) = client.cache_get(&url).await
-    {
-        return decode_chart(&body);
-    }
-
-    let resp = client
-        .send_with_retry(client.http().get(url.clone()), retry_override)
-        .await?;
-    if !resp.status().is_success() {
-        let code = resp.status().as_u16();
-        let url_s = url.to_string();
-        return Err(match code {
-            404 => crate::core::YfError::NotFound { url: url_s },
-            429 => crate::core::YfError::RateLimited { url: url_s },
-            500..=599 => crate::core::YfError::ServerError {
-                status: code,
-                url: url_s,
-            },
-            _ => crate::core::YfError::Status {
-                status: code,
-                url: url_s,
-            },
-        });
-    }
-
-    let body = crate::core::net::get_text(resp, "history_chart", symbol, "json").await?;
-
-    if cache_mode != CacheMode::Bypass {
-        client.cache_put(&url, &body, None).await;
-    }
+    let body = crate::core::net::fetch_text_cached(
+        client,
+        &url,
+        cache_mode,
+        retry_override,
+        "history_chart",
+        symbol,
+        "json",
+    )
+    .await?;
 
     decode_chart(&body)
 }

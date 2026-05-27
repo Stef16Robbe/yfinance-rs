@@ -46,29 +46,10 @@ pub(super) async fn fetch_news(
     // Note: The client's built-in cache is URL-based and doesn't support POST bodies.
     // Caching for this endpoint would require a more complex keying strategy.
 
-    let req = client.http().post(url).json(&payload);
-    let resp = client.send_with_retry(req, retry_override).await?;
-
-    if !resp.status().is_success() {
-        let code = resp.status().as_u16();
-        let url_s = resp.url().to_string();
-        return Err(match code {
-            404 => YfError::NotFound { url: url_s },
-            429 => YfError::RateLimited { url: url_s },
-            500..=599 => YfError::ServerError {
-                status: code,
-                url: url_s,
-            },
-            _ => YfError::Status {
-                status: code,
-                url: url_s,
-            },
-        });
-    }
-
+    let req = client.http().post(url.clone()).json(&payload);
     let endpoint = format!("news_{}", tab_as_str(tab));
-    let body = net::get_text(resp, &endpoint, symbol, "json").await?;
-    let envelope: wire::NewsEnvelope = serde_json::from_str(&body).map_err(YfError::Json)?;
+    let envelope: wire::NewsEnvelope =
+        net::fetch_json(client, req, &url, retry_override, &endpoint, symbol, "json").await?;
 
     let articles = envelope
         .data

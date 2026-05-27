@@ -222,47 +222,25 @@ impl SearchBuilder {
                     )
                     .await?;
 
-                if !resp.status().is_success() {
-                    let code = resp.status().as_u16();
-                    let url_s = url2.to_string();
-                    return Err(match code {
-                        404 => crate::core::YfError::NotFound { url: url_s },
-                        429 => crate::core::YfError::RateLimited { url: url_s },
-                        500..=599 => crate::core::YfError::ServerError {
-                            status: code,
-                            url: url_s,
-                        },
-                        _ => crate::core::YfError::Status {
-                            status: code,
-                            url: url_s,
-                        },
-                    });
-                }
-
-                let body =
-                    crate::core::net::get_text(resp, "search_v1", &self.query, "json").await?;
+                let body = crate::core::net::get_success_text(
+                    resp,
+                    &url2,
+                    "search_v1",
+                    &self.query,
+                    "json",
+                )
+                .await?;
                 if self.cache_mode != CacheMode::Bypass {
                     self.client.cache_put(&url2, &body, None).await;
                 }
                 return parse_search_body(&body);
             }
 
-            let url_s = url.to_string();
-            return Err(match code {
-                404 => crate::core::YfError::NotFound { url: url_s },
-                429 => crate::core::YfError::RateLimited { url: url_s },
-                500..=599 => crate::core::YfError::ServerError {
-                    status: code,
-                    url: url_s,
-                },
-                _ => crate::core::YfError::Status {
-                    status: code,
-                    url: url_s,
-                },
-            });
+            return Err(crate::core::net::status_error_code(code, &url));
         }
 
-        let body = crate::core::net::get_text(resp, "search_v1", &self.query, "json").await?;
+        let body = crate::core::net::get_success_text(resp, &url, "search_v1", &self.query, "json")
+            .await?;
         if self.cache_mode != CacheMode::Bypass {
             self.client.cache_put(&url, &body, None).await;
         }

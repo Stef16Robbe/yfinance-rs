@@ -63,30 +63,24 @@ pub async fn fetch(
             qp.append_pair("crumb", &crumb);
         }
 
-        if cache_mode == CacheMode::Use
-            && let Some(text) = client.cache_get(&url).await
-        {
-            #[cfg(feature = "debug-dumps")]
-            let _ = debug_dump_api(symbol, &text);
-            return serde_json::from_str(&text).map_err(YfError::Json);
-        }
-
-        let req = client.http().get(url.clone());
-        let resp = client.send_with_retry(req, retry_override).await?;
-
         // Create a sanitized key from module names for a unique fixture filename.
         let module_key = modules
             .replace(',', "-")
             .replace(|c: char| !c.is_alphanumeric() && c != '-', "");
         let fixture_endpoint = format!("{caller}_api_{module_key}");
-        let text = net::get_text(resp, &fixture_endpoint, symbol, "json").await?;
+        let text = net::fetch_text_cached(
+            client,
+            &url,
+            cache_mode,
+            retry_override,
+            &fixture_endpoint,
+            symbol,
+            "json",
+        )
+        .await?;
 
         #[cfg(feature = "debug-dumps")]
         let _ = debug_dump_api(symbol, &text);
-
-        if cache_mode != CacheMode::Bypass {
-            client.cache_put(&url, &text, None).await;
-        }
 
         serde_json::from_str(&text).map_err(YfError::Json)
     }

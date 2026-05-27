@@ -382,14 +382,20 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
             .await?;
 
         if resp.status().is_success() {
-            let body = crate::core::net::get_text(resp, "screener_predefined", fixture_key, "json")
-                .await?;
+            let body = crate::core::net::get_success_text(
+                resp,
+                &url,
+                "screener_predefined",
+                fixture_key,
+                "json",
+            )
+            .await?;
             return Ok((body, url));
         }
 
         let status = resp.status().as_u16();
         if status != 401 && status != 403 {
-            return Err(status_to_error(status, &url));
+            return Err(crate::core::net::status_error_code(status, &url));
         }
 
         self.client.ensure_credentials().await?;
@@ -413,11 +419,17 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
             .await?;
 
         if !resp.status().is_success() {
-            return Err(status_to_error(resp.status().as_u16(), &url2));
+            return Err(crate::core::net::status_error(resp.status(), &url2));
         }
 
-        let body =
-            crate::core::net::get_text(resp, "screener_predefined", fixture_key, "json").await?;
+        let body = crate::core::net::get_success_text(
+            resp,
+            &url2,
+            "screener_predefined",
+            fixture_key,
+            "json",
+        )
+        .await?;
         Ok((body, url2))
     }
 
@@ -440,14 +452,19 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
             .await?;
 
         if resp.status().is_success() {
-            return crate::core::net::get_text(resp, "screener_custom", fixture_key, "json")
-                .await
-                .map_err(Into::into);
+            return crate::core::net::get_success_text(
+                resp,
+                &url,
+                "screener_custom",
+                fixture_key,
+                "json",
+            )
+            .await;
         }
 
         let status = resp.status().as_u16();
         if status != 401 && status != 403 {
-            return Err(status_to_error(status, &url));
+            return Err(crate::core::net::status_error_code(status, &url));
         }
 
         self.client.ensure_credentials().await?;
@@ -472,12 +489,11 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
             .await?;
 
         if !resp.status().is_success() {
-            return Err(status_to_error(resp.status().as_u16(), &url2));
+            return Err(crate::core::net::status_error(resp.status(), &url2));
         }
 
-        crate::core::net::get_text(resp, "screener_custom", fixture_key, "json")
+        crate::core::net::get_success_text(resp, &url2, "screener_custom", fixture_key, "json")
             .await
-            .map_err(Into::into)
     }
 }
 
@@ -487,16 +503,6 @@ fn append_common_params(url: &mut Url) {
     qp.append_pair("formatted", "false");
     qp.append_pair("lang", "en-US");
     qp.append_pair("region", "US");
-}
-
-fn status_to_error(status: u16, url: &Url) -> YfError {
-    let url = url.to_string();
-    match status {
-        404 => YfError::NotFound { url },
-        429 => YfError::RateLimited { url },
-        500..=599 => YfError::ServerError { status, url },
-        _ => YfError::Status { status, url },
-    }
 }
 
 #[cfg(test)]

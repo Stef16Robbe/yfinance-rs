@@ -312,16 +312,15 @@ pub async fn fetch_v7_quotes(
             )
             .await?;
 
-        let status = resp.status();
-        let body = net::get_text(resp, "quote_v7", &symbols.join("-"), "json").await?;
-
-        if status.is_success() {
+        if resp.status().is_success() {
+            let body =
+                net::get_success_text(resp, &url, "quote_v7", &symbols.join("-"), "json").await?;
             if cache_mode != CacheMode::Bypass {
                 client.cache_put(&url, &body, None).await;
             }
             Ok((body, url, None))
         } else {
-            Ok((body, url, Some(status.as_u16())))
+            Ok((String::new(), url, Some(resp.status().as_u16())))
         }
     }
 
@@ -342,35 +341,11 @@ pub async fn fetch_v7_quotes(
                 attempt_fetch(client, symbols, Some(&crumb), cache_mode, retry_override).await?;
 
             if let Some(status_code) = maybe_status {
-                let url_s = url.to_string();
-                return Err(match status_code {
-                    404 => YfError::NotFound { url: url_s },
-                    429 => YfError::RateLimited { url: url_s },
-                    500..=599 => YfError::ServerError {
-                        status: status_code,
-                        url: url_s,
-                    },
-                    _ => YfError::Status {
-                        status: status_code,
-                        url: url_s,
-                    },
-                });
+                return Err(net::status_error_code(status_code, &url));
             }
             body
         } else {
-            let url_s = url.to_string();
-            return Err(match status_code {
-                404 => YfError::NotFound { url: url_s },
-                429 => YfError::RateLimited { url: url_s },
-                500..=599 => YfError::ServerError {
-                    status: status_code,
-                    url: url_s,
-                },
-                _ => YfError::Status {
-                    status: status_code,
-                    url: url_s,
-                },
-            });
+            return Err(net::status_error_code(status_code, &url));
         }
     } else {
         body

@@ -10,3 +10,5 @@ mod fundamentals_new_fields;
 mod fundamentals_offline;
 #[path = "fundamentals/retry_synthetic.rs"]
 mod fundamentals_retry_synth;
+#[path = "fundamentals/status_synthetic.rs"]
+mod fundamentals_status_synth;
