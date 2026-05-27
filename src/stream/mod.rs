@@ -48,7 +48,8 @@ mod wire_ws {
 // Implications:
 // - If you need cumulative volume, accumulate the per-update `volume` values yourself or
 //   use the `day_volume` from quote endpoints.
-// - Expect `None` for the first message per symbol and after rollovers.
+// - Expect `None` for only the first message per symbol; reset/rollover ticks emit
+//   the current cumulative volume as the first delta of the new session.
 /// Configuration for a polling-based quote stream.
 #[derive(Debug, Clone)]
 pub struct StreamConfig {

@@ -11,8 +11,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Breaking Changes
 
 - Bump the crate to `0.8.0` and move the public API onto the `paft` 0.8 model. This is a breaking release for consumers that construct or destructure exported `paft` types directly.
+- Per-unit quoted values now use `paft::money::Price` where `paft` 0.8 does so. This affects quotes, snapshots/fast-info, history candles, option prices and strikes, analyst EPS/price-target values, and action dividend/capital-gain amounts. Settled totals, such as market cap, remain `Money`.
 - `Ticker::info()` now returns a composed, structured `Info` rather than a flat market/fundamentals struct. Market snapshot fields live under `info.snapshot`, statistics live under `info.key_statistics`, and optional modules live under `info.profile`, `info.calendar`, `info.price_target`, `info.recommendation_summary`, and `info.esg_scores`.
-- Symbol-like public surfaces now prefer `paft::domain::Instrument` over raw symbol fields where the updated `paft` model does so. This affects quotes, search results, downloads, options, streams, and examples that previously read fields such as `symbol` or `contract_symbol`.
+- Quote, search, option, and stream payloads now prefer `paft::domain::Instrument` over raw symbol fields where the updated `paft` model does so. Download entries already carried instruments, but the updated `paft` model changes access to public fields such as `entry.instrument.symbol`.
+- Historical split actions now expose non-zero split ratios through `std::num::NonZeroU32` numerator and denominator fields.
 - `Ticker::fast_info()` returns `paft::aggregates::Snapshot`, keeping it strictly scoped to instant-in-time quote data (`last`, `previous_close`, `open`, `day_high`, `day_low`, `volume`, and market state). Exchange identity now lives on `snapshot.instrument.exchange`, and currency is carried by the price fields.
 
 ### Added
@@ -25,7 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Add `Ticker::key_statistics()` and re-export `KeyStatistics` from the crate root.
 - Re-export common `paft::domain` types from the crate root: `AssetKind`, `Exchange`,
   `Instrument`, `MarketState`, `Period`, and `Symbol`.
-- Map more Yahoo v7 quote fields into provider-agnostic `paft` models: bid/ask top-of-book levels, regular-market open/high/low/time, market cap, shares outstanding, trailing EPS, trailing PE, dividend rate/yields, 52-week high/low, three-month average volume, and beta.
+- Map more Yahoo v7 quote fields into provider-agnostic `paft` models: bid/ask top-of-book levels, regular-market open/high/low/time, market cap, shares outstanding, trailing EPS, trailing PE, dividend rate/yields, 52-week high/low, and three-month average volume.
 - Expand financial statement mappings from Yahoo fundamentals-timeseries:
   - income statement: interest expense, income tax expense, depreciation and amortization;
   - balance sheet: current assets/liabilities, accounts receivable, inventory, accounts payable, net PPE, goodwill, and intangible assets excluding goodwill;
@@ -36,7 +38,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Align `Ticker::info()` more closely with Python yfinance's broad `info` intent while keeping the output grouped by `paft`'s provider-agnostic models instead of mirroring Yahoo's raw response shape.
 - Treat optional `info()` submodules as best-effort: a valid v7 quote remains the required core, while profile, calendar, analyst, and ESG modules are included when available.
-- Preserve dividend semantics explicitly: Yahoo `calendarEvents.exDividendDate` maps to `Calendar.ex_dividend_date`, Yahoo `calendarEvents.dividendDate` maps to `Calendar.dividend_payment_date`, and v7 `dividendDate` is used only as a fallback payment date. `KeyStatistics.ex_dividend_date` remains unset unless the upstream data is actually an ex-dividend date.
+- Carry the existing calendar dividend-date semantics into the new composed info/key-statistics model: Yahoo `calendarEvents.exDividendDate` maps to `Calendar.ex_dividend_date`, Yahoo `calendarEvents.dividendDate` maps to `Calendar.dividend_payment_date`, and v7 `dividendDate` is used only as a fallback payment date. `KeyStatistics.ex_dividend_date` remains unset unless the upstream data is actually an ex-dividend date.
 - Convert ratio and percentage-like analysis, ESG, holder, and quote statistics to `paft::Decimal` where the updated `paft` API expects decimal values.
 - Extend range and interval conversion support for the additional variants provided by the updated `paft` market request model.
 - Map options into the `paft` 0.8 option model with `OptionContractKey`, `OptionSide`, `contract_instrument`, and a single `contracts` list exposed through `calls()` and `puts()` iterators.
@@ -45,22 +47,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Stop split-adjusting Yahoo chart volumes during historical `auto_adjust`; Python yfinance adjusts OHLC prices but leaves reported volume unchanged. This avoids double-adjusting already split-adjusted volumes around events such as NVDA's 2024-06-10 10:1 split.
 - Tolerate fractional Yahoo split numerator/denominator values in history responses by normalizing them into gcd-simplified non-zero split actions. Oversized normalized pairs are skipped instead of aborting the whole history response.
+- Emit the current cumulative day volume as the first stream volume delta after a detected reset/rollover, instead of emitting `None`; the first observed tick and the stateless WebSocket decoder still emit `None`.
 - Prefer Yahoo long names over short names for search results, quotes, and fast-info snapshots
   when both names are available.
 - Preserve option-chain underlying identity from Yahoo's options response metadata, including ETF/fund quote types and exchange context, instead of falling back to an equity-only request-symbol instrument.
+- Populate beta in `Ticker::key_statistics()` and `info.key_statistics` from quoteSummary `summaryDetail`/`defaultKeyStatistics` when the v7 quote response does not include beta.
 
 ### Dependencies
 
-- Bump `paft` to crates.io `0.8.0` and remove the temporary git `develop` dependency source.
+- Bump `paft` from crates.io `0.7.1` to crates.io `0.8.0`.
 - Bump Polars support to `0.53`.
-- Pin `chrono` to `0.4.41` for compatibility with the updated dependency graph.
+- Set the `chrono` dependency to `0.4.41` for compatibility with the updated dependency graph.
 
 ### Migration Notes
 
-- Replace flat `info` reads with the appropriate group, for example `info.instrument` to `info.snapshot.instrument`, `info.last` to `info.snapshot.last`, `info.volume` to `info.snapshot.volume`, and `info.market_cap` to `info.key_statistics.market_cap`.
+- Replace flat `info` reads with the appropriate group, for example `info.symbol` to `info.snapshot.instrument.symbol`, `info.exchange` to `info.snapshot.instrument.exchange`, `info.last` to `info.snapshot.last`, `info.volume` to `info.snapshot.volume`, and `info.market_cap` to `info.key_statistics.market_cap`.
 - Read dividend payment dates from `info.calendar.as_ref().and_then(|c| c.dividend_payment_date)` and ex-dividend dates from `info.calendar.as_ref().and_then(|c| c.ex_dividend_date)`.
-- `quote.bid` and `quote.ask` are now `Option<BookLevel>`; read prices through `level.price` and sizes through `level.size`.
-- Option chains now expose `contracts` plus `calls()`/`puts()` iterators. Contract economic identity lives under `contract.key`, while Yahoo's contract symbol is available as `contract.contract_instrument`.
+- New `quote.bid` and `quote.ask` fields are `Option<BookLevel>`; read prices through `level.price` and sizes through `level.size`.
+- Access instrument symbols through public fields, for example `quote.instrument.symbol.as_str()`, `search_result.instrument.symbol.as_str()`, `download_entry.instrument.symbol.as_str()`, and `update.instrument.symbol.as_str()`.
+- Read split action ratios with `numerator.get()` and `denominator.get()` after matching `Action::Split`.
+- Option chains now expose `contracts` plus `calls()`/`puts()` iterators. Contract economic identity lives under `contract.key`, while Yahoo's contract symbol is available through `contract.contract_instrument.as_ref().map(|i| i.symbol.as_str())`.
 
 ## [0.7.2] - 2025-10-31
 
