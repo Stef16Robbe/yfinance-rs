@@ -1,9 +1,13 @@
 use httpmock::Method::GET;
 use httpmock::MockServer;
-use paft::money::{Currency, IsoCurrency};
+use paft::money::{Currency, IsoCurrency, Money};
 use url::Url;
-use yfinance_rs::core::conversions::*;
+use yfinance_rs::core::conversions::money_from_f64;
 use yfinance_rs::{Ticker, YfClient};
+
+fn usd(value: f64) -> Money {
+    money_from_f64(value, Currency::Iso(IsoCurrency::USD)).expect("known-good USD literal")
+}
 
 #[tokio::test]
 async fn cashflow_computes_fcf_when_missing() {
@@ -63,33 +67,12 @@ async fn cashflow_computes_fcf_when_missing() {
     mock.assert();
 
     assert_eq!(rows.len(), 1);
-    assert_eq!(
-        rows[0].operating_cashflow,
-        Some(f64_to_money_with_currency(
-            100.0,
-            Currency::Iso(IsoCurrency::USD)
-        ))
-    );
-    assert_eq!(
-        rows[0].capital_expenditures,
-        Some(f64_to_money_with_currency(
-            -30.0,
-            Currency::Iso(IsoCurrency::USD)
-        ))
-    );
+    assert_eq!(rows[0].operating_cashflow, Some(usd(100.0)));
+    assert_eq!(rows[0].capital_expenditures, Some(usd(-30.0)));
     assert_eq!(
         rows[0].free_cash_flow,
-        Some(f64_to_money_with_currency(
-            70.0,
-            Currency::Iso(IsoCurrency::USD)
-        )),
+        Some(usd(70.0)),
         "fcf = ocf + capex (where capex is negative)"
     );
-    assert_eq!(
-        rows[0].net_income,
-        Some(f64_to_money_with_currency(
-            65.0,
-            Currency::Iso(IsoCurrency::USD)
-        ))
-    );
+    assert_eq!(rows[0].net_income, Some(usd(65.0)));
 }

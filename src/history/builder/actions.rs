@@ -1,4 +1,4 @@
-use crate::core::conversions::{f64_to_price_with_currency, i64_to_datetime};
+use crate::core::conversions::{i64_to_datetime, price_from_f64};
 use crate::history::wire::Events;
 use paft::market::action::Action;
 use paft::money::Currency;
@@ -20,10 +20,13 @@ pub fn extract_actions(
     if let Some(divs) = ev.dividends.as_ref() {
         for (k, d) in divs {
             let ts = k.parse::<i64>().unwrap_or_else(|_| d.date.unwrap_or(0));
-            if let Some(amount) = d.amount {
+            if let Some(amount) = d
+                .amount
+                .and_then(|amount| price_from_f64(amount, currency.clone()))
+            {
                 out.push(Action::Dividend {
                     ts: i64_to_datetime(ts),
-                    amount: f64_to_price_with_currency(amount, currency.clone()),
+                    amount,
                 });
             }
         }
@@ -32,10 +35,13 @@ pub fn extract_actions(
     if let Some(gains) = ev.capital_gains.as_ref() {
         for (k, g) in gains {
             let ts = k.parse::<i64>().unwrap_or_else(|_| g.date.unwrap_or(0));
-            if let Some(gain) = g.amount {
+            if let Some(gain) = g
+                .amount
+                .and_then(|gain| price_from_f64(gain, currency.clone()))
+            {
                 out.push(Action::CapitalGain {
                     ts: i64_to_datetime(ts),
-                    gain: f64_to_price_with_currency(gain, currency.clone()),
+                    gain,
                 });
             }
         }

@@ -21,8 +21,6 @@ pub struct HistoryRequest {
     pub include_actions: bool,
     /// Whether to automatically adjust prices for splits and dividends.
     pub auto_adjust: bool,
-    /// Whether to keep data rows that have missing OHLC values.
-    pub keepna: bool,
 }
 
 /// A trait for services that can fetch historical financial data.

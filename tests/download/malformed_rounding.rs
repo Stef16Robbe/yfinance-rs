@@ -1,12 +1,11 @@
 use httpmock::Method::GET;
 use httpmock::MockServer;
-use rust_decimal::prelude::ToPrimitive;
 use url::Url;
 use yfinance_rs::YfClient;
-use yfinance_rs::core::conversions::*;
+use yfinance_rs::core::conversions::money_to_f64;
 
 #[tokio::test]
-async fn download_keepna_and_rounding() {
+async fn download_drops_malformed_rows_and_rounds_valid_neighbors() {
     // Well-formed JSON: adjclose belongs inside indicators, and braces are balanced.
     let body = r#"{
       "chart": {
@@ -46,7 +45,6 @@ async fn download_keepna_and_rounding() {
 
     let res = yfinance_rs::DownloadBuilder::new(&client)
         .symbols([sym])
-        .keepna(true)
         .rounding(true)
         .run()
         .await
@@ -61,19 +59,16 @@ async fn download_keepna_and_rounding() {
         .unwrap()
         .history
         .candles;
-    assert_eq!(v.len(), 3, "kept NA row");
-    // row 1 rounded to 2dp
+    assert_eq!(v.len(), 2, "malformed OHLC row is dropped");
+
     assert!((money_to_f64(&v[0].open) - 100.00).abs() < 1e-9);
     assert!((money_to_f64(&v[0].high) - 101.01).abs() < 1e-9);
     assert!((money_to_f64(&v[0].low) - 99.00).abs() < 1e-9);
     assert!((money_to_f64(&v[0].close) - 100.50).abs() < 1e-9);
-    // NA row should have NaN OHLC preserved (or default values if Money doesn't support NaN)
-    // With Money type, NaN values might be converted to 0.0 or default values
-    // Let's just check that the row exists and has some values
-    assert!(v[1].open.amount().to_f64().unwrap_or(0.0) == 0.0 || money_to_f64(&v[1].open).is_nan());
-    assert!(v[1].high.amount().to_f64().unwrap_or(0.0) == 0.0 || money_to_f64(&v[1].high).is_nan());
-    assert!(v[1].low.amount().to_f64().unwrap_or(0.0) == 0.0 || money_to_f64(&v[1].low).is_nan());
-    assert!(
-        v[1].close.amount().to_f64().unwrap_or(0.0) == 0.0 || money_to_f64(&v[1].close).is_nan()
-    );
+
+    assert!((money_to_f64(&v[1].open) - 99.99).abs() < 1e-9);
+    assert!((money_to_f64(&v[1].high) - 100.01).abs() < 1e-9);
+    assert!((money_to_f64(&v[1].low) - 98.99).abs() < 1e-9);
+    assert!((money_to_f64(&v[1].close) - 100.00).abs() < 1e-9);
+    assert_eq!(v[1].volume, Some(3000));
 }

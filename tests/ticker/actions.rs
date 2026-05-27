@@ -1,7 +1,7 @@
 use httpmock::Method::GET;
 use httpmock::MockServer;
 use url::Url;
-use yfinance_rs::core::Range;
+use yfinance_rs::core::{Action, Range, conversions::money_to_f64};
 use yfinance_rs::{Ticker, YfClient};
 
 fn body_with_actions() -> String {
@@ -66,4 +66,75 @@ async fn ticker_actions_dividends_splits() {
     assert_eq!(divs, vec![(3000, 1.0)]);
     let splits = t.splits(Some(Range::Max)).await.unwrap();
     assert_eq!(splits, vec![(2000, 2, 1)]);
+}
+
+#[tokio::test]
+async fn ticker_actions_skip_invalid_amounts_and_keep_valid_siblings() {
+    let server = MockServer::start();
+
+    let body = r#"{
+      "chart":{
+        "result":[
+          {
+            "timestamp":[1000],
+            "indicators":{
+              "quote":[{
+                "open":[100.0],
+                "high":[101.0],
+                "low":[99.0],
+                "close":[100.0],
+                "volume":[10]
+              }]
+            },
+            "events":{
+              "dividends":{
+                "2000":{"date":2000,"amount":1e30},
+                "3000":{"date":3000,"amount":1.0}
+              },
+              "capitalGains":{
+                "4000":{"date":4000,"amount":1e30},
+                "5000":{"date":5000,"amount":2.0}
+              }
+            }
+          }
+        ],
+        "error":null
+      }
+    }"#;
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v8/finance/chart/TEST")
+            .query_param("range", "max")
+            .query_param("interval", "1d")
+            .query_param("events", "div|split|capitalGains");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let client = YfClient::builder()
+        .base_chart(Url::parse(&format!("{}/v8/finance/chart/", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+
+    let t = Ticker::new(&client, "TEST");
+    let actions = t.actions(Some(Range::Max)).await.unwrap();
+    mock.assert();
+
+    assert_eq!(actions.len(), 2);
+    assert!(actions.iter().any(|action| {
+        matches!(
+            action,
+            Action::Dividend { ts, amount }
+                if ts.timestamp() == 3000 && (money_to_f64(amount) - 1.0).abs() < 1e-9
+        )
+    }));
+    assert!(actions.iter().any(|action| {
+        matches!(
+            action,
+            Action::CapitalGain { ts, gain }
+                if ts.timestamp() == 5000 && (money_to_f64(gain) - 2.0).abs() < 1e-9
+        )
+    }));
 }

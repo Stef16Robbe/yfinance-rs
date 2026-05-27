@@ -4,9 +4,8 @@ use crate::{
         YfClient, YfError,
         client::{CacheMode, RetryConfig},
         conversions::{
-            f64_to_decimal_safely, f64_to_price_with_currency, i64_to_datetime,
-            i64_to_money_with_currency, string_to_period, string_to_recommendation_action,
-            string_to_recommendation_grade,
+            decimal_from_f64, i64_to_datetime, i64_to_money_with_currency, price_from_f64,
+            string_to_period, string_to_recommendation_action, string_to_recommendation_grade,
         },
         wire::{from_raw, from_raw_u32_round},
     },
@@ -103,7 +102,7 @@ pub(super) async fn recommendation_summary(
         hold: h,
         sell: s,
         strong_sell: ss,
-        mean: mean.map(f64_to_decimal_safely),
+        mean: mean.and_then(decimal_from_f64),
         mean_rating_text: None,
     })
 }
@@ -163,11 +162,9 @@ pub(super) async fn analyst_price_target(
         .ok_or_else(|| YfError::MissingData("financialData missing".into()))?;
 
     Ok(PriceTarget {
-        mean: from_raw(fd.target_mean_price)
-            .map(|v| f64_to_price_with_currency(v, currency.clone())),
-        high: from_raw(fd.target_high_price)
-            .map(|v| f64_to_price_with_currency(v, currency.clone())),
-        low: from_raw(fd.target_low_price).map(|v| f64_to_price_with_currency(v, currency.clone())),
+        mean: from_raw(fd.target_mean_price).and_then(|v| price_from_f64(v, currency.clone())),
+        high: from_raw(fd.target_high_price).and_then(|v| price_from_f64(v, currency.clone())),
+        low: from_raw(fd.target_low_price).and_then(|v| price_from_f64(v, currency.clone())),
         number_of_analysts: from_raw_u32_round(fd.number_of_analyst_opinions),
     })
 }
@@ -270,18 +267,15 @@ pub(super) async fn earnings_trend(
 
             EarningsTrendRow {
                 period: string_to_period(&n.period.unwrap_or_default()),
-                growth: from_raw(n.growth).map(f64_to_decimal_safely),
+                growth: from_raw(n.growth).and_then(decimal_from_f64),
                 earnings_estimate: EarningsEstimate {
-                    avg: earnings_estimate_avg
-                        .map(|v| f64_to_price_with_currency(v, currency.clone())),
-                    low: earnings_estimate_low
-                        .map(|v| f64_to_price_with_currency(v, currency.clone())),
-                    high: earnings_estimate_high
-                        .map(|v| f64_to_price_with_currency(v, currency.clone())),
+                    avg: earnings_estimate_avg.and_then(|v| price_from_f64(v, currency.clone())),
+                    low: earnings_estimate_low.and_then(|v| price_from_f64(v, currency.clone())),
+                    high: earnings_estimate_high.and_then(|v| price_from_f64(v, currency.clone())),
                     year_ago_eps: earnings_estimate_year_ago_eps
-                        .map(|v| f64_to_price_with_currency(v, currency.clone())),
+                        .and_then(|v| price_from_f64(v, currency.clone())),
                     num_analysts: earnings_estimate_num_analysts,
-                    growth: earnings_estimate_growth.map(f64_to_decimal_safely),
+                    growth: earnings_estimate_growth.and_then(decimal_from_f64),
                 },
                 revenue_estimate: RevenueEstimate {
                     avg: revenue_estimate_avg
@@ -293,42 +287,33 @@ pub(super) async fn earnings_trend(
                     year_ago_revenue: revenue_estimate_year_ago_revenue
                         .map(|v| i64_to_money_with_currency(v, currency.clone())),
                     num_analysts: revenue_estimate_num_analysts,
-                    growth: revenue_estimate_growth.map(f64_to_decimal_safely),
+                    growth: revenue_estimate_growth.and_then(decimal_from_f64),
                 },
                 eps_trend: EpsTrend {
-                    current: eps_trend_current
-                        .map(|v| f64_to_price_with_currency(v, currency.clone())),
+                    current: eps_trend_current.and_then(|v| price_from_f64(v, currency.clone())),
                     historical: {
                         let mut hist = Vec::new();
-                        if let Some(v) = eps_trend_7_days_ago
-                            && let Ok(tp) = TrendPoint::try_new_str(
-                                "7d",
-                                f64_to_price_with_currency(v, currency.clone()),
-                            )
+                        if let Some(v) =
+                            eps_trend_7_days_ago.and_then(|v| price_from_f64(v, currency.clone()))
+                            && let Ok(tp) = TrendPoint::try_new_str("7d", v)
                         {
                             hist.push(tp);
                         }
-                        if let Some(v) = eps_trend_30_days_ago
-                            && let Ok(tp) = TrendPoint::try_new_str(
-                                "30d",
-                                f64_to_price_with_currency(v, currency.clone()),
-                            )
+                        if let Some(v) =
+                            eps_trend_30_days_ago.and_then(|v| price_from_f64(v, currency.clone()))
+                            && let Ok(tp) = TrendPoint::try_new_str("30d", v)
                         {
                             hist.push(tp);
                         }
-                        if let Some(v) = eps_trend_60_days_ago
-                            && let Ok(tp) = TrendPoint::try_new_str(
-                                "60d",
-                                f64_to_price_with_currency(v, currency.clone()),
-                            )
+                        if let Some(v) =
+                            eps_trend_60_days_ago.and_then(|v| price_from_f64(v, currency.clone()))
+                            && let Ok(tp) = TrendPoint::try_new_str("60d", v)
                         {
                             hist.push(tp);
                         }
-                        if let Some(v) = eps_trend_90_days_ago
-                            && let Ok(tp) = TrendPoint::try_new_str(
-                                "90d",
-                                f64_to_price_with_currency(v, currency.clone()),
-                            )
+                        if let Some(v) =
+                            eps_trend_90_days_ago.and_then(|v| price_from_f64(v, currency.clone()))
+                            && let Ok(tp) = TrendPoint::try_new_str("90d", v)
                         {
                             hist.push(tp);
                         }

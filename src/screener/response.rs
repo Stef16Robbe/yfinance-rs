@@ -6,7 +6,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::query::{YahooExchangeCode, YahooQuoteType};
-use crate::YfError;
+use crate::{
+    YfError,
+    core::conversions::{money_from_f64_with_currency_str, price_from_f64_with_currency_str},
+};
 
 /// Response from a Yahoo screener request.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -150,17 +153,11 @@ impl From<WireQuote> for ScreenerResult {
                 .ok()
         });
 
-        let price = wire.regular_market_price.map(|price| {
-            crate::core::conversions::f64_to_price_with_currency_str(
-                price,
-                wire.currency.as_deref(),
-            )
-        });
-        let market_cap = wire.market_cap.map(|market_cap| {
-            crate::core::conversions::f64_to_money_with_currency_str(
-                market_cap,
-                wire.currency.as_deref(),
-            )
+        let price = wire
+            .regular_market_price
+            .and_then(|price| price_from_f64_with_currency_str(price, wire.currency.as_deref()));
+        let market_cap = wire.market_cap.and_then(|market_cap| {
+            money_from_f64_with_currency_str(market_cap, wire.currency.as_deref())
         });
 
         Self {

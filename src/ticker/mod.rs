@@ -17,7 +17,7 @@ use crate::news::NewsArticle;
 use crate::{
     EsgBuilder,
     core::client::RetryConfig,
-    core::conversions::{datetime_to_i64, money_to_f64},
+    core::conversions::{datetime_to_i64, f64_from_currency_value},
     core::{CacheMode, YfClient, YfError},
     holders::HoldersBuilder,
     news::NewsBuilder,
@@ -53,7 +53,9 @@ use paft::money::Currency;
 ///
 /// // Get the latest quote
 /// let quote = ticker.quote().await?;
-/// println!("Tesla's last price: {}", quote.price.as_ref().map(|p| yfinance_rs::core::conversions::money_to_f64(p)).unwrap_or(0.0));
+/// if let Some(price) = &quote.price {
+///     println!("Tesla's last price: {price:?}");
+/// }
 ///
 /// // Get historical prices for the last year
 /// let history = ticker.history(Some(yfinance_rs::Range::Y1), None, false).await?;
@@ -273,7 +275,7 @@ impl Ticker {
             .into_iter()
             .filter_map(|a| match a {
                 Action::Dividend { ts, amount } => {
-                    Some((datetime_to_i64(ts), money_to_f64(&amount)))
+                    f64_from_currency_value(&amount).map(|amount| (datetime_to_i64(ts), amount))
                 }
                 _ => None,
             })
@@ -354,7 +356,7 @@ impl Ticker {
             .into_iter()
             .filter_map(|a| match a {
                 Action::CapitalGain { ts, gain } => {
-                    Some((datetime_to_i64(ts), money_to_f64(&gain)))
+                    f64_from_currency_value(&gain).map(|gain| (datetime_to_i64(ts), gain))
                 }
                 _ => None,
             })

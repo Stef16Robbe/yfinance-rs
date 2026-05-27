@@ -4,7 +4,6 @@ mod assemble;
 mod fetch;
 
 use crate::core::client::{CacheMode, RetryConfig};
-// use crate::core::conversions::f64_to_money_with_currency_str;
 use crate::core::{YfClient, YfError};
 use crate::history::wire::MetaNode;
 use chrono_tz::Tz;
@@ -40,9 +39,6 @@ pub struct HistoryBuilder {
     pub(crate) include_prepost: bool,
     #[doc(hidden)]
     pub(crate) include_actions: bool,
-    #[doc(hidden)]
-    pub(crate) keepna: bool,
-    #[doc(hidden)]
     pub(crate) cache_mode: CacheMode,
     #[doc(hidden)]
     pub(crate) retry_override: Option<RetryConfig>,
@@ -60,7 +56,6 @@ impl HistoryBuilder {
             auto_adjust: true,
             include_prepost: false,
             include_actions: true,
-            keepna: false,
             cache_mode: CacheMode::Use,
             retry_override: None,
         }
@@ -132,16 +127,6 @@ impl HistoryBuilder {
         self
     }
 
-    /// Sets whether to keep data rows that have missing OHLC values. (Default: `false`)
-    ///
-    /// If `true`, missing values are represented as `f64::NAN`. If `false`, rows with any missing
-    /// OHLC values are dropped.
-    #[must_use]
-    pub const fn keepna(mut self, yes: bool) -> Self {
-        self.keepna = yes;
-        self
-    }
-
     /// Executes the request and returns only the price candles.
     ///
     /// # Errors
@@ -204,7 +189,6 @@ impl HistoryBuilder {
             &fetched.quote,
             &fetched.adjclose,
             self.auto_adjust,
-            self.keepna,
             &cum_split_after,
             currency,
         );

@@ -1,8 +1,8 @@
 use httpmock::Method::GET;
 use httpmock::MockServer;
-use paft::money::{Currency, IsoCurrency};
+use paft::money::{Currency, IsoCurrency, Money};
 use url::Url;
-use yfinance_rs::core::conversions::f64_to_money_with_currency;
+use yfinance_rs::core::conversions::money_from_f64;
 use yfinance_rs::{ApiPreference, Ticker, YfClient};
 
 fn make_ticker(server: &MockServer, symbol: &str) -> Ticker {
@@ -21,8 +21,8 @@ fn make_ticker(server: &MockServer, symbol: &str) -> Ticker {
     Ticker::new(&client, symbol)
 }
 
-fn usd(value: f64) -> paft::money::Money {
-    f64_to_money_with_currency(value, Currency::Iso(IsoCurrency::USD))
+fn usd(value: f64) -> Money {
+    money_from_f64(value, Currency::Iso(IsoCurrency::USD)).expect("known-good USD literal")
 }
 
 #[tokio::test]

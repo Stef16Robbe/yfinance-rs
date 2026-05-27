@@ -2,13 +2,14 @@ use futures::future::try_join_all;
 
 use crate::{
     core::client::{CacheMode, RetryConfig},
+    core::conversions::f64_from_currency_value,
     core::{Candle, HistoryResponse, Interval, Range, YfClient, YfError},
     history::HistoryBuilder,
 };
 use paft::domain::{AssetKind, Instrument};
 use paft::market::responses::download::{DownloadEntry, DownloadResponse};
 use paft::money::Price;
-use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
+use rust_decimal::prelude::FromPrimitive;
 type DateRange = (chrono::DateTime<chrono::Utc>, chrono::DateTime<chrono::Utc>);
 type MaybeDateRange = Option<DateRange>;
 
@@ -33,7 +34,6 @@ pub struct DownloadBuilder {
     back_adjust: bool,
     include_prepost: bool,
     include_actions: bool,
-    keepna: bool,
     rounding: bool,
     repair: bool,
 
@@ -70,7 +70,6 @@ impl DownloadBuilder {
             .auto_adjust(need_adjust_in_fetch)
             .prepost(self.include_prepost)
             .actions(self.include_actions)
-            .keepna(self.keepna)
             .cache_mode(self.cache_mode)
             .retry_policy(self.retry_override.clone());
 
@@ -90,7 +89,7 @@ impl DownloadBuilder {
         }
         for c in rows.iter_mut() {
             if let Some(rc) = c.close_unadj.as_ref()
-                && rc.amount().to_f64().is_some_and(f64::is_finite)
+                && f64_from_currency_value(rc).is_some_and(f64::is_finite)
             {
                 c.close = rc.clone();
             }
@@ -102,39 +101,17 @@ impl DownloadBuilder {
             return;
         }
         for c in rows {
-            if c.open.amount().to_f64().is_some_and(f64::is_finite) {
-                c.open = Price::new(
-                    rust_decimal::Decimal::from_f64(round2(
-                        c.open.amount().to_f64().unwrap_or(0.0),
-                    ))
-                    .unwrap_or_default(),
-                    c.open.currency().clone(),
-                );
+            if let Some(open) = rounded_price(&c.open) {
+                c.open = open;
             }
-            if c.high.amount().to_f64().is_some_and(f64::is_finite) {
-                c.high = Price::new(
-                    rust_decimal::Decimal::from_f64(round2(
-                        c.high.amount().to_f64().unwrap_or(0.0),
-                    ))
-                    .unwrap_or_default(),
-                    c.high.currency().clone(),
-                );
+            if let Some(high) = rounded_price(&c.high) {
+                c.high = high;
             }
-            if c.low.amount().to_f64().is_some_and(f64::is_finite) {
-                c.low = Price::new(
-                    rust_decimal::Decimal::from_f64(round2(c.low.amount().to_f64().unwrap_or(0.0)))
-                        .unwrap_or_default(),
-                    c.low.currency().clone(),
-                );
+            if let Some(low) = rounded_price(&c.low) {
+                c.low = low;
             }
-            if c.close.amount().to_f64().is_some_and(f64::is_finite) {
-                c.close = Price::new(
-                    rust_decimal::Decimal::from_f64(round2(
-                        c.close.amount().to_f64().unwrap_or(0.0),
-                    ))
-                    .unwrap_or_default(),
-                    c.close.currency().clone(),
-                );
+            if let Some(close) = rounded_price(&c.close) {
+                c.close = close;
             }
         }
     }
@@ -194,7 +171,6 @@ impl DownloadBuilder {
             back_adjust: false,
             include_prepost: false,
             include_actions: true,
-            keepna: false,
             rounding: false,
             repair: false,
             cache_mode: CacheMode::Use,
@@ -292,13 +268,6 @@ impl DownloadBuilder {
         self
     }
 
-    /// Sets whether to keep data rows that have missing OHLC values. (Default: `false`)
-    #[must_use]
-    pub const fn keepna(mut self, yes: bool) -> Self {
-        self.keepna = yes;
-        self
-    }
-
     /// Sets whether to round prices to 2 decimal places. (Default: `false`)
     #[must_use]
     pub const fn rounding(mut self, yes: bool) -> Self {
@@ -349,6 +318,12 @@ fn round2(x: f64) -> f64 {
     (x * 100.0).round() / 100.0
 }
 
+fn rounded_price(price: &Price) -> Option<Price> {
+    let value = f64_from_currency_value(price)?;
+    let decimal = rust_decimal::Decimal::from_f64(round2(value))?;
+    Some(Price::new(decimal, price.currency().clone()))
+}
+
 /// Very lightweight "repair" pass:
 /// If a bar's close is ~100× the average of its neighbors (or ~1/100),
 /// scale that entire bar's OHLC accordingly. Volumes are left unchanged.
@@ -373,16 +348,15 @@ fn repair_scale_outliers(rows: &mut [Candle]) {
         let n = &next.close;
         let c = &cur.close;
 
-        if !(p.amount().to_f64().is_some_and(f64::is_finite)
-            && n.amount().to_f64().is_some_and(f64::is_finite)
-            && c.amount().to_f64().is_some_and(f64::is_finite))
-        {
+        let Some(p_val) = f64_from_currency_value(p).filter(|v| v.is_finite()) else {
             continue;
-        }
-
-        let p_val = p.amount().to_f64().unwrap_or(0.0);
-        let n_val = n.amount().to_f64().unwrap_or(0.0);
-        let c_val = c.amount().to_f64().unwrap_or(0.0);
+        };
+        let Some(n_val) = f64_from_currency_value(n).filter(|v| v.is_finite()) else {
+            continue;
+        };
+        let Some(c_val) = f64_from_currency_value(c).filter(|v| v.is_finite()) else {
+            continue;
+        };
 
         let baseline = f64::midpoint(p_val, n_val);
         if baseline <= 0.0 {
@@ -415,28 +389,20 @@ fn repair_scale_outliers(rows: &mut [Candle]) {
 }
 
 fn scale_row_prices(c: &mut Candle, scale: f64) {
-    if c.open.amount().to_f64().is_some_and(f64::is_finite) {
-        c.open = c
-            .open
-            .try_mul(rust_decimal::Decimal::from_f64_retain(scale).unwrap_or_default())
-            .expect("currency metadata available");
-    }
-    if c.high.amount().to_f64().is_some_and(f64::is_finite) {
-        c.high = c
-            .high
-            .try_mul(rust_decimal::Decimal::from_f64_retain(scale).unwrap_or_default())
-            .expect("currency metadata available");
-    }
-    if c.low.amount().to_f64().is_some_and(f64::is_finite) {
-        c.low = c
-            .low
-            .try_mul(rust_decimal::Decimal::from_f64_retain(scale).unwrap_or_default())
-            .expect("currency metadata available");
-    }
-    if c.close.amount().to_f64().is_some_and(f64::is_finite) {
-        c.close = c
-            .close
-            .try_mul(rust_decimal::Decimal::from_f64_retain(scale).unwrap_or_default())
-            .expect("currency metadata available");
+    let Some(scale) = rust_decimal::Decimal::from_f64_retain(scale) else {
+        return;
+    };
+
+    scale_price(&mut c.open, scale);
+    scale_price(&mut c.high, scale);
+    scale_price(&mut c.low, scale);
+    scale_price(&mut c.close, scale);
+}
+
+fn scale_price(price: &mut Price, scale: rust_decimal::Decimal) {
+    if f64_from_currency_value(price).is_some_and(f64::is_finite)
+        && let Ok(scaled) = price.try_mul(scale)
+    {
+        *price = scaled;
     }
 }

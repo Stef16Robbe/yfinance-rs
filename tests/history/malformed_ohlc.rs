@@ -1,11 +1,11 @@
 use httpmock::Method::GET;
 use httpmock::MockServer;
 use url::Url;
-use yfinance_rs::core::conversions::*;
+use yfinance_rs::core::conversions::money_to_f64;
 use yfinance_rs::{HistoryBuilder, YfClient};
 
 #[tokio::test]
-async fn history_keepna_preserves_null_rows() {
+async fn history_drops_malformed_ohlc_rows() {
     let server = MockServer::start();
 
     let body = r#"{
@@ -31,18 +31,12 @@ async fn history_keepna_preserves_null_rows() {
         .build()
         .unwrap();
 
-    let bars = HistoryBuilder::new(&client, "AAPL")
-        .keepna(true)
-        .fetch()
-        .await
-        .unwrap();
+    let bars = HistoryBuilder::new(&client, "AAPL").fetch().await.unwrap();
 
     mock.assert();
 
-    assert_eq!(bars.len(), 2, "second row kept with NaNs");
-    // With Money type, NaN values might be converted to 0.0 or default values
-    // Let's just check that the row exists and has some values
-    assert!(money_to_f64(&bars[1].open) == 0.0 || money_to_f64(&bars[1].open).is_nan());
-    assert!(money_to_f64(&bars[1].close) == 0.0 || money_to_f64(&bars[1].close).is_nan());
-    assert_eq!(bars[1].volume, Some(2000));
+    assert_eq!(bars.len(), 1, "null OHLC row is dropped");
+    assert!((money_to_f64(&bars[0].open) - 100.0).abs() < 1e-9);
+    assert!((money_to_f64(&bars[0].close) - 100.5).abs() < 1e-9);
+    assert_eq!(bars[0].volume, Some(1000));
 }

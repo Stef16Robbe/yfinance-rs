@@ -1,7 +1,7 @@
 use paft::domain::AssetKind;
 use serde_json::Value;
 use url::Url;
-use yfinance_rs::core::conversions::money_to_currency_str;
+use yfinance_rs::core::conversions::{money_to_currency_str, money_to_f64};
 use yfinance_rs::{Ticker, YfClient};
 
 #[tokio::test]
@@ -208,6 +208,85 @@ async fn option_chain_currency_fallback_fetches_quote() {
         );
         assert_eq!(contract.expiration_at.unwrap().timestamp(), date);
     }
+}
+
+#[tokio::test]
+async fn option_chain_skips_bad_strikes_and_keeps_valid_contracts() {
+    let server = crate::common::setup_server();
+    let date = 1_737_072_000_i64;
+
+    let body = r#"{
+      "optionChain": {
+        "result": [{
+          "quote": { "currency": "USD" },
+          "options": [{
+            "expirationDate": 1737072000,
+            "calls": [
+              {
+                "contractSymbol":"AAPL250117C00170000",
+                "strike":1e30,
+                "expiration":1737072000,
+                "lastPrice":5.0
+              },
+              {
+                "contractSymbol":"AAPL250117C00180000",
+                "strike":180.0,
+                "expiration":1737072000,
+                "lastPrice":1e30,
+                "bid":1.25,
+                "ask":1e30,
+                "impliedVolatility":1e30
+              }
+            ],
+            "puts": [{
+              "contractSymbol":"AAPL250117P00175000",
+              "strike":175.0,
+              "expiration":1737072000,
+              "lastPrice":2.0
+            }]
+          }]
+        }],
+        "error": null
+      }
+    }"#;
+
+    let mock = server.mock(|when, then| {
+        when.method(httpmock::Method::GET)
+            .path("/v7/finance/options/AAPL")
+            .query_param("date", date.to_string());
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let client = YfClient::builder()
+        .base_options_v7(Url::parse(&format!("{}/v7/finance/options/", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+    let ticker = Ticker::new(&client, "AAPL");
+
+    let chain = ticker.option_chain(Some(date)).await.unwrap();
+    mock.assert();
+
+    let calls = chain.calls().collect::<Vec<_>>();
+    let puts_count = chain.puts().count();
+
+    assert_eq!(
+        calls.len(),
+        1,
+        "contract with unrepresentable strike is skipped"
+    );
+    assert_eq!(puts_count, 1, "valid sibling put survives");
+
+    let call = calls[0];
+    assert!((money_to_f64(&call.key.strike) - 180.0).abs() < 1e-9);
+    assert_eq!(call.price, None, "invalid optional last price becomes None");
+    assert!(call.bid.is_some(), "valid optional bid survives");
+    assert_eq!(call.ask, None, "invalid optional ask becomes None");
+    assert_eq!(
+        call.implied_volatility, None,
+        "invalid optional IV becomes None"
+    );
 }
 
 fn assert_fixture_present(id: &str) {

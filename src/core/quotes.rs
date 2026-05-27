@@ -7,7 +7,8 @@ use crate::{
     core::{
         client::{CacheMode, RetryConfig},
         conversions::{
-            f64_to_money_with_currency_str, f64_to_price_with_currency_str, i64_to_datetime,
+            decimal_from_f64, i64_to_datetime, money_from_f64_with_currency_str,
+            price_from_f64_with_currency_str,
         },
         net, quotesummary,
         wire::{RawNum, from_raw},
@@ -24,9 +25,7 @@ use paft::market::quote::Quote;
 const KEY_STATISTICS_MODULES: &str = "summaryDetail,defaultKeyStatistics";
 
 fn finite_decimal(value: Option<f64>) -> Option<Decimal> {
-    value
-        .filter(|v| v.is_finite())
-        .and_then(|v| Decimal::try_from(v).ok())
+    value.and_then(decimal_from_f64)
 }
 
 // Centralized wire model for the v7 quote API
@@ -135,10 +134,8 @@ impl V7QuoteNode {
 
     fn positive_book_level(&self, price: Option<f64>, size: Option<u64>) -> Option<BookLevel> {
         let price = price.filter(|p| p.is_finite() && *p > 0.0)?;
-        Some(BookLevel::new(
-            f64_to_price_with_currency_str(price, self.currency.as_deref()),
-            size.map(Decimal::from),
-        ))
+        let price = price_from_f64_with_currency_str(price, self.currency.as_deref())?;
+        Some(BookLevel::new(price, size.map(Decimal::from)))
     }
 
     fn decimal(value: Option<f64>) -> Option<Decimal> {
@@ -156,7 +153,8 @@ impl V7QuoteNode {
     pub(crate) fn to_snapshot(&self) -> Snapshot {
         let exchange = self.exchange();
         let price = |value: Option<f64>| {
-            value.map(|value| f64_to_price_with_currency_str(value, self.currency.as_deref()))
+            value
+                .and_then(|value| price_from_f64_with_currency_str(value, self.currency.as_deref()))
         };
 
         Snapshot {
@@ -176,10 +174,12 @@ impl V7QuoteNode {
 
     pub(crate) fn to_key_statistics(&self) -> KeyStatistics {
         let money = |value: Option<f64>| {
-            value.map(|value| f64_to_money_with_currency_str(value, self.currency.as_deref()))
+            value
+                .and_then(|value| money_from_f64_with_currency_str(value, self.currency.as_deref()))
         };
         let price = |value: Option<f64>| {
-            value.map(|value| f64_to_price_with_currency_str(value, self.currency.as_deref()))
+            value
+                .and_then(|value| price_from_f64_with_currency_str(value, self.currency.as_deref()))
         };
 
         KeyStatistics {
@@ -421,12 +421,12 @@ impl From<V7QuoteNode> for Quote {
             name: n.long_name.clone().or_else(|| n.short_name.clone()),
             price: n
                 .regular_market_price
-                .map(|price| f64_to_price_with_currency_str(price, n.currency.as_deref())),
+                .and_then(|price| price_from_f64_with_currency_str(price, n.currency.as_deref())),
             bid: n.positive_book_level(n.bid, n.bid_size),
             ask: n.positive_book_level(n.ask, n.ask_size),
             previous_close: n
                 .regular_market_previous_close
-                .map(|price| f64_to_price_with_currency_str(price, n.currency.as_deref())),
+                .and_then(|price| price_from_f64_with_currency_str(price, n.currency.as_deref())),
             day_volume: n.regular_market_volume,
             market_state: n.market_state.as_deref().and_then(|s| s.parse().ok()),
             as_of: n.as_of(),

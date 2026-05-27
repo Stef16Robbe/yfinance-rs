@@ -1,6 +1,7 @@
-use crate::core::conversions::{f64_to_price_with_currency_str, i64_to_datetime};
+use crate::core::conversions::{i64_to_datetime, price_from_f64_with_currency_str};
 use crate::history::wire::QuoteBlock;
 use paft::market::responses::history::Candle;
+use paft::money::Price;
 
 use super::adjust::price_factor_for_row;
 
@@ -9,7 +10,6 @@ pub fn assemble_candles(
     q: &QuoteBlock,
     adj: &[Option<f64>],
     auto_adjust: bool,
-    keepna: bool,
     cum_split_after: &[f64],
     currency: Option<&str>,
 ) -> Vec<Candle> {
@@ -23,7 +23,7 @@ pub fn assemble_candles(
         let mut close = getter_f64(&q.close);
         let volume0 = q.volume.get(i).and_then(|x| *x);
 
-        let raw_close_val = close.unwrap_or(f64::NAN);
+        let raw_close = close;
 
         if auto_adjust {
             let pf = price_factor_for_row(i, adj.get(i).and_then(|x| *x), close, cum_split_after);
@@ -40,65 +40,17 @@ pub fn assemble_candles(
             if let Some(v) = close.as_mut() {
                 *v *= pf;
             }
+        }
 
-            if let (Some(ov), Some(hv), Some(lv), Some(cv)) = (open, high, low, close) {
-                out.push(Candle {
-                    ts: i64_to_datetime(t),
-                    open: f64_to_price_with_currency_str(ov, currency),
-                    high: f64_to_price_with_currency_str(hv, currency),
-                    low: f64_to_price_with_currency_str(lv, currency),
-                    close: f64_to_price_with_currency_str(cv, currency),
-                    close_unadj: if raw_close_val.is_finite() {
-                        Some(f64_to_price_with_currency_str(raw_close_val, currency))
-                    } else {
-                        None
-                    },
-                    volume: volume0,
-                    provider: (),
-                });
-            } else if keepna {
-                out.push(Candle {
-                    ts: i64_to_datetime(t),
-                    open: f64_to_price_with_currency_str(open.unwrap_or(f64::NAN), currency),
-                    high: f64_to_price_with_currency_str(high.unwrap_or(f64::NAN), currency),
-                    low: f64_to_price_with_currency_str(low.unwrap_or(f64::NAN), currency),
-                    close: f64_to_price_with_currency_str(close.unwrap_or(f64::NAN), currency),
-                    close_unadj: if raw_close_val.is_finite() {
-                        Some(f64_to_price_with_currency_str(raw_close_val, currency))
-                    } else {
-                        None
-                    },
-                    volume: volume0,
-                    provider: (),
-                });
-            }
-        } else if let (Some(ov), Some(hv), Some(lv), Some(cv)) = (open, high, low, close) {
+        if let Some((open, high, low, close)) = candle_prices(open, high, low, close, currency) {
             out.push(Candle {
                 ts: i64_to_datetime(t),
-                open: f64_to_price_with_currency_str(ov, currency),
-                high: f64_to_price_with_currency_str(hv, currency),
-                low: f64_to_price_with_currency_str(lv, currency),
-                close: f64_to_price_with_currency_str(cv, currency),
-                close_unadj: if raw_close_val.is_finite() {
-                    Some(f64_to_price_with_currency_str(raw_close_val, currency))
-                } else {
-                    None
-                },
-                volume: volume0,
-                provider: (),
-            });
-        } else if keepna {
-            out.push(Candle {
-                ts: i64_to_datetime(t),
-                open: f64_to_price_with_currency_str(open.unwrap_or(f64::NAN), currency),
-                high: f64_to_price_with_currency_str(high.unwrap_or(f64::NAN), currency),
-                low: f64_to_price_with_currency_str(low.unwrap_or(f64::NAN), currency),
-                close: f64_to_price_with_currency_str(close.unwrap_or(f64::NAN), currency),
-                close_unadj: if raw_close_val.is_finite() {
-                    Some(f64_to_price_with_currency_str(raw_close_val, currency))
-                } else {
-                    None
-                },
+                open,
+                high,
+                low,
+                close,
+                close_unadj: raw_close
+                    .and_then(|value| price_from_f64_with_currency_str(value, currency)),
                 volume: volume0,
                 provider: (),
             });
@@ -106,4 +58,19 @@ pub fn assemble_candles(
     }
 
     out
+}
+
+fn candle_prices(
+    open: Option<f64>,
+    high: Option<f64>,
+    low: Option<f64>,
+    close: Option<f64>,
+    currency: Option<&str>,
+) -> Option<(Price, Price, Price, Price)> {
+    Some((
+        price_from_f64_with_currency_str(open?, currency)?,
+        price_from_f64_with_currency_str(high?, currency)?,
+        price_from_f64_with_currency_str(low?, currency)?,
+        price_from_f64_with_currency_str(close?, currency)?,
+    ))
 }

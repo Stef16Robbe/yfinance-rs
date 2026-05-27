@@ -79,7 +79,7 @@ An ergonomic, async-first Rust client for the unofficial Yahoo Finance API. It p
 
 * **Data Repair**: Automatic detection and repair of price outliers.
 * **Data Rounding**: Control price precision and rounding.
-* **Missing Data Handling**: Configurable handling of NA/missing values.
+* **Malformed Data Handling**: Drops invalid OHLC rows while preserving valid sibling data.
 * **Back Adjustment**: Alternative price adjustment methods.
 * **Historical Metadata**: Timezone and other metadata for historical data.
 * **ISIN Lookup**: Get International Securities Identification Numbers.
@@ -100,7 +100,7 @@ To get started, add `yfinance-rs` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-yfinance-rs = "0.8.0"
+yfinance-rs = "0.9.0"
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -108,7 +108,7 @@ To enable DataFrame conversions backed by Polars, turn on the optional `datafram
 
 ```toml
 [dependencies]
-yfinance-rs = { version = "0.8.0", features = ["dataframe"] }
+yfinance-rs = { version = "0.9.0", features = ["dataframe"] }
 polars = "0.53"
 ```
 
@@ -350,7 +350,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ```rust
 use yfinance_rs::{Ticker, YfClient};
-use yfinance_rs::core::conversions::money_to_f64;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -361,30 +360,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if let Some(nearest) = expirations.first() {
         let chain = ticker.option_chain(Some(*nearest)).await?;
-    
-        println!("Calls: {}", chain.calls.len());
-        println!("Puts: {}", chain.puts.len());
-    
-        let fi = ticker.fast_info().await?;
-        let current_price = fi
-            .last
-            .as_ref()
-            .map(money_to_f64)
-            .or_else(|| fi.previous_close.as_ref().map(money_to_f64))
-            .unwrap_or(0.0);
-        for call in &chain.calls {
-            if (money_to_f64(&call.strike) - current_price).abs() < 5.0 {
-                println!(
-                    "ATM Call: Strike {}, Bid {}, Ask {}",
-                    call.strike,
-                    call.bid
-                        .as_ref()
-                        .map_or_else(|| "N/A".to_string(), ToString::to_string),
-                    call.ask
-                        .as_ref()
-                        .map_or_else(|| "N/A".to_string(), ToString::to_string)
-                );
-            }
+
+        let calls = chain.calls().collect::<Vec<_>>();
+        let puts = chain.puts().collect::<Vec<_>>();
+
+        println!("Calls: {}", calls.len());
+        println!("Puts: {}", puts.len());
+
+        for call in calls.iter().take(5) {
+            println!(
+                "Call: Strike {}, Bid {}, Ask {}",
+                call.key.strike,
+                call.bid
+                    .as_ref()
+                    .map_or_else(|| "N/A".to_string(), ToString::to_string),
+                call.ask
+                    .as_ref()
+                    .map_or_else(|| "N/A".to_string(), ToString::to_string)
+            );
         }
     }
     Ok(())

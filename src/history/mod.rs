@@ -23,8 +23,7 @@ impl HistoryService for YfClient {
                 .interval(req.interval)
                 .auto_adjust(req.auto_adjust)
                 .prepost(req.include_prepost)
-                .actions(req.include_actions)
-                .keepna(req.keepna);
+                .actions(req.include_actions);
 
             if let Some((p1, p2)) = req.period {
                 use chrono::{TimeZone, Utc};

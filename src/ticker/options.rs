@@ -7,9 +7,7 @@ use crate::{
     YfClient, YfError,
     core::{
         client::{CacheMode, RetryConfig},
-        conversions::{
-            f64_to_decimal_safely, f64_to_price_with_currency, i64_to_datetime, string_to_exchange,
-        },
+        conversions::{decimal_from_f64, price_from_f64, string_to_exchange},
         net,
     },
     screener::YahooQuoteType,
@@ -69,17 +67,11 @@ pub async fn option_chain(
         });
     };
 
-    let expiration = od.expiration_date.unwrap_or_else(|| {
-        if let Some(q) = used_url.query() {
-            for kv in q.split('&') {
-                if let Some(v) = kv.strip_prefix("date=")
-                    && let Ok(ts) = v.parse::<i64>()
-                {
-                    return ts;
-                }
-            }
-        }
-        0
+    let expiration = od.expiration_date.or_else(|| {
+        used_url.query().and_then(|q| {
+            q.split('&')
+                .find_map(|kv| kv.strip_prefix("date=").and_then(|v| v.parse::<i64>().ok()))
+        })
     });
 
     let (currency, underlying) = if let Some(currency) = currency_from_response {
@@ -109,32 +101,30 @@ pub async fn option_chain(
      -> Vec<OptionContract> {
         side.unwrap_or_default()
             .into_iter()
-            .map(|c| {
-                let exp_ts = c.expiration.unwrap_or(expiration);
-                let exp_dt = i64_to_datetime(exp_ts);
+            .filter_map(|c| {
+                let exp_ts = c.expiration.or(expiration)?;
+                let exp_dt = Utc.timestamp_opt(exp_ts, 0).single()?;
                 let exp_date: NaiveDate = exp_dt.date_naive();
-                let strike = f64_to_price_with_currency(c.strike.unwrap_or(0.0), currency.clone());
+                let strike = c
+                    .strike
+                    .and_then(|strike| price_from_f64(strike, currency.clone()))?;
                 let key = OptionContractKey::new(underlying.clone(), option_side, strike, exp_date);
                 let contract_instrument = c
                     .contract_symbol
                     .as_deref()
                     .and_then(|sym| Instrument::from_symbol(sym, AssetKind::Option).ok());
 
-                OptionContract {
+                Some(OptionContract {
                     key,
                     contract_instrument,
                     price: c
                         .last_price
-                        .map(|v| f64_to_price_with_currency(v, currency.clone())),
-                    bid: c
-                        .bid
-                        .map(|v| f64_to_price_with_currency(v, currency.clone())),
-                    ask: c
-                        .ask
-                        .map(|v| f64_to_price_with_currency(v, currency.clone())),
+                        .and_then(|v| price_from_f64(v, currency.clone())),
+                    bid: c.bid.and_then(|v| price_from_f64(v, currency.clone())),
+                    ask: c.ask.and_then(|v| price_from_f64(v, currency.clone())),
                     volume: c.volume,
                     open_interest: c.open_interest,
-                    implied_volatility: c.implied_volatility.map(f64_to_decimal_safely),
+                    implied_volatility: c.implied_volatility.and_then(decimal_from_f64),
                     in_the_money: c.in_the_money,
                     expiration_at: Some(exp_dt),
                     last_trade_at: c
@@ -142,7 +132,7 @@ pub async fn option_chain(
                         .and_then(|ts| Utc.timestamp_opt(ts, 0).single()),
                     greeks: None,
                     provider: (),
-                }
+                })
             })
             .collect()
     };

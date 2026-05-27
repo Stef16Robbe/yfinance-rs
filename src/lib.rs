@@ -64,7 +64,7 @@
 //! ### Advanced Features
 //! * **Data Repair**: Automatic detection and repair of price outliers.
 //! * **Data Rounding**: Control price precision and rounding.
-//! * **Missing Data Handling**: Configurable handling of NA/missing values.
+//! * **Malformed Data Handling**: Drops invalid OHLC rows while preserving valid sibling data.
 //! * **Back Adjustment**: Alternative price adjustment methods.
 //! * **Historical Metadata**: Timezone and other metadata for historical data.
 //! * **ISIN Lookup**: Get International Securities Identification Numbers.
@@ -83,7 +83,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! yfinance-rs = "0.8.0"
+//! yfinance-rs = "0.9.0"
 //! tokio = { version = "1", features = ["full"] }
 //! ```
 //!

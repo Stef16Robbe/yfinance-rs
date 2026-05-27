@@ -52,8 +52,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     println!();
 
-    println!("--- DownloadBuilder with pre/post market and keepna ---");
-    // Get recent data including pre/post market, which might have gaps (keepna=true)
+    println!("--- DownloadBuilder with pre/post market ---");
+    // Get recent data including pre/post market. Malformed OHLC rows are dropped.
     let today = Utc::now();
     let yesterday = today - Duration::days(1);
     let download = DownloadBuilder::new(&client)
@@ -61,7 +61,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .between(yesterday, today)
         .interval(Interval::I15m)
         .prepost(true)
-        .keepna(true)
         .run()
         .await?;
     if let Some(entry) = download

@@ -5,10 +5,7 @@ use crate::{
     core::{
         YfClient, YfError,
         client::{CacheMode, RetryConfig},
-        conversions::{
-            f64_to_money_with_currency, f64_to_price_with_currency, i64_to_datetime,
-            string_to_period,
-        },
+        conversions::{i64_to_datetime, money_from_f64, price_from_f64, string_to_period},
     },
     fundamentals::wire::{TimeseriesData, TimeseriesEnvelope},
 };
@@ -175,25 +172,21 @@ pub(super) async fn income_statement(
                     .and_then(|v| v.reported_value.and_then(|rv| rv.raw));
 
                 if key == format!("{prefix}TotalRevenue") {
-                    row.total_revenue =
-                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                    row.total_revenue = value.and_then(|v| money_from_f64(v, currency.clone()));
                 } else if key == format!("{prefix}GrossProfit") {
-                    row.gross_profit =
-                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                    row.gross_profit = value.and_then(|v| money_from_f64(v, currency.clone()));
                 } else if key == format!("{prefix}OperatingIncome") {
-                    row.operating_income =
-                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                    row.operating_income = value.and_then(|v| money_from_f64(v, currency.clone()));
                 } else if key == format!("{prefix}NetIncome") {
-                    row.net_income = value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                    row.net_income = value.and_then(|v| money_from_f64(v, currency.clone()));
                 } else if key == format!("{prefix}InterestExpense") {
-                    row.interest_expense =
-                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                    row.interest_expense = value.and_then(|v| money_from_f64(v, currency.clone()));
                 } else if key == format!("{prefix}TaxProvision") {
                     row.income_tax_expense =
-                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                        value.and_then(|v| money_from_f64(v, currency.clone()));
                 } else if key == format!("{prefix}DepreciationAndAmortization") {
                     row.depreciation_and_amortization =
-                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                        value.and_then(|v| money_from_f64(v, currency.clone()));
                 }
             }
         }
@@ -309,41 +302,34 @@ pub(super) async fn balance_sheet(
                     .and_then(|v| v.reported_value.and_then(|rv| rv.raw));
 
                 if key == format!("{prefix}TotalAssets") {
-                    row.total_assets =
-                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                    row.total_assets = value.and_then(|v| money_from_f64(v, currency.clone()));
                 } else if key == format!("{prefix}TotalLiabilitiesNetMinorityInterest") {
-                    row.total_liabilities =
-                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                    row.total_liabilities = value.and_then(|v| money_from_f64(v, currency.clone()));
                 } else if key == format!("{prefix}StockholdersEquity") {
-                    row.total_equity =
-                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                    row.total_equity = value.and_then(|v| money_from_f64(v, currency.clone()));
                 } else if key == format!("{prefix}CashAndCashEquivalents") {
-                    row.cash = value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                    row.cash = value.and_then(|v| money_from_f64(v, currency.clone()));
                 } else if key == format!("{prefix}LongTermDebt") {
-                    row.long_term_debt =
-                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                    row.long_term_debt = value.and_then(|v| money_from_f64(v, currency.clone()));
                 } else if key == format!("{prefix}CurrentAssets") {
-                    row.current_assets =
-                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                    row.current_assets = value.and_then(|v| money_from_f64(v, currency.clone()));
                 } else if key == format!("{prefix}CurrentLiabilities") {
                     row.current_liabilities =
-                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                        value.and_then(|v| money_from_f64(v, currency.clone()));
                 } else if key == format!("{prefix}AccountsReceivable") {
                     row.accounts_receivable =
-                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                        value.and_then(|v| money_from_f64(v, currency.clone()));
                 } else if key == format!("{prefix}Inventory") {
-                    row.inventory = value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                    row.inventory = value.and_then(|v| money_from_f64(v, currency.clone()));
                 } else if key == format!("{prefix}AccountsPayable") {
-                    row.accounts_payable =
-                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                    row.accounts_payable = value.and_then(|v| money_from_f64(v, currency.clone()));
                 } else if key == format!("{prefix}NetPPE") {
                     row.net_property_plant_equipment =
-                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                        value.and_then(|v| money_from_f64(v, currency.clone()));
                 } else if key == format!("{prefix}Goodwill") {
-                    row.goodwill = value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                    row.goodwill = value.and_then(|v| money_from_f64(v, currency.clone()));
                 } else if key == format!("{prefix}OtherIntangibleAssets") {
-                    row.intangible_assets =
-                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                    row.intangible_assets = value.and_then(|v| money_from_f64(v, currency.clone()));
                 }
             }
         }
@@ -419,18 +405,17 @@ pub(super) async fn cashflow(
 
                 if key == format!("{prefix}OperatingCashFlow") {
                     row.operating_cashflow =
-                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                        value.and_then(|v| money_from_f64(v, currency.clone()));
                 } else if key == format!("{prefix}CapitalExpenditure") {
                     row.capital_expenditures =
-                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                        value.and_then(|v| money_from_f64(v, currency.clone()));
                 } else if key == format!("{prefix}FreeCashFlow") {
-                    row.free_cash_flow =
-                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                    row.free_cash_flow = value.and_then(|v| money_from_f64(v, currency.clone()));
                 } else if key == format!("{prefix}NetIncome") {
-                    row.net_income = value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                    row.net_income = value.and_then(|v| money_from_f64(v, currency.clone()));
                 } else if key == format!("{prefix}DepreciationAndAmortization") {
                     row.depreciation_and_amortization =
-                        value.map(|v| f64_to_money_with_currency(v, currency.clone()));
+                        value.and_then(|v| money_from_f64(v, currency.clone()));
                 }
             }
         }
@@ -489,12 +474,10 @@ pub(super) async fn earnings(
                         i32::try_from(date).ok().map(|year| EarningsYear {
                             year,
                             revenue: y.revenue.as_ref().and_then(|x| {
-                                x.raw
-                                    .map(|v| f64_to_money_with_currency(v, currency.clone()))
+                                x.raw.and_then(|v| money_from_f64(v, currency.clone()))
                             }),
                             earnings: y.earnings.as_ref().and_then(|x| {
-                                x.raw
-                                    .map(|v| f64_to_money_with_currency(v, currency.clone()))
+                                x.raw.and_then(|v| money_from_f64(v, currency.clone()))
                             }),
                         })
                     })
@@ -511,14 +494,14 @@ pub(super) async fn earnings(
             v.iter()
                 .map(|q| EarningsQuarter {
                     period: string_to_period(&q.date.clone().unwrap_or_default()),
-                    revenue: q.revenue.as_ref().and_then(|x| {
-                        x.raw
-                            .map(|v| f64_to_money_with_currency(v, currency.clone()))
-                    }),
-                    earnings: q.earnings.as_ref().and_then(|x| {
-                        x.raw
-                            .map(|v| f64_to_money_with_currency(v, currency.clone()))
-                    }),
+                    revenue: q
+                        .revenue
+                        .as_ref()
+                        .and_then(|x| x.raw.and_then(|v| money_from_f64(v, currency.clone()))),
+                    earnings: q
+                        .earnings
+                        .as_ref()
+                        .and_then(|x| x.raw.and_then(|v| money_from_f64(v, currency.clone()))),
                 })
                 .collect()
         })
@@ -532,14 +515,14 @@ pub(super) async fn earnings(
             v.iter()
                 .map(|q| EarningsQuarterEps {
                     period: string_to_period(&q.date.clone().unwrap_or_default()),
-                    actual: q.actual.as_ref().and_then(|x| {
-                        x.raw
-                            .map(|v| f64_to_price_with_currency(v, currency.clone()))
-                    }),
-                    estimate: q.estimate.as_ref().and_then(|x| {
-                        x.raw
-                            .map(|v| f64_to_price_with_currency(v, currency.clone()))
-                    }),
+                    actual: q
+                        .actual
+                        .as_ref()
+                        .and_then(|x| x.raw.and_then(|v| price_from_f64(v, currency.clone()))),
+                    estimate: q
+                        .estimate
+                        .as_ref()
+                        .and_then(|x| x.raw.and_then(|v| price_from_f64(v, currency.clone()))),
                 })
                 .collect()
         })

@@ -25,8 +25,8 @@ mod history_smoke;
 #[path = "history/volume_adjustment.rs"]
 mod history_volume_adjustment;
 
-#[path = "history/keepna_true.rs"]
-mod keepna_true;
+#[path = "history/malformed_ohlc.rs"]
+mod malformed_ohlc;
 
 #[path = "history/http_status_error.rs"]
 mod http_status_error;

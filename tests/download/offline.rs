@@ -341,7 +341,6 @@ async fn rounding_two_decimals() {
     let res = yfinance_rs::DownloadBuilder::new(&client)
         .symbols(["AAPL", "MSFT"])
         .rounding(true)
-        .keepna(true)
         .run()
         .await
         .unwrap();

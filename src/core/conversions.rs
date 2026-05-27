@@ -1,4 +1,7 @@
-//! Conversion utilities
+//! Internal Yahoo-to-`paft` conversion utilities.
+//!
+//! This module is public only so integration tests can share the crate's adapter
+//! helpers. It is not part of the stable user-facing API.
 
 use chrono::{DateTime, Utc};
 use paft::Decimal;
@@ -10,29 +13,25 @@ use paft::money::{Currency, IsoCurrency, MonetaryAmount, Money, Price};
 use rust_decimal::prelude::ToPrimitive;
 use std::str::FromStr;
 
-/// Converts an `f64` value to a `Decimal`, safely handling non-finite values
-/// and common float precision artifacts.
+/// Converts a finite `f64` value to `Decimal`.
 ///
-/// - If the input is not finite (e.g., NaN, `inf`, or `-inf`), returns zero.
-/// - The conversion preserves decimal precision without retaining raw binary
-///   float artifacts.
-/// - If the conversion fails, returns zero.
+/// Returns `None` if the value is non-finite or does not fit in the decimal
+/// backend.
 #[must_use]
-pub fn f64_to_decimal_safely(value: f64) -> Decimal {
-    if !value.is_finite() {
-        return Decimal::from(0);
-    }
-    Decimal::try_from(value).unwrap_or_else(|_| Decimal::from(0))
+pub fn decimal_from_f64(value: f64) -> Option<Decimal> {
+    value
+        .is_finite()
+        .then_some(value)
+        .and_then(|value| Decimal::try_from(value).ok())
 }
 
-/// Convert f64 to Money with specified currency
+/// Convert a finite `f64` to `Money` with specified currency.
 ///
-/// # Panics
-/// Panics if currency metadata is not registered for non-ISO currencies.
+/// Returns `None` if the value is non-finite, does not fit in the decimal
+/// backend, or currency metadata is unavailable.
 #[must_use]
-pub fn f64_to_money_with_currency(value: f64, currency: Currency) -> Money {
-    let decimal = f64_to_decimal_safely(value);
-    Money::new(decimal, currency).expect("currency metadata available")
+pub fn money_from_f64(value: f64, currency: Currency) -> Option<Money> {
+    decimal_from_f64(value).and_then(|decimal| Money::new(decimal, currency).ok())
 }
 
 /// Convert i64 to Money with specified currency (no precision loss)
@@ -55,28 +54,28 @@ pub fn u64_to_money_with_currency(value: u64, currency: Currency) -> Money {
     Money::new(decimal, currency).expect("currency metadata available")
 }
 
-/// Convert f64 to Money with currency string (parses currency string to Currency enum)
+/// Convert a finite `f64` to `Money` with a parsed currency string.
 #[must_use]
-pub fn f64_to_money_with_currency_str(value: f64, currency_str: Option<&str>) -> Money {
+pub fn money_from_f64_with_currency_str(value: f64, currency_str: Option<&str>) -> Option<Money> {
     let currency = currency_str
         .and_then(|s| Currency::from_str(s).ok())
         .unwrap_or(Currency::Iso(IsoCurrency::USD));
-    f64_to_money_with_currency(value, currency)
+    money_from_f64(value, currency)
 }
 
-/// Convert f64 to Price with specified currency.
+/// Convert a finite `f64` to `Price` with specified currency.
 #[must_use]
-pub fn f64_to_price_with_currency(value: f64, currency: Currency) -> Price {
-    Price::new(f64_to_decimal_safely(value), currency)
+pub fn price_from_f64(value: f64, currency: Currency) -> Option<Price> {
+    decimal_from_f64(value).map(|decimal| Price::new(decimal, currency))
 }
 
-/// Convert f64 to Price with currency string.
+/// Convert a finite `f64` to `Price` with a parsed currency string.
 #[must_use]
-pub fn f64_to_price_with_currency_str(value: f64, currency_str: Option<&str>) -> Price {
+pub fn price_from_f64_with_currency_str(value: f64, currency_str: Option<&str>) -> Option<Price> {
     let currency = currency_str
         .and_then(|s| Currency::from_str(s).ok())
         .unwrap_or(Currency::Iso(IsoCurrency::USD));
-    f64_to_price_with_currency(value, currency)
+    price_from_f64(value, currency)
 }
 
 /// Currency-denominated value that exposes a decimal amount and currency.
@@ -120,8 +119,17 @@ impl CurrencyValue for MonetaryAmount {
 
 /// Convert a currency-denominated value to f64 (loses currency information).
 #[must_use]
+pub fn f64_from_currency_value(value: &impl CurrencyValue) -> Option<f64> {
+    value.amount().to_f64()
+}
+
+/// Test convenience for converting ordinary currency values to `f64`.
+///
+/// This is intentionally hidden and should not be used by production mappings,
+/// where failed conversion should be represented explicitly.
+#[must_use]
 pub fn money_to_f64(value: &impl CurrencyValue) -> f64 {
-    value.amount().to_f64().unwrap_or(0.0)
+    f64_from_currency_value(value).expect("currency value should fit in f64")
 }
 
 /// Extract currency string from a currency-denominated value.

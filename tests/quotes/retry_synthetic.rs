@@ -1,8 +1,12 @@
 use httpmock::Method::GET;
 use httpmock::MockServer;
-use paft::money::{Currency, IsoCurrency};
+use paft::money::{Currency, IsoCurrency, Price};
 use url::Url;
-use yfinance_rs::core::conversions::*;
+use yfinance_rs::core::conversions::price_from_f64;
+
+fn usd_price(value: f64) -> Price {
+    price_from_f64(value, Currency::Iso(IsoCurrency::USD)).expect("known-good USD price")
+}
 
 #[tokio::test]
 async fn batch_quotes_401_then_retry_with_crumb_succeeds() {
@@ -76,20 +80,8 @@ async fn batch_quotes_401_then_retry_with_crumb_succeeds() {
         .iter()
         .find(|q| q.instrument.symbol.as_str() == "MSFT")
         .unwrap();
-    assert_eq!(
-        aapl.price,
-        Some(f64_to_price_with_currency(
-            123.0,
-            Currency::Iso(IsoCurrency::USD)
-        ))
-    );
-    assert_eq!(
-        msft.price,
-        Some(f64_to_price_with_currency(
-            456.0,
-            Currency::Iso(IsoCurrency::USD)
-        ))
-    );
+    assert_eq!(aapl.price, Some(usd_price(123.0)));
+    assert_eq!(msft.price, Some(usd_price(456.0)));
     assert_eq!(
         aapl.instrument
             .exchange

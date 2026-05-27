@@ -20,7 +20,7 @@ use tokio_tungstenite::{
 use crate::{
     YfClient, YfError,
     core::client::{CacheMode, RetryConfig},
-    core::conversions::f64_to_price_with_currency_str,
+    core::conversions::price_from_f64_with_currency_str,
 };
 use paft::domain::{AssetKind, Instrument};
 use paft::market::quote::QuoteUpdate;
@@ -440,14 +440,11 @@ async fn map_ws_pricing_to_update_with_delta(
     {
         return Some(QuoteUpdate {
             instrument,
-            price: Some(f64_to_price_with_currency_str(
-                f64::from(ticker.price),
-                currency_str,
-            )),
-            previous_close: Some(f64_to_price_with_currency_str(
+            price: price_from_f64_with_currency_str(f64::from(ticker.price), currency_str),
+            previous_close: price_from_f64_with_currency_str(
                 f64::from(ticker.previous_close),
                 currency_str,
-            )),
+            ),
             ts: timestamp,
             volume: None,
             provider: (),
@@ -470,14 +467,11 @@ async fn map_ws_pricing_to_update_with_delta(
 
     Some(QuoteUpdate {
         instrument,
-        price: Some(f64_to_price_with_currency_str(
-            f64::from(ticker.price),
-            currency_str,
-        )),
-        previous_close: Some(f64_to_price_with_currency_str(
+        price: price_from_f64_with_currency_str(f64::from(ticker.price), currency_str),
+        previous_close: price_from_f64_with_currency_str(
             f64::from(ticker.previous_close),
             currency_str,
-        )),
+        ),
         ts: timestamp,
         volume,
         provider: (),
@@ -535,14 +529,11 @@ pub fn decode_and_map_message(text: &str) -> Result<QuoteUpdate, YfError> {
 
     Ok(QuoteUpdate {
         instrument,
-        price: Some(f64_to_price_with_currency_str(
-            f64::from(ticker.price),
-            currency_str,
-        )),
-        previous_close: Some(f64_to_price_with_currency_str(
+        price: price_from_f64_with_currency_str(f64::from(ticker.price), currency_str),
+        previous_close: price_from_f64_with_currency_str(
             f64::from(ticker.previous_close),
             currency_str,
-        )),
+        ),
         ts: timestamp,
         volume: None,
         provider: (),
@@ -622,8 +613,8 @@ async fn run_polling_stream(
                             };
                             if tx.send(QuoteUpdate {
                                 instrument,
-                                price: lp.map(|v| f64_to_price_with_currency_str(v, currency_str)),
-                                previous_close: q.regular_market_previous_close.map(|v| f64_to_price_with_currency_str(v, currency_str)),
+                                price: lp.and_then(|v| price_from_f64_with_currency_str(v, currency_str)),
+                                previous_close: q.regular_market_previous_close.and_then(|v| price_from_f64_with_currency_str(v, currency_str)),
                                 ts,
                                 volume: vol_delta,
                                 provider: (),

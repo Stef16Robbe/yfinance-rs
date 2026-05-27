@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.9.0]
+
+### Breaking Changes
+
+- Removed `HistoryBuilder::keepna` and `DownloadBuilder::keepna`. `paft::Candle` requires valid OHLC prices, so malformed history rows are always dropped instead of fabricating placeholder prices.
+- Replaced the old lossy float-to-money/price/decimal helpers with checked conversion helpers. `core::conversions` is now hidden from public docs and remains internal Yahoo-to-`paft` adapter plumbing with no stability guarantee.
+
+### Fixed
+
+- Invalid Yahoo floats (`NaN`, infinities, and values that cannot fit the decimal backend) no longer become zero-valued financial data.
+- Optional `paft` fields now become `None` when Yahoo supplies an invalid numeric value, while valid sibling records are still preserved.
+- Malformed required records, including bad OHLC candles, option contracts with invalid strikes, and invalid dividend/capital-gain amounts, are skipped item-by-item.
+- Download rounding and repair now leave values unchanged when conversion fails instead of falling back to zero.
+
+### Changed
+
+- README examples no longer advertise direct use of conversion helpers such as `money_to_f64`.
+
 ## [0.8.0] - 2026-05-27
 
 ### Breaking Changes
@@ -378,6 +396,8 @@ Yahoo Finance appears to have removed or relocated the ESG data endpoint. As a r
 - Analysis tools: `recommendations`, `sustainability`, `major_holders`, `institutional_holders`.
 - Utilities: `DownloadBuilder`, `StreamBuilder`, `SearchBuilder`.
 
+[Unreleased]: https://github.com/gramistella/yfinance-rs/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/gramistella/yfinance-rs/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/gramistella/yfinance-rs/compare/v0.7.2...v0.8.0
 [0.7.2]: https://github.com/gramistella/yfinance-rs/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/gramistella/yfinance-rs/compare/v0.7.0...v0.7.1

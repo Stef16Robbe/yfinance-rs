@@ -26,6 +26,7 @@ pub(crate) mod fixtures;
 /// `DataFrame` conversion traits.
 pub mod dataframe;
 
+#[doc(hidden)]
 pub mod conversions;
 pub(crate) mod net;
 

@@ -1,9 +1,13 @@
 use httpmock::Method::GET;
 use httpmock::MockServer;
-use paft::money::{Currency, IsoCurrency};
+use paft::money::{Currency, IsoCurrency, Price};
 use url::Url;
-use yfinance_rs::core::conversions::*;
+use yfinance_rs::core::conversions::price_from_f64;
 use yfinance_rs::{ApiPreference, Ticker, YfClient};
+
+fn usd_price(value: f64) -> Price {
+    price_from_f64(value, Currency::Iso(IsoCurrency::USD)).expect("known-good USD price")
+}
 
 #[tokio::test]
 async fn offline_price_target_happy() {
@@ -48,27 +52,9 @@ async fn offline_price_target_happy() {
 
     mock.assert();
 
-    assert_eq!(
-        pt.mean,
-        Some(f64_to_price_with_currency(
-            200.0,
-            Currency::Iso(IsoCurrency::USD)
-        ))
-    );
-    assert_eq!(
-        pt.high,
-        Some(f64_to_price_with_currency(
-            250.0,
-            Currency::Iso(IsoCurrency::USD)
-        ))
-    );
-    assert_eq!(
-        pt.low,
-        Some(f64_to_price_with_currency(
-            150.0,
-            Currency::Iso(IsoCurrency::USD)
-        ))
-    );
+    assert_eq!(pt.mean, Some(usd_price(200.0)));
+    assert_eq!(pt.high, Some(usd_price(250.0)));
+    assert_eq!(pt.low, Some(usd_price(150.0)));
     assert_eq!(pt.number_of_analysts, Some(31));
 }
 
@@ -143,26 +129,8 @@ async fn price_target_invalid_crumb_then_retry_succeeds() {
     crumb.assert();
     ok.assert();
 
-    assert_eq!(
-        pt.mean,
-        Some(f64_to_price_with_currency(
-            123.45,
-            Currency::Iso(IsoCurrency::USD)
-        ))
-    );
-    assert_eq!(
-        pt.high,
-        Some(f64_to_price_with_currency(
-            150.0,
-            Currency::Iso(IsoCurrency::USD)
-        ))
-    );
-    assert_eq!(
-        pt.low,
-        Some(f64_to_price_with_currency(
-            100.0,
-            Currency::Iso(IsoCurrency::USD)
-        ))
-    );
+    assert_eq!(pt.mean, Some(usd_price(123.45)));
+    assert_eq!(pt.high, Some(usd_price(150.0)));
+    assert_eq!(pt.low, Some(usd_price(100.0)));
     assert_eq!(pt.number_of_analysts, Some(20));
 }
