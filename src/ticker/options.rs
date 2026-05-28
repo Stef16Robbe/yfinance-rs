@@ -257,7 +257,40 @@ async fn fetch_options_raw(
     resp = client.send_with_retry(req2, retry_override).await?;
 
     if !resp.status().is_success() {
-        return Err(net::status_error(resp.status(), &url2));
+        let retry_status = resp.status();
+        if retry_status.as_u16() != 401 && retry_status.as_u16() != 403 {
+            return Err(net::status_error(retry_status, &url2));
+        }
+
+        client.clear_crumb().await;
+        client.ensure_credentials().await?;
+        let crumb = client
+            .crumb()
+            .await
+            .ok_or_else(|| net::status_error_code(code, &url))?;
+
+        let mut url3 = base.join(symbol)?;
+        {
+            let mut qp = url3.query_pairs_mut();
+            if let Some(d) = date {
+                qp.append_pair("date", &d.to_string());
+            }
+            qp.append_pair("crumb", &crumb);
+        }
+
+        let req3 = http.get(url3.clone()).header("accept", "application/json");
+        resp = client.send_with_retry(req3, retry_override).await?;
+
+        if !resp.status().is_success() {
+            return Err(net::status_error(resp.status(), &url3));
+        }
+
+        let fixture_key = date.map_or_else(|| symbol.to_string(), |d| format!("{symbol}_{d}"));
+        let body = net::get_success_text(resp, &url3, "options_v7", &fixture_key, "json").await?;
+        if cache_mode != CacheMode::Bypass {
+            client.cache_put(&url3, &body, None).await;
+        }
+        return Ok((body, url3));
     }
 
     let fixture_key = date.map_or_else(|| symbol.to_string(), |d| format!("{symbol}_{d}"));

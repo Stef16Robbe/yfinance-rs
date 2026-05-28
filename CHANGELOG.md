@@ -39,6 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Analyst estimate row-level currency fields no longer poison symbol-level inferred caches, and optional holder monetary values are omitted when currency cannot be resolved.
 - Analyst revenue estimate currency now stays scoped to analyst estimate rows instead of overwriting reporting-currency cache entries.
 - Option chains now route missing contract currency through the trading-currency resolver, allowing v7 quote enrichment, listing/exchange inference, and profile fallback instead of depending on already-converted quote prices.
+- Quote v7, options, search, and screener auth fallbacks now clear stale cached crumbs and reacquire credentials when a crumb-authenticated retry still returns 401/403.
 
 ### Changed
 

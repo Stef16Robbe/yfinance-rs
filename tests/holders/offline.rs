@@ -25,8 +25,10 @@ async fn offline_all_holders_from_fixture() {
     let sym = "AAPL";
     let server = MockServer::start();
     let mock = setup_holders_mock(&server, sym);
+    let quote_mock = crate::common::mock_quote_v7(&server, sym);
 
     let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
@@ -89,4 +91,5 @@ async fn offline_all_holders_from_fixture() {
 
     // Verify the mock was hit for each of the 6 calls.
     mock.assert_calls(6);
+    quote_mock.assert();
 }

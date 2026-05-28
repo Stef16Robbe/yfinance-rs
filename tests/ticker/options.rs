@@ -457,6 +457,14 @@ async fn options_retry_with_crumb_on_403() {
         then.status(200).body("crumb-value");
     });
 
+    let stale = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/options/MSFT")
+            .query_param("date", date.to_string())
+            .query_param("crumb", "stale-crumb");
+        then.status(403);
+    });
+
     // Second attempt with ?crumb= should succeed
     let ok_body = r#"{
       "optionChain": {
@@ -492,6 +500,7 @@ async fn options_retry_with_crumb_on_403() {
         .cookie_url(Url::parse(&format!("{}/consent", server.base_url())).unwrap())
         .crumb_url(Url::parse(&format!("{}/v1/test/getcrumb", server.base_url())).unwrap())
         .base_options_v7(Url::parse(&format!("{}/v7/finance/options/", server.base_url())).unwrap())
+        ._preauth("cookie", "stale-crumb")
         .build()
         .unwrap();
 
@@ -501,6 +510,7 @@ async fn options_retry_with_crumb_on_403() {
     assert!(chain.calls().next().is_none() && chain.puts().next().is_none());
 
     first.assert();
+    stale.assert();
     cookie.assert();
     crumb.assert();
     second.assert();

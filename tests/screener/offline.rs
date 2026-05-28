@@ -47,6 +47,75 @@ async fn offline_predefined_day_gainers_uses_get_with_expected_params() {
 }
 
 #[tokio::test]
+async fn predefined_screener_401_with_stale_cached_crumb_refreshes_before_retry() {
+    let server = MockServer::start();
+    let first = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v1/finance/screener/predefined/saved")
+            .query_param("scrIds", "day_gainers")
+            .query_param("corsDomain", "finance.yahoo.com")
+            .query_param("formatted", "false")
+            .query_param("lang", "en-US")
+            .query_param("region", "US")
+            .is_true(|req| !req.query_params().iter().any(|(k, _)| k == "crumb"));
+        then.status(401);
+    });
+
+    let (cookie, crumb) = crate::common::mock_cookie_crumb(&server);
+
+    let stale = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v1/finance/screener/predefined/saved")
+            .query_param("scrIds", "day_gainers")
+            .query_param("corsDomain", "finance.yahoo.com")
+            .query_param("formatted", "false")
+            .query_param("lang", "en-US")
+            .query_param("region", "US")
+            .query_param("crumb", "stale-crumb");
+        then.status(401);
+    });
+
+    let ok = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v1/finance/screener/predefined/saved")
+            .query_param("scrIds", "day_gainers")
+            .query_param("corsDomain", "finance.yahoo.com")
+            .query_param("formatted", "false")
+            .query_param("lang", "en-US")
+            .query_param("region", "US")
+            .query_param("crumb", "crumb-value");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(fixture("screener_predefined", "day_gainers"));
+    });
+
+    let client = YfClient::builder()
+        .cookie_url(Url::parse(&format!("{}/consent", server.base_url())).unwrap())
+        .crumb_url(Url::parse(&format!("{}/v1/test/getcrumb", server.base_url())).unwrap())
+        ._preauth("cookie", "stale-crumb")
+        .build()
+        .unwrap();
+    let base = Url::parse(&format!(
+        "{}/v1/finance/screener/predefined/saved",
+        server.base_url()
+    ))
+    .unwrap();
+    let response = ScreenerBuilder::predefined(&client, PredefinedScreener::DayGainers)
+        .predefined_screener_base(base)
+        .cache_mode(CacheMode::Bypass)
+        .fetch()
+        .await
+        .unwrap();
+
+    first.assert();
+    stale.assert();
+    cookie.assert();
+    crumb.assert();
+    ok.assert();
+    assert!(!response.results.is_empty());
+}
+
+#[tokio::test]
 async fn offline_custom_equity_query_posts_python_wire_shape() {
     let server = MockServer::start();
     let expected_body = json!({
@@ -95,4 +164,91 @@ async fn offline_custom_equity_query_posts_python_wire_shape() {
     mock.assert();
     assert!(!response.results.is_empty());
     assert!(response.results[0].symbol.is_some());
+}
+
+#[tokio::test]
+async fn custom_screener_403_with_stale_cached_crumb_refreshes_before_retry() {
+    let server = MockServer::start();
+    let expected_body = json!({
+        "offset": 0,
+        "count": 25,
+        "sortField": "ticker",
+        "sortType": "DESC",
+        "userId": "",
+        "userIdType": "guid",
+        "quoteType": "EQUITY",
+        "query": {
+            "operator": "AND",
+            "operands": [
+                {"operator": "GT", "operands": ["percentchange", 3.0]},
+                {"operator": "EQ", "operands": ["region", "us"]}
+            ]
+        }
+    });
+
+    let first = server.mock(|when, then| {
+        when.method(POST)
+            .path("/v1/finance/screener")
+            .query_param("corsDomain", "finance.yahoo.com")
+            .query_param("formatted", "false")
+            .query_param("lang", "en-US")
+            .query_param("region", "US")
+            .is_true(|req| !req.query_params().iter().any(|(k, _)| k == "crumb"))
+            .json_body(expected_body.clone());
+        then.status(403);
+    });
+
+    let (cookie, crumb) = crate::common::mock_cookie_crumb(&server);
+
+    let stale = server.mock(|when, then| {
+        when.method(POST)
+            .path("/v1/finance/screener")
+            .query_param("corsDomain", "finance.yahoo.com")
+            .query_param("formatted", "false")
+            .query_param("lang", "en-US")
+            .query_param("region", "US")
+            .query_param("crumb", "stale-crumb")
+            .json_body(expected_body.clone());
+        then.status(403);
+    });
+
+    let ok = server.mock(|when, then| {
+        when.method(POST)
+            .path("/v1/finance/screener")
+            .query_param("corsDomain", "finance.yahoo.com")
+            .query_param("formatted", "false")
+            .query_param("lang", "en-US")
+            .query_param("region", "US")
+            .query_param("crumb", "crumb-value")
+            .json_body(expected_body.clone());
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(fixture("screener_custom", "equity"));
+    });
+
+    let client = YfClient::builder()
+        .cookie_url(Url::parse(&format!("{}/consent", server.base_url())).unwrap())
+        .crumb_url(Url::parse(&format!("{}/v1/test/getcrumb", server.base_url())).unwrap())
+        ._preauth("cookie", "stale-crumb")
+        .build()
+        .unwrap();
+    let query = EquityQuery::and(vec![
+        equity_fields::PERCENT_CHANGE.gt(yfinance_rs::PercentPoints::new(3.0).unwrap()),
+        equity_fields::REGION.eq(Region::Us),
+    ])
+    .unwrap();
+    let base = Url::parse(&format!("{}/v1/finance/screener", server.base_url())).unwrap();
+    let response = ScreenerBuilder::equity(&client, query)
+        .screener_base(base)
+        .cache_mode(CacheMode::Bypass)
+        .fetch()
+        .await
+        .unwrap();
+
+    first.assert();
+    stale.assert();
+    cookie.assert();
+    crumb.assert();
+    ok.assert();
+    assert!(!response.results.is_empty());
 }

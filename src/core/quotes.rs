@@ -404,9 +404,26 @@ pub async fn fetch_v7_quotes(
                 attempt_fetch(client, symbols, Some(&crumb), cache_mode, retry_override).await?;
 
             if let Some(status_code) = maybe_status {
-                return Err(net::status_error_code(status_code, &url));
+                if status_code == 401 || status_code == 403 {
+                    client.clear_crumb().await;
+                    client.ensure_credentials().await?;
+                    let crumb = client.crumb().await.ok_or_else(|| {
+                        YfError::Auth("Crumb is not set after refreshing credentials".into())
+                    })?;
+                    let (body, url, maybe_status) =
+                        attempt_fetch(client, symbols, Some(&crumb), cache_mode, retry_override)
+                            .await?;
+
+                    if let Some(status_code) = maybe_status {
+                        return Err(net::status_error_code(status_code, &url));
+                    }
+                    body
+                } else {
+                    return Err(net::status_error_code(status_code, &url));
+                }
+            } else {
+                body
             }
-            body
         } else {
             return Err(net::status_error_code(status_code, &url));
         }

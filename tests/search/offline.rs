@@ -43,3 +43,70 @@ async fn offline_search_uses_recorded_fixture() {
             .any(|q| q.instrument.symbol.as_str() == "AAPL")
     );
 }
+
+#[tokio::test]
+async fn search_403_with_stale_cached_crumb_refreshes_before_retry() {
+    let query = "apple";
+    let server = MockServer::start();
+
+    let first = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v1/finance/search")
+            .query_param("q", query)
+            .query_param("quotesCount", "10")
+            .query_param("newsCount", "0")
+            .query_param("listsCount", "0")
+            .is_true(|req| !req.query_params().iter().any(|(k, _)| k == "crumb"));
+        then.status(403);
+    });
+
+    let (cookie, crumb) = crate::common::mock_cookie_crumb(&server);
+
+    let stale = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v1/finance/search")
+            .query_param("q", query)
+            .query_param("quotesCount", "10")
+            .query_param("newsCount", "0")
+            .query_param("listsCount", "0")
+            .query_param("crumb", "stale-crumb");
+        then.status(403);
+    });
+
+    let ok = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v1/finance/search")
+            .query_param("q", query)
+            .query_param("quotesCount", "10")
+            .query_param("newsCount", "0")
+            .query_param("listsCount", "0")
+            .query_param("crumb", "crumb-value");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(fixture("search_v1", query));
+    });
+
+    let client = YfClient::builder()
+        .cookie_url(Url::parse(&format!("{}/consent", server.base_url())).unwrap())
+        .crumb_url(Url::parse(&format!("{}/v1/test/getcrumb", server.base_url())).unwrap())
+        ._preauth("cookie", "stale-crumb")
+        .build()
+        .unwrap();
+
+    let resp = SearchBuilder::new(&client, query)
+        .search_base(Url::parse(&format!("{}/v1/finance/search", server.base_url())).unwrap())
+        .fetch()
+        .await
+        .unwrap();
+
+    first.assert();
+    stale.assert();
+    cookie.assert();
+    crumb.assert();
+    ok.assert();
+    assert!(
+        resp.results
+            .iter()
+            .any(|q| q.instrument.symbol.as_str() == "AAPL")
+    );
+}

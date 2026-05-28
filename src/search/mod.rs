@@ -232,6 +232,54 @@ impl SearchBuilder {
                     )
                     .await?;
 
+                if !resp.status().is_success() {
+                    let retry_status = resp.status().as_u16();
+                    if retry_status != 401 && retry_status != 403 {
+                        return Err(crate::core::net::status_error_code(retry_status, &url2));
+                    }
+
+                    self.client.clear_crumb().await;
+                    self.client.ensure_credentials().await?;
+                    let crumb = self
+                        .client
+                        .crumb()
+                        .await
+                        .ok_or_else(|| crate::core::YfError::Auth("Crumb is not set".into()))?;
+
+                    let mut url3 = self.base.clone();
+                    Self::append_query_params(
+                        &mut url3,
+                        &self.query,
+                        self.quotes_count,
+                        self.news_count,
+                        self.lists_count,
+                        self.lang.as_deref(),
+                        self.region.as_deref(),
+                    );
+                    url3.query_pairs_mut().append_pair("crumb", &crumb);
+
+                    resp = self
+                        .client
+                        .send_with_retry(
+                            http.get(url3.clone()).header("accept", "application/json"),
+                            self.retry_override.as_ref(),
+                        )
+                        .await?;
+
+                    let body = crate::core::net::get_success_text(
+                        resp,
+                        &url3,
+                        "search_v1",
+                        &self.query,
+                        "json",
+                    )
+                    .await?;
+                    if self.cache_mode != CacheMode::Bypass {
+                        self.client.cache_put(&url3, &body, None).await;
+                    }
+                    return parse_search_body(&body);
+                }
+
                 let body = crate::core::net::get_success_text(
                     resp,
                     &url2,

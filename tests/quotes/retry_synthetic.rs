@@ -1,3 +1,4 @@
+use crate::common;
 use httpmock::Method::GET;
 use httpmock::MockServer;
 use paft::money::{Currency, IsoCurrency, Price};
@@ -96,4 +97,66 @@ async fn batch_quotes_401_then_retry_with_crumb_succeeds() {
             .map(std::string::ToString::to_string),
         Some("NASDAQ".to_string())
     );
+}
+
+#[tokio::test]
+async fn batch_quotes_401_with_stale_cached_crumb_refreshes_before_retry() {
+    let server = MockServer::start();
+
+    let first = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "AAPL")
+            .is_true(|req| !req.query_params().iter().any(|(k, _)| k == "crumb"));
+        then.status(401).body("unauthorized");
+    });
+
+    let (cookie, crumb) = common::mock_cookie_crumb(&server);
+
+    let stale = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "AAPL")
+            .query_param("crumb", "stale-crumb");
+        then.status(401).body("unauthorized");
+    });
+
+    let ok = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "AAPL")
+            .query_param("crumb", "crumb-value");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(r#"{
+              "quoteResponse": {
+                "result": [
+                  { "symbol":"AAPL", "quoteType":"EQUITY", "regularMarketPrice": 123.0, "currency":"USD", "fullExchangeName":"NasdaqGS" }
+                ],
+                "error": null
+              }
+            }"#);
+    });
+
+    let client = yfinance_rs::YfClient::builder()
+        .cookie_url(Url::parse(&format!("{}/consent", server.base_url())).unwrap())
+        .crumb_url(Url::parse(&format!("{}/v1/test/getcrumb", server.base_url())).unwrap())
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        ._preauth("cookie", "stale-crumb")
+        .build()
+        .unwrap();
+
+    let quotes = yfinance_rs::QuotesBuilder::new(client)
+        .symbols(["AAPL"])
+        .fetch()
+        .await
+        .unwrap();
+
+    first.assert();
+    stale.assert();
+    cookie.assert();
+    crumb.assert();
+    ok.assert();
+    assert_eq!(quotes.len(), 1);
+    assert_eq!(quotes[0].price, Some(usd_price(123.0)));
 }
