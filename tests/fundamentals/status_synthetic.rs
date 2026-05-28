@@ -6,6 +6,58 @@ use url::Url;
 use yfinance_rs::{FundamentalsBuilder, ProjectionIssue, Ticker, YfClient, YfError, YfWarning};
 
 #[tokio::test]
+async fn missing_earnings_module_is_provider_unavailable() {
+    let server = MockServer::start();
+    let sym = "NOEARN";
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "earnings")
+            .query_param("crumb", "crumb");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(r#"{"quoteSummary":{"result":[{}],"error":null}}"#);
+    });
+
+    let client = YfClient::builder()
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let response = FundamentalsBuilder::new(&client, sym)
+        .earnings_with_diagnostics(None)
+        .await
+        .unwrap();
+
+    assert!(response.data.yearly.is_empty());
+    assert!(response.data.quarterly.is_empty());
+    assert!(response.data.quarterly_eps.is_empty());
+    assert!(matches!(
+        response.diagnostics.warnings.first(),
+        Some(YfWarning::ProviderFeatureUnavailable {
+            feature: "earnings",
+            reason: ProjectionIssue::ProviderUnavailable {
+                feature: "earnings"
+            },
+            ..
+        })
+    ));
+
+    let err = FundamentalsBuilder::new(&client, sym)
+        .strict()
+        .earnings(None)
+        .await
+        .unwrap_err();
+
+    mock.assert_calls(2);
+    assert!(matches!(err, YfError::DataQuality(_)));
+}
+
+#[tokio::test]
 async fn quote_summary_http_error_maps_status_and_is_not_cached() {
     let server = MockServer::start();
     let sym = "AAPL";

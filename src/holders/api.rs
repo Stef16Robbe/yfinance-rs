@@ -2,7 +2,7 @@ use super::model::{
     InsiderRosterHolder, InsiderTransaction, InstitutionalHolder, MajorHolder,
     NetSharePurchaseActivity,
 };
-use super::wire::V10Result;
+use super::wire::{InstitutionalHolderNode, OwnershipNode, V10Result};
 use crate::core::wire::{from_raw, from_raw_date};
 use crate::core::{
     DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfError, YfResponse,
@@ -16,6 +16,20 @@ use paft::Decimal;
 use paft::fundamentals::holders::{InsiderPosition, TransactionType};
 
 const MODULES: &str = "institutionOwnership,fundOwnership,majorHoldersBreakdown,insiderTransactions,insiderHolders,netSharePurchaseActivity";
+const INSTITUTION_OWNERSHIP: OwnershipFeatureNames = OwnershipFeatureNames {
+    module: "institutionOwnership",
+    list: "institutionOwnership.ownershipList",
+};
+const FUND_OWNERSHIP: OwnershipFeatureNames = OwnershipFeatureNames {
+    module: "fundOwnership",
+    list: "fundOwnership.ownershipList",
+};
+
+#[derive(Clone, Copy)]
+struct OwnershipFeatureNames {
+    module: &'static str,
+    list: &'static str,
+}
 
 async fn fetch_holders_modules(
     client: &YfClient,
@@ -44,12 +58,7 @@ pub(super) async fn major_holders(
     let mut ctx = ProjectionContext::new("holders", data_quality);
     let root = fetch_holders_modules(client, symbol, cache_mode, retry_override).await?;
     let Some(breakdown) = root.major_holders_breakdown else {
-        ctx.provider_feature_unavailable(
-            "majorHoldersBreakdown",
-            ProjectionIssue::ProviderUnavailable {
-                feature: "majorHoldersBreakdown",
-            },
-        )?;
+        ctx.unavailable_feature("majorHoldersBreakdown")?;
         return Ok(ctx.finish(Vec::new()));
     };
 
@@ -185,16 +194,15 @@ fn required_date(
 async fn map_ownership_list(
     client: &YfClient,
     symbol: &str,
-    node: Option<super::wire::OwnershipNode>,
-    module_name: &str,
+    node: Option<OwnershipNode>,
+    features: OwnershipFeatureNames,
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
     ctx: &mut ProjectionContext,
 ) -> Result<Vec<InstitutionalHolder>, YfError> {
-    let holders = node
-        .ok_or_else(|| YfError::MissingData(format!("{module_name} missing")))?
-        .ownership_list
-        .ok_or_else(|| YfError::MissingData(format!("{module_name}.ownershipList missing")))?;
+    let Some(holders) = ownership_list_or_unavailable(node, features, ctx)? else {
+        return Ok(Vec::new());
+    };
 
     let currency = optional_reporting_currency(
         client,
@@ -257,6 +265,23 @@ async fn map_ownership_list(
     Ok(rows)
 }
 
+fn ownership_list_or_unavailable(
+    node: Option<OwnershipNode>,
+    features: OwnershipFeatureNames,
+    ctx: &mut ProjectionContext,
+) -> Result<Option<Vec<InstitutionalHolderNode>>, YfError> {
+    let Some(node) = node else {
+        ctx.unavailable_feature(features.module)?;
+        return Ok(None);
+    };
+    let Some(holders) = node.ownership_list else {
+        ctx.unavailable_feature(features.list)?;
+        return Ok(None);
+    };
+
+    Ok(Some(holders))
+}
+
 async fn resolve_reporting_currency(
     client: &YfClient,
     symbol: &str,
@@ -306,7 +331,7 @@ pub(super) async fn institutional_holders(
         client,
         symbol,
         root.institution_ownership,
-        "institutionOwnership",
+        INSTITUTION_OWNERSHIP,
         cache_mode,
         retry_override,
         &mut ctx,
@@ -328,7 +353,7 @@ pub(super) async fn mutual_fund_holders(
         client,
         symbol,
         root.fund_ownership,
-        "fundOwnership",
+        FUND_OWNERSHIP,
         cache_mode,
         retry_override,
         &mut ctx,
@@ -346,11 +371,14 @@ pub(super) async fn insider_transactions(
 ) -> Result<YfResponse<Vec<InsiderTransaction>>, YfError> {
     let mut ctx = ProjectionContext::new("holders", data_quality);
     let root = fetch_holders_modules(client, symbol, cache_mode, retry_override).await?;
-    let transactions = root
-        .insider_transactions
-        .ok_or_else(|| YfError::MissingData("insiderTransactions missing".into()))?
-        .transactions
-        .ok_or_else(|| YfError::MissingData("insiderTransactions.transactions missing".into()))?;
+    let Some(insider_transactions) = root.insider_transactions else {
+        ctx.unavailable_feature("insiderTransactions")?;
+        return Ok(ctx.finish(Vec::new()));
+    };
+    let Some(transactions) = insider_transactions.transactions else {
+        ctx.unavailable_feature("insiderTransactions.transactions")?;
+        return Ok(ctx.finish(Vec::new()));
+    };
 
     let currency = optional_reporting_currency(
         client,
@@ -437,11 +465,14 @@ pub(super) async fn insider_roster_holders(
 ) -> Result<YfResponse<Vec<InsiderRosterHolder>>, YfError> {
     let mut ctx = ProjectionContext::new("holders", data_quality);
     let root = fetch_holders_modules(client, symbol, cache_mode, retry_override).await?;
-    let holders = root
-        .insider_holders
-        .ok_or_else(|| YfError::MissingData("insiderHolders missing".into()))?
-        .holders
-        .ok_or_else(|| YfError::MissingData("insiderHolders.holders missing".into()))?;
+    let Some(insider_holders) = root.insider_holders else {
+        ctx.unavailable_feature("insiderHolders")?;
+        return Ok(ctx.finish(Vec::new()));
+    };
+    let Some(holders) = insider_holders.holders else {
+        ctx.unavailable_feature("insiderHolders.holders")?;
+        return Ok(ctx.finish(Vec::new()));
+    };
 
     let mut rows = Vec::new();
     for h in holders {
@@ -520,12 +551,7 @@ pub(super) async fn net_share_purchase_activity(
     let mut ctx = ProjectionContext::new("holders", data_quality);
     let root = fetch_holders_modules(client, symbol, cache_mode, retry_override).await?;
     let Some(n) = root.net_share_purchase_activity else {
-        ctx.provider_feature_unavailable(
-            "netSharePurchaseActivity",
-            ProjectionIssue::ProviderUnavailable {
-                feature: "netSharePurchaseActivity",
-            },
-        )?;
+        ctx.unavailable_feature("netSharePurchaseActivity")?;
         return Ok(ctx.finish(None));
     };
 

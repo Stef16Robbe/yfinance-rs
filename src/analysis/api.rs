@@ -144,11 +144,14 @@ pub(super) async fn recommendation_trend(
     )
     .await?;
 
-    let trend = root
-        .recommendation_trend
-        .ok_or_else(|| YfError::MissingData("recommendationTrend module missing".into()))?
-        .trend
-        .ok_or_else(|| YfError::MissingData("recommendationTrend.trend missing".into()))?;
+    let Some(recommendation_trend) = root.recommendation_trend else {
+        ctx.unavailable_feature("recommendationTrend")?;
+        return Ok(ctx.finish(Vec::new()));
+    };
+    let Some(trend) = recommendation_trend.trend else {
+        ctx.unavailable_feature("recommendationTrend.trend")?;
+        return Ok(ctx.finish(Vec::new()));
+    };
 
     let mut rows = Vec::new();
     for n in trend {
@@ -197,11 +200,17 @@ pub(super) async fn recommendation_summary(
     )
     .await?;
 
-    let trend = root
-        .recommendation_trend
-        .ok_or_else(|| YfError::MissingData("recommendationTrend module missing".into()))?
-        .trend
-        .ok_or_else(|| YfError::MissingData("recommendationTrend.trend missing".into()))?;
+    let trend = if let Some(recommendation_trend) = root.recommendation_trend {
+        if let Some(trend) = recommendation_trend.trend {
+            trend
+        } else {
+            ctx.unavailable_feature("recommendationTrend.trend")?;
+            Vec::new()
+        }
+    } else {
+        ctx.unavailable_feature("recommendationTrend")?;
+        Vec::new()
+    };
 
     let latest = trend.first();
 
@@ -278,11 +287,14 @@ pub(super) async fn upgrades_downgrades(
     )
     .await?;
 
-    let hist = root
-        .upgrade_downgrade_history
-        .ok_or_else(|| YfError::MissingData("upgradeDowngradeHistory module missing".into()))?
-        .history
-        .ok_or_else(|| YfError::MissingData("upgradeDowngradeHistory.history missing".into()))?;
+    let Some(upgrade_downgrade_history) = root.upgrade_downgrade_history else {
+        ctx.unavailable_feature("upgradeDowngradeHistory")?;
+        return Ok(ctx.finish(Vec::new()));
+    };
+    let Some(hist) = upgrade_downgrade_history.history else {
+        ctx.unavailable_feature("upgradeDowngradeHistory.history")?;
+        return Ok(ctx.finish(Vec::new()));
+    };
 
     let mut rows = Vec::new();
     for h in hist {
@@ -386,9 +398,10 @@ pub(super) async fn analyst_price_target(
 ) -> Result<YfResponse<PriceTarget>, YfError> {
     let mut ctx = ProjectionContext::new("analysis", data_quality);
     let root = fetch_modules(client, symbol, "financialData", cache_mode, retry_override).await?;
-    let fd = root
-        .financial_data
-        .ok_or_else(|| YfError::MissingData("financialData missing".into()))?;
+    let Some(fd) = root.financial_data else {
+        ctx.unavailable_feature("financialData")?;
+        return Ok(ctx.finish(PriceTarget::default()));
+    };
 
     client
         .store_currency_hints(
@@ -957,11 +970,14 @@ pub(super) async fn earnings_trend(
     let mut ctx = ProjectionContext::new("analysis", data_quality);
     let root = fetch_modules(client, symbol, "earningsTrend", cache_mode, retry_override).await?;
 
-    let trend = root
-        .earnings_trend
-        .ok_or_else(|| YfError::MissingData("earningsTrend module missing".into()))?
-        .trend
-        .ok_or_else(|| YfError::MissingData("earningsTrend.trend missing".into()))?;
+    let Some(earnings_trend) = root.earnings_trend else {
+        ctx.unavailable_feature("earningsTrend")?;
+        return Ok(ctx.finish(Vec::new()));
+    };
+    let Some(trend) = earnings_trend.trend else {
+        ctx.unavailable_feature("earningsTrend.trend")?;
+        return Ok(ctx.finish(Vec::new()));
+    };
 
     let currency_resolver = AnalystCurrencyResolver {
         client,

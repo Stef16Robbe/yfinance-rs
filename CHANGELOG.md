@@ -41,6 +41,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   attempt-number formula, avoiding synchronized retries across clients.
 - Convert malformed Yahoo/user-provided symbols, missing quote symbols, missing currency metadata, and uncloneable retry requests into `Result` errors instead of panicking.
 - Surface unavailable Yahoo ESG modules through `ProviderFeatureUnavailable` diagnostics and strict-mode data-quality errors, so missing provider data is not indistinguishable from a valid zero-involvement result for callers that audit projection quality.
+- Missing optional quoteSummary feature modules, including earnings, analyst recommendations, price targets, upgrades/downgrades, and holder ownership modules, now return empty data plus `ProviderFeatureUnavailable` diagnostics in best-effort mode and data-quality errors in strict mode.
 - Normalize HTTP status handling through shared fetch helpers so quoteSummary and fundamentals-timeseries failures return typed `YfError` variants and are not cached as parseable response bodies.
 - Surface Yahoo v7 quote payload errors as `YfError::Api` before treating a null `quoteResponse.result` as missing data.
 - Invalid Yahoo floats (`NaN`, infinities, and values that cannot fit the decimal backend) no longer become zero-valued financial data.

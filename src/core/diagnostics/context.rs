@@ -100,6 +100,10 @@ impl ProjectionContext {
         })
     }
 
+    pub(crate) fn unavailable_feature(&mut self, feature: &'static str) -> Result<(), YfError> {
+        self.provider_feature_unavailable(feature, ProjectionIssue::ProviderUnavailable { feature })
+    }
+
     pub(crate) fn repaired_data(
         &mut self,
         item: &'static str,

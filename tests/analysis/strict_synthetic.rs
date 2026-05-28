@@ -5,6 +5,160 @@ use yfinance_rs::{
 };
 
 #[tokio::test]
+async fn missing_recommendation_trend_module_is_provider_unavailable() {
+    let sym = "NORECS";
+    let server = MockServer::start();
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "recommendationTrend")
+            .query_param("crumb", "crumb");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(r#"{"quoteSummary":{"result":[{}],"error":null}}"#);
+    });
+
+    let client = YfClient::builder()
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._api_preference(ApiPreference::ApiOnly)
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let response = AnalysisBuilder::new(&client, sym)
+        .recommendations_with_diagnostics()
+        .await
+        .unwrap();
+
+    assert!(response.data.is_empty());
+    assert!(matches!(
+        response.diagnostics.warnings.first(),
+        Some(YfWarning::ProviderFeatureUnavailable {
+            feature: "recommendationTrend",
+            reason: ProjectionIssue::ProviderUnavailable {
+                feature: "recommendationTrend"
+            },
+            ..
+        })
+    ));
+
+    let err = AnalysisBuilder::new(&client, sym)
+        .strict()
+        .recommendations()
+        .await
+        .unwrap_err();
+
+    mock.assert_calls(2);
+    assert!(matches!(err, YfError::DataQuality(_)));
+}
+
+#[tokio::test]
+async fn missing_earnings_trend_module_is_provider_unavailable() {
+    let sym = "NOTREND";
+    let server = MockServer::start();
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "earningsTrend")
+            .query_param("crumb", "crumb");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(r#"{"quoteSummary":{"result":[{}],"error":null}}"#);
+    });
+
+    let client = YfClient::builder()
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._api_preference(ApiPreference::ApiOnly)
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let response = AnalysisBuilder::new(&client, sym)
+        .earnings_trend_with_diagnostics(None)
+        .await
+        .unwrap();
+
+    assert!(response.data.is_empty());
+    assert!(matches!(
+        response.diagnostics.warnings.first(),
+        Some(YfWarning::ProviderFeatureUnavailable {
+            feature: "earningsTrend",
+            reason: ProjectionIssue::ProviderUnavailable {
+                feature: "earningsTrend"
+            },
+            ..
+        })
+    ));
+
+    let err = AnalysisBuilder::new(&client, sym)
+        .strict()
+        .earnings_trend(None)
+        .await
+        .unwrap_err();
+
+    mock.assert_calls(2);
+    assert!(matches!(err, YfError::DataQuality(_)));
+}
+
+#[tokio::test]
+async fn missing_price_target_module_is_provider_unavailable() {
+    let sym = "NOPRICE";
+    let server = MockServer::start();
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "financialData")
+            .query_param("crumb", "crumb");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(r#"{"quoteSummary":{"result":[{}],"error":null}}"#);
+    });
+
+    let client = YfClient::builder()
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._api_preference(ApiPreference::ApiOnly)
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let response = AnalysisBuilder::new(&client, sym)
+        .analyst_price_target_with_diagnostics(None)
+        .await
+        .unwrap();
+
+    assert_eq!(response.data.mean, None);
+    assert_eq!(response.data.number_of_analysts, None);
+    assert!(matches!(
+        response.diagnostics.warnings.first(),
+        Some(YfWarning::ProviderFeatureUnavailable {
+            feature: "financialData",
+            reason: ProjectionIssue::ProviderUnavailable {
+                feature: "financialData"
+            },
+            ..
+        })
+    ));
+
+    let err = AnalysisBuilder::new(&client, sym)
+        .strict()
+        .analyst_price_target(None)
+        .await
+        .unwrap_err();
+
+    mock.assert_calls(2);
+    assert!(matches!(err, YfError::DataQuality(_)));
+}
+
+#[tokio::test]
 async fn recommendation_trend_missing_period_reports_dropped_row() {
     let sym = "AAPL";
     let server = MockServer::start();

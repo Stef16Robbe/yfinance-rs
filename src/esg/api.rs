@@ -1,6 +1,6 @@
 use crate::{
     core::{
-        DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfError, YfResponse,
+        DataQuality, ProjectionContext, YfClient, YfError, YfResponse,
         client::{CacheMode, RetryConfig},
         diagnostics::optional_decimal_f64,
         quotesummary,
@@ -29,12 +29,7 @@ pub(super) async fn fetch_esg_scores(
     .await?;
 
     let Some(esg) = root.esg_scores else {
-        ctx.provider_feature_unavailable(
-            "esgScores",
-            ProjectionIssue::ProviderUnavailable {
-                feature: "esgScores",
-            },
-        )?;
+        ctx.unavailable_feature("esgScores")?;
         return Ok(ctx.finish(EsgSummary {
             scores: None,
             involvement: Vec::new(),

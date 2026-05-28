@@ -752,9 +752,10 @@ pub(super) async fn earnings(
 ) -> Result<YfResponse<Earnings>, YfError> {
     let mut ctx = ProjectionContext::new("earnings", data_quality);
     let root = fetch_modules(client, symbol, "earnings", cache_mode, retry_override).await?;
-    let e = root
-        .earnings
-        .ok_or_else(|| YfError::MissingData("earnings missing".into()))?;
+    let Some(e) = root.earnings else {
+        ctx.unavailable_feature("earnings")?;
+        return Ok(ctx.finish(Earnings::default()));
+    };
     client
         .store_currency_hints(
             symbol,
@@ -952,12 +953,7 @@ pub(super) async fn calendar(
     let mut ctx = ProjectionContext::new("calendar", data_quality);
     let root = fetch_modules(client, symbol, "calendarEvents", cache_mode, retry_override).await?;
     let Some(calendar_events) = root.calendar_events else {
-        ctx.provider_feature_unavailable(
-            "calendarEvents",
-            ProjectionIssue::ProviderUnavailable {
-                feature: "calendarEvents",
-            },
-        )?;
+        ctx.unavailable_feature("calendarEvents")?;
         return Ok(ctx.finish(super::Calendar {
             earnings_dates: Vec::new(),
             ex_dividend_date: None,

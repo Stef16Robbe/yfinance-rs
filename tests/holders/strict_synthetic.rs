@@ -5,6 +5,115 @@ use yfinance_rs::{
 };
 
 #[tokio::test]
+async fn missing_institution_ownership_module_is_provider_unavailable() {
+    let sym = "NOOWN";
+    let server = MockServer::start();
+    let modules = "institutionOwnership,fundOwnership,majorHoldersBreakdown,insiderTransactions,insiderHolders,netSharePurchaseActivity";
+
+    let holders_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", modules)
+            .query_param("crumb", "crumb");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(r#"{"quoteSummary":{"result":[{}],"error":null}}"#);
+    });
+
+    let client = YfClient::builder()
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let response = HoldersBuilder::new(&client, sym)
+        .institutional_holders_with_diagnostics()
+        .await
+        .unwrap();
+
+    assert!(response.data.is_empty());
+    assert!(matches!(
+        response.diagnostics.warnings.first(),
+        Some(YfWarning::ProviderFeatureUnavailable {
+            feature: "institutionOwnership",
+            reason: ProjectionIssue::ProviderUnavailable {
+                feature: "institutionOwnership"
+            },
+            ..
+        })
+    ));
+
+    let err = HoldersBuilder::new(&client, sym)
+        .strict()
+        .institutional_holders()
+        .await
+        .unwrap_err();
+
+    holders_mock.assert_calls(2);
+    assert!(matches!(err, YfError::DataQuality(_)));
+}
+
+#[tokio::test]
+async fn missing_ownership_list_is_provider_unavailable() {
+    let sym = "NOLIST";
+    let server = MockServer::start();
+    let modules = "institutionOwnership,fundOwnership,majorHoldersBreakdown,insiderTransactions,insiderHolders,netSharePurchaseActivity";
+
+    let holders_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", modules)
+            .query_param("crumb", "crumb");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "quoteSummary": {
+                    "result": [{ "institutionOwnership": {} }],
+                    "error": null
+                  }
+                }"#,
+            );
+    });
+
+    let client = YfClient::builder()
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let response = HoldersBuilder::new(&client, sym)
+        .institutional_holders_with_diagnostics()
+        .await
+        .unwrap();
+
+    assert!(response.data.is_empty());
+    assert!(matches!(
+        response.diagnostics.warnings.first(),
+        Some(YfWarning::ProviderFeatureUnavailable {
+            feature: "institutionOwnership.ownershipList",
+            reason: ProjectionIssue::ProviderUnavailable {
+                feature: "institutionOwnership.ownershipList"
+            },
+            ..
+        })
+    ));
+
+    let err = HoldersBuilder::new(&client, sym)
+        .strict()
+        .institutional_holders()
+        .await
+        .unwrap_err();
+
+    holders_mock.assert_calls(2);
+    assert!(matches!(err, YfError::DataQuality(_)));
+}
+
+#[tokio::test]
 async fn insider_roster_missing_position_is_not_defaulted_to_officer() {
     let sym = "AAPL";
     let server = MockServer::start();
