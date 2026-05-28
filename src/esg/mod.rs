@@ -23,7 +23,7 @@ impl EsgBuilder {
         Self {
             client: client.clone(),
             symbol: symbol.into(),
-            cache_mode: CacheMode::Use,
+            cache_mode: CacheMode::Default,
             retry_override: None,
         }
     }

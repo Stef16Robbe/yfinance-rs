@@ -1,6 +1,6 @@
 use crate::core::{
     YfClient, YfError,
-    client::{CacheMode, RetryConfig, SymbolEndpoint},
+    client::{CacheEndpoint, CacheMode, RetryConfig, SymbolEndpoint},
     net,
 };
 use serde::Deserialize;
@@ -62,7 +62,9 @@ pub async fn fetch(
             url,
             net::AuthFetchConfig {
                 auth_mode: net::AuthMode::RequiredCrumb,
+                cache_endpoint: CacheEndpoint::QuoteSummary,
                 cache_mode,
+                cache_body: None,
                 retry_override,
                 endpoint: &fixture_endpoint,
                 fixture_key: symbol,

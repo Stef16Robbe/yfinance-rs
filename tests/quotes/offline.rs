@@ -1,8 +1,8 @@
 use crate::common::{mock_quote_v7_multi, setup_server};
 use httpmock::Method::GET;
-use std::path::Path;
+use std::{path::Path, time::Duration};
 use url::Url;
-use yfinance_rs::YfError;
+use yfinance_rs::{CacheMode, YfError};
 
 #[tokio::test]
 async fn offline_multi_quotes_uses_recorded_fixture() {
@@ -102,4 +102,67 @@ async fn malformed_quote_node_invalid_symbol_returns_error() {
         Err(other) => panic!("expected invalid symbol error, got {other:?}"),
         Ok(_) => panic!("expected invalid symbol error"),
     }
+}
+
+#[tokio::test]
+async fn default_quote_cache_mode_bypasses_response_cache() {
+    let server = setup_server();
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "AAPL");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(crate::common::fixture("quote_v7", "AAPL", "json"));
+    });
+
+    let base = Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap();
+    let client = yfinance_rs::YfClient::builder()
+        .base_quote_v7(base)
+        .cache_ttl(Duration::from_mins(1))
+        .build()
+        .unwrap();
+
+    for _ in 0..2 {
+        let quotes = yfinance_rs::QuotesBuilder::new(client.clone())
+            .symbols(["AAPL"])
+            .fetch()
+            .await
+            .unwrap();
+        assert_eq!(quotes.len(), 1);
+    }
+
+    mock.assert_calls(2);
+}
+
+#[tokio::test]
+async fn explicit_quote_cache_mode_uses_response_cache() {
+    let server = setup_server();
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "AAPL");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(crate::common::fixture("quote_v7", "AAPL", "json"));
+    });
+
+    let base = Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap();
+    let client = yfinance_rs::YfClient::builder()
+        .base_quote_v7(base)
+        .cache_ttl(Duration::from_mins(1))
+        .build()
+        .unwrap();
+
+    for _ in 0..2 {
+        let quotes = yfinance_rs::QuotesBuilder::new(client.clone())
+            .symbols(["AAPL"])
+            .cache_mode(CacheMode::Use)
+            .fetch()
+            .await
+            .unwrap();
+        assert_eq!(quotes.len(), 1);
+    }
+
+    mock.assert_calls(1);
 }

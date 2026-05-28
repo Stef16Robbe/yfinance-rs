@@ -198,7 +198,7 @@ impl DownloadBuilder {
             include_actions: true,
             rounding: false,
             repair: false,
-            cache_mode: CacheMode::Use,
+            cache_mode: CacheMode::Default,
             retry_override: None,
             concurrency: DownloadConcurrency::DEFAULT,
         }

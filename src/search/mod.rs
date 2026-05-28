@@ -3,8 +3,7 @@ use paft::market::responses::search::{SearchResponse, SearchResult};
 use serde::Deserialize;
 use url::Url;
 
-use crate::core::client::CacheMode;
-use crate::core::client::RetryConfig;
+use crate::core::client::{CacheEndpoint, CacheMode, RetryConfig};
 use crate::core::conversions::string_to_asset_kind;
 use crate::{YfClient, YfError};
 
@@ -94,7 +93,7 @@ impl SearchBuilder {
             lists_count: Some(0),
             lang: None,
             region: None,
-            cache_mode: CacheMode::Use,
+            cache_mode: CacheMode::Default,
             retry_override: None,
         }
     }
@@ -190,7 +189,9 @@ impl SearchBuilder {
             url,
             crate::core::net::AuthFetchConfig {
                 auth_mode: crate::core::net::AuthMode::OptionalCrumb,
+                cache_endpoint: CacheEndpoint::Search,
                 cache_mode: self.cache_mode,
+                cache_body: None,
                 retry_override: self.retry_override.as_ref(),
                 endpoint: "search_v1",
                 fixture_key: &self.query,

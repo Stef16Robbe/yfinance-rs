@@ -3,7 +3,7 @@
 use crate::{
     YfClient, YfError,
     core::{
-        client::{CacheMode, RetryConfig, SymbolEndpoint},
+        client::{CacheEndpoint, CacheMode, RetryConfig, SymbolEndpoint},
         currency_resolver::CurrencyHints,
     },
 };
@@ -37,11 +37,14 @@ pub async fn load_from_scrape(
     let body = crate::core::net::fetch_text_cached(
         client,
         &url,
-        cache_mode,
-        retry_override,
-        "profile_html",
-        symbol,
-        "html",
+        crate::core::net::CacheFetchConfig {
+            cache_endpoint: CacheEndpoint::ProfileHtml,
+            cache_mode,
+            retry_override,
+            endpoint: "profile_html",
+            fixture_key: symbol,
+            ext: "html",
+        },
     )
     .await?;
 

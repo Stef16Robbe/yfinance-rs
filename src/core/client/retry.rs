@@ -53,13 +53,86 @@ impl Default for RetryConfig {
 }
 
 /// Defines the behavior of the in-memory cache for an API call.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum CacheMode {
+    /// Use the endpoint's default cache policy.
+    ///
+    /// Volatile endpoints, such as quotes, options, news, and screeners, bypass
+    /// the cache by default. More stable endpoints, such as historical charts,
+    /// quote summaries, fundamentals, profile HTML, and search, use the cache
+    /// when client-side caching is enabled.
+    #[default]
+    Default,
     /// Read from the cache if a non-expired entry is present; otherwise, fetch from the network
-    /// and write the response to the cache. (Default)
+    /// and write the response to the cache.
     Use,
     /// Always fetch from the network, bypassing any cached entry, and write the new response to the cache.
     Refresh,
     /// Always fetch from the network and do not read from or write to the cache.
     Bypass,
+}
+
+/// Endpoint buckets used by the in-memory response cache.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum CacheEndpoint {
+    /// The v7 quote endpoint.
+    Quote,
+    /// The historical chart endpoint.
+    Chart,
+    /// The v10 quoteSummary endpoint.
+    QuoteSummary,
+    /// The fundamentals-timeseries endpoint.
+    Fundamentals,
+    /// Yahoo Finance profile HTML pages.
+    ProfileHtml,
+    /// The v7 options endpoint.
+    Options,
+    /// The news endpoint.
+    News,
+    /// The search endpoint.
+    Search,
+    /// Screener endpoints.
+    Screener,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum EffectiveCacheMode {
+    Use,
+    Refresh,
+    Bypass,
+}
+
+impl CacheEndpoint {
+    const fn default_mode(self) -> EffectiveCacheMode {
+        match self {
+            Self::Quote | Self::Options | Self::News | Self::Screener => EffectiveCacheMode::Bypass,
+            Self::Chart
+            | Self::QuoteSummary
+            | Self::Fundamentals
+            | Self::ProfileHtml
+            | Self::Search => EffectiveCacheMode::Use,
+        }
+    }
+}
+
+impl CacheMode {
+    const fn effective(self, endpoint: CacheEndpoint) -> EffectiveCacheMode {
+        match self {
+            Self::Default => endpoint.default_mode(),
+            Self::Use => EffectiveCacheMode::Use,
+            Self::Refresh => EffectiveCacheMode::Refresh,
+            Self::Bypass => EffectiveCacheMode::Bypass,
+        }
+    }
+
+    pub(crate) const fn reads(self, endpoint: CacheEndpoint) -> bool {
+        matches!(self.effective(endpoint), EffectiveCacheMode::Use)
+    }
+
+    pub(crate) const fn writes(self, endpoint: CacheEndpoint) -> bool {
+        matches!(
+            self.effective(endpoint),
+            EffectiveCacheMode::Use | EffectiveCacheMode::Refresh
+        )
+    }
 }

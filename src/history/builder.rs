@@ -64,7 +64,7 @@ impl HistoryBuilder {
             auto_adjust: true,
             include_prepost: false,
             include_actions: true,
-            cache_mode: CacheMode::Use,
+            cache_mode: CacheMode::Default,
             retry_override: None,
         }
     }

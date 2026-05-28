@@ -10,7 +10,7 @@ use super::query::{
     ScreenerQuery, SortDirection, SortField, YahooQuoteType,
 };
 use super::response::{ScreenerResponse, parse_screener_body};
-use crate::core::client::{CacheMode, RetryConfig};
+use crate::core::client::{CacheEndpoint, CacheMode, RetryConfig};
 use crate::{YfClient, YfError};
 
 const DEFAULT_SCREENER_BASE: &str = "https://query1.finance.yahoo.com/v1/finance/screener";
@@ -107,7 +107,7 @@ impl ScreenerBuilder<Predefined> {
             kind: RequestKind::Predefined(screener),
             count: None,
             offset: None,
-            cache_mode: CacheMode::Use,
+            cache_mode: CacheMode::Default,
             retry_override: None,
             marker: PhantomData,
         }
@@ -207,7 +207,7 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
             },
             count: Some(ScreenerCount::DEFAULT),
             offset: Some(ResultOffset::ZERO),
-            cache_mode: CacheMode::Use,
+            cache_mode: CacheMode::Default,
             retry_override: None,
             marker: PhantomData,
         }
@@ -313,15 +313,18 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
             }
         }
 
-        if self.cache_mode == CacheMode::Use
+        if self.cache_mode.reads(CacheEndpoint::Screener)
             && let Some(body) = self.client.cache_get(&url).await
         {
             return parse_screener_body(&body);
         }
 
-        let (body, final_url) = self.get_with_auth_retry(url, screener.id()).await?;
-        if self.cache_mode != CacheMode::Bypass {
-            self.client.cache_put(&final_url, &body, None).await;
+        let cache_url = url.clone();
+        let (body, _) = self.get_with_auth_retry(url, screener.id()).await?;
+        if self.cache_mode.writes(CacheEndpoint::Screener) {
+            self.client
+                .cache_put(CacheEndpoint::Screener, &cache_url, &body, None)
+                .await;
         }
         parse_screener_body(&body)
     }
@@ -332,7 +335,10 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
 
         let fixture_key = parts.quote_type.as_str().to_ascii_lowercase();
         let body = self.custom_body(parts);
-        let response = self.post_with_auth_retry(url, &body, &fixture_key).await?;
+        let body_json = serde_json::to_string(&body).map_err(YfError::Json)?;
+        let response = self
+            .post_with_auth_retry(url, &body, &body_json, &fixture_key)
+            .await?;
         parse_screener_body(&response)
     }
 
@@ -375,7 +381,9 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
             url,
             crate::core::net::AuthFetchConfig {
                 auth_mode: crate::core::net::AuthMode::OptionalCrumb,
+                cache_endpoint: CacheEndpoint::Screener,
                 cache_mode: CacheMode::Bypass,
+                cache_body: None,
                 retry_override: self.retry_override.as_ref(),
                 endpoint: "screener_predefined",
                 fixture_key,
@@ -396,6 +404,7 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
         &self,
         url: Url,
         body: &Value,
+        body_json: &str,
         fixture_key: &str,
     ) -> Result<String, YfError> {
         let (body, _) = crate::core::net::fetch_text_with_auth_retry(
@@ -403,7 +412,9 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
             url,
             crate::core::net::AuthFetchConfig {
                 auth_mode: crate::core::net::AuthMode::OptionalCrumb,
-                cache_mode: CacheMode::Bypass,
+                cache_endpoint: CacheEndpoint::Screener,
+                cache_mode: self.cache_mode,
+                cache_body: Some(body_json),
                 retry_override: self.retry_override.as_ref(),
                 endpoint: "screener_custom",
                 fixture_key,

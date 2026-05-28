@@ -1,4 +1,4 @@
-use crate::core::client::{CacheMode, RetryConfig, SymbolEndpoint};
+use crate::core::client::{CacheEndpoint, CacheMode, RetryConfig, SymbolEndpoint};
 use crate::history::wire::{Events, MetaNode, QuoteBlock};
 
 pub struct Fetched {
@@ -52,11 +52,14 @@ pub async fn fetch_chart(
     let body = crate::core::net::fetch_text_cached(
         client,
         &url,
-        cache_mode,
-        retry_override,
-        "history_chart",
-        symbol,
-        "json",
+        crate::core::net::CacheFetchConfig {
+            cache_endpoint: CacheEndpoint::Chart,
+            cache_mode,
+            retry_override,
+            endpoint: "history_chart",
+            fixture_key: symbol,
+            ext: "json",
+        },
     )
     .await?;
 

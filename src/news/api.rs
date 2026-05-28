@@ -3,7 +3,7 @@ use serde::Serialize;
 use crate::{
     core::{
         YfClient, YfError,
-        client::{CacheMode, RetryConfig},
+        client::{CacheEndpoint, CacheMode, RetryConfig},
         conversions::i64_to_datetime,
         net,
     },
@@ -28,7 +28,7 @@ pub(super) async fn fetch_news(
     symbol: &str,
     count: u32,
     tab: NewsTab,
-    _cache_mode: CacheMode,
+    cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
 ) -> Result<Vec<NewsArticle>, YfError> {
     let mut url = client.base_news().join("xhr/ncp")?;
@@ -43,13 +43,22 @@ pub(super) async fn fetch_news(
         },
     };
 
-    // Note: The client's built-in cache is URL-based and doesn't support POST bodies.
-    // Caching for this endpoint would require a more complex keying strategy.
-
-    let req = client.http().post(url.clone()).json(&payload);
     let endpoint = format!("news_{}", tab_as_str(tab));
-    let envelope: wire::NewsEnvelope =
-        net::fetch_json(client, req, &url, retry_override, &endpoint, symbol, "json").await?;
+    let body_json = serde_json::to_string(&payload).map_err(YfError::Json)?;
+    let envelope: wire::NewsEnvelope = net::fetch_json_post_cached(
+        client,
+        &url,
+        &body_json,
+        net::CacheFetchConfig {
+            cache_endpoint: CacheEndpoint::News,
+            cache_mode,
+            retry_override,
+            endpoint: &endpoint,
+            fixture_key: symbol,
+            ext: "json",
+        },
+    )
+    .await?;
 
     let articles = envelope
         .data

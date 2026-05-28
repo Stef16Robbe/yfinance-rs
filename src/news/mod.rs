@@ -48,13 +48,12 @@ impl NewsBuilder {
             symbol: symbol.into(),
             count: 10,
             tab: NewsTab::default(),
-            cache_mode: CacheMode::Use,
+            cache_mode: CacheMode::Default,
             retry_override: None,
         }
     }
 
     /// Sets the cache mode for this specific API call.
-    /// Note: Caching is not currently implemented for news requests.
     #[must_use]
     pub const fn cache_mode(mut self, mode: CacheMode) -> Self {
         self.cache_mode = mode;

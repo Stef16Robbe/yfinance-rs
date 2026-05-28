@@ -9,7 +9,7 @@ mod urls;
 use crate::core::YfError;
 use crate::core::client::constants::DEFAULT_BASE_INSIDER_SEARCH;
 use crate::core::currency_resolver::{CurrencyCacheKey, CurrencyHints, ResolvedCurrency};
-pub use retry::{Backoff, CacheMode, RetryConfig};
+pub use retry::{Backoff, CacheEndpoint, CacheMode, RetryConfig};
 pub(crate) use urls::SymbolEndpoint;
 
 use constants::{
@@ -18,10 +18,16 @@ use constants::{
 };
 use reqwest::Client;
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::num::NonZeroUsize;
+use std::sync::{
+    Arc,
+    atomic::{AtomicU64, Ordering},
+};
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 use url::Url;
+
+const DEFAULT_CACHE_MAX_ENTRIES: usize = 1024;
 
 /// Defines the preferred data source for profile lookups when testing.
 ///
@@ -41,20 +47,72 @@ pub enum ApiPreference {
 struct CacheEntry {
     body: String,
     expires_at: Instant,
+    last_access: u64,
 }
 
 #[derive(Debug)]
 struct CacheStore {
     map: RwLock<HashMap<String, CacheEntry>>,
-    default_ttl: Duration,
+    default_ttl: Option<Duration>,
+    endpoint_ttls: HashMap<CacheEndpoint, Duration>,
+    max_entries: usize,
+    access_counter: AtomicU64,
+}
+
+impl CacheStore {
+    fn next_access(&self) -> u64 {
+        self.access_counter.fetch_add(1, Ordering::Relaxed) + 1
+    }
+
+    fn ttl_for(&self, endpoint: CacheEndpoint, ttl_override: Option<Duration>) -> Option<Duration> {
+        ttl_override
+            .or_else(|| self.endpoint_ttls.get(&endpoint).copied())
+            .or(self.default_ttl)
+    }
 }
 
 fn retain_unexpired_entries(map: &mut HashMap<String, CacheEntry>, now: Instant) {
     map.retain(|_, entry| now <= entry.expires_at);
 }
 
+fn evict_lru_entries(map: &mut HashMap<String, CacheEntry>, max_entries: usize) {
+    while map.len() > max_entries {
+        let Some(key) = map
+            .iter()
+            .min_by_key(|(_, entry)| entry.last_access)
+            .map(|(key, _)| key.clone())
+        else {
+            break;
+        };
+        map.remove(&key);
+    }
+}
+
+fn url_cache_key(url: &Url) -> String {
+    url.as_str().to_string()
+}
+
+fn post_cache_key(url: &Url, body: &str) -> String {
+    format!("POST {}\n{body}", url.as_str())
+}
+
+fn cache_key_url(key: &str) -> &str {
+    if let Some(rest) = key.strip_prefix("POST ")
+        && let Some((url, _)) = rest.split_once('\n')
+    {
+        return url;
+    }
+
+    key
+}
+
+fn cache_key_matches_url(key: &str, url: &Url) -> bool {
+    cache_key_url(key) == url.as_str()
+}
+
 fn cache_key_has_crumb_query(key: &str) -> bool {
-    Url::parse(key).is_ok_and(|url| url.query_pairs().any(|(name, _)| name == "crumb"))
+    Url::parse(cache_key_url(key))
+        .is_ok_and(|url| url.query_pairs().any(|(name, _)| name == "crumb"))
 }
 
 #[derive(Debug, Default)]
@@ -151,43 +209,63 @@ impl YfClient {
     }
 
     pub(crate) async fn cache_get(&self, url: &Url) -> Option<String> {
-        let store = self.cache.as_ref()?;
-        let key = url.as_str().to_string();
-
-        let now = Instant::now();
-        {
-            let guard = store.map.read().await;
-            match guard.get(&key) {
-                Some(entry) if now <= entry.expires_at => return Some(entry.body.clone()),
-                Some(_) => {}
-                None => return None,
-            }
-        }
-
-        let mut guard = store.map.write().await;
-        if guard.get(&key).is_some_and(|entry| now > entry.expires_at) {
-            guard.remove(&key);
-        }
-
-        None
+        self.cache_get_key(&url_cache_key(url)).await
     }
 
-    pub(crate) async fn cache_put(&self, url: &Url, body: &str, ttl_override: Option<Duration>) {
+    pub(crate) async fn cache_get_key(&self, key: &str) -> Option<String> {
+        let store = self.cache.as_ref()?;
+        let now = Instant::now();
+        let mut guard = store.map.write().await;
+        retain_unexpired_entries(&mut guard, now);
+        let entry = guard.get_mut(key)?;
+        entry.last_access = store.next_access();
+        let body = entry.body.clone();
+        drop(guard);
+        Some(body)
+    }
+
+    pub(crate) async fn cache_put(
+        &self,
+        endpoint: CacheEndpoint,
+        url: &Url,
+        body: &str,
+        ttl_override: Option<Duration>,
+    ) {
+        self.cache_put_key(endpoint, url_cache_key(url), body, ttl_override)
+            .await;
+    }
+
+    pub(crate) async fn cache_put_key(
+        &self,
+        endpoint: CacheEndpoint,
+        key: String,
+        body: &str,
+        ttl_override: Option<Duration>,
+    ) {
         let store = match &self.cache {
             Some(s) => s.clone(),
             None => return,
         };
-        let key = url.as_str().to_string();
-        let ttl = ttl_override.unwrap_or(store.default_ttl);
+        let Some(ttl) = store.ttl_for(endpoint, ttl_override) else {
+            return;
+        };
         let now = Instant::now();
         let expires_at = now + ttl;
         let entry = CacheEntry {
             body: body.to_string(),
             expires_at,
+            last_access: store.next_access(),
         };
+        let max_entries = store.max_entries;
         let mut guard = store.map.write().await;
         retain_unexpired_entries(&mut guard, now);
         guard.insert(key, entry);
+        evict_lru_entries(&mut guard, max_entries);
+        drop(guard);
+    }
+
+    pub(crate) fn post_cache_key(url: &Url, body: &str) -> String {
+        post_cache_key(url, body)
     }
 
     pub(crate) async fn clear_crumb_cache_entries(&self) {
@@ -229,9 +307,8 @@ impl YfClient {
     /// It does nothing if caching is disabled for the client.
     pub async fn invalidate_cache_entry(&self, url: &Url) {
         if let Some(store) = &self.cache {
-            let key = url.as_str().to_string();
             let mut guard = store.map.write().await;
-            guard.remove(&key);
+            guard.retain(|key, _| !cache_key_matches_url(key, url));
         }
     }
 
@@ -364,6 +441,8 @@ pub struct YfClientBuilder {
     connect_timeout: Option<Duration>,
     retry: Option<RetryConfig>,
     cache_ttl: Option<Duration>,
+    cache_ttls: HashMap<CacheEndpoint, Duration>,
+    cache_max_entries: Option<NonZeroUsize>,
 
     // New fields for custom client and proxy configuration
     custom_client: Option<Client>,
@@ -493,8 +572,9 @@ impl YfClientBuilder {
 
     /// Disables in-memory caching for this client.
     #[must_use]
-    pub const fn no_cache(mut self) -> Self {
+    pub fn no_cache(mut self) -> Self {
         self.cache_ttl = None;
+        self.cache_ttls.clear();
         self
     }
 
@@ -549,10 +629,33 @@ impl YfClientBuilder {
 
     /// Enables in-memory caching with a default Time-To-Live (TTL) for all responses.
     ///
-    /// If not set, caching is disabled by default.
+    /// If neither this nor [`YfClientBuilder::cache_ttl_for`] is set, response
+    /// caching is disabled by default. Endpoint-specific TTLs override this
+    /// value.
     #[must_use]
     pub const fn cache_ttl(mut self, dur: Duration) -> Self {
         self.cache_ttl = Some(dur);
+        self
+    }
+
+    /// Sets a Time-To-Live (TTL) for one response-cache endpoint bucket.
+    ///
+    /// Calling this enables response caching for that endpoint even when no
+    /// global [`YfClientBuilder::cache_ttl`] is configured. Endpoints without a
+    /// specific TTL are cached only when a global TTL is configured.
+    #[must_use]
+    pub fn cache_ttl_for(mut self, endpoint: CacheEndpoint, dur: Duration) -> Self {
+        self.cache_ttls.insert(endpoint, dur);
+        self
+    }
+
+    /// Sets the maximum number of in-memory response-cache entries.
+    ///
+    /// The cache evicts the least recently used entries after expired entries
+    /// have been pruned. The default is 1024 entries.
+    #[must_use]
+    pub const fn cache_max_entries(mut self, max_entries: NonZeroUsize) -> Self {
+        self.cache_max_entries = Some(max_entries);
         self
     }
 
@@ -815,10 +918,15 @@ impl YfClientBuilder {
             currency_cache: Arc::new(RwLock::new(HashMap::new())),
             currency_hints: Arc::new(RwLock::new(HashMap::new())),
             instrument_cache: Arc::new(RwLock::new(HashMap::new())),
-            cache: self.cache_ttl.map(|ttl| {
+            cache: (self.cache_ttl.is_some() || !self.cache_ttls.is_empty()).then(|| {
                 Arc::new(CacheStore {
                     map: RwLock::new(HashMap::new()),
-                    default_ttl: ttl,
+                    default_ttl: self.cache_ttl,
+                    endpoint_ttls: self.cache_ttls,
+                    max_entries: self
+                        .cache_max_entries
+                        .map_or(DEFAULT_CACHE_MAX_ENTRIES, NonZeroUsize::get),
+                    access_counter: AtomicU64::new(0),
                 })
             }),
         })
@@ -892,6 +1000,7 @@ mod tests {
             CacheEntry {
                 body: body.to_string(),
                 expires_at,
+                last_access: 0,
             },
         );
     }
@@ -920,7 +1029,9 @@ mod tests {
         let fresh_url = test_url("https://example.test/new?symbol=MSFT");
 
         insert_cache_entry(&client, &expired_url, "stale", expired_at()).await;
-        client.cache_put(&fresh_url, "fresh", None).await;
+        client
+            .cache_put(CacheEndpoint::Chart, &fresh_url, "fresh", None)
+            .await;
 
         let (len, has_expired, has_fresh) = {
             let store = client.cache.as_ref().expect("cache is enabled");
@@ -942,8 +1053,12 @@ mod tests {
         let plain_url = test_url("https://example.test/v7/finance/quote?symbols=AAPL");
         let crumb_url = test_url("https://example.test/v7/finance/quote?symbols=AAPL&crumb=stale");
 
-        client.cache_put(&plain_url, "plain", None).await;
-        client.cache_put(&crumb_url, "with crumb", None).await;
+        client
+            .cache_put(CacheEndpoint::Quote, &plain_url, "plain", None)
+            .await;
+        client
+            .cache_put(CacheEndpoint::Quote, &crumb_url, "with crumb", None)
+            .await;
         client.state.write().await.crumb = Some("stale".to_string());
 
         client.clear_crumb().await;
@@ -961,5 +1076,46 @@ mod tests {
         assert!(has_plain);
         assert!(!has_crumb);
         assert!(client.crumb().await.is_none());
+    }
+
+    #[tokio::test]
+    async fn cache_put_evicts_least_recently_used_entry() {
+        let client = YfClient::builder()
+            .cache_ttl(Duration::from_mins(1))
+            .cache_max_entries(NonZeroUsize::new(2).expect("non-zero"))
+            .build()
+            .expect("client builds");
+        let a = test_url("https://example.test/a");
+        let b = test_url("https://example.test/b");
+        let c = test_url("https://example.test/c");
+
+        client.cache_put(CacheEndpoint::Chart, &a, "a", None).await;
+        client.cache_put(CacheEndpoint::Chart, &b, "b", None).await;
+        assert_eq!(client.cache_get(&a).await.as_deref(), Some("a"));
+        client.cache_put(CacheEndpoint::Chart, &c, "c", None).await;
+
+        assert_eq!(client.cache_get(&a).await.as_deref(), Some("a"));
+        assert!(client.cache_get(&b).await.is_none());
+        assert_eq!(client.cache_get(&c).await.as_deref(), Some("c"));
+    }
+
+    #[tokio::test]
+    async fn endpoint_ttl_enables_only_that_endpoint_without_global_ttl() {
+        let client = YfClient::builder()
+            .cache_ttl_for(CacheEndpoint::Quote, Duration::from_mins(1))
+            .build()
+            .expect("client builds");
+        let quote = test_url("https://example.test/v7/finance/quote?symbols=AAPL");
+        let chart = test_url("https://example.test/v8/finance/chart/AAPL");
+
+        client
+            .cache_put(CacheEndpoint::Quote, &quote, "quote", None)
+            .await;
+        client
+            .cache_put(CacheEndpoint::Chart, &chart, "chart", None)
+            .await;
+
+        assert_eq!(client.cache_get(&quote).await.as_deref(), Some("quote"));
+        assert!(client.cache_get(&chart).await.is_none());
     }
 }

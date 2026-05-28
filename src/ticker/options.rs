@@ -4,7 +4,7 @@ use url::Url;
 use crate::{
     YfClient, YfError,
     core::{
-        client::{CacheMode, RetryConfig, SymbolEndpoint},
+        client::{CacheEndpoint, CacheMode, RetryConfig, SymbolEndpoint},
         conversions::{decimal_from_f64, string_to_asset_kind, string_to_exchange},
         currency_resolver::{CurrencyHints, ResolvedCurrencyUnit, TradingCurrencyEvidence},
         net,
@@ -218,7 +218,9 @@ async fn fetch_options_raw(
         url,
         net::AuthFetchConfig {
             auth_mode: net::AuthMode::OptionalCrumb,
+            cache_endpoint: CacheEndpoint::Options,
             cache_mode,
+            cache_body: None,
             retry_override,
             endpoint: "options_v7",
             fixture_key: &fixture_key,

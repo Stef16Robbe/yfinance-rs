@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, btree_map::Entry};
 use crate::{
     core::{
         YfClient, YfError,
-        client::{CacheMode, RetryConfig, SymbolEndpoint},
+        client::{CacheEndpoint, CacheMode, RetryConfig, SymbolEndpoint},
         conversions::{i64_to_datetime, string_to_period},
         currency_resolver::{CurrencyHints, ReportingCurrencyEvidence, ResolvedCurrencyUnit},
         wire::{RawNum, RawNumU64},
@@ -88,7 +88,9 @@ where
         url,
         crate::core::net::AuthFetchConfig {
             auth_mode: crate::core::net::AuthMode::RequiredCrumb,
+            cache_endpoint: CacheEndpoint::Fundamentals,
             cache_mode,
+            cache_body: None,
             retry_override,
             endpoint: &endpoint,
             fixture_key: symbol,
@@ -743,7 +745,9 @@ pub(super) async fn shares(
         url,
         crate::core::net::AuthFetchConfig {
             auth_mode: crate::core::net::AuthMode::RequiredCrumb,
+            cache_endpoint: CacheEndpoint::Fundamentals,
             cache_mode,
+            cache_body: None,
             retry_override,
             endpoint: &endpoint,
             fixture_key: symbol,

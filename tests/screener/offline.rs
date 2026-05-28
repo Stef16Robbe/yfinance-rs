@@ -1,6 +1,7 @@
 use httpmock::Method::{GET, POST};
 use httpmock::MockServer;
 use serde_json::json;
+use std::time::Duration;
 use url::Url;
 use yfinance_rs::{
     CacheMode, EquityQuery, PredefinedScreener, Region, ScreenerBuilder, YfClient, equity_fields,
@@ -164,6 +165,63 @@ async fn offline_custom_equity_query_posts_python_wire_shape() {
     mock.assert();
     assert!(!response.results.is_empty());
     assert!(response.results[0].symbol.is_some());
+}
+
+#[tokio::test]
+async fn explicit_custom_screener_cache_mode_uses_post_body_cache() {
+    let server = MockServer::start();
+    let expected_body = json!({
+        "offset": 0,
+        "count": 25,
+        "sortField": "ticker",
+        "sortType": "DESC",
+        "userId": "",
+        "userIdType": "guid",
+        "quoteType": "EQUITY",
+        "query": {
+            "operator": "AND",
+            "operands": [
+                {"operator": "GT", "operands": ["percentchange", 3.0]},
+                {"operator": "EQ", "operands": ["region", "us"]}
+            ]
+        }
+    });
+
+    let mock = server.mock(|when, then| {
+        when.method(POST)
+            .path("/v1/finance/screener")
+            .query_param("corsDomain", "finance.yahoo.com")
+            .query_param("formatted", "false")
+            .query_param("lang", "en-US")
+            .query_param("region", "US")
+            .json_body(expected_body);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(fixture("screener_custom", "equity"));
+    });
+
+    let client = YfClient::builder()
+        .cache_ttl(Duration::from_mins(1))
+        .build()
+        .unwrap();
+    let base = Url::parse(&format!("{}/v1/finance/screener", server.base_url())).unwrap();
+
+    for _ in 0..2 {
+        let query = EquityQuery::and(vec![
+            equity_fields::PERCENT_CHANGE.gt(yfinance_rs::PercentPoints::new(3.0).unwrap()),
+            equity_fields::REGION.eq(Region::Us),
+        ])
+        .unwrap();
+        let response = ScreenerBuilder::equity(&client, query)
+            .screener_base(base.clone())
+            .cache_mode(CacheMode::Use)
+            .fetch()
+            .await
+            .unwrap();
+        assert!(!response.results.is_empty());
+    }
+
+    mock.assert_calls(1);
 }
 
 #[tokio::test]

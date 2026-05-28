@@ -34,7 +34,7 @@ impl QuotesBuilder {
         Self {
             client,
             symbols: Vec::new(),
-            cache_mode: CacheMode::Use,
+            cache_mode: CacheMode::Default,
             retry_override: None,
         }
     }

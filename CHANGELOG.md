@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Replaced the old lossy float-to-money/price/decimal helpers with checked conversion helpers. `core::conversions` is now hidden from public docs and remains internal Yahoo-to-`paft` adapter plumbing with no stability guarantee.
 - Missing or malformed provider classification/date fields now fail or drop the affected row instead of being coerced into plausible values such as epoch timestamps, `Hold`, `Maintain`, `Buy`, `Officer`, `Equity`, or `1970` periods.
 - Missing or unparseable Yahoo currency metadata no longer silently falls back to USD. Required monetary responses now return typed data errors when no valid currency can be resolved, and optional monetary fields/actions are omitted instead of fabricated.
+- `CacheMode` now has a policy-driven `Default` mode. Volatile endpoints such as quotes, options, news, and screeners bypass the response cache by default; use `CacheMode::Use` to opt them into caching.
 
 ### Fixed
 
@@ -48,6 +49,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Build Yahoo symbol path URLs with one percent-encoding helper instead of `Url::join`, preventing symbols containing URL syntax from changing the request target.
 - Expired URL cache entries are now pruned opportunistically on cache reads and writes, and stale crumb-authenticated cache keys are removed when Yahoo credentials are refreshed.
 - `Ticker`-level cache and retry settings now propagate consistently through history builders, action helpers, and profile loading inside `Ticker::info()`.
+- POST endpoints with `cache_mode(CacheMode::Use)`, including news and custom screeners, now use body-aware response cache keys instead of effectively bypassing or colliding on URL-only keys.
 
 ### Changed
 
@@ -61,6 +63,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Internal currency resolution now uses purpose-specific evidence types rather than a generic raw currency-code argument, reducing the chance that endpoint-specific fields mutate the wrong contextual cache.
 - `None` currency overrides continue to auto-enrich by querying Yahoo for stronger currency evidence when an endpoint omits currency data. `Some(currency)` overrides remain per-call only and no longer mutate inferred currency caches.
 - `YfClient::clear_cache()` now clears URL response cache, currency hint cache, resolved currency cache, and instrument cache; `invalidate_cache_entry()` remains URL-cache only.
+- In-memory response caching now has per-endpoint TTL overrides through `YfClientBuilder::cache_ttl_for`, a default 1024-entry cap, and least-recently-used eviction via `YfClientBuilder::cache_max_entries`.
 - CI now covers `main` and `develop` with separate MSRV, formatting, lint, offline-test, and package dry-run jobs, while Yahoo live smoke testing runs in a separate non-required workflow.
 - The crates.io publish job now requires the protected `crates-io` GitHub Actions environment, and CI action pins have been refreshed.
 - Published crate packages now exclude repository workflow metadata and tracked macOS editor artifacts.

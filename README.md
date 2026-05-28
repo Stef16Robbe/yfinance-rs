@@ -478,7 +478,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Advanced Client Configuration
 
 ```rust
-use yfinance_rs::{YfClientBuilder, Ticker, core::client::{Backoff, CacheMode, RetryConfig}};
+use yfinance_rs::{
+    Ticker, YfClientBuilder,
+    core::client::{Backoff, CacheEndpoint, CacheMode, RetryConfig},
+};
 use std::time::Duration;
 
 #[tokio::main]
@@ -495,10 +498,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
             ..Default::default()
         })
+        .cache_ttl(Duration::from_secs(600))
+        .cache_ttl_for(CacheEndpoint::Quote, Duration::from_secs(5))
         .build()?;
 
     let ticker = Ticker::new(&client, "AAPL")
-        .cache_mode(CacheMode::Bypass)
+        .cache_mode(CacheMode::Use)
         .retry_policy(Some(RetryConfig {
             max_retries: 5,
             ..Default::default()
@@ -539,6 +544,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = YfClient::builder()
         .custom_client(custom_client)
         .cache_ttl(Duration::from_secs(300))
+        .cache_ttl_for(yfinance_rs::CacheEndpoint::Quote, Duration::from_secs(5))
         .build()?;
 
     let ticker = Ticker::new(&client, "AAPL");

@@ -127,7 +127,7 @@ impl StreamBuilder {
             symbols: Vec::new(),
             cfg: StreamConfig::default(),
             method: StreamMethod::default(),
-            cache_mode: CacheMode::Use,
+            cache_mode: CacheMode::Default,
             retry_override: None,
         }
     }

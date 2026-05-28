@@ -4,7 +4,7 @@ use serde::Deserialize;
 use crate::{
     YfClient, YfError,
     core::{
-        client::{CacheMode, RetryConfig},
+        client::{CacheEndpoint, CacheMode, RetryConfig},
         conversions::{decimal_from_f64, i64_to_datetime, string_to_asset_kind},
         currency_resolver::{CurrencyHints, ResolvedCurrencyUnit},
         net, quotesummary,
@@ -351,7 +351,9 @@ pub async fn fetch_v7_quotes(
         url,
         net::AuthFetchConfig {
             auth_mode: net::AuthMode::OptionalCrumb,
+            cache_endpoint: CacheEndpoint::Quote,
             cache_mode,
+            cache_body: None,
             retry_override,
             endpoint: "quote_v7",
             fixture_key: &fixture_key,

@@ -78,7 +78,7 @@ async fn history_cache_refresh_bypasses_cache_get_but_updates_cache() {
         .unwrap();
     mock.assert_calls(2);
 
-    // Third call with default CacheMode::Use, should now be served from cache
+    // Third call with default chart cache policy should now be served from cache.
     let _ = builder.clone().fetch().await.unwrap();
     // The hit count should NOT increase, so we assert it's still 2.
     mock.assert_calls(2);
