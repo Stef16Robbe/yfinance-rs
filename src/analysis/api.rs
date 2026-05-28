@@ -4,13 +4,13 @@ use crate::{
         DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfError, YfResponse,
         client::{CacheMode, RetryConfig},
         conversions::{
-            decimal_from_f64, i64_to_datetime, string_to_period, string_to_recommendation_action,
+            i64_to_datetime, string_to_period, string_to_recommendation_action,
             string_to_recommendation_grade,
         },
         currency_resolver::{
             AnalystEstimateCurrencyEvidence, CurrencyHints, CurrencyKind, TradingCurrencyEvidence,
         },
-        diagnostics::{optional_money_i64, optional_price_f64},
+        diagnostics::{optional_decimal_f64, optional_money_i64, optional_price_f64},
         wire::{from_raw, from_raw_u32_round},
     },
 };
@@ -180,6 +180,13 @@ pub(super) async fn recommendation_summary(
     let (mean, _mean_key) = root.financial_data.map_or((None, None), |fd| {
         (from_raw(fd.recommendation_mean), fd.recommendation_key)
     });
+    let mean = optional_decimal_f64(
+        &mut ctx,
+        "financialData.recommendationMean",
+        Some(symbol.to_string()),
+        mean,
+        "recommendation mean",
+    )?;
 
     Ok(ctx.finish(RecommendationSummary {
         latest_period,
@@ -188,7 +195,7 @@ pub(super) async fn recommendation_summary(
         hold: h,
         sell: s,
         strong_sell: ss,
-        mean: mean.and_then(decimal_from_f64),
+        mean,
         mean_rating_text: None,
     }))
 }
@@ -599,7 +606,13 @@ pub(super) async fn earnings_trend(
 
         rows.push(EarningsTrendRow {
             period,
-            growth: from_raw(n.growth).and_then(decimal_from_f64),
+            growth: optional_decimal_f64(
+                &mut ctx,
+                "earningsTrend[].growth",
+                n.period.clone(),
+                from_raw(n.growth),
+                "earnings trend growth",
+            )?,
             earnings_estimate: EarningsEstimate {
                 avg: optional_price_f64(
                     &mut ctx,
@@ -634,7 +647,13 @@ pub(super) async fn earnings_trend(
                     "analyst price value",
                 )?,
                 num_analysts: earnings_estimate_num_analysts,
-                growth: earnings_estimate_growth.and_then(decimal_from_f64),
+                growth: optional_decimal_f64(
+                    &mut ctx,
+                    "earningsTrend[].earningsEstimate.growth",
+                    n.period.clone(),
+                    earnings_estimate_growth,
+                    "earnings estimate growth",
+                )?,
             },
             revenue_estimate: RevenueEstimate {
                 avg: optional_money_i64(
@@ -670,7 +689,13 @@ pub(super) async fn earnings_trend(
                     "analyst monetary value",
                 )?,
                 num_analysts: revenue_estimate_num_analysts,
-                growth: revenue_estimate_growth.and_then(decimal_from_f64),
+                growth: optional_decimal_f64(
+                    &mut ctx,
+                    "earningsTrend[].revenueEstimate.growth",
+                    n.period.clone(),
+                    revenue_estimate_growth,
+                    "revenue estimate growth",
+                )?,
             },
             eps_trend: EpsTrend {
                 current: optional_price_f64(

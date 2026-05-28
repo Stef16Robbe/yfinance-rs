@@ -1,6 +1,25 @@
 use crate::core::{
-    ProjectionContext, ProjectionIssue, YfError, currency_resolver::ResolvedCurrencyUnit,
+    ProjectionContext, ProjectionIssue, YfError, conversions::decimal_from_f64,
+    currency_resolver::ResolvedCurrencyUnit,
 };
+use paft::Decimal;
+
+pub fn optional_decimal_f64(
+    ctx: &mut ProjectionContext,
+    path: &'static str,
+    key: Option<String>,
+    value: Option<f64>,
+    target: &'static str,
+) -> Result<Option<Decimal>, YfError> {
+    let Some(value) = value else {
+        return Ok(None);
+    };
+    let Some(decimal) = decimal_from_f64(value) else {
+        ctx.omitted_present_field(path, key, ProjectionIssue::ConversionFailed { target })?;
+        return Ok(None);
+    };
+    Ok(Some(decimal))
+}
 
 pub fn optional_money_u64(
     ctx: &mut ProjectionContext,

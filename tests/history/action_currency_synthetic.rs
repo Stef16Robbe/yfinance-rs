@@ -2,7 +2,7 @@ use httpmock::Method::GET;
 use httpmock::MockServer;
 use paft::money::{Currency, IsoCurrency};
 use url::Url;
-use yfinance_rs::{Action, HistoryBuilder, YfClient};
+use yfinance_rs::{Action, HistoryBuilder, ProjectionIssue, YfClient, YfWarning};
 
 #[tokio::test]
 async fn action_currency_prefers_event_then_chart_currency() {
@@ -93,4 +93,60 @@ async fn action_without_event_or_default_currency_is_omitted() {
     chart_mock.assert();
     assert!(quote_mock.calls() >= 1);
     assert!(response.actions.is_empty());
+}
+
+#[tokio::test]
+async fn candles_without_resolved_currency_are_dropped_with_diagnostics() {
+    let server = MockServer::start();
+    let body = r#"{
+      "chart":{"result":[{
+        "meta":{"timezone":"America/New_York","gmtoffset":-14400},
+        "timestamp":[1704067200],
+        "indicators":{"quote":[{
+          "open":[100.0],"high":[101.0],"low":[99.0],"close":[100.5],"volume":[1000]
+        }],"adjclose":[{"adjclose":[100.5]}]}
+      }],"error":null}
+    }"#;
+
+    let chart_mock = server.mock(|when, then| {
+        when.method(GET).path("/v8/finance/chart/NOCURRENCY");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+    let quote_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "NOCURRENCY");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(r#"{"quoteResponse":{"result":[],"error":null}}"#);
+    });
+
+    let client = YfClient::builder()
+        .base_chart(Url::parse(&format!("{}/v8/finance/chart/", server.base_url())).unwrap())
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let response = HistoryBuilder::new(&client, "NOCURRENCY")
+        .fetch_full_with_diagnostics()
+        .await
+        .unwrap();
+
+    chart_mock.assert();
+    quote_mock.assert();
+    assert!(response.data.candles.is_empty());
+    assert!(matches!(
+        response.diagnostics.warnings.first(),
+        Some(YfWarning::DroppedItem {
+            item: "candle",
+            reason: ProjectionIssue::CurrencyUnresolved,
+            ..
+        })
+    ));
 }

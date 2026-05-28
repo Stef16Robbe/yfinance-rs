@@ -8,7 +8,7 @@ use crate::core::{DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfE
 use crate::core::{
     client::{CacheMode, RetryConfig},
     currency_resolver::{
-        CorporateActionCurrencyEvidence, CurrencyHints, ResolvedCurrencyUnit,
+        CorporateActionCurrencyEvidence, CurrencyHints, CurrencyKind, ResolvedCurrencyUnit,
         TradingCurrencyEvidence,
     },
 };
@@ -239,18 +239,17 @@ impl HistoryBuilder {
 
         // 2) Corporate actions & split ratios
         let chart_currency = fetched.meta.as_ref().and_then(|m| m.currency.as_deref());
-        let currency = if has_complete_ohlc_row(&fetched.quote, fetched.ts.len()) {
-            Some(
-                self.client
-                    .resolve_trading_currency_unit(
-                        &self.symbol,
-                        None,
-                        TradingCurrencyEvidence::ChartMeta(chart_currency),
-                        self.cache_mode,
-                        self.retry_override.as_ref(),
-                    )
-                    .await?,
+        let has_complete_candle = has_complete_ohlc_row(&fetched.quote, fetched.ts.len());
+        let currency = if has_complete_candle {
+            history_trading_currency(
+                &self.client,
+                &self.symbol,
+                chart_currency,
+                self.cache_mode,
+                self.retry_override.as_ref(),
+                &mut ctx,
             )
+            .await?
         } else {
             None
         };
@@ -284,7 +283,7 @@ impl HistoryBuilder {
                 &mut ctx,
             )?
         } else {
-            if has_any_ohlc_value(&fetched.quote, fetched.ts.len()) {
+            if !has_complete_candle && has_any_ohlc_value(&fetched.quote, fetched.ts.len()) {
                 ctx.dropped_item(
                     "candle",
                     None,
@@ -335,6 +334,47 @@ fn has_any_ohlc_value(quote: &crate::history::wire::QuoteBlock, len: usize) -> b
             || quote.low.get(idx).and_then(|value| *value).is_some()
             || quote.close.get(idx).and_then(|value| *value).is_some()
     })
+}
+
+async fn history_trading_currency(
+    client: &YfClient,
+    symbol: &str,
+    chart_currency: Option<&str>,
+    cache_mode: CacheMode,
+    retry_override: Option<&RetryConfig>,
+    ctx: &mut ProjectionContext,
+) -> Result<Option<ResolvedCurrencyUnit>, YfError> {
+    match client
+        .resolve_trading_currency_unit(
+            symbol,
+            None,
+            TradingCurrencyEvidence::ChartMeta(chart_currency),
+            cache_mode,
+            retry_override,
+        )
+        .await
+    {
+        Ok(currency) => {
+            ctx.currency_resolution(client, symbol, CurrencyKind::Trading)
+                .await?;
+            Ok(Some(currency))
+        }
+        Err(err @ YfError::InvalidData(_)) => Err(err),
+        Err(err) if ctx.policy() == DataQuality::Strict => Err(err),
+        Err(err) => {
+            ctx.dropped_item("candle", None, history_currency_issue(&err))?;
+            Ok(None)
+        }
+    }
+}
+
+fn history_currency_issue(err: &YfError) -> ProjectionIssue {
+    match err {
+        YfError::MissingData(_) => ProjectionIssue::CurrencyUnresolved,
+        _ => ProjectionIssue::ProviderError {
+            message: err.to_string(),
+        },
+    }
 }
 
 #[allow(clippy::too_many_arguments)]

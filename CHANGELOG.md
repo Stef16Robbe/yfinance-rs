@@ -38,6 +38,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Normalize HTTP status handling through shared fetch helpers so quoteSummary and fundamentals-timeseries failures return typed `YfError` variants and are not cached as parseable response bodies.
 - Invalid Yahoo floats (`NaN`, infinities, and values that cannot fit the decimal backend) no longer become zero-valued financial data.
 - Optional `paft` fields now become `None` when Yahoo supplies an invalid numeric value, while valid sibling records are still preserved.
+- Calendar, holder, ESG, and analyst mappers now route present-but-unrepresentable date and decimal fields through projection diagnostics instead of silently omitting them or failing best-effort calls.
 - Malformed required records, including bad OHLC candles, option contracts with invalid strikes, and invalid dividend/capital-gain amounts, are skipped item-by-item.
 - Missing or invalid Yahoo timestamps no longer become Unix epoch/default datetimes in quote, history, news, holder, analyst, calendar, and fundamentals mappings.
 - Missing quote/search/screener/download instrument kinds no longer default to equity; provider asset-kind metadata is required where the public model needs an instrument.
@@ -45,6 +46,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Download rounding and repair now leave values unchanged when conversion fails instead of falling back to zero.
 - Download repair now scales OHLC rows atomically, leaving the whole row unchanged if any repaired price cannot be represented.
 - History now uses `chart.meta.currency` for candles and default dividend/capital-gain currency before attempting any inferred fallback, while event-level action currencies override the chart default.
+- History best-effort responses now report unresolved candle currency as a dropped-candle diagnostic instead of aborting the whole response.
 - Yahoo unit currency codes such as `GBp`, `GBX`, `ZAc`, and `ILA` are normalized to their major ISO currencies; per-share `Price` values are scaled from quote units, while aggregate `Money` values stay in major units.
 - v7 quote key statistics now distinguish quote-unit prices from major-unit market cap and financial per-share fields, so minor-unit listings such as `TSCO.L` no longer scale EPS/dividend values by the quote-price unit.
 - Currency enrichment now caches successful empty v7 quote currency responses as confirmed missing and consistently reuses typed contextual currency cache entries.

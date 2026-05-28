@@ -15,7 +15,8 @@ pub(crate) use context::ProjectionContext;
 pub use currency::{YfCurrencyKind, YfCurrencySource, YfEvidenceStrength};
 pub use issue::ProjectionIssue;
 pub(crate) use monetary::{
-    optional_money_f64, optional_money_i64, optional_money_u64, optional_price_f64,
+    optional_decimal_f64, optional_money_f64, optional_money_i64, optional_money_u64,
+    optional_price_f64,
 };
 pub use response::{DataQuality, YfDiagnostics, YfResponse};
 pub use warning::YfWarning;

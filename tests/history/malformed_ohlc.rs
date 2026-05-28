@@ -76,14 +76,14 @@ async fn history_reports_dropped_malformed_ohlc_rows() {
     mock.assert();
     assert_eq!(response.data.len(), 1);
     assert!(!response.is_lossless());
-    assert!(matches!(
-        response.diagnostics.warnings.first(),
-        Some(YfWarning::DroppedItem {
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::DroppedItem {
             item: "candle",
             reason: ProjectionIssue::MissingRequiredFields { .. },
             ..
-        })
-    ));
+        }
+    )));
 }
 
 #[tokio::test]

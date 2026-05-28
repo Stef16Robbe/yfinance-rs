@@ -216,3 +216,123 @@ async fn malformed_timeseries_values_are_reported_as_projection_loss() {
         })
     ));
 }
+
+#[tokio::test]
+async fn malformed_calendar_dates_are_reported_as_projection_loss() {
+    let server = MockServer::start();
+    let sym = "BADCAL";
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "calendarEvents")
+            .query_param("crumb", "crumb");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "quoteSummary": {
+                    "result": [{
+                      "calendarEvents": {
+                        "earnings": {
+                          "earningsDate": [
+                            { "raw": 1704067200 },
+                            { "raw": 9223372036854775807 }
+                          ]
+                        },
+                        "exDividendDate": { "raw": 9223372036854775807 },
+                        "dividendDate": { "raw": 1704153600 }
+                      }
+                    }],
+                    "error": null
+                  }
+                }"#,
+            );
+    });
+
+    let client = YfClient::builder()
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let response = FundamentalsBuilder::new(&client, sym)
+        .calendar_with_diagnostics()
+        .await
+        .unwrap();
+
+    mock.assert();
+    assert_eq!(response.data.earnings_dates.len(), 1);
+    assert!(response.data.ex_dividend_date.is_none());
+    assert!(response.data.dividend_payment_date.is_some());
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::DroppedItem {
+            item: "calendar_earnings_date",
+            reason: ProjectionIssue::InvalidField {
+                field: "earningsDate",
+                ..
+            },
+            ..
+        }
+    )));
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::OmittedPresentField {
+            path: "calendarEvents.exDividendDate",
+            reason: ProjectionIssue::InvalidField {
+                field: "exDividendDate",
+                ..
+            },
+            ..
+        }
+    )));
+}
+
+#[tokio::test]
+async fn strict_calendar_errors_on_malformed_date() {
+    let server = MockServer::start();
+    let sym = "BADCAL";
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "calendarEvents")
+            .query_param("crumb", "crumb");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "quoteSummary": {
+                    "result": [{
+                      "calendarEvents": {
+                        "earnings": {
+                          "earningsDate": [{ "raw": 9223372036854775807 }]
+                        }
+                      }
+                    }],
+                    "error": null
+                  }
+                }"#,
+            );
+    });
+
+    let client = YfClient::builder()
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let err = FundamentalsBuilder::new(&client, sym)
+        .strict()
+        .calendar()
+        .await
+        .unwrap_err();
+
+    mock.assert();
+    assert!(matches!(err, YfError::DataQuality(_)));
+}

@@ -2,7 +2,7 @@ use crate::{
     core::{
         DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfError, YfResponse,
         client::{CacheMode, RetryConfig},
-        conversions::decimal_from_f64,
+        diagnostics::optional_decimal_f64,
         quotesummary,
         wire::from_raw,
     },
@@ -43,9 +43,27 @@ pub(super) async fn fetch_esg_scores(
 
     // Map to paft types: paft::fundamentals::EsgScores now has only environmental/social/governance.
     let scores = EsgScores {
-        environmental: from_raw(esg.environment_score).and_then(decimal_from_f64),
-        social: from_raw(esg.social_score).and_then(decimal_from_f64),
-        governance: from_raw(esg.governance_score).and_then(decimal_from_f64),
+        environmental: optional_decimal_f64(
+            &mut ctx,
+            "esgScores.environmentScore",
+            Some(symbol.to_string()),
+            from_raw(esg.environment_score),
+            "ESG score",
+        )?,
+        social: optional_decimal_f64(
+            &mut ctx,
+            "esgScores.socialScore",
+            Some(symbol.to_string()),
+            from_raw(esg.social_score),
+            "ESG score",
+        )?,
+        governance: optional_decimal_f64(
+            &mut ctx,
+            "esgScores.governanceScore",
+            Some(symbol.to_string()),
+            from_raw(esg.governance_score),
+            "ESG score",
+        )?,
     };
 
     // Collect involvement booleans as individual entries with simple categories.

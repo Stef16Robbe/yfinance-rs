@@ -1,4 +1,4 @@
-use chrono::{Duration, Utc};
+use chrono::{DateTime, Duration, Utc};
 use std::collections::{BTreeMap, btree_map::Entry};
 
 use crate::{
@@ -10,7 +10,7 @@ use crate::{
             CurrencyHints, CurrencyKind, ReportingCurrencyEvidence, ResolvedCurrencyUnit,
         },
         diagnostics::{optional_money_f64, optional_price_f64},
-        wire::{RawNum, RawNumU64},
+        wire::{RawDate, RawNum, RawNumU64},
     },
     fundamentals::wire::{TimeseriesData, TimeseriesEnvelope},
 };
@@ -849,34 +849,107 @@ pub(super) async fn calendar(
     retry_override: Option<&RetryConfig>,
     data_quality: DataQuality,
 ) -> Result<YfResponse<super::Calendar>, YfError> {
-    let ctx = ProjectionContext::new("calendar", data_quality);
+    let mut ctx = ProjectionContext::new("calendar", data_quality);
     let root = fetch_modules(client, symbol, "calendarEvents", cache_mode, retry_override).await?;
-    let calendar_events = root
-        .calendar_events
-        .ok_or_else(|| YfError::MissingData("calendarEvents missing".into()))?;
+    let Some(calendar_events) = root.calendar_events else {
+        ctx.provider_feature_unavailable(
+            "calendarEvents",
+            ProjectionIssue::ProviderUnavailable {
+                feature: "calendarEvents",
+            },
+        )?;
+        return Ok(ctx.finish(super::Calendar {
+            earnings_dates: Vec::new(),
+            ex_dividend_date: None,
+            dividend_payment_date: None,
+        }));
+    };
 
-    let earnings_dates = calendar_events
-        .earnings
-        .and_then(|e| e.earnings_date)
-        .unwrap_or_default()
-        .into_iter()
-        .filter_map(|d| d.raw)
-        .map(i64_to_datetime)
-        .collect::<Result<Vec<_>, YfError>>()?;
+    let earnings_dates = calendar_earnings_dates(
+        &mut ctx,
+        calendar_events.earnings.and_then(|e| e.earnings_date),
+    )?;
+    let ex_dividend_date = optional_calendar_date(
+        &mut ctx,
+        "calendarEvents.exDividendDate",
+        "exDividendDate",
+        calendar_events.ex_dividend_date,
+    )?;
+    let dividend_payment_date = optional_calendar_date(
+        &mut ctx,
+        "calendarEvents.dividendDate",
+        "dividendDate",
+        calendar_events.dividend_date,
+    )?;
 
     Ok(ctx.finish(super::Calendar {
         earnings_dates,
-        ex_dividend_date: calendar_events
-            .ex_dividend_date
-            .and_then(|x| x.raw)
-            .map(i64_to_datetime)
-            .transpose()?,
-        dividend_payment_date: calendar_events
-            .dividend_date
-            .and_then(|x| x.raw)
-            .map(i64_to_datetime)
-            .transpose()?,
+        ex_dividend_date,
+        dividend_payment_date,
     }))
+}
+
+fn calendar_earnings_dates(
+    ctx: &mut ProjectionContext,
+    dates: Option<Vec<RawDate>>,
+) -> Result<Vec<DateTime<Utc>>, YfError> {
+    let mut out = Vec::new();
+    for (idx, date) in dates.unwrap_or_default().into_iter().enumerate() {
+        let key = Some(idx.to_string());
+        let Some(raw) = date.raw else {
+            ctx.dropped_item(
+                "calendar_earnings_date",
+                key,
+                ProjectionIssue::MissingRequiredField {
+                    field: "earningsDate",
+                },
+            )?;
+            continue;
+        };
+        match i64_to_datetime(raw) {
+            Ok(date) => out.push(date),
+            Err(err) => {
+                ctx.dropped_item(
+                    "calendar_earnings_date",
+                    key,
+                    ProjectionIssue::InvalidField {
+                        field: "earningsDate",
+                        details: err.to_string(),
+                    },
+                )?;
+            }
+        }
+    }
+    Ok(out)
+}
+
+fn optional_calendar_date(
+    ctx: &mut ProjectionContext,
+    path: &'static str,
+    field: &'static str,
+    value: Option<RawDate>,
+) -> Result<Option<DateTime<Utc>>, YfError> {
+    let Some(value) = value else {
+        return Ok(None);
+    };
+    let Some(raw) = value.raw else {
+        ctx.omitted_present_field(path, None, ProjectionIssue::MissingRequiredField { field })?;
+        return Ok(None);
+    };
+    match i64_to_datetime(raw) {
+        Ok(date) => Ok(Some(date)),
+        Err(err) => {
+            ctx.omitted_present_field(
+                path,
+                None,
+                ProjectionIssue::InvalidField {
+                    field,
+                    details: err.to_string(),
+                },
+            )?;
+            Ok(None)
+        }
+    }
 }
 
 #[allow(clippy::too_many_arguments)]

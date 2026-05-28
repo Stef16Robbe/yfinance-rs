@@ -3,14 +3,13 @@ use super::model::{
     NetSharePurchaseActivity,
 };
 use super::wire::V10Result;
-use crate::core::conversions::decimal_from_f64;
 use crate::core::wire::{from_raw, from_raw_date};
 use crate::core::{
     DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfError, YfResponse,
     client::{CacheMode, RetryConfig},
     conversions::{i64_to_datetime, string_to_insider_position, string_to_transaction_type},
     currency_resolver::{ReportingCurrencyEvidence, ResolvedCurrencyUnit},
-    diagnostics::optional_money_u64,
+    diagnostics::{optional_decimal_f64, optional_money_u64},
     quotesummary,
 };
 use paft::Decimal;
@@ -42,33 +41,51 @@ pub(super) async fn major_holders(
     retry_override: Option<&RetryConfig>,
     data_quality: DataQuality,
 ) -> Result<YfResponse<Vec<MajorHolder>>, YfError> {
-    let ctx = ProjectionContext::new("holders", data_quality);
+    let mut ctx = ProjectionContext::new("holders", data_quality);
     let root = fetch_holders_modules(client, symbol, cache_mode, retry_override).await?;
-    let breakdown = root
-        .major_holders_breakdown
-        .ok_or_else(|| YfError::MissingData("majorHoldersBreakdown missing".into()))?;
+    let Some(breakdown) = root.major_holders_breakdown else {
+        ctx.provider_feature_unavailable(
+            "majorHoldersBreakdown",
+            ProjectionIssue::ProviderUnavailable {
+                feature: "majorHoldersBreakdown",
+            },
+        )?;
+        return Ok(ctx.finish(Vec::new()));
+    };
 
     let mut result = Vec::new();
 
-    if let Some(v) = from_raw(breakdown.insiders_percent_held)
-        && let Some(value) = decimal_from_f64(v)
-    {
+    if let Some(value) = optional_decimal_f64(
+        &mut ctx,
+        "majorHoldersBreakdown.insidersPercentHeld",
+        None,
+        from_raw(breakdown.insiders_percent_held),
+        "major holder percent",
+    )? {
         result.push(MajorHolder {
             category: "% of Shares Held by All Insiders".into(),
             value,
         });
     }
-    if let Some(v) = from_raw(breakdown.institutions_percent_held)
-        && let Some(value) = decimal_from_f64(v)
-    {
+    if let Some(value) = optional_decimal_f64(
+        &mut ctx,
+        "majorHoldersBreakdown.institutionsPercentHeld",
+        None,
+        from_raw(breakdown.institutions_percent_held),
+        "major holder percent",
+    )? {
         result.push(MajorHolder {
             category: "% of Shares Held by Institutions".into(),
             value,
         });
     }
-    if let Some(v) = from_raw(breakdown.institutions_float_percent_held)
-        && let Some(value) = decimal_from_f64(v)
-    {
+    if let Some(value) = optional_decimal_f64(
+        &mut ctx,
+        "majorHoldersBreakdown.institutionsFloatPercentHeld",
+        None,
+        from_raw(breakdown.institutions_float_percent_held),
+        "major holder percent",
+    )? {
         result.push(MajorHolder {
             category: "% of Float Held by Institutions".into(),
             value,
@@ -220,12 +237,19 @@ async fn map_ownership_list(
             from_raw(h.value),
             "holder monetary value",
         )?;
+        let pct_held = optional_decimal_f64(
+            ctx,
+            "ownershipList[].pctHeld",
+            Some(holder.clone()),
+            from_raw(h.pct_held),
+            "holder percent",
+        )?;
 
         rows.push(InstitutionalHolder {
             holder,
             shares: from_raw(h.shares),
             date_reported,
-            pct_held: from_raw(h.pct_held).and_then(decimal_from_f64),
+            pct_held,
             value,
         });
     }
@@ -493,26 +517,47 @@ pub(super) async fn net_share_purchase_activity(
     retry_override: Option<&RetryConfig>,
     data_quality: DataQuality,
 ) -> Result<YfResponse<Option<NetSharePurchaseActivity>>, YfError> {
-    let ctx = ProjectionContext::new("holders", data_quality);
+    let mut ctx = ProjectionContext::new("holders", data_quality);
     let root = fetch_holders_modules(client, symbol, cache_mode, retry_override).await?;
-    let data = root
-        .net_share_purchase_activity
-        .map(|n| {
-            Ok::<_, YfError>(NetSharePurchaseActivity {
-                period: crate::core::conversions::string_to_period(
-                    n.period.as_deref().unwrap_or(""),
-                )?,
-                buy_shares: from_raw(n.buy_info_shares),
-                buy_count: from_raw(n.buy_info_count),
-                sell_shares: from_raw(n.sell_info_shares),
-                sell_count: from_raw(n.sell_info_count),
-                net_shares: from_raw(n.net_info_shares),
-                net_count: from_raw(n.net_info_count),
-                total_insider_shares: from_raw(n.total_insider_shares),
-                net_percent_insider_shares: from_raw(n.net_percent_insider_shares)
-                    .and_then(decimal_from_f64),
-            })
-        })
-        .transpose()?;
+    let Some(n) = root.net_share_purchase_activity else {
+        ctx.provider_feature_unavailable(
+            "netSharePurchaseActivity",
+            ProjectionIssue::ProviderUnavailable {
+                feature: "netSharePurchaseActivity",
+            },
+        )?;
+        return Ok(ctx.finish(None));
+    };
+
+    let period_key = n.period.clone();
+    let Some(period) = required_parsed_row_value(
+        &mut ctx,
+        "net_share_purchase_activity",
+        period_key.clone(),
+        "period",
+        n.period.as_deref(),
+        crate::core::conversions::string_to_period,
+    )?
+    else {
+        return Ok(ctx.finish(None));
+    };
+
+    let data = Some(NetSharePurchaseActivity {
+        period,
+        buy_shares: from_raw(n.buy_info_shares),
+        buy_count: from_raw(n.buy_info_count),
+        sell_shares: from_raw(n.sell_info_shares),
+        sell_count: from_raw(n.sell_info_count),
+        net_shares: from_raw(n.net_info_shares),
+        net_count: from_raw(n.net_info_count),
+        total_insider_shares: from_raw(n.total_insider_shares),
+        net_percent_insider_shares: optional_decimal_f64(
+            &mut ctx,
+            "netSharePurchaseActivity.netPercentInsiderShares",
+            period_key,
+            from_raw(n.net_percent_insider_shares),
+            "net percent insider shares",
+        )?,
+    });
     Ok(ctx.finish(data))
 }
