@@ -1,21 +1,24 @@
 pub fn iter_json_scripts(html: &str) -> Vec<(&str, &str)> {
-    let debug = std::env::var("YF_DEBUG").ok().as_deref() == Some("1");
-    if debug {
-        eprintln!(
-            "YF_DEBUG [iter_json_scripts]: html.len()={}; scanning for <script> blocks...",
-            html.len()
-        );
-    }
+    crate::core::logging::trace_debug!(
+        html_len = html.len(),
+        "scanning profile HTML for JSON script blocks"
+    );
 
     let mut res = Vec::new();
     let mut pos = 0usize;
-    let mut total_scripts = 0usize;
-    let mut total_json_scripts = 0usize;
-    let mut total_svelte_fetched = 0usize;
+
+    crate::core::logging::trace_only! {
+        let mut total_scripts = 0usize;
+        let mut total_json_scripts = 0usize;
+        let mut total_svelte_fetched = 0usize;
+    }
 
     while let Some(si) = html[pos..].find("<script") {
         let si = pos + si;
-        total_scripts += 1;
+
+        crate::core::logging::trace_only! {
+            total_scripts += 1;
+        }
 
         let open_end = match html[si..].find('>') {
             Some(x) => si + x,
@@ -25,9 +28,13 @@ pub fn iter_json_scripts(html: &str) -> Vec<(&str, &str)> {
 
         let is_json = tag_open.contains("type=\"application/json\"");
         if is_json {
-            total_json_scripts += 1;
+            crate::core::logging::trace_only! {
+                total_json_scripts += 1;
+            }
             if tag_open.contains("data-sveltekit-fetched") {
-                total_svelte_fetched += 1;
+                crate::core::logging::trace_only! {
+                    total_svelte_fetched += 1;
+                }
             }
         }
 
@@ -43,19 +50,20 @@ pub fn iter_json_scripts(html: &str) -> Vec<(&str, &str)> {
         pos = close + "</script>".len();
     }
 
-    if debug {
-        eprintln!(
-            "YF_DEBUG [iter_json_scripts]: total_scripts={total_scripts}, total_json_scripts={total_json_scripts}, svelte_fetched={total_svelte_fetched}"
+    crate::core::logging::trace_only! {
+        crate::core::logging::trace_debug!(
+            total_scripts,
+            total_json_scripts,
+            total_svelte_fetched,
+            "finished scanning profile HTML for JSON script blocks"
         );
         if let Some((attrs, body)) = res.first() {
-            let a = if attrs.len() > 180 {
-                &attrs[..180]
-            } else {
-                attrs
-            };
-            let b = if body.len() > 120 { &body[..120] } else { body };
-            eprintln!(
-                "YF_DEBUG [iter_json_scripts]: first JSON script attrs[trunc]=`{a}` body[trunc]=`{b}`"
+            let a = attrs.get(..180).unwrap_or(attrs);
+            let b = body.get(..120).unwrap_or(body);
+            crate::core::logging::trace_debug!(
+                attrs = a,
+                body = b,
+                "first profile JSON script preview"
             );
         }
     }

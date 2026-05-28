@@ -23,10 +23,9 @@ pub(super) async fn fetch_isin(
         return Ok(None);
     };
 
-    let debug = std::env::var("YF_DEBUG").ok().as_deref() == Some("1");
     let input_norm = normalize_sym(symbol);
 
-    if let Some(isin) = parse_as_json_value(&body, &input_norm, debug) {
+    if let Some(isin) = parse_as_json_value(&body, &input_norm) {
         return Ok(Some(isin));
     }
 
@@ -34,13 +33,11 @@ pub(super) async fn fetch_isin(
         return Ok(Some(isin));
     }
 
-    if let Some(isin) = scan_raw_body(&body, debug) {
+    if let Some(isin) = scan_raw_body(&body) {
         return Ok(Some(isin));
     }
 
-    if debug {
-        eprintln!("YF_DEBUG(isin): No matching ISIN found in any response shape.");
-    }
+    crate::core::logging::trace_debug!("no matching ISIN found in any response shape");
     Ok(None)
 }
 
@@ -66,16 +63,17 @@ async fn fetch_isin_body(
     ))
 }
 
-fn parse_as_json_value(body: &str, input_norm: &str, debug: bool) -> Option<String> {
+fn parse_as_json_value(body: &str, input_norm: &str) -> Option<String> {
     if let Ok(val) = serde_json::from_str::<serde_json::Value>(body) {
         if let Some(hit) = extract_from_json_value(&val, input_norm) {
-            if debug {
-                eprintln!("YF_DEBUG(isin): ISIN extracted from JSON structures: {hit}");
-            }
+            crate::core::logging::trace_debug!(isin = %hit, "ISIN extracted from JSON structures");
             return Some(hit);
         }
-    } else if debug {
-        eprintln!("YF_DEBUG(isin): failed to parse JSON response for query '{input_norm}'");
+    } else {
+        crate::core::logging::trace_debug!(
+            query = %input_norm,
+            "failed to parse ISIN JSON response"
+        );
     }
     None
 }
@@ -119,7 +117,7 @@ fn parse_as_flat_suggest(body: &str, input_norm: &str) -> Option<String> {
     None
 }
 
-fn scan_raw_body(body: &str, debug: bool) -> Option<String> {
+fn scan_raw_body(body: &str) -> Option<String> {
     let mut token = String::new();
     for ch in body.chars() {
         if ch.is_ascii_alphanumeric() {
@@ -128,9 +126,7 @@ fn scan_raw_body(body: &str, debug: bool) -> Option<String> {
                 token.remove(0);
             }
             if token.len() == 12 && looks_like_isin(&token) {
-                if debug {
-                    eprintln!("YF_DEBUG(isin): Fallback raw scan found ISIN: {token}");
-                }
+                crate::core::logging::trace_debug!(isin = %token, "fallback raw scan found ISIN");
                 return Some(token.to_uppercase());
             }
         } else {

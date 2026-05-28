@@ -26,8 +26,6 @@ pub async fn load_from_scrape(
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
 ) -> Result<Profile, YfError> {
-    let debug = std::env::var("YF_DEBUG").ok().as_deref() == Some("1");
-
     let mut url = client.symbol_url(SymbolEndpoint::Quote, symbol)?;
     {
         let mut qp = url.query_pairs_mut();
@@ -93,17 +91,15 @@ pub async fn load_from_scrape(
         .or(inferred_kind)
         .unwrap_or("");
 
-    if debug {
-        eprintln!(
-            "YF_DEBUG [load_from_scrape]: resolved kind=`{}`, name=`{}` (quote_type_present={}, price_present={}, has_summary_profile={}, has_fund_profile={})",
-            kind,
-            name,
-            store.quote_type.is_some(),
-            store.price.is_some(),
-            store.summary_profile.is_some(),
-            store.fund_profile.is_some()
-        );
-    }
+    crate::core::logging::trace_debug!(
+        kind,
+        name,
+        quote_type_present = store.quote_type.is_some(),
+        price_present = store.price.is_some(),
+        has_summary_profile = store.summary_profile.is_some(),
+        has_fund_profile = store.fund_profile.is_some(),
+        "resolved profile kind from scraped Yahoo payload"
+    );
 
     match YahooProfileKind::from_quote_type(kind)? {
         YahooProfileKind::Company => {

@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 
 use httpmock::{Method::GET, Mock, MockServer};
+#[cfg(feature = "tracing-subscriber")]
+use std::sync::OnceLock;
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -10,8 +12,19 @@ pub const KEY_STATISTICS_MODULES: &str = "summaryDetail,defaultKeyStatistics";
 pub const KEY_STATISTICS_FIXTURE_ENDPOINT: &str =
     "key_statistics_api_summaryDetail-defaultKeyStatistics";
 
+#[cfg(feature = "tracing-subscriber")]
+static TEST_TRACING: OnceLock<()> = OnceLock::new();
+
+pub fn init_tracing() {
+    #[cfg(feature = "tracing-subscriber")]
+    {
+        TEST_TRACING.get_or_init(yfinance_rs::init_tracing_for_tests);
+    }
+}
+
 #[must_use]
 pub fn setup_server() -> MockServer {
+    init_tracing();
     MockServer::start()
 }
 
@@ -29,6 +42,7 @@ fn fixture_dir() -> PathBuf {
 ///
 /// Panics if the fixture file cannot be read.
 pub fn fixture(endpoint: &str, symbol: &str, ext: &str) -> String {
+    init_tracing();
     let path = fixture_path(endpoint, symbol, ext);
     fs::read_to_string(&path)
         .unwrap_or_else(|e| panic!("failed to read fixture {}: {}", path.display(), e))
@@ -178,6 +192,7 @@ pub fn mock_options_v7_for_date<'a>(
 
 #[must_use]
 pub fn live_or_record_enabled() -> bool {
+    init_tracing();
     let live = std::env::var("YF_LIVE").ok().as_deref() == Some("1");
     let record = std::env::var("YF_RECORD").ok().as_deref() == Some("1");
     live || record
@@ -185,5 +200,6 @@ pub fn live_or_record_enabled() -> bool {
 
 #[must_use]
 pub fn is_recording() -> bool {
+    init_tracing();
     std::env::var("YF_RECORD").ok().as_deref() == Some("1")
 }

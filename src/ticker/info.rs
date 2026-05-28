@@ -18,9 +18,14 @@ fn log_err_async<T>(
     match res {
         Ok(data) => Ok(Some(data)),
         Err(e) => {
-            if std::env::var("YF_DEBUG").ok().as_deref() == Some("1") {
-                eprintln!("YF_DEBUG(info): failed to fetch '{name}' for {symbol}: {e}");
-            }
+            crate::core::logging::trace_debug!(
+                symbol,
+                module = name,
+                error = %e,
+                "optional info module fetch failed"
+            );
+            #[cfg(not(feature = "tracing"))]
+            let _ = symbol;
             ctx.suppressed_error(name, &e)?;
             Ok(None)
         }

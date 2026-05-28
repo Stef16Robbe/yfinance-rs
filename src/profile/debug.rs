@@ -13,17 +13,17 @@ pub fn debug_dump_extracted_json(symbol: &str, json: &str) -> std::io::Result<()
         && let Ok(pretty) = serde_json::to_string_pretty(&val)
     {
         let _ = f.write_all(pretty.as_bytes());
-        eprintln!(
-            "yfinance-rs(debug-dumps): wrote pretty-printed extracted JSON to {}",
-            path.display()
+        crate::core::logging::trace_info!(
+            path = %path.display(),
+            "wrote pretty-printed extracted profile JSON debug dump"
         );
         return Ok(());
     }
 
     let _ = f.write_all(json.as_bytes());
-    eprintln!(
-        "yfinance-rs(debug-dumps): wrote raw extracted JSON to {}",
-        path.display()
+    crate::core::logging::trace_info!(
+        path = %path.display(),
+        "wrote raw extracted profile JSON debug dump"
     );
     Ok(())
 }
@@ -165,7 +165,7 @@ pub fn debug_dump_html(symbol: &str, html: &str) -> std::io::Result<()> {
         let mut f = fs::File::create(&next_path)?;
         let s = serde_json::to_string_pretty(&v).unwrap_or_else(|_| inner.to_string());
         f.write_all(s.as_bytes())?;
-        eprintln!("yfinance-rs(debug-dumps): wrote {}", next_path.display());
+        crate::core::logging::trace_info!(path = %next_path.display(), "wrote profile debug dump");
     }
 
     if let Some(js_obj) = extract_js_object_after("root.App.main =", html) {
@@ -173,7 +173,10 @@ pub fn debug_dump_html(symbol: &str, html: &str) -> std::io::Result<()> {
             let mut f = fs::File::create(&rootapp_path)?;
             let s = serde_json::to_string_pretty(&v).unwrap_or_else(|_| js_obj.clone());
             f.write_all(s.as_bytes())?;
-            eprintln!("yfinance-rs(debug-dumps): wrote {}", rootapp_path.display());
+            crate::core::logging::trace_info!(
+                path = %rootapp_path.display(),
+                "wrote profile debug dump"
+            );
         }
         if let Ok(v) = serde_json::from_str::<Value>(&js_obj) {
             min_html.push_str("<h2>root.App.main (snippet)</h2>\n");
@@ -184,7 +187,7 @@ pub fn debug_dump_html(symbol: &str, html: &str) -> std::io::Result<()> {
 
     let mut f = std::fs::File::create(&min_path)?;
     f.write_all(min_html.as_bytes())?;
-    eprintln!("yfinance-rs(debug-dumps): wrote {}", min_path.display());
+    crate::core::logging::trace_info!(path = %min_path.display(), "wrote profile debug dump");
 
     Ok(())
 }
@@ -194,6 +197,6 @@ pub fn debug_dump_api(symbol: &str, body: &str) -> std::io::Result<()> {
     let path = std::env::temp_dir().join(format!("yfinance_rs-quoteSummary-{symbol}.json"));
     let mut f = std::fs::File::create(&path)?;
     let _ = f.write_all(body.as_bytes());
-    eprintln!("yfinance-rs(debug-dumps): wrote {}", path.display());
+    crate::core::logging::trace_info!(path = %path.display(), "wrote quoteSummary debug dump");
     Ok(())
 }

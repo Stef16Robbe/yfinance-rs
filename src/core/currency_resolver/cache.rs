@@ -32,12 +32,12 @@ impl YfClient {
             .is_none_or(|existing| resolved.strength >= existing.strength);
 
         if should_store {
-            if std::env::var("YF_DEBUG").ok().as_deref() == Some("1") {
-                eprintln!(
-                    "YF_DEBUG(currency): cached {kind:?} currency for {symbol} from {:?}",
-                    resolved.source
-                );
-            }
+            crate::core::logging::trace_debug!(
+                symbol,
+                kind = ?kind,
+                source = ?resolved.source,
+                "cached resolved currency"
+            );
             guard.insert(key, resolved);
         }
     }

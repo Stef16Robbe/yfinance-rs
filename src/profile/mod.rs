@@ -98,11 +98,12 @@ async fn load_with_fallback(
         Ok(p) => Ok(p),
         Err(e @ YfError::Auth(_)) => Err(e),
         Err(e) => {
-            if std::env::var("YF_DEBUG").ok().as_deref() == Some("1") {
-                eprintln!("YF_DEBUG: API call failed ({e}), falling back to scrape.");
-            }
-            #[cfg(feature = "tracing")]
-            tracing::event!(tracing::Level::WARN, error = %e, "profile: API failed; falling back to scrape");
+            crate::core::logging::trace_warn!(
+                error = %e,
+                "profile API failed; falling back to scrape"
+            );
+            #[cfg(not(feature = "tracing"))]
+            let _ = &e;
             scrape::load_from_scrape(client, symbol, cache_mode, retry_override).await
         }
     }

@@ -84,8 +84,10 @@ pub async fn fetch(
     let env = attempt_fetch(client, symbol, modules, caller, cache_mode, retry_override).await?;
 
     if let Some(error) = env.quote_summary.as_ref().and_then(|qs| qs.error.as_ref()) {
-        #[cfg(feature = "tracing")]
-        tracing::event!(tracing::Level::ERROR, description = %error.description, "quoteSummary error");
+        crate::core::logging::trace_error!(
+            description = %error.description,
+            "quoteSummary error"
+        );
         return Err(YfError::Api(format!("yahoo error: {}", error.description)));
     }
 

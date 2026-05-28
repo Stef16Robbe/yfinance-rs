@@ -14,6 +14,7 @@ pub(crate) mod currency_resolver;
 pub mod diagnostics;
 /// The primary error type (`YfError`) for the crate.
 pub mod error;
+pub(crate) mod logging;
 /// Shared data models used across multiple API modules (e.g., `Quote`, `Candle`).
 pub mod models;
 pub(crate) mod quotes;

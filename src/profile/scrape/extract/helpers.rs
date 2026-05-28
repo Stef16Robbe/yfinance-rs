@@ -1,19 +1,24 @@
 use serde_json::Value;
 
+#[cfg(feature = "tracing")]
 pub fn truncate(s: &str, n: usize) -> String {
     if s.len() <= n {
         s.to_string()
     } else {
+        let end = s
+            .char_indices()
+            .map(|(idx, _)| idx)
+            .take_while(|&idx| idx <= n)
+            .last()
+            .unwrap_or(0);
         let mut out = String::with_capacity(n + 16);
-        out.push_str(&s[..n]);
+        out.push_str(&s[..end]);
         out.push_str(" …[trunc]");
         out
     }
 }
 
 pub fn extract_store_like_from_quote_summary_value(qs_val: &Value) -> Option<Value> {
-    let debug = std::env::var("YF_DEBUG").ok().as_deref() == Some("1");
-
     // Accept either {..., quoteSummary: {...}} or a quoteSummary node directly.
     let summary = qs_val.get("quoteSummary").unwrap_or(qs_val);
 
@@ -25,11 +30,9 @@ pub fn extract_store_like_from_quote_summary_value(qs_val: &Value) -> Option<Val
         .cloned();
 
     if result0.is_none() {
-        if debug {
-            eprintln!(
-                "YF_DEBUG [extract_store_like]: quoteSummary.result[0] missing or not an array."
-            );
-        }
+        crate::core::logging::trace_debug!(
+            "quoteSummary.result[0] missing or not an array in profile bootstrap payload"
+        );
         return None;
     }
     let result0 = result0.unwrap();
@@ -40,30 +43,29 @@ pub fn extract_store_like_from_quote_summary_value(qs_val: &Value) -> Option<Val
         result0.get("assetProfile").is_some() || result0.get("summaryProfile").is_some();
     let has_fund = result0.get("fundProfile").is_some();
 
-    if debug {
-        eprintln!(
-            "YF_DEBUG [extract_store_like]: has_quoteType={has_quote_type}, has_profile={has_profile}, has_fund={has_fund}"
-        );
-    }
+    crate::core::logging::trace_debug!(
+        has_quote_type,
+        has_profile,
+        has_fund,
+        "inspected profile bootstrap store-like payload"
+    );
     if !(has_quote_type || has_profile || has_fund) {
-        if debug {
-            eprintln!("YF_DEBUG [extract_store_like]: shape not acceptable.");
-        }
+        crate::core::logging::trace_debug!("profile bootstrap store-like shape is not acceptable");
         return None;
     }
 
     let norm = normalize_store_like(result0);
-    if debug {
-        let keys = norm
+    crate::core::logging::trace_debug!(
+        keys = %norm
             .as_object()
             .map(|m| {
                 let mut v: Vec<_> = m.keys().cloned().collect();
                 v.sort();
                 v.join(",")
             })
-            .unwrap_or_default();
-        eprintln!("YF_DEBUG [extract_store_like]: SUCCESS; normalized keys={keys}");
-    }
+            .unwrap_or_default(),
+        "normalized profile bootstrap store-like payload"
+    );
     Some(norm)
 }
 

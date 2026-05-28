@@ -1,13 +1,12 @@
 //! Test/recording helpers for persisting HTTP fixtures.
 //! Compiled only when the `test-mode` feature is enabled.
 
-use std::env;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 pub fn get_fixture_dir() -> PathBuf {
-    env::var("YF_FIXDIR").map_or_else(
+    std::env::var("YF_FIXDIR").map_or_else(
         |_| Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures"),
         PathBuf::from,
     )
@@ -29,9 +28,7 @@ pub fn record_fixture(
     let mut file = fs::File::create(&path)?;
     write_fixture_body(&mut file, ext, body)?;
 
-    if env::var("YF_DEBUG").ok().as_deref() == Some("1") {
-        eprintln!("YF_RECORD: wrote fixture to {}", path.display());
-    }
+    crate::core::logging::trace_debug!(path = %path.display(), "wrote test fixture");
     Ok(())
 }
 

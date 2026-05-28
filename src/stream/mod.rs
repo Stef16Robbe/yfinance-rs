@@ -234,9 +234,13 @@ impl StreamBuilder {
                         if let Err(e) =
                             run_websocket_stream(&client, symbols, tx, &mut stop_rx, startup_tx)
                                 .await
-                            && std::env::var("YF_DEBUG").ok().as_deref() == Some("1")
                         {
-                            eprintln!("YF_DEBUG(stream): websocket stream failed: {e}");
+                            crate::core::logging::trace_warn!(
+                                error = %e,
+                                "websocket stream failed"
+                            );
+                            #[cfg(not(feature = "tracing"))]
+                            let _ = &e;
                         }
                     }
                     StreamMethod::WebsocketWithFallback => {
@@ -249,11 +253,12 @@ impl StreamBuilder {
                         )
                         .await
                         {
-                            if std::env::var("YF_DEBUG").ok().as_deref() == Some("1") {
-                                eprintln!(
-                                    "YF_DEBUG(stream): websocket failed ({e}), falling back to polling."
-                                );
-                            }
+                            crate::core::logging::trace_warn!(
+                                error = %e,
+                                "websocket stream failed; falling back to polling"
+                            );
+                            #[cfg(not(feature = "tracing"))]
+                            let _ = &e;
                             run_polling_stream(
                                 client,
                                 symbols,
@@ -392,7 +397,12 @@ async fn run_websocket_stream(
                         {
                             if !recorded && std::env::var("YF_RECORD").ok().as_deref() == Some("1") {
                                 if let Err(e) = crate::core::fixtures::record_fixture("stream_ws", "MULTI", "b64", &text) {
-                                    eprintln!("YF_RECORD: failed to write stream fixture: {e}");
+                                    crate::core::logging::trace_warn!(
+                                        error = %e,
+                                        "failed to write stream fixture"
+                                    );
+                                    #[cfg(not(feature = "tracing"))]
+                                    let _ = e;
                                 }
                                 recorded = true;
                             }
@@ -404,9 +414,12 @@ async fn run_websocket_stream(
                                     && tx.send(update).await.is_err() { break; }
                             },
                             Err(e) => {
-                                if std::env::var("YF_DEBUG").ok().as_deref() == Some("1") {
-                                    eprintln!("YF_DEBUG(stream): ws text decode error: {e}");
-                                }
+                                crate::core::logging::trace_debug!(
+                                    error = %e,
+                                    "websocket text frame decode failed"
+                                );
+                                #[cfg(not(feature = "tracing"))]
+                                let _ = e;
                                 // Non-price frames (acks/heartbeats) may lack "message"; ignore.
                             }
                         }
@@ -428,9 +441,12 @@ async fn run_websocket_stream(
                                         && tx.send(update).await.is_err() { break; }
                                 }
                                 Err(e) => {
-                                    if std::env::var("YF_DEBUG").ok().as_deref() == Some("1") {
-                                        eprintln!("YF_DEBUG(stream): ws binary decode error: {e}");
-                                    }
+                                    crate::core::logging::trace_debug!(
+                                        error = %e,
+                                        "websocket binary frame decode failed"
+                                    );
+                                    #[cfg(not(feature = "tracing"))]
+                                    let _ = e;
                                 }
                             }
                         }
@@ -487,22 +503,19 @@ async fn map_ws_pricing_to_update_with_delta(
                 .await;
             inst
         } else {
-            if std::env::var("YF_DEBUG").ok().as_deref() == Some("1") {
-                eprintln!(
-                    "YF_DEBUG(stream): skipping ws update with invalid symbol: {}",
-                    ticker.id
-                );
-            }
+            crate::core::logging::trace_debug!(
+                symbol = %ticker.id,
+                "skipping websocket update with invalid symbol"
+            );
             return None;
         }
     };
     let Some(timestamp) = DateTime::from_timestamp_millis(ticker.time) else {
-        if std::env::var("YF_DEBUG").ok().as_deref() == Some("1") {
-            eprintln!(
-                "YF_DEBUG(stream): skipping ws update with invalid timestamp: {}",
-                ticker.time
-            );
-        }
+        crate::core::logging::trace_debug!(
+            timestamp_millis = ticker.time,
+            symbol = %ticker.id,
+            "skipping websocket update with invalid timestamp"
+        );
         return None;
     };
 
@@ -583,16 +596,11 @@ pub fn decode_and_map_message(text: &str) -> Result<QuoteUpdate, YfError> {
         .map_err(|_| YfError::InvalidParams(format!("ws symbol invalid: {}", ticker.id)))?;
 
     let Some(timestamp) = DateTime::from_timestamp_millis(ticker.time) else {
-        // Log the error and return an error from this function
-        if std::env::var("YF_DEBUG").ok().as_deref() == Some("1") {
-            eprintln!(
-                "YF_DEBUG(stream): received ws update with invalid timestamp millis: {}",
-                ticker.time
-            );
-        }
-        #[cfg(feature = "tracing")]
-        tracing::warn!(timestamp_millis = ticker.time, symbol = %ticker.id, "received ws update with invalid timestamp");
-        // Return an error instead of default
+        crate::core::logging::trace_warn!(
+            timestamp_millis = ticker.time,
+            symbol = %ticker.id,
+            "received websocket update with invalid timestamp"
+        );
         return Err(YfError::InvalidParams(format!(
             "Invalid timestamp in stream message: {}",
             ticker.time
@@ -701,9 +709,12 @@ async fn run_polling_stream(
                         }
                     }
                     Err(e) => {
-                        if std::env::var("YF_DEBUG").ok().as_deref() == Some("1") {
-                            eprintln!("YF_DEBUG(stream): fetch error: {e}");
-                        }
+                        crate::core::logging::trace_debug!(
+                            error = %e,
+                            "polling stream quote fetch failed"
+                        );
+                        #[cfg(not(feature = "tracing"))]
+                        let _ = e;
                     }
                 }
                 if tx.is_closed() { break; }

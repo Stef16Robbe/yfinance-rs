@@ -161,11 +161,17 @@ test-full-debug +args='':
             TEST_ARGS=("$first" "$@"); \
         fi; \
     fi; \
+    FEATURES_OPT="{{FEATURES}}"; \
+    if [ -n "$FEATURES_OPT" ]; then \
+        FEATURES_OPT="${FEATURES_OPT},tracing-subscriber"; \
+    else \
+        FEATURES_OPT="tracing-subscriber"; \
+    fi; \
     echo "[$(ts)] 🟦 Phase 1/2 START — Live/Record DEBUG (runs ignored, writes fixtures)"; \
-    if YF_DEBUG=1 YF_RECORD=1 cargo test {{CARGO_FLAGS}} --features {{FEATURES}} "${TARGET_OPT[@]+"${TARGET_OPT[@]}"}" -- --ignored --test-threads={{TEST_THREADS}} "${TEST_ARGS[@]+"${TEST_ARGS[@]}"}"; then \
+    if RUST_LOG="${RUST_LOG:-yfinance_rs=debug}" YF_RECORD=1 cargo test {{CARGO_FLAGS}} --features "$FEATURES_OPT" "${TARGET_OPT[@]+"${TARGET_OPT[@]}"}" -- --ignored --test-threads={{TEST_THREADS}} "${TEST_ARGS[@]+"${TEST_ARGS[@]}"}"; then \
         echo "[$(ts)] ✅ Phase 1/2 PASS — Live/Record passed"; \
         echo "[$(ts)] 🟩 Phase 2/2 START — Offline replay DEBUG (cached fixtures)"; \
-        if YF_DEBUG=1 cargo test {{CARGO_FLAGS}} --features {{FEATURES}} "${TARGET_OPT[@]+"${TARGET_OPT[@]}"}" -- "${TEST_ARGS[@]+"${TEST_ARGS[@]}"}"; then \
+        if RUST_LOG="${RUST_LOG:-yfinance_rs=debug}" cargo test {{CARGO_FLAGS}} --features "$FEATURES_OPT" "${TARGET_OPT[@]+"${TARGET_OPT[@]}"}" -- "${TEST_ARGS[@]+"${TEST_ARGS[@]}"}"; then \
             echo "[$(ts)] ✅ Phase 2/2 PASS — Offline replay passed"; \
             echo "[$(ts)] 🎉 Full debug test complete: BOTH phases passed"; \
         else \

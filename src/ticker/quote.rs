@@ -10,9 +10,14 @@ fn log_err<T>(res: Result<T, YfError>, name: &str, symbol: &str) -> Option<T> {
     match res {
         Ok(data) => Some(data),
         Err(e) => {
-            if std::env::var("YF_DEBUG").ok().as_deref() == Some("1") {
-                eprintln!("YF_DEBUG(key_statistics): failed to fetch '{name}' for {symbol}: {e}");
-            }
+            crate::core::logging::trace_debug!(
+                symbol,
+                module = name,
+                error = %e,
+                "optional key statistics module fetch failed"
+            );
+            #[cfg(not(feature = "tracing"))]
+            let _ = (name, symbol, &e);
             None
         }
     }

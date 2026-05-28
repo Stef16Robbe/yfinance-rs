@@ -41,9 +41,14 @@ impl YfClient {
 
         let symbols = [symbol];
         if let Err(err) = quotes::fetch_v7_quotes(self, &symbols, cache_mode, retry_override).await
-            && std::env::var("YF_DEBUG").ok().as_deref() == Some("1")
         {
-            eprintln!("YF_DEBUG(currency): failed quote enrichment for {symbol}: {err}");
+            crate::core::logging::trace_debug!(
+                symbol,
+                error = %err,
+                "failed to enrich currency hints from quote"
+            );
+            #[cfg(not(feature = "tracing"))]
+            let _ = err;
         }
     }
 
