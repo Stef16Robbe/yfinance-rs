@@ -151,7 +151,8 @@ async fn section_stream(client: &YfClient) -> Result<(), YfError> {
     let (handle, mut receiver) = StreamBuilder::new(client)
         .symbols(vec!["GME"])
         .method(StreamMethod::WebsocketWithFallback)
-        .start()?;
+        .start()
+        .await?;
 
     let stream_task = tokio::spawn(async move {
         let mut count = 0;

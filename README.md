@@ -291,7 +291,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .method(StreamMethod::WebsocketWithFallback)
         .interval(Duration::from_secs(1))
         .diff_only(true)
-        .start()?;
+        .start()
+        .await?;
 
     while let Some(update) = receiver.recv().await {
         let vol = update.volume.map(|v| format!(" (vol Δ: {v})")).unwrap_or_default();

@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Breaking Changes
 
+- `StreamBuilder::start()` is now async. In `StreamMethod::Websocket` mode it waits for the
+  initial WebSocket handshake and subscription write, returning startup failures directly.
 - `YfError` has new variants for recoverable provider-data failures: `InvalidData`, `RequestNotCloneable`, and `Money`.
 - Removed `HistoryBuilder::keepna` and `DownloadBuilder::keepna`. `paft::Candle` requires valid OHLC prices, so malformed history rows are always dropped instead of fabricating placeholder prices.
 - Replaced the old lossy float-to-money/price/decimal helpers with checked conversion helpers. `core::conversions` is now hidden from public docs and remains internal Yahoo-to-`paft` adapter plumbing with no stability guarantee.
@@ -18,6 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- `StreamMethod::Websocket` startup failures are now returned from `StreamBuilder::start().await`
+  instead of being logged in the spawned task while the caller receives `Ok`.
 - Convert malformed Yahoo/user-provided symbols, missing quote symbols, missing currency metadata, and uncloneable retry requests into `Result` errors instead of panicking.
 - Surface unavailable Yahoo ESG data as an error instead of returning an empty `EsgSummary`, so missing provider data is not indistinguishable from a valid zero-involvement result.
 - Normalize HTTP status handling through shared fetch helpers so quoteSummary and fundamentals-timeseries failures return typed `YfError` variants and are not cached as parseable response bodies.

@@ -14,7 +14,7 @@ async fn live_stream_smoke() {
         .symbols(["BTC-USD"]) // Switched to a 24/7 symbol
         .method(StreamMethod::Websocket);
 
-    let (handle, mut rx) = builder.start().unwrap();
+    let (handle, mut rx) = builder.start().await.unwrap();
 
     let got = timeout(Duration::from_mins(2), rx.recv()).await;
 

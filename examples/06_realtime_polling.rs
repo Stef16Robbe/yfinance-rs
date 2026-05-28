@@ -15,7 +15,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .method(StreamMethod::Polling)
         .interval(Duration::seconds(5).to_std().unwrap())
         .diff_only(false) // Get updates even if price hasn't changed
-        .start()?;
+        .start()
+        .await?;
 
     let stream_task = tokio::spawn(async move {
         let mut count = 0;

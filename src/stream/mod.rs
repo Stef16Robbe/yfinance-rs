@@ -99,7 +99,10 @@ pub enum StreamMethod {
     /// Attempt to use `WebSockets`, and fall back to polling if the connection fails. (Default)
     #[default]
     WebsocketWithFallback,
-    /// Use `WebSockets` only. This is the preferred method for real-time data. The stream will fail if a WebSocket connection cannot be established.
+    /// Use `WebSockets` only.
+    ///
+    /// This is the preferred method for real-time data. `StreamBuilder::start` will fail if the
+    /// initial WebSocket connection or subscription cannot be established.
     Websocket,
     /// Use polling over HTTP. This is a less efficient fallback option.
     Polling,
@@ -187,7 +190,14 @@ impl StreamBuilder {
     /// # Errors
     ///
     /// This method will return an error if no symbols have been added to the builder.
-    pub fn start(
+    ///
+    /// With [`StreamMethod::Websocket`], this also returns initial WebSocket handshake and
+    /// subscription errors. Runtime stream failures after startup close the receiver.
+    ///
+    /// With [`StreamMethod::WebsocketWithFallback`] and [`StreamMethod::Polling`], this returns
+    /// after spawning the background task; connection or polling failures are handled inside the
+    /// task.
+    pub async fn start(
         self,
     ) -> Result<(StreamHandle, tokio::sync::mpsc::Receiver<QuoteUpdate>), crate::core::YfError>
     {
@@ -199,32 +209,45 @@ impl StreamBuilder {
 
         let (tx, rx) = tokio::sync::mpsc::channel::<QuoteUpdate>(1024);
         let (stop_tx, stop_rx) = tokio::sync::oneshot::channel::<()>();
+        let (startup_tx, startup_rx) = match self.method {
+            StreamMethod::Websocket => {
+                let (tx, rx) = tokio::sync::oneshot::channel();
+                (Some(tx), Some(rx))
+            }
+            StreamMethod::WebsocketWithFallback | StreamMethod::Polling => (None, None),
+        };
 
         let join = tokio::spawn({
             let client = self.client;
-            let symbols = self.symbols.clone();
-            let cfg = self.cfg.clone();
+            let symbols = self.symbols;
+            let cfg = self.cfg;
+            let method = self.method;
 
             let mut stop_rx = stop_rx;
 
-            // NEW:
             let cache_mode = self.cache_mode;
-            let retry_override = self.retry_override.clone();
+            let retry_override = self.retry_override;
 
             async move {
-                match self.method {
+                match method {
                     StreamMethod::Websocket => {
                         if let Err(e) =
-                            run_websocket_stream(&client, symbols, tx, &mut stop_rx).await
+                            run_websocket_stream(&client, symbols, tx, &mut stop_rx, startup_tx)
+                                .await
                             && std::env::var("YF_DEBUG").ok().as_deref() == Some("1")
                         {
                             eprintln!("YF_DEBUG(stream): websocket stream failed: {e}");
                         }
                     }
                     StreamMethod::WebsocketWithFallback => {
-                        if let Err(e) =
-                            run_websocket_stream(&client, symbols.clone(), tx.clone(), &mut stop_rx)
-                                .await
+                        if let Err(e) = run_websocket_stream(
+                            &client,
+                            symbols.clone(),
+                            tx.clone(),
+                            &mut stop_rx,
+                            None,
+                        )
+                        .await
                         {
                             if std::env::var("YF_DEBUG").ok().as_deref() == Some("1") {
                                 eprintln!(
@@ -259,6 +282,18 @@ impl StreamBuilder {
             }
         });
 
+        if let Some(startup_rx) = startup_rx {
+            match startup_rx.await {
+                Ok(Ok(())) => {}
+                Ok(Err(e)) => return Err(e),
+                Err(_) => {
+                    return Err(YfError::InvalidData(
+                        "websocket stream task ended before reporting startup".into(),
+                    ));
+                }
+            }
+        }
+
         Ok((
             StreamHandle {
                 join,
@@ -274,38 +309,71 @@ struct WsSubscribe<'a> {
     subscribe: &'a [String],
 }
 
+fn report_websocket_startup_error(
+    startup_tx: Option<oneshot::Sender<Result<(), YfError>>>,
+    err: YfError,
+) -> Result<(), YfError> {
+    if let Some(tx) = startup_tx {
+        if let Err(Err(err)) = tx.send(Err(err)) {
+            return Err(err);
+        }
+        return Ok(());
+    }
+
+    Err(err)
+}
+
 #[allow(clippy::too_many_lines)]
 async fn run_websocket_stream(
     client: &YfClient,
     symbols: Vec<String>,
     tx: mpsc::Sender<QuoteUpdate>,
     stop_rx: &mut oneshot::Receiver<()>,
+    startup_tx: Option<oneshot::Sender<Result<(), YfError>>>,
 ) -> Result<(), YfError> {
-    let base = client.base_stream();
-    let host = base
-        .host_str()
-        .ok_or_else(|| YfError::InvalidParams("URL has no host".into()))?;
+    let startup_result = async {
+        let base = client.base_stream();
+        let host = base
+            .host_str()
+            .ok_or_else(|| YfError::InvalidParams("URL has no host".into()))?;
 
-    let request = Request::builder()
-        .uri(base.as_str())
-        .header("Host", host)
-        .header("Origin", "https://finance.yahoo.com")
-        .header("User-Agent", client.user_agent())
-        .header("Upgrade", "websocket")
-        .header("Connection", "Upgrade")
-        .header("Sec-WebSocket-Key", generate_key())
-        .header("Sec-WebSocket-Version", "13")
-        .body(())
-        .map_err(|e| YfError::InvalidParams(format!("Failed to build websocket request: {e}")))?;
+        let request = Request::builder()
+            .uri(base.as_str())
+            .header("Host", host)
+            .header("Origin", "https://finance.yahoo.com")
+            .header("User-Agent", client.user_agent())
+            .header("Upgrade", "websocket")
+            .header("Connection", "Upgrade")
+            .header("Sec-WebSocket-Key", generate_key())
+            .header("Sec-WebSocket-Version", "13")
+            .body(())
+            .map_err(|e| {
+                YfError::InvalidParams(format!("Failed to build websocket request: {e}"))
+            })?;
 
-    let (ws_stream, _) = connect_async(request).await?;
-    let (mut write, mut read) = ws_stream.split();
+        let (ws_stream, _) = connect_async(request).await?;
+        let (mut write, read) = ws_stream.split();
 
-    let sub_msg = serde_json::to_string(&WsSubscribe {
-        subscribe: &symbols,
-    })
-    .map_err(YfError::Json)?;
-    write.send(WsMessage::Text(sub_msg.into())).await?;
+        let sub_msg = serde_json::to_string(&WsSubscribe {
+            subscribe: &symbols,
+        })
+        .map_err(YfError::Json)?;
+        write.send(WsMessage::Text(sub_msg.into())).await?;
+
+        Ok((write, read))
+    }
+    .await;
+
+    let (_write, mut read) = match startup_result {
+        Ok(parts) => parts,
+        Err(err) => return report_websocket_startup_error(startup_tx, err),
+    };
+
+    if let Some(tx) = startup_tx
+        && tx.send(Ok(())).is_err()
+    {
+        return Ok(());
+    }
 
     #[cfg(feature = "test-mode")]
     let mut recorded = false;

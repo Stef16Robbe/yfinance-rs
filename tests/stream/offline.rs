@@ -4,6 +4,27 @@ use yfinance_rs::StreamMethod;
 use yfinance_rs::core::client::CacheMode;
 
 #[tokio::test]
+async fn stream_websocket_reports_initial_connection_failure() {
+    let client = yfinance_rs::YfClient::builder()
+        .base_stream(Url::parse("wss://invalid-url-for-testing.invalid/").unwrap())
+        .build()
+        .unwrap();
+
+    let builder = yfinance_rs::StreamBuilder::new(&client)
+        .symbols(["AAPL"])
+        .method(StreamMethod::Websocket);
+
+    let Err(err) = builder.start().await else {
+        panic!("websocket start should report initial connection failure");
+    };
+
+    assert!(
+        matches!(err, yfinance_rs::YfError::Websocket(_)),
+        "expected websocket error, got: {err}"
+    );
+}
+
+#[tokio::test]
 async fn stream_websocket_fallback_to_polling_offline() {
     let server = crate::common::setup_server();
 
@@ -27,7 +48,7 @@ async fn stream_websocket_fallback_to_polling_offline() {
         .method(StreamMethod::WebsocketWithFallback)
         .interval(Duration::from_millis(40));
 
-    let (handle, mut rx) = builder.start().unwrap();
+    let (handle, mut rx) = builder.start().await.unwrap();
 
     let got = timeout(Duration::from_secs(3), rx.recv()).await;
     handle.abort();
@@ -72,7 +93,7 @@ async fn stream_polling_explicitly_offline() {
         .method(StreamMethod::Polling)
         .interval(Duration::from_millis(50));
 
-    let (handle, mut rx) = builder.start().unwrap();
+    let (handle, mut rx) = builder.start().await.unwrap();
     let got = timeout(Duration::from_secs(3), rx.recv()).await;
     handle.abort();
     mock.assert();
@@ -140,7 +161,7 @@ async fn stream_polling_emits_on_volume_only_change_with_diff_only() {
         .interval(Duration::from_millis(100))
         .cache_mode(CacheMode::Bypass);
 
-    let (handle, mut rx) = builder.start().unwrap();
+    let (handle, mut rx) = builder.start().await.unwrap();
 
     // First tick (price change from None -> P) should emit
     let first = timeout(Duration::from_secs(3), rx.recv()).await;
