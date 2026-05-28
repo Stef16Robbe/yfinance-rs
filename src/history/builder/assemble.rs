@@ -101,7 +101,7 @@ fn raw_ohlc_values(
     low: Option<f64>,
     close: Option<f64>,
 ) -> Result<(f64, f64, f64, f64), ProjectionIssue> {
-    let mut missing = Vec::new();
+    let mut missing = Vec::with_capacity(4);
     if open.is_none() {
         missing.push("open");
     }
@@ -115,24 +115,7 @@ fn raw_ohlc_values(
         missing.push("close");
     }
     if !missing.is_empty() {
-        let fields = match missing.as_slice() {
-            ["open"] => &["open"][..],
-            ["high"] => &["high"][..],
-            ["low"] => &["low"][..],
-            ["close"] => &["close"][..],
-            ["open", "high"] => &["open", "high"][..],
-            ["open", "low"] => &["open", "low"][..],
-            ["open", "close"] => &["open", "close"][..],
-            ["high", "low"] => &["high", "low"][..],
-            ["high", "close"] => &["high", "close"][..],
-            ["low", "close"] => &["low", "close"][..],
-            ["open", "high", "low"] => &["open", "high", "low"][..],
-            ["open", "high", "close"] => &["open", "high", "close"][..],
-            ["open", "low", "close"] => &["open", "low", "close"][..],
-            ["high", "low", "close"] => &["high", "low", "close"][..],
-            _ => &["open", "high", "low", "close"][..],
-        };
-        return Err(ProjectionIssue::MissingRequiredFields { fields });
+        return Err(ProjectionIssue::MissingRequiredFields { fields: missing });
     }
 
     Ok((

@@ -288,7 +288,7 @@ impl HistoryBuilder {
                     "candle",
                     None,
                     ProjectionIssue::MissingRequiredFields {
-                        fields: &["open", "high", "low", "close"],
+                        fields: vec!["open", "high", "low", "close"],
                     },
                 )?;
             }

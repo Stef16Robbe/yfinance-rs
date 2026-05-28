@@ -80,9 +80,9 @@ async fn history_reports_dropped_malformed_ohlc_rows() {
         warning,
         YfWarning::DroppedItem {
             item: "candle",
-            reason: ProjectionIssue::MissingRequiredFields { .. },
+            reason: ProjectionIssue::MissingRequiredFields { fields },
             ..
-        }
+        } if fields.as_slice() == ["open", "high", "low", "close"].as_slice()
     )));
 }
 

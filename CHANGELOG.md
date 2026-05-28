@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Public builder constructors now consistently borrow `&YfClient`, including
   `QuotesBuilder::new`, and builder execution methods borrow the configured
   builder instead of consuming it.
+- `ProjectionIssue::MissingRequiredFields` now owns `Vec<&'static str>` instead
+  of requiring a static field slice.
 - `StreamBuilder::start()` is now async. In `StreamMethod::Websocket` mode it waits for the
   initial WebSocket handshake and subscription write, returning startup failures directly.
 - `YfError` has new variants for recoverable provider-data failures: `InvalidData`, `RequestNotCloneable`, and `Money`.

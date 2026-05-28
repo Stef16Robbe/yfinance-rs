@@ -11,7 +11,7 @@ pub enum ProjectionIssue {
     /// One or more required provider fields were absent or null.
     MissingRequiredFields {
         /// Field names.
-        fields: &'static [&'static str],
+        fields: Vec<&'static str>,
     },
     /// A provider field was present but malformed.
     InvalidField {
