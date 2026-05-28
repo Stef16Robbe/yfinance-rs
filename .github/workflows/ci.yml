@@ -2,23 +2,57 @@ name: CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main", "develop"]
     paths-ignore:
-      - '**.md'
-      - 'LICENSE'
+      - "**.md"
+      - "LICENSE"
   pull_request:
-    branches: [ "main" ]
+    branches: ["main", "develop"]
     paths-ignore:
-      - '**.md'
-      - 'LICENSE'
+      - "**.md"
+      - "LICENSE"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  checks:
-    name: Check Formatting & Lints
+  msrv:
+    name: MSRV
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Clean up runner image
+        run: |
+          df -h
+          rm -rf /opt/hostedtoolcache
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          df -h
+
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up MSRV Rust
+        uses: dtolnay/rust-toolchain@1.91.0
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check MSRV build
+        run: cargo check --workspace --all-targets --all-features --locked
+
+  fmt:
+    name: Formatting
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -26,29 +60,15 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy, rustfmt
-
-      - name: Install protoc
-        uses: arduino/setup-protoc@v2
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Cache Cargo
-        uses: Swatinem/rust-cache@v2
-                
-      - name: Install just
-        uses: taiki-e/install-action@just
+          components: rustfmt
 
       - name: Check formatting
         run: cargo fmt --all -- --check
 
-      - name: Run clippy linter
-        run: just lint
-
-  test:
-    name: Run Tests
+  lint:
+    name: Lints
     runs-on: ubuntu-latest
-    needs: checks
+    timeout-minutes: 45
     steps:
       - name: Clean up runner image
         run: |
@@ -65,13 +85,37 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy, rustfmt
+          components: clippy
 
-      - name: Install protoc
-        uses: arduino/setup-protoc@v2
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-        
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install just
+        uses: taiki-e/install-action@just
+
+      - name: Run clippy linter
+        run: just CARGO_FLAGS=--locked lint
+
+  offline-test:
+    name: Offline Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Clean up runner image
+        run: |
+          df -h
+          rm -rf /opt/hostedtoolcache
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          df -h
+
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
 
@@ -79,4 +123,34 @@ jobs:
         uses: taiki-e/install-action@just
 
       - name: Run offline tests
-        run: just test-offline
+        run: just CARGO_FLAGS=--locked test-offline
+
+  package:
+    name: Package
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: [msrv, fmt, lint, offline-test]
+    steps:
+      - name: Clean up runner image
+        run: |
+          df -h
+          rm -rf /opt/hostedtoolcache
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          df -h
+
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: List packaged files
+        run: cargo package --locked --list
+
+      - name: Check publish package
+        run: cargo publish --dry-run --locked

@@ -59,6 +59,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Internal currency resolution now uses purpose-specific evidence types rather than a generic raw currency-code argument, reducing the chance that endpoint-specific fields mutate the wrong contextual cache.
 - `None` currency overrides continue to auto-enrich by querying Yahoo for stronger currency evidence when an endpoint omits currency data. `Some(currency)` overrides remain per-call only and no longer mutate inferred currency caches.
 - `YfClient::clear_cache()` now clears URL response cache, currency hint cache, resolved currency cache, and instrument cache; `invalidate_cache_entry()` remains URL-cache only.
+- CI now covers `main` and `develop` with separate MSRV, formatting, lint, offline-test, and package dry-run jobs, while Yahoo live smoke testing runs in a separate non-required workflow.
+- Published crate packages now exclude repository workflow metadata and tracked macOS editor artifacts.
 
 ## [0.8.0] - 2026-05-27
 
