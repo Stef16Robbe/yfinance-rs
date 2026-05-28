@@ -25,6 +25,10 @@ use super::{
     IncomeStatementRow,
 };
 
+const SECONDS_PER_DAY: i64 = 24 * 60 * 60;
+const STATEMENT_LOOKBACK_DAYS: i64 = 365 * 5;
+const SHARE_COUNT_LOOKBACK_DAYS: i64 = 548;
+
 #[derive(serde::Deserialize)]
 struct TimeseriesValueDecimal {
     #[serde(rename = "reportedValue")]
@@ -197,11 +201,37 @@ fn timeseries_url(
 }
 
 fn timeseries_window() -> (i64, i64) {
-    let end_ts = Utc::now().timestamp();
-    let start_ts = Utc::now()
-        .checked_sub_signed(Duration::days(365 * 5))
-        .map_or(0, |dt| dt.timestamp());
+    window_ending_at_next_utc_midnight(Utc::now(), STATEMENT_LOOKBACK_DAYS)
+}
+
+fn shares_window(start: Option<DateTime<Utc>>, end: Option<DateTime<Utc>>) -> (i64, i64) {
+    let end_ts = end.map_or_else(
+        || next_utc_midnight_timestamp(Utc::now()),
+        |dt| dt.timestamp(),
+    );
+    let start_ts = start.map_or_else(
+        || timestamp_days_before(end_ts, SHARE_COUNT_LOOKBACK_DAYS),
+        |dt| dt.timestamp(),
+    );
+
     (start_ts, end_ts)
+}
+
+fn window_ending_at_next_utc_midnight(now: DateTime<Utc>, lookback_days: i64) -> (i64, i64) {
+    let end_ts = next_utc_midnight_timestamp(now);
+    let start_ts = timestamp_days_before(end_ts, lookback_days);
+
+    (start_ts, end_ts)
+}
+
+const fn next_utc_midnight_timestamp(now: DateTime<Utc>) -> i64 {
+    (now.timestamp().div_euclid(SECONDS_PER_DAY) + 1) * SECONDS_PER_DAY
+}
+
+fn timestamp_days_before(end_ts: i64, lookback_days: i64) -> i64 {
+    DateTime::from_timestamp(end_ts, 0)
+        .and_then(|end| end.checked_sub_signed(Duration::days(lookback_days)))
+        .map_or(0, |start| start.timestamp())
 }
 
 fn timeseries_currency_evidence(
@@ -1034,10 +1064,7 @@ pub(super) async fn shares(
     data_quality: DataQuality,
 ) -> Result<YfResponse<Vec<ShareCount>>, YfError> {
     let mut ctx = ProjectionContext::new("shares", data_quality);
-    let end_ts = end.unwrap_or_else(Utc::now).timestamp();
-    let start_ts = start
-        .unwrap_or_else(|| Utc::now() - Duration::days(548))
-        .timestamp();
+    let (start_ts, end_ts) = shares_window(start, end);
 
     let type_key = if quarterly {
         "quarterlyBasicAverageShares"
@@ -1129,4 +1156,70 @@ pub(super) async fn shares(
     }
 
     Ok(ctx.finish(counts))
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::{Duration, TimeZone, Utc};
+
+    use super::{
+        SECONDS_PER_DAY, SHARE_COUNT_LOOKBACK_DAYS, STATEMENT_LOOKBACK_DAYS,
+        next_utc_midnight_timestamp, shares_window, window_ending_at_next_utc_midnight,
+    };
+
+    #[test]
+    fn statement_window_is_stable_within_utc_day() {
+        let morning = Utc.with_ymd_and_hms(2026, 5, 28, 1, 2, 3).unwrap();
+        let evening = Utc.with_ymd_and_hms(2026, 5, 28, 23, 59, 59).unwrap();
+        let expected_end = Utc.with_ymd_and_hms(2026, 5, 29, 0, 0, 0).unwrap();
+
+        let morning_window = window_ending_at_next_utc_midnight(morning, STATEMENT_LOOKBACK_DAYS);
+        let evening_window = window_ending_at_next_utc_midnight(evening, STATEMENT_LOOKBACK_DAYS);
+
+        assert_eq!(morning_window, evening_window);
+        assert_eq!(morning_window.1, expected_end.timestamp());
+        assert_eq!(
+            morning_window.1 - morning_window.0,
+            STATEMENT_LOOKBACK_DAYS * SECONDS_PER_DAY
+        );
+    }
+
+    #[test]
+    fn next_utc_midnight_advances_at_utc_boundary() {
+        let before_midnight = Utc.with_ymd_and_hms(2026, 5, 28, 23, 59, 59).unwrap();
+        let at_midnight = Utc.with_ymd_and_hms(2026, 5, 29, 0, 0, 0).unwrap();
+
+        assert_eq!(
+            next_utc_midnight_timestamp(before_midnight),
+            at_midnight.timestamp()
+        );
+        assert_eq!(
+            next_utc_midnight_timestamp(at_midnight),
+            Utc.with_ymd_and_hms(2026, 5, 30, 0, 0, 0)
+                .unwrap()
+                .timestamp()
+        );
+    }
+
+    #[test]
+    fn shares_window_defaults_start_from_effective_end() {
+        let end = Utc.with_ymd_and_hms(2026, 5, 28, 12, 34, 56).unwrap();
+        let expected_start = end - Duration::days(SHARE_COUNT_LOOKBACK_DAYS);
+
+        let (start_ts, end_ts) = shares_window(None, Some(end));
+
+        assert_eq!(end_ts, end.timestamp());
+        assert_eq!(start_ts, expected_start.timestamp());
+    }
+
+    #[test]
+    fn shares_window_respects_explicit_start() {
+        let start = Utc.with_ymd_and_hms(2024, 1, 2, 3, 4, 5).unwrap();
+        let end = Utc.with_ymd_and_hms(2026, 5, 28, 12, 34, 56).unwrap();
+
+        let (start_ts, end_ts) = shares_window(Some(start), Some(end));
+
+        assert_eq!(start_ts, start.timestamp());
+        assert_eq!(end_ts, end.timestamp());
+    }
 }

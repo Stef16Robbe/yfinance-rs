@@ -2,6 +2,8 @@ mod common;
 
 #[path = "fundamentals/fcf_fallback.rs"]
 mod fcf_fallback;
+#[path = "fundamentals/caching_synthetic.rs"]
+mod fundamentals_caching_synth;
 #[path = "fundamentals/live.rs"]
 mod fundamentals_live;
 #[path = "fundamentals/new_fields.rs"]
