@@ -8,19 +8,23 @@ use crate::{
             string_to_recommendation_grade,
         },
         currency_resolver::{
-            AnalystEstimateCurrencyEvidence, CurrencyHints, CurrencyKind, TradingCurrencyEvidence,
+            AnalystEstimateCurrencyEvidence, CurrencyHints, CurrencyKind, ResolvedCurrencyUnit,
+            TradingCurrencyEvidence,
         },
         diagnostics::{
             optional_decimal_f64, optional_money_i64, optional_price_f64, optional_u32_from_i64,
             optional_u32_from_raw_f64,
         },
-        wire::from_raw,
+        wire::{RawNum, from_raw},
     },
 };
 
 use super::fetch::fetch_modules;
 use super::model::{PriceTarget, RecommendationRow, RecommendationSummary, UpgradeDowngradeRow};
-use super::wire::RecommendationNode;
+use super::wire::{
+    EarningsEstimateNode, EarningsTrendItemNode, EpsRevisionsNode, EpsTrendNode,
+    RecommendationNode, RevenueEstimateNode,
+};
 use paft::domain::Period;
 use paft::fundamentals::analysis::{
     EarningsEstimate, EpsRevisions, EpsTrend, RecommendationAction, RecommendationGrade,
@@ -461,7 +465,487 @@ pub(super) async fn analyst_price_target(
     }))
 }
 
-#[allow(clippy::too_many_lines)]
+struct AnalystCurrencyResolver<'a> {
+    client: &'a YfClient,
+    symbol: &'a str,
+    override_currency: Option<Currency>,
+    cache_mode: CacheMode,
+    retry_override: Option<&'a RetryConfig>,
+    data_quality: DataQuality,
+}
+
+impl AnalystCurrencyResolver<'_> {
+    async fn resolve_if_any<T: Sync>(
+        &self,
+        values: &[Option<T>],
+        evidence: AnalystEstimateCurrencyEvidence<'_>,
+    ) -> Result<Option<ResolvedCurrencyUnit>, YfError> {
+        if !values.iter().any(Option::is_some) {
+            return Ok(None);
+        }
+
+        match self
+            .client
+            .resolve_analyst_estimate_currency_unit(
+                self.symbol,
+                self.override_currency.clone(),
+                evidence,
+                self.cache_mode,
+                self.retry_override,
+            )
+            .await
+        {
+            Ok(unit) => Ok(Some(unit)),
+            Err(err @ YfError::InvalidData(_)) => Err(err),
+            Err(err) if self.data_quality == DataQuality::Strict => Err(err),
+            Err(_) => Ok(None),
+        }
+    }
+}
+
+#[derive(Default)]
+struct RawEarningsEstimate {
+    currency: Option<String>,
+    avg: Option<f64>,
+    low: Option<f64>,
+    high: Option<f64>,
+    year_ago_eps: Option<f64>,
+    num_analysts: Option<RawNum<f64>>,
+    growth: Option<f64>,
+}
+
+impl RawEarningsEstimate {
+    const fn price_values(&self) -> [Option<f64>; 4] {
+        [self.avg, self.low, self.high, self.year_ago_eps]
+    }
+}
+
+impl From<Option<EarningsEstimateNode>> for RawEarningsEstimate {
+    fn from(node: Option<EarningsEstimateNode>) -> Self {
+        let Some(node) = node else {
+            return Self::default();
+        };
+
+        Self {
+            currency: node.earnings_currency,
+            avg: from_raw(node.avg),
+            low: from_raw(node.low),
+            high: from_raw(node.high),
+            year_ago_eps: from_raw(node.year_ago_eps),
+            num_analysts: node.num_analysts,
+            growth: from_raw(node.growth),
+        }
+    }
+}
+
+#[derive(Default)]
+struct RawRevenueEstimate {
+    currency: Option<String>,
+    avg: Option<i64>,
+    low: Option<i64>,
+    high: Option<i64>,
+    year_ago_revenue: Option<i64>,
+    num_analysts: Option<RawNum<f64>>,
+    growth: Option<f64>,
+}
+
+impl RawRevenueEstimate {
+    const fn money_values(&self) -> [Option<i64>; 4] {
+        [self.avg, self.low, self.high, self.year_ago_revenue]
+    }
+}
+
+impl From<Option<RevenueEstimateNode>> for RawRevenueEstimate {
+    fn from(node: Option<RevenueEstimateNode>) -> Self {
+        let Some(node) = node else {
+            return Self::default();
+        };
+
+        Self {
+            currency: node.revenue_currency,
+            avg: from_raw(node.avg),
+            low: from_raw(node.low),
+            high: from_raw(node.high),
+            year_ago_revenue: from_raw(node.year_ago_revenue),
+            num_analysts: node.num_analysts,
+            growth: from_raw(node.growth),
+        }
+    }
+}
+
+#[derive(Default)]
+struct RawEpsTrend {
+    currency: Option<String>,
+    current: Option<f64>,
+    seven_days_ago: Option<f64>,
+    thirty_days_ago: Option<f64>,
+    sixty_days_ago: Option<f64>,
+    ninety_days_ago: Option<f64>,
+}
+
+impl RawEpsTrend {
+    const fn price_values(&self) -> [Option<f64>; 5] {
+        [
+            self.current,
+            self.seven_days_ago,
+            self.thirty_days_ago,
+            self.sixty_days_ago,
+            self.ninety_days_ago,
+        ]
+    }
+}
+
+impl From<Option<EpsTrendNode>> for RawEpsTrend {
+    fn from(node: Option<EpsTrendNode>) -> Self {
+        let Some(node) = node else {
+            return Self::default();
+        };
+
+        Self {
+            currency: node.eps_trend_currency,
+            current: from_raw(node.current),
+            seven_days_ago: from_raw(node.seven_days_ago),
+            thirty_days_ago: from_raw(node.thirty_days_ago),
+            sixty_days_ago: from_raw(node.sixty_days_ago),
+            ninety_days_ago: from_raw(node.ninety_days_ago),
+        }
+    }
+}
+
+#[derive(Default)]
+struct RawEpsRevisions {
+    up_7d: Option<RawNum<f64>>,
+    up_30d: Option<RawNum<f64>>,
+    down_7d: Option<RawNum<f64>>,
+    down_30d: Option<RawNum<f64>>,
+}
+
+impl From<Option<EpsRevisionsNode>> for RawEpsRevisions {
+    fn from(node: Option<EpsRevisionsNode>) -> Self {
+        let Some(node) = node else {
+            return Self::default();
+        };
+
+        Self {
+            up_7d: node.up_last_7_days,
+            up_30d: node.up_last_30_days,
+            down_7d: node.down_last_7_days,
+            down_30d: node.down_last_30_days,
+        }
+    }
+}
+
+fn diagnostic_key(key: Option<&str>) -> Option<String> {
+    key.map(str::to_owned)
+}
+
+struct RawEarningsTrendItem {
+    period_key: Option<String>,
+    growth: Option<f64>,
+    earnings: RawEarningsEstimate,
+    revenue: RawRevenueEstimate,
+    eps_trend: RawEpsTrend,
+    eps_revisions: RawEpsRevisions,
+}
+
+impl From<EarningsTrendItemNode> for RawEarningsTrendItem {
+    fn from(node: EarningsTrendItemNode) -> Self {
+        Self {
+            period_key: node.period,
+            growth: from_raw(node.growth),
+            earnings: node.earnings_estimate.into(),
+            revenue: node.revenue_estimate.into(),
+            eps_trend: node.eps_trend.into(),
+            eps_revisions: node.eps_revisions.into(),
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct EarningsTrendUnits<'a> {
+    earnings: Option<&'a ResolvedCurrencyUnit>,
+    revenue: Option<&'a ResolvedCurrencyUnit>,
+    eps: Option<&'a ResolvedCurrencyUnit>,
+}
+
+fn project_earnings_estimate(
+    ctx: &mut ProjectionContext,
+    period_key: Option<&str>,
+    raw: &RawEarningsEstimate,
+    unit: Option<&ResolvedCurrencyUnit>,
+) -> Result<EarningsEstimate, YfError> {
+    Ok(EarningsEstimate {
+        avg: optional_price_f64(
+            ctx,
+            "earningsTrend[].earningsEstimate.avg",
+            diagnostic_key(period_key),
+            unit,
+            raw.avg,
+            "analyst price value",
+        )?,
+        low: optional_price_f64(
+            ctx,
+            "earningsTrend[].earningsEstimate.low",
+            diagnostic_key(period_key),
+            unit,
+            raw.low,
+            "analyst price value",
+        )?,
+        high: optional_price_f64(
+            ctx,
+            "earningsTrend[].earningsEstimate.high",
+            diagnostic_key(period_key),
+            unit,
+            raw.high,
+            "analyst price value",
+        )?,
+        year_ago_eps: optional_price_f64(
+            ctx,
+            "earningsTrend[].earningsEstimate.yearAgoEps",
+            diagnostic_key(period_key),
+            unit,
+            raw.year_ago_eps,
+            "analyst price value",
+        )?,
+        num_analysts: optional_u32_from_raw_f64(
+            ctx,
+            "earningsTrend[].earningsEstimate.numberOfAnalysts",
+            diagnostic_key(period_key),
+            "numberOfAnalysts",
+            raw.num_analysts,
+        )?,
+        growth: optional_decimal_f64(
+            ctx,
+            "earningsTrend[].earningsEstimate.growth",
+            diagnostic_key(period_key),
+            raw.growth,
+            "earnings estimate growth",
+        )?,
+    })
+}
+
+fn project_revenue_estimate(
+    ctx: &mut ProjectionContext,
+    period_key: Option<&str>,
+    raw: &RawRevenueEstimate,
+    unit: Option<&ResolvedCurrencyUnit>,
+) -> Result<RevenueEstimate, YfError> {
+    Ok(RevenueEstimate {
+        avg: optional_money_i64(
+            ctx,
+            "earningsTrend[].revenueEstimate.avg",
+            diagnostic_key(period_key),
+            unit,
+            raw.avg,
+            "analyst monetary value",
+        )?,
+        low: optional_money_i64(
+            ctx,
+            "earningsTrend[].revenueEstimate.low",
+            diagnostic_key(period_key),
+            unit,
+            raw.low,
+            "analyst monetary value",
+        )?,
+        high: optional_money_i64(
+            ctx,
+            "earningsTrend[].revenueEstimate.high",
+            diagnostic_key(period_key),
+            unit,
+            raw.high,
+            "analyst monetary value",
+        )?,
+        year_ago_revenue: optional_money_i64(
+            ctx,
+            "earningsTrend[].revenueEstimate.yearAgoRevenue",
+            diagnostic_key(period_key),
+            unit,
+            raw.year_ago_revenue,
+            "analyst monetary value",
+        )?,
+        num_analysts: optional_u32_from_raw_f64(
+            ctx,
+            "earningsTrend[].revenueEstimate.numberOfAnalysts",
+            diagnostic_key(period_key),
+            "numberOfAnalysts",
+            raw.num_analysts,
+        )?,
+        growth: optional_decimal_f64(
+            ctx,
+            "earningsTrend[].revenueEstimate.growth",
+            diagnostic_key(period_key),
+            raw.growth,
+            "revenue estimate growth",
+        )?,
+    })
+}
+
+fn push_eps_trend_point(
+    ctx: &mut ProjectionContext,
+    historical: &mut Vec<TrendPoint>,
+    period_key: Option<&str>,
+    unit: Option<&ResolvedCurrencyUnit>,
+    period: &str,
+    path: &'static str,
+    value: Option<f64>,
+) -> Result<(), YfError> {
+    if let Some(value) = optional_price_f64(
+        ctx,
+        path,
+        diagnostic_key(period_key),
+        unit,
+        value,
+        "analyst price value",
+    )? && let Ok(point) = TrendPoint::try_new_str(period, value)
+    {
+        historical.push(point);
+    }
+
+    Ok(())
+}
+
+fn project_eps_trend(
+    ctx: &mut ProjectionContext,
+    period_key: Option<&str>,
+    raw: &RawEpsTrend,
+    unit: Option<&ResolvedCurrencyUnit>,
+) -> Result<EpsTrend, YfError> {
+    let current = optional_price_f64(
+        ctx,
+        "earningsTrend[].epsTrend.current",
+        diagnostic_key(period_key),
+        unit,
+        raw.current,
+        "analyst price value",
+    )?;
+    let mut historical = Vec::new();
+
+    push_eps_trend_point(
+        ctx,
+        &mut historical,
+        period_key,
+        unit,
+        "7d",
+        "earningsTrend[].epsTrend.7daysAgo",
+        raw.seven_days_ago,
+    )?;
+    push_eps_trend_point(
+        ctx,
+        &mut historical,
+        period_key,
+        unit,
+        "30d",
+        "earningsTrend[].epsTrend.30daysAgo",
+        raw.thirty_days_ago,
+    )?;
+    push_eps_trend_point(
+        ctx,
+        &mut historical,
+        period_key,
+        unit,
+        "60d",
+        "earningsTrend[].epsTrend.60daysAgo",
+        raw.sixty_days_ago,
+    )?;
+    push_eps_trend_point(
+        ctx,
+        &mut historical,
+        period_key,
+        unit,
+        "90d",
+        "earningsTrend[].epsTrend.90daysAgo",
+        raw.ninety_days_ago,
+    )?;
+
+    Ok(EpsTrend {
+        current,
+        historical,
+    })
+}
+
+fn push_revision_point(
+    historical: &mut Vec<RevisionPoint>,
+    period: &str,
+    up: Option<u32>,
+    down: Option<u32>,
+) {
+    if let (Some(up), Some(down)) = (up, down)
+        && let Ok(point) = RevisionPoint::try_new_str(period, up, down)
+    {
+        historical.push(point);
+    }
+}
+
+fn project_eps_revisions(
+    ctx: &mut ProjectionContext,
+    period_key: Option<&str>,
+    raw: &RawEpsRevisions,
+) -> Result<EpsRevisions, YfError> {
+    let up_last_7_days = optional_u32_from_raw_f64(
+        ctx,
+        "earningsTrend[].epsRevisions.upLast7days",
+        diagnostic_key(period_key),
+        "upLast7days",
+        raw.up_7d,
+    )?;
+    let up_last_30_days = optional_u32_from_raw_f64(
+        ctx,
+        "earningsTrend[].epsRevisions.upLast30days",
+        diagnostic_key(period_key),
+        "upLast30days",
+        raw.up_30d,
+    )?;
+    let down_last_7_days = optional_u32_from_raw_f64(
+        ctx,
+        "earningsTrend[].epsRevisions.downLast7days",
+        diagnostic_key(period_key),
+        "downLast7days",
+        raw.down_7d,
+    )?;
+    let down_last_30_days = optional_u32_from_raw_f64(
+        ctx,
+        "earningsTrend[].epsRevisions.downLast30days",
+        diagnostic_key(period_key),
+        "downLast30days",
+        raw.down_30d,
+    )?;
+
+    let mut historical = Vec::new();
+    push_revision_point(&mut historical, "7d", up_last_7_days, down_last_7_days);
+    push_revision_point(&mut historical, "30d", up_last_30_days, down_last_30_days);
+
+    Ok(EpsRevisions { historical })
+}
+
+fn project_earnings_trend_row(
+    ctx: &mut ProjectionContext,
+    period: Period,
+    raw: &RawEarningsTrendItem,
+    units: EarningsTrendUnits<'_>,
+) -> Result<EarningsTrendRow, YfError> {
+    let period_key = raw.period_key.as_deref();
+
+    Ok(EarningsTrendRow {
+        period,
+        growth: optional_decimal_f64(
+            ctx,
+            "earningsTrend[].growth",
+            diagnostic_key(period_key),
+            raw.growth,
+            "earnings trend growth",
+        )?,
+        earnings_estimate: project_earnings_estimate(
+            ctx,
+            period_key,
+            &raw.earnings,
+            units.earnings,
+        )?,
+        revenue_estimate: project_revenue_estimate(ctx, period_key, &raw.revenue, units.revenue)?,
+        eps_trend: project_eps_trend(ctx, period_key, &raw.eps_trend, units.eps)?,
+        eps_revisions: project_eps_revisions(ctx, period_key, &raw.eps_revisions)?,
+    })
+}
+
 pub(super) async fn earnings_trend(
     client: &YfClient,
     symbol: &str,
@@ -479,411 +963,64 @@ pub(super) async fn earnings_trend(
         .trend
         .ok_or_else(|| YfError::MissingData("earningsTrend.trend missing".into()))?;
 
+    let currency_resolver = AnalystCurrencyResolver {
+        client,
+        symbol,
+        override_currency,
+        cache_mode,
+        retry_override,
+        data_quality,
+    };
+
     let mut rows = Vec::with_capacity(trend.len());
-    for n in trend {
-        let earnings_currency = n
-            .earnings_estimate
-            .as_ref()
-            .and_then(|estimate| estimate.earnings_currency.clone());
-        let revenue_currency = n
-            .revenue_estimate
-            .as_ref()
-            .and_then(|estimate| estimate.revenue_currency.clone());
-        let eps_currency = n
-            .eps_trend
-            .as_ref()
-            .and_then(|trend| trend.eps_trend_currency.clone());
+    for item in trend {
+        let raw = RawEarningsTrendItem::from(item);
 
-        let period_key = n.period.clone();
+        let earnings_values = raw.earnings.price_values();
+        let earnings_unit = currency_resolver
+            .resolve_if_any(
+                &earnings_values,
+                AnalystEstimateCurrencyEvidence::Earnings(raw.earnings.currency.as_deref()),
+            )
+            .await?;
 
-        let (
-            earnings_estimate_avg,
-            earnings_estimate_low,
-            earnings_estimate_high,
-            earnings_estimate_year_ago_eps,
-            earnings_estimate_num_analysts_raw,
-            earnings_estimate_growth,
-        ) = n
-            .earnings_estimate
-            .map(|e| {
-                (
-                    from_raw(e.avg),
-                    from_raw(e.low),
-                    from_raw(e.high),
-                    from_raw(e.year_ago_eps),
-                    e.num_analysts,
-                    from_raw(e.growth),
-                )
-            })
-            .unwrap_or_default();
+        let revenue_values = raw.revenue.money_values();
+        let revenue_unit = currency_resolver
+            .resolve_if_any(
+                &revenue_values,
+                AnalystEstimateCurrencyEvidence::Revenue(raw.revenue.currency.as_deref()),
+            )
+            .await?;
 
-        let (
-            revenue_estimate_avg,
-            revenue_estimate_low,
-            revenue_estimate_high,
-            revenue_estimate_year_ago_revenue,
-            revenue_estimate_num_analysts_raw,
-            revenue_estimate_growth,
-        ) = n
-            .revenue_estimate
-            .map(|e| {
-                (
-                    from_raw(e.avg),
-                    from_raw(e.low),
-                    from_raw(e.high),
-                    from_raw(e.year_ago_revenue),
-                    e.num_analysts,
-                    from_raw(e.growth),
-                )
-            })
-            .unwrap_or_default();
-
-        let (
-            eps_trend_current,
-            eps_trend_7_days_ago,
-            eps_trend_30_days_ago,
-            eps_trend_60_days_ago,
-            eps_trend_90_days_ago,
-        ) = n
-            .eps_trend
-            .map(|e| {
-                (
-                    from_raw(e.current),
-                    from_raw(e.seven_days_ago),
-                    from_raw(e.thirty_days_ago),
-                    from_raw(e.sixty_days_ago),
-                    from_raw(e.ninety_days_ago),
-                )
-            })
-            .unwrap_or_default();
-
-        let (
-            eps_revisions_up_last_7_days,
-            eps_revisions_up_last_30_days,
-            eps_revisions_down_last_7_days,
-            eps_revisions_down_last_30_days,
-        ) = n
-            .eps_revisions
-            .map(|e| {
-                (
-                    e.up_last_7_days,
-                    e.up_last_30_days,
-                    e.down_last_7_days,
-                    e.down_last_30_days,
-                )
-            })
-            .unwrap_or_default();
-
-        let earnings_unit = if [
-            earnings_estimate_avg,
-            earnings_estimate_low,
-            earnings_estimate_high,
-            earnings_estimate_year_ago_eps,
-        ]
-        .iter()
-        .any(Option::is_some)
-        {
-            match client
-                .resolve_analyst_estimate_currency_unit(
-                    symbol,
-                    override_currency.clone(),
-                    AnalystEstimateCurrencyEvidence::Earnings(earnings_currency.as_deref()),
-                    cache_mode,
-                    retry_override,
-                )
-                .await
-            {
-                Ok(unit) => Some(unit),
-                Err(err @ YfError::InvalidData(_)) => return Err(err),
-                Err(err) if data_quality == DataQuality::Strict => return Err(err),
-                Err(_) => None,
-            }
-        } else {
-            None
-        };
-
-        let revenue_unit = if [
-            revenue_estimate_avg,
-            revenue_estimate_low,
-            revenue_estimate_high,
-            revenue_estimate_year_ago_revenue,
-        ]
-        .iter()
-        .any(Option::is_some)
-        {
-            match client
-                .resolve_analyst_estimate_currency_unit(
-                    symbol,
-                    override_currency.clone(),
-                    AnalystEstimateCurrencyEvidence::Revenue(revenue_currency.as_deref()),
-                    cache_mode,
-                    retry_override,
-                )
-                .await
-            {
-                Ok(unit) => Some(unit),
-                Err(err @ YfError::InvalidData(_)) => return Err(err),
-                Err(err) if data_quality == DataQuality::Strict => return Err(err),
-                Err(_) => None,
-            }
-        } else {
-            None
-        };
-
-        let eps_unit = if [
-            eps_trend_current,
-            eps_trend_7_days_ago,
-            eps_trend_30_days_ago,
-            eps_trend_60_days_ago,
-            eps_trend_90_days_ago,
-        ]
-        .iter()
-        .any(Option::is_some)
-        {
-            match client
-                .resolve_analyst_estimate_currency_unit(
-                    symbol,
-                    override_currency.clone(),
-                    AnalystEstimateCurrencyEvidence::EpsTrend(eps_currency.as_deref()),
-                    cache_mode,
-                    retry_override,
-                )
-                .await
-            {
-                Ok(unit) => Some(unit),
-                Err(err @ YfError::InvalidData(_)) => return Err(err),
-                Err(err) if data_quality == DataQuality::Strict => return Err(err),
-                Err(_) => None,
-            }
-        } else {
-            None
-        };
+        let eps_values = raw.eps_trend.price_values();
+        let eps_unit = currency_resolver
+            .resolve_if_any(
+                &eps_values,
+                AnalystEstimateCurrencyEvidence::EpsTrend(raw.eps_trend.currency.as_deref()),
+            )
+            .await?;
 
         let Some(period) = required_period(
             &mut ctx,
             "earnings_trend",
-            period_key.clone(),
+            raw.period_key.clone(),
             "period",
-            period_key.as_deref(),
+            raw.period_key.as_deref(),
         )?
         else {
             continue;
         };
 
-        let earnings_estimate_num_analysts = optional_u32_from_raw_f64(
+        rows.push(project_earnings_trend_row(
             &mut ctx,
-            "earningsTrend[].earningsEstimate.numberOfAnalysts",
-            period_key.clone(),
-            "numberOfAnalysts",
-            earnings_estimate_num_analysts_raw,
-        )?;
-        let revenue_estimate_num_analysts = optional_u32_from_raw_f64(
-            &mut ctx,
-            "earningsTrend[].revenueEstimate.numberOfAnalysts",
-            period_key.clone(),
-            "numberOfAnalysts",
-            revenue_estimate_num_analysts_raw,
-        )?;
-        let eps_revisions_up_last_7_days = optional_u32_from_raw_f64(
-            &mut ctx,
-            "earningsTrend[].epsRevisions.upLast7days",
-            period_key.clone(),
-            "upLast7days",
-            eps_revisions_up_last_7_days,
-        )?;
-        let eps_revisions_up_last_30_days = optional_u32_from_raw_f64(
-            &mut ctx,
-            "earningsTrend[].epsRevisions.upLast30days",
-            period_key.clone(),
-            "upLast30days",
-            eps_revisions_up_last_30_days,
-        )?;
-        let eps_revisions_down_last_7_days = optional_u32_from_raw_f64(
-            &mut ctx,
-            "earningsTrend[].epsRevisions.downLast7days",
-            period_key.clone(),
-            "downLast7days",
-            eps_revisions_down_last_7_days,
-        )?;
-        let eps_revisions_down_last_30_days = optional_u32_from_raw_f64(
-            &mut ctx,
-            "earningsTrend[].epsRevisions.downLast30days",
-            period_key.clone(),
-            "downLast30days",
-            eps_revisions_down_last_30_days,
-        )?;
-
-        rows.push(EarningsTrendRow {
             period,
-            growth: optional_decimal_f64(
-                &mut ctx,
-                "earningsTrend[].growth",
-                period_key.clone(),
-                from_raw(n.growth),
-                "earnings trend growth",
-            )?,
-            earnings_estimate: EarningsEstimate {
-                avg: optional_price_f64(
-                    &mut ctx,
-                    "earningsTrend[].earningsEstimate.avg",
-                    period_key.clone(),
-                    earnings_unit.as_ref(),
-                    earnings_estimate_avg,
-                    "analyst price value",
-                )?,
-                low: optional_price_f64(
-                    &mut ctx,
-                    "earningsTrend[].earningsEstimate.low",
-                    period_key.clone(),
-                    earnings_unit.as_ref(),
-                    earnings_estimate_low,
-                    "analyst price value",
-                )?,
-                high: optional_price_f64(
-                    &mut ctx,
-                    "earningsTrend[].earningsEstimate.high",
-                    period_key.clone(),
-                    earnings_unit.as_ref(),
-                    earnings_estimate_high,
-                    "analyst price value",
-                )?,
-                year_ago_eps: optional_price_f64(
-                    &mut ctx,
-                    "earningsTrend[].earningsEstimate.yearAgoEps",
-                    period_key.clone(),
-                    earnings_unit.as_ref(),
-                    earnings_estimate_year_ago_eps,
-                    "analyst price value",
-                )?,
-                num_analysts: earnings_estimate_num_analysts,
-                growth: optional_decimal_f64(
-                    &mut ctx,
-                    "earningsTrend[].earningsEstimate.growth",
-                    period_key.clone(),
-                    earnings_estimate_growth,
-                    "earnings estimate growth",
-                )?,
+            &raw,
+            EarningsTrendUnits {
+                earnings: earnings_unit.as_ref(),
+                revenue: revenue_unit.as_ref(),
+                eps: eps_unit.as_ref(),
             },
-            revenue_estimate: RevenueEstimate {
-                avg: optional_money_i64(
-                    &mut ctx,
-                    "earningsTrend[].revenueEstimate.avg",
-                    period_key.clone(),
-                    revenue_unit.as_ref(),
-                    revenue_estimate_avg,
-                    "analyst monetary value",
-                )?,
-                low: optional_money_i64(
-                    &mut ctx,
-                    "earningsTrend[].revenueEstimate.low",
-                    period_key.clone(),
-                    revenue_unit.as_ref(),
-                    revenue_estimate_low,
-                    "analyst monetary value",
-                )?,
-                high: optional_money_i64(
-                    &mut ctx,
-                    "earningsTrend[].revenueEstimate.high",
-                    period_key.clone(),
-                    revenue_unit.as_ref(),
-                    revenue_estimate_high,
-                    "analyst monetary value",
-                )?,
-                year_ago_revenue: optional_money_i64(
-                    &mut ctx,
-                    "earningsTrend[].revenueEstimate.yearAgoRevenue",
-                    period_key.clone(),
-                    revenue_unit.as_ref(),
-                    revenue_estimate_year_ago_revenue,
-                    "analyst monetary value",
-                )?,
-                num_analysts: revenue_estimate_num_analysts,
-                growth: optional_decimal_f64(
-                    &mut ctx,
-                    "earningsTrend[].revenueEstimate.growth",
-                    period_key.clone(),
-                    revenue_estimate_growth,
-                    "revenue estimate growth",
-                )?,
-            },
-            eps_trend: EpsTrend {
-                current: optional_price_f64(
-                    &mut ctx,
-                    "earningsTrend[].epsTrend.current",
-                    period_key.clone(),
-                    eps_unit.as_ref(),
-                    eps_trend_current,
-                    "analyst price value",
-                )?,
-                historical: {
-                    let mut hist = Vec::new();
-                    if let Some(v) = optional_price_f64(
-                        &mut ctx,
-                        "earningsTrend[].epsTrend.7daysAgo",
-                        period_key.clone(),
-                        eps_unit.as_ref(),
-                        eps_trend_7_days_ago,
-                        "analyst price value",
-                    )? && let Ok(tp) = TrendPoint::try_new_str("7d", v)
-                    {
-                        hist.push(tp);
-                    }
-                    if let Some(v) = optional_price_f64(
-                        &mut ctx,
-                        "earningsTrend[].epsTrend.30daysAgo",
-                        period_key.clone(),
-                        eps_unit.as_ref(),
-                        eps_trend_30_days_ago,
-                        "analyst price value",
-                    )? && let Ok(tp) = TrendPoint::try_new_str("30d", v)
-                    {
-                        hist.push(tp);
-                    }
-                    if let Some(v) = optional_price_f64(
-                        &mut ctx,
-                        "earningsTrend[].epsTrend.60daysAgo",
-                        period_key.clone(),
-                        eps_unit.as_ref(),
-                        eps_trend_60_days_ago,
-                        "analyst price value",
-                    )? && let Ok(tp) = TrendPoint::try_new_str("60d", v)
-                    {
-                        hist.push(tp);
-                    }
-                    if let Some(v) = optional_price_f64(
-                        &mut ctx,
-                        "earningsTrend[].epsTrend.90daysAgo",
-                        period_key.clone(),
-                        eps_unit.as_ref(),
-                        eps_trend_90_days_ago,
-                        "analyst price value",
-                    )? && let Ok(tp) = TrendPoint::try_new_str("90d", v)
-                    {
-                        hist.push(tp);
-                    }
-                    hist
-                },
-            },
-            eps_revisions: EpsRevisions {
-                historical: {
-                    let mut hist = Vec::new();
-                    if let (Some(up), Some(down)) =
-                        (eps_revisions_up_last_7_days, eps_revisions_down_last_7_days)
-                        && let Ok(rp) = RevisionPoint::try_new_str("7d", up, down)
-                    {
-                        hist.push(rp);
-                    }
-                    if let (Some(up), Some(down)) = (
-                        eps_revisions_up_last_30_days,
-                        eps_revisions_down_last_30_days,
-                    ) && let Ok(rp) = RevisionPoint::try_new_str("30d", up, down)
-                    {
-                        hist.push(rp);
-                    }
-                    hist
-                },
-            },
-        });
+        )?);
     }
 
     Ok(ctx.finish(rows))

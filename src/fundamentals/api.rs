@@ -16,7 +16,8 @@ use crate::{
 };
 use paft::domain::Period;
 use paft::fundamentals::profile::ShareCount;
-use paft::money::Currency;
+use paft::money::{Currency, Money};
+use url::Url;
 
 use super::fetch::fetch_modules;
 use super::{
@@ -36,58 +37,52 @@ struct TimeseriesValueU64 {
     reported_value: Option<RawNumU64>,
 }
 
-/// Generic helper function to fetch and process timeseries data from the fundamentals API.
-///
-/// This function handles the common pattern of:
-/// 1. Constructing the URL for the /ws/fundamentals-timeseries endpoint
-/// 2. Making the request with caching logic
-/// 3. Parsing the `TimeseriesEnvelope`
-/// 4. Processing the data into a `BTreeMap`
-///
-/// The `process_item` closure is responsible for processing each timeseries item
-/// and updating the rows map accordingly.
-#[allow(clippy::too_many_arguments)]
-async fn fetch_timeseries_data<T, F>(
-    client: &YfClient,
-    symbol: &str,
+struct TimeseriesRequest<'a> {
+    client: &'a YfClient,
+    symbol: &'a str,
     quarterly: bool,
     override_currency: Option<Currency>,
     cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    retry_override: Option<&'a RetryConfig>,
     data_quality: DataQuality,
-    keys: &[&str],
-    monetary_keys: &[&str],
+    keys: &'a [&'static str],
+    monetary_keys: &'a [&'static str],
     endpoint_name: &'static str,
-    process_item: F,
+}
+
+struct TimeseriesItem<'a, T> {
+    key: &'a str,
+    values_json: &'a serde_json::Value,
+    rows_map: &'a mut BTreeMap<i64, T>,
+    timestamps: &'a [i64],
+    prefix: &'a str,
+    currency: Option<&'a ResolvedCurrencyUnit>,
+    ctx: &'a mut ProjectionContext,
+}
+
+async fn fetch_timeseries_data<T, F>(
+    request: TimeseriesRequest<'_>,
+    mut process_item: F,
 ) -> Result<YfResponse<Vec<T>>, YfError>
 where
-    F: Fn(
-        &str,
-        &serde_json::Value,
-        &mut BTreeMap<i64, T>,
-        &[i64],
-        &str,
-        Option<&ResolvedCurrencyUnit>,
-        &mut ProjectionContext,
-    ) -> Result<(), YfError>,
+    F: for<'a> FnMut(TimeseriesItem<'a, T>) -> Result<(), YfError>,
 {
+    let TimeseriesRequest {
+        client,
+        symbol,
+        quarterly,
+        override_currency,
+        cache_mode,
+        retry_override,
+        data_quality,
+        keys,
+        monetary_keys,
+        endpoint_name,
+    } = request;
+
     let mut ctx = ProjectionContext::new(endpoint_name, data_quality);
     let prefix = if quarterly { "quarterly" } else { "annual" };
-    let types: Vec<String> = keys.iter().map(|k| format!("{prefix}{k}")).collect();
-    let type_str = types.join(",");
-
-    let end_ts = Utc::now().timestamp();
-    let start_ts = Utc::now()
-        .checked_sub_signed(Duration::days(365 * 5))
-        .map_or(0, |dt| dt.timestamp());
-
-    let mut url = client.symbol_url(SymbolEndpoint::Timeseries, symbol)?;
-    url.query_pairs_mut()
-        .append_pair("symbol", symbol)
-        .append_pair("type", &type_str)
-        .append_pair("period1", &start_ts.to_string())
-        .append_pair("period2", &end_ts.to_string());
-
+    let url = timeseries_url(client, symbol, prefix, keys)?;
     let endpoint = format!("timeseries_{endpoint_name}_{prefix}");
     let (body, _) = crate::core::net::fetch_text_with_auth_retry(
         client,
@@ -164,18 +159,49 @@ where
             continue;
         };
 
-        process_item(
-            &key,
-            &values_json,
-            &mut rows_map,
-            &timestamps,
+        process_item(TimeseriesItem {
+            key: &key,
+            values_json: &values_json,
+            rows_map: &mut rows_map,
+            timestamps: &timestamps,
             prefix,
-            currency.as_ref(),
-            &mut ctx,
-        )?;
+            currency: currency.as_ref(),
+            ctx: &mut ctx,
+        })?;
     }
 
     Ok(ctx.finish(rows_map.into_values().rev().collect()))
+}
+
+fn timeseries_url(
+    client: &YfClient,
+    symbol: &str,
+    prefix: &str,
+    keys: &[&'static str],
+) -> Result<Url, YfError> {
+    let type_str = keys
+        .iter()
+        .map(|key| format!("{prefix}{key}"))
+        .collect::<Vec<_>>()
+        .join(",");
+    let (start_ts, end_ts) = timeseries_window();
+
+    let mut url = client.symbol_url(SymbolEndpoint::Timeseries, symbol)?;
+    url.query_pairs_mut()
+        .append_pair("symbol", symbol)
+        .append_pair("type", &type_str)
+        .append_pair("period1", &start_ts.to_string())
+        .append_pair("period2", &end_ts.to_string());
+
+    Ok(url)
+}
+
+fn timeseries_window() -> (i64, i64) {
+    let end_ts = Utc::now().timestamp();
+    let start_ts = Utc::now()
+        .checked_sub_signed(Duration::days(365 * 5))
+        .map_or(0, |dt| dt.timestamp());
+    (start_ts, end_ts)
 }
 
 fn timeseries_currency_evidence(
@@ -294,6 +320,125 @@ fn row_for_timestamp<'a, T>(
     }
 }
 
+fn process_statement_money_values<T>(
+    item: TimeseriesItem<'_, T>,
+    create_row: fn(Period) -> T,
+    assign_money: fn(&mut T, &str, Option<Money>),
+) -> Result<(), YfError> {
+    let TimeseriesItem {
+        key,
+        values_json,
+        rows_map,
+        timestamps,
+        prefix,
+        currency,
+        ctx,
+    } = item;
+
+    let Some(field) = key.strip_prefix(prefix) else {
+        return Ok(());
+    };
+
+    let Some(values) = parse_timeseries_values::<TimeseriesValueDecimal>(ctx, key, values_json)?
+    else {
+        return Ok(());
+    };
+
+    for (idx, timestamp) in timestamps.iter().enumerate() {
+        let row_key = format!("{field}@{timestamp}");
+        let Some(row) = row_for_timestamp(ctx, rows_map, *timestamp, row_key.clone(), create_row)?
+        else {
+            continue;
+        };
+
+        let value = values
+            .get(idx)
+            .and_then(|value| value.reported_value.and_then(|reported| reported.raw));
+        let money = optional_money_decimal(
+            ctx,
+            "timeseries.reportedValue",
+            Some(row_key),
+            currency,
+            value,
+            "statement monetary value",
+        )?;
+
+        assign_money(row, field, money);
+    }
+
+    Ok(())
+}
+
+fn process_statement_u64_values<T>(
+    item: TimeseriesItem<'_, T>,
+    create_row: fn(Period) -> T,
+    assign_value: fn(&mut T, &str, Option<u64>),
+) -> Result<(), YfError> {
+    let TimeseriesItem {
+        key,
+        values_json,
+        rows_map,
+        timestamps,
+        prefix,
+        ctx,
+        ..
+    } = item;
+
+    let Some(field) = key.strip_prefix(prefix) else {
+        return Ok(());
+    };
+
+    let Some(values) = parse_timeseries_values::<TimeseriesValueU64>(ctx, key, values_json)? else {
+        return Ok(());
+    };
+
+    for (idx, timestamp) in timestamps.iter().enumerate() {
+        let Some(row) = row_for_timestamp(
+            ctx,
+            rows_map,
+            *timestamp,
+            format!("{field}@{timestamp}"),
+            create_row,
+        )?
+        else {
+            continue;
+        };
+
+        let value = values
+            .get(idx)
+            .and_then(|value| value.reported_value.and_then(|reported| reported.raw));
+        assign_value(row, field, value);
+    }
+
+    Ok(())
+}
+
+const fn empty_income_statement_row(period: Period) -> IncomeStatementRow {
+    IncomeStatementRow {
+        period,
+        total_revenue: None,
+        gross_profit: None,
+        operating_income: None,
+        net_income: None,
+        interest_expense: None,
+        income_tax_expense: None,
+        depreciation_and_amortization: None,
+    }
+}
+
+fn assign_income_statement_money(row: &mut IncomeStatementRow, field: &str, money: Option<Money>) {
+    match field {
+        "TotalRevenue" => row.total_revenue = money,
+        "GrossProfit" => row.gross_profit = money,
+        "OperatingIncome" => row.operating_income = money,
+        "NetIncome" => row.net_income = money,
+        "InterestExpense" => row.interest_expense = money,
+        "TaxProvision" => row.income_tax_expense = money,
+        "DepreciationAndAmortization" => row.depreciation_and_amortization = money,
+        _ => {}
+    }
+}
+
 pub(super) async fn income_statement(
     client: &YfClient,
     symbol: &str,
@@ -314,92 +459,89 @@ pub(super) async fn income_statement(
     ];
     let endpoint_name = "income_statement";
 
-    let create_default_row = |period: Period| IncomeStatementRow {
-        period,
-        total_revenue: None,
-        gross_profit: None,
-        operating_income: None,
-        net_income: None,
-        interest_expense: None,
-        income_tax_expense: None,
-        depreciation_and_amortization: None,
-    };
-
-    let process_item = |key: &str,
-                        values_json: &serde_json::Value,
-                        rows_map: &mut BTreeMap<i64, IncomeStatementRow>,
-                        timestamps: &[i64],
-                        prefix: &str,
-                        currency: Option<&ResolvedCurrencyUnit>,
-                        ctx: &mut ProjectionContext|
-     -> Result<(), YfError> {
-        let Some(field) = key.strip_prefix(prefix) else {
-            return Ok(());
-        };
-
-        let Some(values) =
-            parse_timeseries_values::<TimeseriesValueDecimal>(ctx, key, values_json)?
-        else {
-            return Ok(());
-        };
-        for (i, ts) in timestamps.iter().enumerate() {
-            let Some(row) = row_for_timestamp(
-                ctx,
-                rows_map,
-                *ts,
-                format!("{field}@{ts}"),
-                create_default_row,
-            )?
-            else {
-                continue;
-            };
-
-            let value = values
-                .get(i)
-                .and_then(|v| v.reported_value.and_then(|rv| rv.raw));
-            let money = optional_money_decimal(
-                ctx,
-                "timeseries.reportedValue",
-                Some(format!("{field}@{ts}")),
-                currency,
-                value,
-                "statement monetary value",
-            )?;
-
-            match field {
-                "TotalRevenue" => row.total_revenue = money,
-                "GrossProfit" => row.gross_profit = money,
-                "OperatingIncome" => row.operating_income = money,
-                "NetIncome" => row.net_income = money,
-                "InterestExpense" => row.interest_expense = money,
-                "TaxProvision" => row.income_tax_expense = money,
-                "DepreciationAndAmortization" => row.depreciation_and_amortization = money,
-                _ => {}
-            }
-        }
-        Ok(())
-    };
-
     let result = fetch_timeseries_data(
-        client,
-        symbol,
-        quarterly,
-        override_currency,
-        cache_mode,
-        retry_override,
-        data_quality,
-        &keys,
-        &keys,
-        endpoint_name,
-        process_item,
+        TimeseriesRequest {
+            client,
+            symbol,
+            quarterly,
+            override_currency,
+            cache_mode,
+            retry_override,
+            data_quality,
+            keys: &keys,
+            monetary_keys: &keys,
+            endpoint_name,
+        },
+        |item| {
+            process_statement_money_values(
+                item,
+                empty_income_statement_row,
+                assign_income_statement_money,
+            )
+        },
     )
     .await?;
 
     Ok(result)
 }
 
-#[allow(clippy::too_many_lines)]
-#[allow(clippy::cognitive_complexity)]
+const fn empty_balance_sheet_row(period: Period) -> BalanceSheetRow {
+    BalanceSheetRow {
+        period,
+        total_assets: None,
+        total_liabilities: None,
+        total_equity: None,
+        cash: None,
+        long_term_debt: None,
+        shares_outstanding: None,
+        current_assets: None,
+        current_liabilities: None,
+        accounts_receivable: None,
+        inventory: None,
+        accounts_payable: None,
+        net_property_plant_equipment: None,
+        goodwill: None,
+        intangible_assets: None,
+    }
+}
+
+fn assign_balance_sheet_money(row: &mut BalanceSheetRow, field: &str, money: Option<Money>) {
+    match field {
+        "TotalAssets" => row.total_assets = money,
+        "TotalLiabilitiesNetMinorityInterest" => row.total_liabilities = money,
+        "StockholdersEquity" => row.total_equity = money,
+        "CashAndCashEquivalents" => row.cash = money,
+        "LongTermDebt" => row.long_term_debt = money,
+        "CurrentAssets" => row.current_assets = money,
+        "CurrentLiabilities" => row.current_liabilities = money,
+        "AccountsReceivable" => row.accounts_receivable = money,
+        "Inventory" => row.inventory = money,
+        "AccountsPayable" => row.accounts_payable = money,
+        "NetPPE" => row.net_property_plant_equipment = money,
+        "Goodwill" => row.goodwill = money,
+        "OtherIntangibleAssets" => row.intangible_assets = money,
+        _ => {}
+    }
+}
+
+fn assign_balance_sheet_shares(row: &mut BalanceSheetRow, field: &str, shares: Option<u64>) {
+    if field == "OrdinarySharesNumber" {
+        row.shares_outstanding = shares;
+    }
+}
+
+fn process_balance_sheet_item(item: TimeseriesItem<'_, BalanceSheetRow>) -> Result<(), YfError> {
+    let Some(field) = item.key.strip_prefix(item.prefix) else {
+        return Ok(());
+    };
+
+    if field == "OrdinarySharesNumber" {
+        process_statement_u64_values(item, empty_balance_sheet_row, assign_balance_sheet_shares)
+    } else {
+        process_statement_money_values(item, empty_balance_sheet_row, assign_balance_sheet_money)
+    }
+}
+
 pub(super) async fn balance_sheet(
     client: &YfClient,
     symbol: &str,
@@ -442,125 +584,46 @@ pub(super) async fn balance_sheet(
     ];
     let endpoint_name = "balance_sheet";
 
-    let create_default_row = |period: Period| BalanceSheetRow {
-        period,
-        total_assets: None,
-        total_liabilities: None,
-        total_equity: None,
-        cash: None,
-        long_term_debt: None,
-        shares_outstanding: None,
-        current_assets: None,
-        current_liabilities: None,
-        accounts_receivable: None,
-        inventory: None,
-        accounts_payable: None,
-        net_property_plant_equipment: None,
-        goodwill: None,
-        intangible_assets: None,
-    };
-
-    let process_item = |key: &str,
-                        values_json: &serde_json::Value,
-                        rows_map: &mut BTreeMap<i64, BalanceSheetRow>,
-                        timestamps: &[i64],
-                        prefix: &str,
-                        currency: Option<&ResolvedCurrencyUnit>,
-                        ctx: &mut ProjectionContext|
-     -> Result<(), YfError> {
-        let Some(field) = key.strip_prefix(prefix) else {
-            return Ok(());
-        };
-
-        if field == "OrdinarySharesNumber" {
-            let Some(values) =
-                parse_timeseries_values::<TimeseriesValueU64>(ctx, key, values_json)?
-            else {
-                return Ok(());
-            };
-            for (i, ts) in timestamps.iter().enumerate() {
-                let Some(row) = row_for_timestamp(
-                    ctx,
-                    rows_map,
-                    *ts,
-                    format!("{field}@{ts}"),
-                    create_default_row,
-                )?
-                else {
-                    continue;
-                };
-                row.shares_outstanding = values
-                    .get(i)
-                    .and_then(|v| v.reported_value.and_then(|rv| rv.raw));
-            }
-        } else {
-            let Some(values) =
-                parse_timeseries_values::<TimeseriesValueDecimal>(ctx, key, values_json)?
-            else {
-                return Ok(());
-            };
-            for (i, ts) in timestamps.iter().enumerate() {
-                let Some(row) = row_for_timestamp(
-                    ctx,
-                    rows_map,
-                    *ts,
-                    format!("{field}@{ts}"),
-                    create_default_row,
-                )?
-                else {
-                    continue;
-                };
-
-                let value = values
-                    .get(i)
-                    .and_then(|v| v.reported_value.and_then(|rv| rv.raw));
-                let money = optional_money_decimal(
-                    ctx,
-                    "timeseries.reportedValue",
-                    Some(format!("{field}@{ts}")),
-                    currency,
-                    value,
-                    "statement monetary value",
-                )?;
-
-                match field {
-                    "TotalAssets" => row.total_assets = money,
-                    "TotalLiabilitiesNetMinorityInterest" => row.total_liabilities = money,
-                    "StockholdersEquity" => row.total_equity = money,
-                    "CashAndCashEquivalents" => row.cash = money,
-                    "LongTermDebt" => row.long_term_debt = money,
-                    "CurrentAssets" => row.current_assets = money,
-                    "CurrentLiabilities" => row.current_liabilities = money,
-                    "AccountsReceivable" => row.accounts_receivable = money,
-                    "Inventory" => row.inventory = money,
-                    "AccountsPayable" => row.accounts_payable = money,
-                    "NetPPE" => row.net_property_plant_equipment = money,
-                    "Goodwill" => row.goodwill = money,
-                    "OtherIntangibleAssets" => row.intangible_assets = money,
-                    _ => {}
-                }
-            }
-        }
-        Ok(())
-    };
-
     fetch_timeseries_data(
-        client,
-        symbol,
-        quarterly,
-        override_currency,
-        cache_mode,
-        retry_override,
-        data_quality,
-        &keys,
-        &monetary_keys,
-        endpoint_name,
-        process_item,
+        TimeseriesRequest {
+            client,
+            symbol,
+            quarterly,
+            override_currency,
+            cache_mode,
+            retry_override,
+            data_quality,
+            keys: &keys,
+            monetary_keys: &monetary_keys,
+            endpoint_name,
+        },
+        process_balance_sheet_item,
     )
     .await
 }
 
-#[allow(clippy::too_many_lines)]
+const fn empty_cashflow_row(period: Period) -> CashflowRow {
+    CashflowRow {
+        period,
+        operating_cashflow: None,
+        capital_expenditures: None,
+        free_cash_flow: None,
+        net_income: None,
+        depreciation_and_amortization: None,
+    }
+}
+
+fn assign_cashflow_money(row: &mut CashflowRow, field: &str, money: Option<Money>) {
+    match field {
+        "OperatingCashFlow" => row.operating_cashflow = money,
+        "CapitalExpenditure" => row.capital_expenditures = money,
+        "FreeCashFlow" => row.free_cash_flow = money,
+        "NetIncome" => row.net_income = money,
+        "DepreciationAndAmortization" => row.depreciation_and_amortization = money,
+        _ => {}
+    }
+}
+
 pub(super) async fn cashflow(
     client: &YfClient,
     symbol: &str,
@@ -579,80 +642,20 @@ pub(super) async fn cashflow(
     ];
     let endpoint_name = "cash_flow";
 
-    let create_default_row = |period: Period| CashflowRow {
-        period,
-        operating_cashflow: None,
-        capital_expenditures: None,
-        free_cash_flow: None,
-        net_income: None,
-        depreciation_and_amortization: None,
-    };
-
-    let process_item = |key: &str,
-                        values_json: &serde_json::Value,
-                        rows_map: &mut BTreeMap<i64, CashflowRow>,
-                        timestamps: &[i64],
-                        prefix: &str,
-                        currency: Option<&ResolvedCurrencyUnit>,
-                        ctx: &mut ProjectionContext|
-     -> Result<(), YfError> {
-        let Some(field) = key.strip_prefix(prefix) else {
-            return Ok(());
-        };
-
-        let Some(values) =
-            parse_timeseries_values::<TimeseriesValueDecimal>(ctx, key, values_json)?
-        else {
-            return Ok(());
-        };
-        for (i, ts) in timestamps.iter().enumerate() {
-            let Some(row) = row_for_timestamp(
-                ctx,
-                rows_map,
-                *ts,
-                format!("{field}@{ts}"),
-                create_default_row,
-            )?
-            else {
-                continue;
-            };
-
-            let value = values
-                .get(i)
-                .and_then(|v| v.reported_value.and_then(|rv| rv.raw));
-            let money = optional_money_decimal(
-                ctx,
-                "timeseries.reportedValue",
-                Some(format!("{field}@{ts}")),
-                currency,
-                value,
-                "statement monetary value",
-            )?;
-
-            match field {
-                "OperatingCashFlow" => row.operating_cashflow = money,
-                "CapitalExpenditure" => row.capital_expenditures = money,
-                "FreeCashFlow" => row.free_cash_flow = money,
-                "NetIncome" => row.net_income = money,
-                "DepreciationAndAmortization" => row.depreciation_and_amortization = money,
-                _ => {}
-            }
-        }
-        Ok(())
-    };
-
     let mut result = fetch_timeseries_data(
-        client,
-        symbol,
-        quarterly,
-        override_currency,
-        cache_mode,
-        retry_override,
-        data_quality,
-        &keys,
-        &keys,
-        endpoint_name,
-        process_item,
+        TimeseriesRequest {
+            client,
+            symbol,
+            quarterly,
+            override_currency,
+            cache_mode,
+            retry_override,
+            data_quality,
+            keys: &keys,
+            monetary_keys: &keys,
+            endpoint_name,
+        },
+        |item| process_statement_money_values(item, empty_cashflow_row, assign_cashflow_money),
     )
     .await?;
 
