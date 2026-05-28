@@ -1,11 +1,46 @@
+use std::fmt;
+
 use thiserror::Error;
+
+use crate::core::redaction::redact_auth_query_params_in_text;
+
+/// A redacted wrapper around HTTP-client errors.
+///
+/// The underlying HTTP client can include full request URLs in its formatted
+/// errors. Store only the redacted display text so `YfError` display/debug
+/// output cannot leak crumb or auth-like query parameters.
+pub struct RedactedHttpError {
+    message: String,
+}
+
+impl RedactedHttpError {
+    pub(crate) fn new(error: &reqwest::Error) -> Self {
+        Self {
+            message: redact_auth_query_params_in_text(&error.to_string()),
+        }
+    }
+}
+
+impl fmt::Display for RedactedHttpError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+
+impl fmt::Debug for RedactedHttpError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
+    }
+}
+
+impl std::error::Error for RedactedHttpError {}
 
 /// The primary error type for the `yfinance-rs` crate.
 #[derive(Debug, Error)]
 pub enum YfError {
     /// An error originating from the underlying HTTP client (`reqwest`).
     #[error("HTTP error: {0}")]
-    Http(#[from] reqwest::Error),
+    Http(RedactedHttpError),
 
     /// An error related to WebSocket communication.
     #[error("WebSocket error: {0}")]
@@ -100,6 +135,12 @@ pub enum YfError {
     /// An error indicating that the provided date range is invalid (e.g., start date after end date).
     #[error("Invalid date range: start date must be before end date")]
     InvalidDates,
+}
+
+impl From<reqwest::Error> for YfError {
+    fn from(e: reqwest::Error) -> Self {
+        Self::Http(RedactedHttpError::new(&e))
+    }
 }
 
 impl From<tokio_tungstenite::tungstenite::Error> for YfError {

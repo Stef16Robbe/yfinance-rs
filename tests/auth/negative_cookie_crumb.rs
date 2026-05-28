@@ -70,10 +70,11 @@ async fn invalid_crumb_body_is_an_error() {
         when.method(GET).path("/consent");
         then.status(200).header("set-cookie", "A=B; Path=/");
     });
-    // Crumb endpoint returns "{}" which should be rejected
+    // Crumb endpoint returns malformed credential text, which should be rejected
+    // without echoing the credential back in the public error.
     let _crumb = server.mock(|when, then| {
         when.method(GET).path("/v1/test/getcrumb");
-        then.status(200).body("{}");
+        then.status(200).body("secret-crumb<");
     });
 
     let client = YfClient::builder()
@@ -91,7 +92,10 @@ async fn invalid_crumb_body_is_an_error() {
         .unwrap_err();
 
     match err {
-        YfError::Auth(s) => assert!(s.contains("Received invalid crumb"), "unexpected: {s}"),
+        YfError::Auth(s) => {
+            assert!(s.contains("Received invalid crumb"), "unexpected: {s}");
+            assert!(!s.contains("secret-crumb"), "crumb leaked in error: {s}");
+        }
         other => panic!("expected Auth error, got {other:?}"),
     }
 }

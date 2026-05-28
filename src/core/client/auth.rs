@@ -81,7 +81,7 @@ impl super::YfClient {
         let crumb = crumb.trim();
 
         if crumb.is_empty() || crumb.contains('{') || crumb.contains('<') {
-            return Err(YfError::Auth(format!("Received invalid crumb: {crumb}")));
+            return Err(YfError::Auth("Received invalid crumb response".into()));
         }
 
         self.state.write().await.crumb = Some(crumb.to_owned());

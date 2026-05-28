@@ -327,7 +327,10 @@ impl YfClient {
                 url = %{
                     req.try_clone()
                         .and_then(|builder| builder.build().ok())
-                        .map_or_else(|| "<uncloneable>".to_string(), |request| request.url().to_string())
+                        .map_or_else(
+                            || "<uncloneable>".to_string(),
+                            |request| crate::core::redaction::RedactedUrl::new(request.url()).to_string(),
+                        )
                 }
             )
         )
@@ -389,7 +392,7 @@ impl YfClient {
                                 tracing::Level::INFO,
                                 attempt,
                                 backoff_ms = backoff.as_secs_f64() * 1000.0,
-                                error = %e,
+                                error = %crate::core::redaction::RedactedDisplay::new(&e),
                                 timeout = e.is_timeout(),
                                 connect = e.is_connect(),
                                 "retrying after error"

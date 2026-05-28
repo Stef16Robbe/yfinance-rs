@@ -41,6 +41,8 @@ async fn quote_summary_http_error_maps_status_and_is_not_cached() {
         YfError::ServerError { status, url } => {
             assert_eq!(status, 500);
             assert!(url.contains("/v10/finance/quoteSummary/"));
+            assert!(url.contains("crumb=REDACTED"));
+            assert!(!url.contains("crumb=crumb"));
         }
         other => panic!("expected ServerError, got {other:?}"),
     }
@@ -120,6 +122,8 @@ async fn fundamentals_timeseries_http_error_maps_status_and_is_not_cached() {
     match err {
         YfError::RateLimited { url } => {
             assert!(url.contains("/ws/fundamentals-timeseries/"));
+            assert!(url.contains("crumb=REDACTED"));
+            assert!(!url.contains("crumb=crumb"));
         }
         other => panic!("expected RateLimited, got {other:?}"),
     }

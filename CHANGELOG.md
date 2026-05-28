@@ -63,6 +63,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Crumb-auth retries now evict cached invalid-crumb response bodies, bypass cache reads during the fresh-credential retry, and return an auth error if Yahoo still returns an invalid-crumb body after refresh.
 - Yahoo auth now sends the stored cookie explicitly during crumb acquisition and crumb-authenticated requests, so `custom_client(reqwest::Client::new())` no longer depends on `reqwest` cookie storage.
 - Crumb acquisition now rejects non-success HTTP statuses before reading the body and trims successful crumb bodies before caching them.
+- Status errors, HTTP-client errors, and tracing URL fields now redact crumb and auth-like query parameters before formatting.
 - Build Yahoo symbol path URLs with one percent-encoding helper instead of `Url::join`, preventing symbols containing URL syntax from changing the request target.
 - Expired URL cache entries are now pruned opportunistically on cache reads and writes, and stale crumb-authenticated cache keys are removed when Yahoo credentials are refreshed.
 - `Ticker`-level cache and retry settings now propagate consistently through history builders, action helpers, and profile loading inside `Ticker::info()`.

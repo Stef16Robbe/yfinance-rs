@@ -7,6 +7,7 @@ use url::Url;
 use crate::core::{
     YfClient, YfError,
     client::{CacheEndpoint, CacheMode, RetryConfig},
+    redaction::RedactedUrl,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -73,7 +74,7 @@ pub async fn get_text(
 
 #[must_use]
 pub fn status_error_code(status: u16, url: &Url) -> YfError {
-    let url = url.to_string();
+    let url = RedactedUrl::new(url).to_string();
     match status {
         404 => YfError::NotFound { url },
         429 => YfError::RateLimited { url },
@@ -100,7 +101,7 @@ pub async fn get_success_text(
 
     get_text(resp, endpoint, symbol, ext)
         .await
-        .map_err(YfError::Http)
+        .map_err(YfError::from)
 }
 
 pub async fn fetch_text(
