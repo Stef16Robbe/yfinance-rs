@@ -49,6 +49,14 @@ struct CacheStore {
     default_ttl: Duration,
 }
 
+fn retain_unexpired_entries(map: &mut HashMap<String, CacheEntry>, now: Instant) {
+    map.retain(|_, entry| now <= entry.expires_at);
+}
+
+fn cache_key_has_crumb_query(key: &str) -> bool {
+    Url::parse(key).is_ok_and(|url| url.query_pairs().any(|(name, _)| name == "crumb"))
+}
+
 #[derive(Debug, Default)]
 struct ClientState {
     cookie: Option<String>,
@@ -145,11 +153,22 @@ impl YfClient {
     pub(crate) async fn cache_get(&self, url: &Url) -> Option<String> {
         let store = self.cache.as_ref()?;
         let key = url.as_str().to_string();
-        if let Some(entry) = store.map.read().await.get(&key)
-            && Instant::now() <= entry.expires_at
+
+        let now = Instant::now();
         {
-            return Some(entry.body.clone());
+            let guard = store.map.read().await;
+            match guard.get(&key) {
+                Some(entry) if now <= entry.expires_at => return Some(entry.body.clone()),
+                Some(_) => {}
+                None => return None,
+            }
         }
+
+        let mut guard = store.map.write().await;
+        if guard.get(&key).is_some_and(|entry| now > entry.expires_at) {
+            guard.remove(&key);
+        }
+
         None
     }
 
@@ -160,13 +179,22 @@ impl YfClient {
         };
         let key = url.as_str().to_string();
         let ttl = ttl_override.unwrap_or(store.default_ttl);
-        let expires_at = Instant::now() + ttl;
+        let now = Instant::now();
+        let expires_at = now + ttl;
         let entry = CacheEntry {
             body: body.to_string(),
             expires_at,
         };
         let mut guard = store.map.write().await;
+        retain_unexpired_entries(&mut guard, now);
         guard.insert(key, entry);
+    }
+
+    pub(crate) async fn clear_crumb_cache_entries(&self) {
+        if let Some(store) = &self.cache {
+            let mut guard = store.map.write().await;
+            guard.retain(|key, _| !cache_key_has_crumb_query(key));
+        }
     }
 
     // -------- instrument cache (async) --------
@@ -833,5 +861,105 @@ fn compute_backoff_duration(b: &Backoff, attempt: u32) -> Duration {
             }
             d
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn cached_client() -> YfClient {
+        YfClient::builder()
+            .cache_ttl(Duration::from_mins(1))
+            .build()
+            .expect("client builds")
+    }
+
+    fn test_url(url: &str) -> Url {
+        Url::parse(url).expect("valid test URL")
+    }
+
+    fn expired_at() -> Instant {
+        Instant::now()
+            .checked_sub(Duration::from_secs(1))
+            .expect("instant supports recent past")
+    }
+
+    async fn insert_cache_entry(client: &YfClient, url: &Url, body: &str, expires_at: Instant) {
+        let store = client.cache.as_ref().expect("cache is enabled");
+        store.map.write().await.insert(
+            url.as_str().to_string(),
+            CacheEntry {
+                body: body.to_string(),
+                expires_at,
+            },
+        );
+    }
+
+    #[tokio::test]
+    async fn cache_get_removes_expired_entry() {
+        let client = cached_client();
+        let url = test_url("https://example.test/data?symbol=AAPL");
+
+        insert_cache_entry(&client, &url, "stale", expired_at()).await;
+
+        assert!(client.cache_get(&url).await.is_none());
+
+        let has_entry = {
+            let store = client.cache.as_ref().expect("cache is enabled");
+            let guard = store.map.read().await;
+            guard.contains_key(url.as_str())
+        };
+        assert!(!has_entry);
+    }
+
+    #[tokio::test]
+    async fn cache_put_prunes_expired_entries() {
+        let client = cached_client();
+        let expired_url = test_url("https://example.test/old?symbol=AAPL");
+        let fresh_url = test_url("https://example.test/new?symbol=MSFT");
+
+        insert_cache_entry(&client, &expired_url, "stale", expired_at()).await;
+        client.cache_put(&fresh_url, "fresh", None).await;
+
+        let (len, has_expired, has_fresh) = {
+            let store = client.cache.as_ref().expect("cache is enabled");
+            let guard = store.map.read().await;
+            (
+                guard.len(),
+                guard.contains_key(expired_url.as_str()),
+                guard.contains_key(fresh_url.as_str()),
+            )
+        };
+        assert_eq!(len, 1);
+        assert!(!has_expired);
+        assert!(has_fresh);
+    }
+
+    #[tokio::test]
+    async fn clear_crumb_removes_crumb_cache_entries() {
+        let client = cached_client();
+        let plain_url = test_url("https://example.test/v7/finance/quote?symbols=AAPL");
+        let crumb_url = test_url("https://example.test/v7/finance/quote?symbols=AAPL&crumb=stale");
+
+        client.cache_put(&plain_url, "plain", None).await;
+        client.cache_put(&crumb_url, "with crumb", None).await;
+        client.state.write().await.crumb = Some("stale".to_string());
+
+        client.clear_crumb().await;
+
+        let (len, has_plain, has_crumb) = {
+            let store = client.cache.as_ref().expect("cache is enabled");
+            let guard = store.map.read().await;
+            (
+                guard.len(),
+                guard.contains_key(plain_url.as_str()),
+                guard.contains_key(crumb_url.as_str()),
+            )
+        };
+        assert_eq!(len, 1);
+        assert!(has_plain);
+        assert!(!has_crumb);
+        assert!(client.crumb().await.is_none());
     }
 }

@@ -29,8 +29,14 @@ impl super::YfClient {
     }
 
     pub(crate) async fn clear_crumb(&self) {
-        let mut state = self.state.write().await;
-        state.crumb = None;
+        let had_crumb = {
+            let mut state = self.state.write().await;
+            state.crumb.take().is_some()
+        };
+
+        if had_crumb {
+            self.clear_crumb_cache_entries().await;
+        }
     }
 
     pub(crate) async fn crumb(&self) -> Option<String> {

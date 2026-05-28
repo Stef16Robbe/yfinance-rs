@@ -46,6 +46,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Centralized Yahoo crumb-auth retries so optional- and required-crumb endpoints clear stale cached crumbs and reacquire credentials when authenticated responses return 401/403, including quote v7, options, search, screener, quoteSummary, and fundamentals-timeseries.
 - Yahoo auth now sends the stored cookie explicitly during crumb acquisition and crumb-authenticated requests, so `custom_client(reqwest::Client::new())` no longer depends on `reqwest` cookie storage.
 - Build Yahoo symbol path URLs with one percent-encoding helper instead of `Url::join`, preventing symbols containing URL syntax from changing the request target.
+- Expired URL cache entries are now pruned opportunistically on cache reads and writes, and stale crumb-authenticated cache keys are removed when Yahoo credentials are refreshed.
 
 ### Changed
 
