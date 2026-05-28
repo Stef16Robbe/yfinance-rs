@@ -4,7 +4,7 @@ use url::Url;
 use crate::{
     YfClient, YfError,
     core::{
-        client::{CacheMode, RetryConfig},
+        client::{CacheMode, RetryConfig, SymbolEndpoint},
         conversions::{decimal_from_f64, string_to_asset_kind, string_to_exchange},
         currency_resolver::{CurrencyHints, ResolvedCurrencyUnit, TradingCurrencyEvidence},
         net,
@@ -204,9 +204,7 @@ async fn fetch_options_raw(
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
 ) -> Result<(String, Url), YfError> {
-    let base = client.base_options_v7();
-
-    let mut url = base.join(symbol)?;
+    let mut url = client.symbol_url(SymbolEndpoint::OptionsV7, symbol)?;
     {
         let mut qp = url.query_pairs_mut();
         if let Some(d) = date {

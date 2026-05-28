@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, btree_map::Entry};
 use crate::{
     core::{
         YfClient, YfError,
-        client::{CacheMode, RetryConfig},
+        client::{CacheMode, RetryConfig, SymbolEndpoint},
         conversions::{i64_to_datetime, string_to_period},
         currency_resolver::{CurrencyHints, ReportingCurrencyEvidence, ResolvedCurrencyUnit},
         wire::{RawNum, RawNumU64},
@@ -75,7 +75,7 @@ where
         .checked_sub_signed(Duration::days(365 * 5))
         .map_or(0, |dt| dt.timestamp());
 
-    let mut url = client.base_timeseries().join(symbol)?;
+    let mut url = client.symbol_url(SymbolEndpoint::Timeseries, symbol)?;
     url.query_pairs_mut()
         .append_pair("symbol", symbol)
         .append_pair("type", &type_str)
@@ -730,7 +730,7 @@ pub(super) async fn shares(
         "annualBasicAverageShares"
     };
 
-    let mut url = client.base_timeseries().join(symbol)?;
+    let mut url = client.symbol_url(SymbolEndpoint::Timeseries, symbol)?;
     url.query_pairs_mut()
         .append_pair("symbol", symbol)
         .append_pair("type", type_key)

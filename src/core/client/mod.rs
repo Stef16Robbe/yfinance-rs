@@ -4,11 +4,13 @@
 mod auth;
 mod constants;
 mod retry;
+mod urls;
 
 use crate::core::YfError;
 use crate::core::client::constants::DEFAULT_BASE_INSIDER_SEARCH;
 use crate::core::currency_resolver::{CurrencyCacheKey, CurrencyHints, ResolvedCurrency};
 pub use retry::{Backoff, CacheMode, RetryConfig};
+pub(crate) use urls::SymbolEndpoint;
 
 use constants::{
     DEFAULT_BASE_CHART, DEFAULT_BASE_QUOTE, DEFAULT_BASE_QUOTE_API, DEFAULT_COOKIE_URL,
@@ -113,23 +115,8 @@ impl YfClient {
         &self.user_agent
     }
 
-    pub(crate) const fn base_chart(&self) -> &Url {
-        &self.base_chart
-    }
-
-    pub(crate) const fn base_quote(&self) -> &Url {
-        &self.base_quote
-    }
-    pub(crate) const fn base_quote_api(&self) -> &Url {
-        &self.base_quote_api
-    }
-
     pub(crate) const fn base_quote_v7(&self) -> &Url {
         &self.base_quote_v7
-    }
-
-    pub(crate) const fn base_options_v7(&self) -> &Url {
-        &self.base_options_v7
     }
 
     pub(crate) const fn base_stream(&self) -> &Url {
@@ -142,10 +129,6 @@ impl YfClient {
 
     pub(crate) const fn base_insider_search(&self) -> &Url {
         &self.base_insider_search
-    }
-
-    pub(crate) const fn base_timeseries(&self) -> &Url {
-        &self.base_timeseries
     }
 
     #[cfg(feature = "test-mode")]

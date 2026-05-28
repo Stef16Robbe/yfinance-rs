@@ -1,4 +1,4 @@
-use crate::core::client::{CacheMode, RetryConfig};
+use crate::core::client::{CacheMode, RetryConfig, SymbolEndpoint};
 use crate::history::wire::{Events, MetaNode, QuoteBlock};
 
 pub struct Fetched {
@@ -21,7 +21,7 @@ pub async fn fetch_chart(
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
 ) -> Result<Fetched, crate::core::YfError> {
-    let mut url = client.base_chart().join(symbol)?;
+    let mut url = client.symbol_url(SymbolEndpoint::Chart, symbol)?;
     {
         let mut qp = url.query_pairs_mut();
 

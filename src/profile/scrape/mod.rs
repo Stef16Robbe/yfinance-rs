@@ -1,6 +1,9 @@
 //! Scrape the Yahoo quote HTML and extract profile data.
 
-use crate::{YfClient, YfError, core::currency_resolver::CurrencyHints};
+use crate::{
+    YfClient, YfError,
+    core::{client::SymbolEndpoint, currency_resolver::CurrencyHints},
+};
 use paft::domain::Isin;
 use serde::Deserialize;
 
@@ -17,7 +20,7 @@ use extract::extract_bootstrap_json;
 pub async fn load_from_scrape(client: &YfClient, symbol: &str) -> Result<Profile, YfError> {
     let debug = std::env::var("YF_DEBUG").ok().as_deref() == Some("1");
 
-    let mut url = client.base_quote().join(symbol)?;
+    let mut url = client.symbol_url(SymbolEndpoint::Quote, symbol)?;
     {
         let mut qp = url.query_pairs_mut();
         qp.append_pair("p", symbol);

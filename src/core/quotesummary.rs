@@ -1,6 +1,6 @@
 use crate::core::{
     YfClient, YfError,
-    client::{CacheMode, RetryConfig},
+    client::{CacheMode, RetryConfig, SymbolEndpoint},
     net,
 };
 use serde::Deserialize;
@@ -49,7 +49,7 @@ pub async fn fetch(
         cache_mode: CacheMode,
         retry_override: Option<&RetryConfig>,
     ) -> Result<V10Envelope, YfError> {
-        let mut url = client.base_quote_api().join(symbol)?;
+        let mut url = client.symbol_url(SymbolEndpoint::QuoteSummary, symbol)?;
         url.query_pairs_mut().append_pair("modules", modules);
 
         // Create a sanitized key from module names for a unique fixture filename.
