@@ -79,6 +79,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - README examples no longer advertise direct use of conversion helpers such as `money_to_f64`.
 - Build-time protobuf generation now uses a vendored `protoc` binary instead of relying on a system installation.
 - Currency auto-resolution is now source-aware and typed by purpose (`Trading`, `Reporting`, `CorporateAction`, and `AnalystEstimate`). Direct Yahoo evidence wins over quote/quoteSummary enrichment, listing inference, and profile-country heuristics.
+- Profile-country currency inference now uses one country/currency alias table for exact and fuzzy matches instead of maintaining a duplicate contains-based fallback.
 - Internal currency resolution now uses purpose-specific evidence types rather than a generic raw currency-code argument, reducing the chance that endpoint-specific fields mutate the wrong contextual cache.
 - `None` currency overrides continue to auto-enrich by querying Yahoo for stronger currency evidence when an endpoint omits currency data. `Some(currency)` overrides remain per-call only and no longer mutate inferred currency caches.
 - `YfClient::clear_cache()` now clears URL response cache, currency hint cache, resolved currency cache, and instrument cache; `invalidate_cache_entry()` remains URL-cache only.

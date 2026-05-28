@@ -2,14 +2,16 @@
 
 use std::{collections::HashMap, sync::LazyLock};
 
-use paft::money::{Currency, IsoCurrency};
+use paft::money::Currency;
 
-/// Normalized country → currency code pairs.
+/// Normalized country/country-alias → currency code pairs.
 ///
 /// Keys must be uppercase and ASCII; values are ISO 4217 currency codes.
-const COUNTRY_TO_CURRENCY_RAW: &[(&str, &str)] = &[
+const COUNTRY_CURRENCY_RULES: &[(&str, &str)] = &[
     ("UNITED STATES", "USD"),
     ("UNITED STATES OF AMERICA", "USD"),
+    ("U S", "USD"),
+    ("U S A", "USD"),
     ("US", "USD"),
     ("USA", "USD"),
     ("CANADA", "CAD"),
@@ -34,19 +36,24 @@ const COUNTRY_TO_CURRENCY_RAW: &[(&str, &str)] = &[
     ("DOMINICAN REPUBLIC", "DOP"),
     ("JAMAICA", "JMD"),
     ("TRINIDAD AND TOBAGO", "TTD"),
+    ("TRINIDAD", "TTD"),
     ("BARBADOS", "BBD"),
     ("BAHAMAS", "BSD"),
     ("BERMUDA", "BMD"),
     ("CAYMAN ISLANDS", "KYD"),
+    ("CAYMAN", "KYD"),
     ("ARUBA", "AWG"),
     ("CURACAO", "ANG"),
     ("BRITISH VIRGIN ISLANDS", "USD"),
     ("PUERTO RICO", "USD"),
+    ("DOMINICAN", "DOP"),
     ("UNITED KINGDOM", "GBP"),
     ("ENGLAND", "GBP"),
     ("SCOTLAND", "GBP"),
     ("WALES", "GBP"),
     ("NORTHERN IRELAND", "GBP"),
+    ("EUROPEAN UNION", "EUR"),
+    ("EURO AREA", "EUR"),
     ("IRELAND", "EUR"),
     ("FRANCE", "EUR"),
     ("GERMANY", "EUR"),
@@ -66,6 +73,7 @@ const COUNTRY_TO_CURRENCY_RAW: &[(&str, &str)] = &[
     ("POLAND", "PLN"),
     ("CZECH REPUBLIC", "CZK"),
     ("CZECHIA", "CZK"),
+    ("CZECH", "CZK"),
     ("HUNGARY", "HUF"),
     ("SLOVAKIA", "EUR"),
     ("SLOVENIA", "EUR"),
@@ -101,6 +109,7 @@ const COUNTRY_TO_CURRENCY_RAW: &[(&str, &str)] = &[
     ("HONG KONG", "HKD"),
     ("MACAU", "MOP"),
     ("TAIWAN", "TWD"),
+    ("KOREA", "KRW"),
     ("JAPAN", "JPY"),
     ("SOUTH KOREA", "KRW"),
     ("REPUBLIC OF KOREA", "KRW"),
@@ -127,12 +136,14 @@ const COUNTRY_TO_CURRENCY_RAW: &[(&str, &str)] = &[
     ("NEW ZEALAND", "NZD"),
     ("FIJI", "FJD"),
     ("PAPUA NEW GUINEA", "PGK"),
+    ("PAPUA", "PGK"),
     ("NEW CALEDONIA", "XPF"),
     ("FRENCH POLYNESIA", "XPF"),
     ("SAMOA", "WST"),
     ("TONGA", "TOP"),
     ("VANUATU", "VUV"),
     ("SOLOMON ISLANDS", "SBD"),
+    ("SOLOMON", "SBD"),
     ("EAST TIMOR", "USD"),
     ("TIMOR-LESTE", "USD"),
     ("UNITED ARAB EMIRATES", "AED"),
@@ -162,6 +173,7 @@ const COUNTRY_TO_CURRENCY_RAW: &[(&str, &str)] = &[
     ("COTE DIVOIRE", "XOF"),
     ("COTE D IVOIRE", "XOF"),
     ("COTE D'IVOIRE", "XOF"),
+    ("IVORY COAST", "XOF"),
     ("SENEGAL", "XOF"),
     ("MALI", "XOF"),
     ("BENIN", "XOF"),
@@ -173,7 +185,12 @@ const COUNTRY_TO_CURRENCY_RAW: &[(&str, &str)] = &[
     ("CAMEROON", "XAF"),
     ("CHAD", "XAF"),
     ("CENTRAL AFRICAN REPUBLIC", "XAF"),
+    ("DEMOCRATIC REPUBLIC OF THE CONGO", "CDF"),
+    ("DEMOCRATIC REPUBLIC OF CONGO", "CDF"),
+    ("CONGO KINSHASA", "CDF"),
+    ("DR CONGO", "CDF"),
     ("REPUBLIC OF THE CONGO", "XAF"),
+    ("CONGO BRAZZAVILLE", "XAF"),
     ("CONGO", "XAF"),
     ("GABON", "XAF"),
     ("EQUATORIAL GUINEA", "XAF"),
@@ -215,16 +232,33 @@ const COUNTRY_TO_CURRENCY_RAW: &[(&str, &str)] = &[
     ("SAINT KITTS AND NEVIS", "XCD"),
 ];
 
-/// Precomputed lookup table using `COUNTRY_TO_CURRENCY_RAW`.
+/// Precomputed exact lookup table using `COUNTRY_CURRENCY_RULES`.
 static COUNTRY_TO_CURRENCY: LazyLock<HashMap<&'static str, Currency>> = LazyLock::new(|| {
     let mut map = HashMap::new();
-    for (country, code) in COUNTRY_TO_CURRENCY_RAW {
-        if let Ok(parsed) = (*code).parse() {
-            map.insert(*country, parsed);
-        }
+    for (country, code) in COUNTRY_CURRENCY_RULES {
+        map.insert(*country, parse_currency_code(code));
     }
     map
 });
+
+/// Precomputed fuzzy lookup table using `COUNTRY_CURRENCY_RULES`.
+static FUZZY_COUNTRY_TO_CURRENCY: LazyLock<Vec<(&'static str, Currency)>> = LazyLock::new(|| {
+    let mut rules = COUNTRY_CURRENCY_RULES
+        .iter()
+        .map(|(country, code)| (*country, parse_currency_code(code)))
+        .collect::<Vec<_>>();
+
+    rules.sort_unstable_by(|(left, _), (right, _)| {
+        right.len().cmp(&left.len()).then_with(|| left.cmp(right))
+    });
+
+    rules
+});
+
+fn parse_currency_code(code: &str) -> Currency {
+    code.parse()
+        .unwrap_or_else(|_| panic!("invalid currency code {code} in country currency table"))
+}
 
 /// Normalize a country string to an uppercase ASCII key.
 fn normalize_country(country: &str) -> Option<String> {
@@ -285,376 +319,69 @@ pub fn currency_for_country(country: &str) -> Option<Currency> {
 }
 
 fn heuristic_currency_match(normalized: &str) -> Option<Currency> {
-    match_americas(normalized)
-        .or_else(|| match_europe(normalized))
-        .or_else(|| match_asia_pacific(normalized))
-        .or_else(|| match_mena(normalized))
-        .or_else(|| match_caucasus_central_asia(normalized))
-        .or_else(|| match_africa(normalized))
+    FUZZY_COUNTRY_TO_CURRENCY
+        .iter()
+        .find_map(|(country, currency)| {
+            contains_country_key(normalized, country).then(|| currency.clone())
+        })
 }
 
-fn match_americas(s: &str) -> Option<Currency> {
-    let c = |n| s.contains(n);
-    if c("UNITED STATES") {
-        return Some(Currency::Iso(IsoCurrency::USD));
-    }
-    if c("CANADA") {
-        return Some(Currency::Iso(IsoCurrency::CAD));
-    }
-    if c("MEXICO") {
-        return Some(Currency::Iso(IsoCurrency::MXN));
-    }
-    if c("BRAZIL") {
-        return Some(Currency::Iso(IsoCurrency::BRL));
-    }
-    if c("ARGENTINA") {
-        return "ARS".parse().ok();
-    }
-    if c("CHILE") {
-        return "CLP".parse().ok();
-    }
-    if c("COLOMBIA") {
-        return "COP".parse().ok();
-    }
-    if c("PERU") {
-        return "PEN".parse().ok();
-    }
-    if c("URUGUAY") {
-        return "UYU".parse().ok();
-    }
-    if c("PARAGUAY") {
-        return "PYG".parse().ok();
-    }
-    if c("BOLIVIA") {
-        return "BOB".parse().ok();
-    }
-    if c("VENEZUELA") {
-        return "VES".parse().ok();
-    }
-    if c("PANAMA") || c("ECUADOR") || c("EL SALVADOR") {
-        return Some(Currency::Iso(IsoCurrency::USD));
-    }
-    if c("BAHAMAS") {
-        return "BSD".parse().ok();
-    }
-    if c("CAYMAN") {
-        return "KYD".parse().ok();
-    }
-    if c("BERMUDA") {
-        return "BMD".parse().ok();
-    }
-    if c("TRINIDAD") {
-        return "TTD".parse().ok();
-    }
-    if c("JAMAICA") {
-        return "JMD".parse().ok();
-    }
-    if c("BARBADOS") {
-        return "BBD".parse().ok();
-    }
-    if c("DOMINICAN") {
-        return "DOP".parse().ok();
-    }
-    Some(None?).or(None)
+fn contains_country_key(normalized: &str, key: &str) -> bool {
+    normalized.match_indices(key).any(|(start, _)| {
+        let end = start + key.len();
+        let bytes = normalized.as_bytes();
+        is_word_boundary(bytes, start) && is_word_boundary(bytes, end)
+    })
 }
 
-fn match_europe(s: &str) -> Option<Currency> {
-    let c = |n| s.contains(n);
-    if c("UNITED KINGDOM") || c("ENGLAND") || c("SCOTLAND") {
-        return Some(Currency::Iso(IsoCurrency::GBP));
-    }
-    if c("EUROPEAN UNION") || c("EURO AREA") {
-        return Some(Currency::Iso(IsoCurrency::EUR));
-    }
-    if c("SWITZERLAND") {
-        return Some(Currency::Iso(IsoCurrency::CHF));
-    }
-    if c("NORWAY") {
-        return Some(Currency::Iso(IsoCurrency::NOK));
-    }
-    if c("SWEDEN") {
-        return Some(Currency::Iso(IsoCurrency::SEK));
-    }
-    if c("DENMARK") {
-        return Some(Currency::Iso(IsoCurrency::DKK));
-    }
-    if c("ICELAND") {
-        return "ISK".parse().ok();
-    }
-    if c("POLAND") {
-        return Some(Currency::Iso(IsoCurrency::PLN));
-    }
-    if c("CZECH") {
-        return Some(Currency::Iso(IsoCurrency::CZK));
-    }
-    if c("HUNGARY") {
-        return Some(Currency::Iso(IsoCurrency::HUF));
-    }
-    if c("ROMANIA") {
-        return "RON".parse().ok();
-    }
-    if c("BULGARIA") {
-        return "BGN".parse().ok();
-    }
-    if c("UKRAINE") {
-        return "UAH".parse().ok();
-    }
-    if c("BELARUS") {
-        return "BYN".parse().ok();
-    }
-    if c("SERBIA") {
-        return "RSD".parse().ok();
-    }
-    if c("TURKEY") {
-        return Some(Currency::Iso(IsoCurrency::TRY));
-    }
-    Some(None?).or(None)
+fn is_word_boundary(bytes: &[u8], index: usize) -> bool {
+    index == 0 || index == bytes.len() || bytes[index - 1] == b' ' || bytes[index] == b' '
 }
 
-fn match_asia_pacific(s: &str) -> Option<Currency> {
-    let c = |n| s.contains(n);
-    if c("HONG KONG") {
-        return Some(Currency::Iso(IsoCurrency::HKD));
-    }
-    if c("MACAU") {
-        return "MOP".parse().ok();
-    }
-    if c("TAIWAN") {
-        return "TWD".parse().ok();
-    }
-    if c("KOREA") {
-        return Some(Currency::Iso(IsoCurrency::KRW));
-    }
-    if c("JAPAN") {
-        return Some(Currency::Iso(IsoCurrency::JPY));
-    }
-    if c("CHINA") {
-        return Some(Currency::Iso(IsoCurrency::CNY));
-    }
-    if c("INDIA") {
-        return Some(Currency::Iso(IsoCurrency::INR));
-    }
-    if c("SINGAPORE") {
-        return Some(Currency::Iso(IsoCurrency::SGD));
-    }
-    if c("MALAYSIA") {
-        return Some(Currency::Iso(IsoCurrency::MYR));
-    }
-    if c("INDONESIA") {
-        return Some(Currency::Iso(IsoCurrency::IDR));
-    }
-    if c("PHILIPPINES") {
-        return Some(Currency::Iso(IsoCurrency::PHP));
-    }
-    if c("VIETNAM") {
-        return Some(Currency::Iso(IsoCurrency::VND));
-    }
-    if c("THAILAND") {
-        return Some(Currency::Iso(IsoCurrency::THB));
-    }
-    if c("LAOS") {
-        return "LAK".parse().ok();
-    }
-    if c("CAMBODIA") {
-        return "KHR".parse().ok();
-    }
-    if c("BRUNEI") {
-        return "BND".parse().ok();
-    }
-    if c("MONGOLIA") {
-        return "MNT".parse().ok();
-    }
-    if c("AUSTRALIA") {
-        return Some(Currency::Iso(IsoCurrency::AUD));
-    }
-    if c("NEW ZEALAND") {
-        return Some(Currency::Iso(IsoCurrency::NZD));
-    }
-    if c("FIJI") {
-        return "FJD".parse().ok();
-    }
-    if c("SAMOA") {
-        return "WST".parse().ok();
-    }
-    if c("TONGA") {
-        return "TOP".parse().ok();
-    }
-    if c("VANUATU") {
-        return "VUV".parse().ok();
-    }
-    if c("SOLOMON") {
-        return "SBD".parse().ok();
-    }
-    if c("PAPUA") {
-        return "PGK".parse().ok();
-    }
-    Some(None?).or(None)
-}
+#[cfg(test)]
+mod tests {
+    use super::currency_for_country;
 
-fn match_mena(s: &str) -> Option<Currency> {
-    let c = |n| s.contains(n);
-    if c("ISRAEL") {
-        return Some(Currency::Iso(IsoCurrency::ILS));
+    fn currency_code(country: &str) -> Option<String> {
+        currency_for_country(country).map(|currency| currency.to_string())
     }
-    if c("SAUDI ARABIA") {
-        return "SAR".parse().ok();
-    }
-    if c("UNITED ARAB EMIRATES") {
-        return "AED".parse().ok();
-    }
-    if c("QATAR") {
-        return "QAR".parse().ok();
-    }
-    if c("KUWAIT") {
-        return "KWD".parse().ok();
-    }
-    if c("BAHRAIN") {
-        return "BHD".parse().ok();
-    }
-    if c("OMAN") {
-        return "OMR".parse().ok();
-    }
-    if c("EGYPT") {
-        return "EGP".parse().ok();
-    }
-    if c("JORDAN") {
-        return "JOD".parse().ok();
-    }
-    if c("LEBANON") {
-        return "LBP".parse().ok();
-    }
-    if c("IRAQ") {
-        return "IQD".parse().ok();
-    }
-    if c("IRAN") {
-        return "IRR".parse().ok();
-    }
-    if c("AFGHANISTAN") {
-        return "AFN".parse().ok();
-    }
-    if c("SYRIA") {
-        return "SYP".parse().ok();
-    }
-    if c("YEMEN") {
-        return "YER".parse().ok();
-    }
-    Some(None?).or(None)
-}
 
-fn match_caucasus_central_asia(s: &str) -> Option<Currency> {
-    let c = |n| s.contains(n);
-    if c("GEORGIA") {
-        return "GEL".parse().ok();
+    #[test]
+    fn exact_country_lookup_uses_country_currency_table() {
+        assert_eq!(currency_code("Italy").as_deref(), Some("EUR"));
+        assert_eq!(currency_code("United States").as_deref(), Some("USD"));
+        assert_eq!(currency_code("Cote d'Ivoire").as_deref(), Some("XOF"));
     }
-    if c("ARMENIA") {
-        return "AMD".parse().ok();
-    }
-    if c("AZERBAIJAN") {
-        return "AZN".parse().ok();
-    }
-    if c("KAZAKHSTAN") {
-        return "KZT".parse().ok();
-    }
-    if c("UZBEKISTAN") {
-        return "UZS".parse().ok();
-    }
-    if c("TURKMENISTAN") {
-        return "TMT".parse().ok();
-    }
-    if c("KYRGYZSTAN") {
-        return "KGS".parse().ok();
-    }
-    if c("TAJIKISTAN") {
-        return "TJS".parse().ok();
-    }
-    Some(None?).or(None)
-}
 
-fn match_africa(s: &str) -> Option<Currency> {
-    let c = |n| s.contains(n);
-    if c("SOUTH AFRICA") {
-        return Some(Currency::Iso(IsoCurrency::ZAR));
+    #[test]
+    fn fuzzy_country_lookup_uses_country_currency_table() {
+        assert_eq!(
+            currency_code("Issuer incorporated in the United Kingdom").as_deref(),
+            Some("GBP")
+        );
+        assert_eq!(currency_code("Euro Area").as_deref(), Some("EUR"));
+        assert_eq!(currency_code("Dominican").as_deref(), Some("DOP"));
+        assert_eq!(
+            currency_code("Republic of South Korea").as_deref(),
+            Some("KRW")
+        );
     }
-    if c("NIGERIA") {
-        return "NGN".parse().ok();
+
+    #[test]
+    fn fuzzy_country_lookup_prefers_specific_word_bounded_matches() {
+        assert_eq!(
+            currency_code("North Korea exchange").as_deref(),
+            Some("KPW")
+        );
+        assert_eq!(
+            currency_code("Republic of South Sudan").as_deref(),
+            Some("SSP")
+        );
+        assert_eq!(currency_code("Nigeria").as_deref(), Some("NGN"));
+        assert_eq!(currency_code("Somalia").as_deref(), Some("SOS"));
+        assert_eq!(
+            currency_code("Democratic Republic of the Congo").as_deref(),
+            Some("CDF")
+        );
     }
-    if c("GHANA") {
-        return "GHS".parse().ok();
-    }
-    if c("KENYA") {
-        return "KES".parse().ok();
-    }
-    if c("MOROCCO") {
-        return "MAD".parse().ok();
-    }
-    if c("ALGERIA") {
-        return "DZD".parse().ok();
-    }
-    if c("TUNISIA") {
-        return "TND".parse().ok();
-    }
-    if c("ZAMBIA") {
-        return "ZMW".parse().ok();
-    }
-    if c("ZIMBABWE") {
-        return "ZWL".parse().ok();
-    }
-    if c("ANGOLA") {
-        return "AOA".parse().ok();
-    }
-    if c("NAMIBIA") {
-        return "NAD".parse().ok();
-    }
-    if c("BOTSWANA") {
-        return "BWP".parse().ok();
-    }
-    if c("LESOTHO") {
-        return "LSL".parse().ok();
-    }
-    if c("ESWATINI") || c("SWAZILAND") {
-        return "SZL".parse().ok();
-    }
-    if c("MOZAMBIQUE") {
-        return "MZN".parse().ok();
-    }
-    if c("MADAGASCAR") {
-        return "MGA".parse().ok();
-    }
-    if c("MAURITIUS") {
-        return "MUR".parse().ok();
-    }
-    if c("MALAWI") {
-        return "MWK".parse().ok();
-    }
-    if c("SEYCHELLES") {
-        return "SCR".parse().ok();
-    }
-    if c("RWANDA") {
-        return "RWF".parse().ok();
-    }
-    if c("BURUNDI") {
-        return "BIF".parse().ok();
-    }
-    if c("UGANDA") {
-        return "UGX".parse().ok();
-    }
-    if c("TANZANIA") {
-        return "TZS".parse().ok();
-    }
-    if c("SOMALIA") {
-        return "SOS".parse().ok();
-    }
-    if c("DJIBOUTI") {
-        return "DJF".parse().ok();
-    }
-    if c("ERITREA") {
-        return "ERN".parse().ok();
-    }
-    if c("NIGER") || c("SENEGAL") || c("IVORY COAST") || c("COTE DIVOIRE") {
-        return "XOF".parse().ok();
-    }
-    if c("CAMEROON") {
-        return "XAF".parse().ok();
-    }
-    Some(None?).or(None)
 }
