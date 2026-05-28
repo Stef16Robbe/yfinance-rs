@@ -102,7 +102,7 @@ impl NewsBuilder {
     ///
     /// Returns a `YfError` if the request to the Yahoo Finance API fails,
     /// if the response cannot be parsed, or if there's a network issue.
-    pub async fn fetch(self) -> Result<Vec<NewsArticle>, YfError> {
+    pub async fn fetch(&self) -> Result<Vec<NewsArticle>, YfError> {
         Ok(self.fetch_with_diagnostics().await?.into_data())
     }
 
@@ -111,7 +111,7 @@ impl NewsBuilder {
     /// # Errors
     ///
     /// Returns a `YfError` if the request fails or strict data-quality mode rejects a projection issue.
-    pub async fn fetch_with_diagnostics(self) -> Result<YfResponse<Vec<NewsArticle>>, YfError> {
+    pub async fn fetch_with_diagnostics(&self) -> Result<YfResponse<Vec<NewsArticle>>, YfError> {
         api::fetch_news(
             &self.client,
             &self.symbol,

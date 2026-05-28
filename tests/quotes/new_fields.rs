@@ -32,7 +32,7 @@ async fn quote_v7_bid_ask_are_mapped_to_book_levels() {
         .build()
         .unwrap();
 
-    let quotes = yfinance_rs::QuotesBuilder::new(client)
+    let quotes = yfinance_rs::QuotesBuilder::new(&client)
         .symbols(["AAPL"])
         .fetch()
         .await

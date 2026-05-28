@@ -155,7 +155,7 @@ impl HistoryBuilder {
     /// # Errors
     ///
     /// Returns a `YfError` if the network request fails or the API response cannot be parsed.
-    pub async fn fetch(self) -> Result<Vec<Candle>, YfError> {
+    pub async fn fetch(&self) -> Result<Vec<Candle>, YfError> {
         Ok(self.fetch_with_diagnostics().await?.into_data())
     }
 
@@ -165,7 +165,7 @@ impl HistoryBuilder {
     ///
     /// Returns a `YfError` if the network request fails, the API returns an error,
     /// or strict data-quality mode rejects a projection issue.
-    pub async fn fetch_with_diagnostics(self) -> Result<YfResponse<Vec<Candle>>, YfError> {
+    pub async fn fetch_with_diagnostics(&self) -> Result<YfResponse<Vec<Candle>>, YfError> {
         Ok(self
             .fetch_full_with_diagnostics()
             .await?
@@ -193,7 +193,7 @@ impl HistoryBuilder {
             )
         )
     )]
-    pub async fn fetch_full(self) -> Result<HistoryResponse, YfError> {
+    pub async fn fetch_full(&self) -> Result<HistoryResponse, YfError> {
         Ok(self.fetch_full_with_diagnostics().await?.into_data())
     }
 
@@ -203,7 +203,9 @@ impl HistoryBuilder {
     ///
     /// Returns a `YfError` if the network request fails, the API returns an error,
     /// or strict data-quality mode rejects a projection issue.
-    pub async fn fetch_full_with_diagnostics(self) -> Result<YfResponse<HistoryResponse>, YfError> {
+    pub async fn fetch_full_with_diagnostics(
+        &self,
+    ) -> Result<YfResponse<HistoryResponse>, YfError> {
         let mut ctx = ProjectionContext::new("history_chart", self.data_quality);
 
         // 1) Fetch and parse the /chart payload into owned blocks

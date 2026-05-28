@@ -355,7 +355,7 @@ impl DownloadBuilder {
     /// # Errors
     ///
     /// Returns an error if any of the underlying history requests fail.
-    pub async fn run(self) -> Result<DownloadResponse, YfError> {
+    pub async fn run(&self) -> Result<DownloadResponse, YfError> {
         Ok(self.run_with_diagnostics().await?.into_data())
     }
 
@@ -364,7 +364,7 @@ impl DownloadBuilder {
     /// # Errors
     ///
     /// Returns an error if any history request fails or strict data-quality mode rejects a projection issue.
-    pub async fn run_with_diagnostics(self) -> Result<YfResponse<DownloadResponse>, YfError> {
+    pub async fn run_with_diagnostics(&self) -> Result<YfResponse<DownloadResponse>, YfError> {
         if self.symbols.is_empty() {
             return Err(YfError::InvalidParams("no symbols specified".into()));
         }

@@ -13,10 +13,7 @@ where
     I: IntoIterator<Item = S>,
     S: Into<String>,
 {
-    QuotesBuilder::new(client.clone())
-        .symbols(symbols)
-        .fetch()
-        .await
+    QuotesBuilder::new(client).symbols(symbols).fetch().await
 }
 
 /// A builder for fetching quotes for one or more symbols.
@@ -30,9 +27,9 @@ pub struct QuotesBuilder {
 impl QuotesBuilder {
     /// Creates a new `QuotesBuilder`.
     #[must_use]
-    pub const fn new(client: YfClient) -> Self {
+    pub fn new(client: &YfClient) -> Self {
         Self {
-            client,
+            client: client.clone(),
             symbols: Vec::new(),
             cache_mode: CacheMode::Default,
             retry_override: None,
@@ -77,7 +74,7 @@ impl QuotesBuilder {
     ///
     /// Returns `YfError` if no symbols were provided, the network request fails,
     /// the response cannot be parsed, or data for the symbols is not available.
-    pub async fn fetch(self) -> Result<Vec<crate::core::Quote>, crate::core::YfError> {
+    pub async fn fetch(&self) -> Result<Vec<crate::core::Quote>, crate::core::YfError> {
         if self.symbols.is_empty() {
             return Err(crate::core::YfError::InvalidParams(
                 "symbols list cannot be empty".into(),

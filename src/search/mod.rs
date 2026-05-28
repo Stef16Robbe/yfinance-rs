@@ -228,7 +228,7 @@ impl SearchBuilder {
     ///
     /// This method will return an error if the network request fails, the API returns a
     /// non-successful status code, or the response body cannot be parsed as a valid search result.
-    pub async fn fetch(self) -> Result<SearchResponse, crate::core::YfError> {
+    pub async fn fetch(&self) -> Result<SearchResponse, crate::core::YfError> {
         Ok(self.fetch_with_diagnostics().await?.into_data())
     }
 
@@ -237,7 +237,7 @@ impl SearchBuilder {
     /// # Errors
     ///
     /// This method will return an error if the request fails or strict data-quality mode rejects a projection issue.
-    pub async fn fetch_with_diagnostics(self) -> Result<YfResponse<SearchResponse>, YfError> {
+    pub async fn fetch_with_diagnostics(&self) -> Result<YfResponse<SearchResponse>, YfError> {
         let mut ctx = ProjectionContext::new("search", self.data_quality);
         let mut url = self.base.clone();
         Self::append_query_params(

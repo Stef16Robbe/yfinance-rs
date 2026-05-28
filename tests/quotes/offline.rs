@@ -25,7 +25,7 @@ async fn offline_multi_quotes_uses_recorded_fixture() {
         .build()
         .unwrap();
 
-    let quotes = yfinance_rs::QuotesBuilder::new(client)
+    let quotes = yfinance_rs::QuotesBuilder::new(&client)
         .symbols(["AAPL", "MSFT"])
         .fetch()
         .await
@@ -60,7 +60,7 @@ async fn malformed_quote_node_missing_symbol_returns_error() {
         .build()
         .unwrap();
 
-    let result = yfinance_rs::QuotesBuilder::new(client)
+    let result = yfinance_rs::QuotesBuilder::new(&client)
         .symbols(["AAPL"])
         .fetch()
         .await;
@@ -92,7 +92,7 @@ async fn malformed_quote_node_invalid_symbol_returns_error() {
         .build()
         .unwrap();
 
-    let result = yfinance_rs::QuotesBuilder::new(client)
+    let result = yfinance_rs::QuotesBuilder::new(&client)
         .symbols(["BAD"])
         .fetch()
         .await;
@@ -124,7 +124,7 @@ async fn default_quote_cache_mode_bypasses_response_cache() {
         .unwrap();
 
     for _ in 0..2 {
-        let quotes = yfinance_rs::QuotesBuilder::new(client.clone())
+        let quotes = yfinance_rs::QuotesBuilder::new(&client)
             .symbols(["AAPL"])
             .fetch()
             .await
@@ -155,7 +155,7 @@ async fn explicit_quote_cache_mode_uses_response_cache() {
         .unwrap();
 
     for _ in 0..2 {
-        let quotes = yfinance_rs::QuotesBuilder::new(client.clone())
+        let quotes = yfinance_rs::QuotesBuilder::new(&client)
             .symbols(["AAPL"])
             .cache_mode(CacheMode::Use)
             .fetch()

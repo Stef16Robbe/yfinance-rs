@@ -12,7 +12,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = YfClient::default();
 
     println!("--- QuotesBuilder Usage ---");
-    let quotes = QuotesBuilder::new(client.clone())
+    let quotes = QuotesBuilder::new(&client)
         .symbols(vec!["F", "GM", "TSLA"])
         .fetch()
         .await?;

@@ -273,7 +273,7 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
     ///
     /// Returns `YfError` if the network request fails, Yahoo returns an error
     /// status, or the response cannot be parsed.
-    pub async fn fetch(self) -> Result<ScreenerResponse, YfError> {
+    pub async fn fetch(&self) -> Result<ScreenerResponse, YfError> {
         match self.kind.clone() {
             RequestKind::Predefined(screener) if self.offset.is_none() => {
                 self.fetch_predefined_get(screener).await

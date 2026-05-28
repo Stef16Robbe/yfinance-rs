@@ -35,7 +35,7 @@ async fn quote_prefers_long_name_for_display_name() {
         .build()
         .unwrap();
 
-    let quotes = QuotesBuilder::new(client)
+    let quotes = QuotesBuilder::new(&client)
         .symbols(["BHP.MU"])
         .fetch()
         .await

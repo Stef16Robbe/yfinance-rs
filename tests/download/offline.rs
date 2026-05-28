@@ -122,9 +122,8 @@ async fn download_respects_configured_concurrency_limit() {
 
     let download = DownloadBuilder::new(&client)
         .symbols(["AAPL", "MSFT"])
-        .concurrency(DownloadConcurrency::new(1).unwrap())
-        .run();
-    let handle = tokio::spawn(download);
+        .concurrency(DownloadConcurrency::new(1).unwrap());
+    let handle = tokio::spawn(async move { download.run().await });
 
     assert!(
         wait_for_mock_calls(&m_aapl, 1, std::time::Duration::from_millis(750)).await,

@@ -62,7 +62,7 @@ impl EsgBuilder {
     /// # Errors
     ///
     /// Returns a `YfError` if the network request fails or the API response cannot be parsed.
-    pub async fn fetch(self) -> Result<EsgSummary, YfError> {
+    pub async fn fetch(&self) -> Result<EsgSummary, YfError> {
         Ok(self.fetch_with_diagnostics().await?.into_data())
     }
 
@@ -71,7 +71,7 @@ impl EsgBuilder {
     /// # Errors
     ///
     /// Returns a `YfError` if the request fails or strict data-quality mode rejects a projection issue.
-    pub async fn fetch_with_diagnostics(self) -> Result<YfResponse<EsgSummary>, YfError> {
+    pub async fn fetch_with_diagnostics(&self) -> Result<YfResponse<EsgSummary>, YfError> {
         api::fetch_esg_scores(
             &self.client,
             &self.symbol,

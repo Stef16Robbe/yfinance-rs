@@ -67,7 +67,7 @@ impl AnalysisBuilder {
     /// # Errors
     ///
     /// Returns an error if the request fails or the data is malformed.
-    pub async fn recommendations(self) -> Result<Vec<RecommendationRow>, YfError> {
+    pub async fn recommendations(&self) -> Result<Vec<RecommendationRow>, YfError> {
         Ok(self.recommendations_with_diagnostics().await?.into_data())
     }
 
@@ -77,7 +77,7 @@ impl AnalysisBuilder {
     ///
     /// Returns an error if the request fails or strict data-quality mode rejects a projection issue.
     pub async fn recommendations_with_diagnostics(
-        self,
+        &self,
     ) -> Result<YfResponse<Vec<RecommendationRow>>, YfError> {
         api::recommendation_trend(
             &self.client,
@@ -94,7 +94,7 @@ impl AnalysisBuilder {
     /// # Errors
     ///
     /// Returns an error if the request fails or the data is malformed.
-    pub async fn recommendations_summary(self) -> Result<RecommendationSummary, YfError> {
+    pub async fn recommendations_summary(&self) -> Result<RecommendationSummary, YfError> {
         Ok(self
             .recommendations_summary_with_diagnostics()
             .await?
@@ -107,7 +107,7 @@ impl AnalysisBuilder {
     ///
     /// Returns an error if the request fails or strict data-quality mode rejects a projection issue.
     pub async fn recommendations_summary_with_diagnostics(
-        self,
+        &self,
     ) -> Result<YfResponse<RecommendationSummary>, YfError> {
         api::recommendation_summary(
             &self.client,
@@ -124,7 +124,7 @@ impl AnalysisBuilder {
     /// # Errors
     ///
     /// Returns an error if the request fails or the data is malformed.
-    pub async fn upgrades_downgrades(self) -> Result<Vec<UpgradeDowngradeRow>, YfError> {
+    pub async fn upgrades_downgrades(&self) -> Result<Vec<UpgradeDowngradeRow>, YfError> {
         Ok(self
             .upgrades_downgrades_with_diagnostics()
             .await?
@@ -137,7 +137,7 @@ impl AnalysisBuilder {
     ///
     /// Returns an error if the request fails or strict data-quality mode rejects a projection issue.
     pub async fn upgrades_downgrades_with_diagnostics(
-        self,
+        &self,
     ) -> Result<YfResponse<Vec<UpgradeDowngradeRow>>, YfError> {
         api::upgrades_downgrades(
             &self.client,
@@ -158,7 +158,7 @@ impl AnalysisBuilder {
     ///
     /// Returns an error if the request fails or the data is malformed.
     pub async fn analyst_price_target(
-        self,
+        &self,
         override_currency: Option<Currency>,
     ) -> Result<PriceTarget, YfError> {
         Ok(self
@@ -173,7 +173,7 @@ impl AnalysisBuilder {
     ///
     /// Returns an error if the request fails or strict data-quality mode rejects a projection issue.
     pub async fn analyst_price_target_with_diagnostics(
-        self,
+        &self,
         override_currency: Option<Currency>,
     ) -> Result<YfResponse<PriceTarget>, YfError> {
         api::analyst_price_target(
@@ -197,7 +197,7 @@ impl AnalysisBuilder {
     ///
     /// Returns an error if the request fails or the data is malformed.
     pub async fn earnings_trend(
-        self,
+        &self,
         override_currency: Option<Currency>,
     ) -> Result<Vec<EarningsTrendRow>, YfError> {
         Ok(self
@@ -212,7 +212,7 @@ impl AnalysisBuilder {
     ///
     /// Returns an error if the request fails or strict data-quality mode rejects a projection issue.
     pub async fn earnings_trend_with_diagnostics(
-        self,
+        &self,
         override_currency: Option<Currency>,
     ) -> Result<YfResponse<Vec<EarningsTrendRow>>, YfError> {
         api::earnings_trend(

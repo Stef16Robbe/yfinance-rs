@@ -198,7 +198,7 @@ impl StreamBuilder {
     /// after spawning the background task; connection or polling failures are handled inside the
     /// task.
     pub async fn start(
-        self,
+        &self,
     ) -> Result<(StreamHandle, tokio::sync::mpsc::Receiver<QuoteUpdate>), crate::core::YfError>
     {
         if self.symbols.is_empty() {
@@ -218,15 +218,15 @@ impl StreamBuilder {
         };
 
         let join = tokio::spawn({
-            let client = self.client;
-            let symbols = self.symbols;
-            let cfg = self.cfg;
+            let client = self.client.clone();
+            let symbols = self.symbols.clone();
+            let cfg = self.cfg.clone();
             let method = self.method;
 
             let mut stop_rx = stop_rx;
 
             let cache_mode = self.cache_mode;
-            let retry_override = self.retry_override;
+            let retry_override = self.retry_override.clone();
 
             async move {
                 match method {

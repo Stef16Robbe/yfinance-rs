@@ -135,6 +135,18 @@ async fn fetch_info_parts(
         .cache_mode(cache_mode)
         .retry_policy(retry_override.cloned())
         .data_quality(data_quality);
+    let price_target_builder = analysis::AnalysisBuilder::new(client, symbol)
+        .cache_mode(cache_mode)
+        .retry_policy(retry_override.cloned())
+        .data_quality(data_quality);
+    let rec_summary_builder = analysis::AnalysisBuilder::new(client, symbol)
+        .cache_mode(cache_mode)
+        .retry_policy(retry_override.cloned())
+        .data_quality(data_quality);
+    let esg_builder = esg::EsgBuilder::new(client, symbol)
+        .cache_mode(cache_mode)
+        .retry_policy(retry_override.cloned())
+        .data_quality(data_quality);
     let (
         quote_res,
         key_statistics_res,
@@ -152,21 +164,9 @@ async fn fetch_info_parts(
             retry_override
         ),
         crate::profile::load_profile_with_options(client, symbol, cache_mode, retry_override),
-        analysis::AnalysisBuilder::new(client, symbol)
-            .cache_mode(cache_mode)
-            .retry_policy(retry_override.cloned())
-            .data_quality(data_quality)
-            .analyst_price_target_with_diagnostics(None),
-        analysis::AnalysisBuilder::new(client, symbol)
-            .cache_mode(cache_mode)
-            .retry_policy(retry_override.cloned())
-            .data_quality(data_quality)
-            .recommendations_summary_with_diagnostics(),
-        esg::EsgBuilder::new(client, symbol)
-            .cache_mode(cache_mode)
-            .retry_policy(retry_override.cloned())
-            .data_quality(data_quality)
-            .fetch_with_diagnostics(),
+        price_target_builder.analyst_price_target_with_diagnostics(None),
+        rec_summary_builder.recommendations_summary_with_diagnostics(),
+        esg_builder.fetch_with_diagnostics(),
         calendar_builder.calendar_with_diagnostics()
     );
 

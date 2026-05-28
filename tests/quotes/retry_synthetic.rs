@@ -60,7 +60,7 @@ async fn batch_quotes_401_then_retry_with_crumb_succeeds() {
         .build()
         .unwrap();
 
-    let quotes = yfinance_rs::QuotesBuilder::new(client)
+    let quotes = yfinance_rs::QuotesBuilder::new(&client)
         .symbols(["AAPL", "MSFT"])
         .fetch()
         .await
@@ -146,7 +146,7 @@ async fn batch_quotes_401_with_stale_cached_crumb_refreshes_before_retry() {
         .build()
         .unwrap();
 
-    let quotes = yfinance_rs::QuotesBuilder::new(client)
+    let quotes = yfinance_rs::QuotesBuilder::new(&client)
         .symbols(["AAPL"])
         .fetch()
         .await
