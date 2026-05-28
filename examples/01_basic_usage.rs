@@ -149,7 +149,7 @@ async fn section_stream(client: &YfClient) -> Result<(), YfError> {
     println!("--- Streaming Real-time Quotes for MSFT and GOOG ---");
     println!("(Streaming for 10 seconds or until stopped...)");
     let (handle, mut receiver) = StreamBuilder::new(client)
-        .symbols(vec!["GME"])
+        .symbols(vec!["MSFT", "GOOG"])
         .method(StreamMethod::WebsocketWithFallback)
         .start()
         .await?;
