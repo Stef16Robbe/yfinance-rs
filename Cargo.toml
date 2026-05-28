@@ -2,6 +2,7 @@
 name = "yfinance-rs"
 version = "0.9.0"
 edition = "2024"
+rust-version = "1.91"
 description = "Ergonomic Rust client for Yahoo Finance, supporting historical prices, real-time streaming, options, fundamentals, and more."
 license = "MIT"
 repository = "https://github.com/gramistella/yfinance-rs"
@@ -20,7 +21,7 @@ serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
 thiserror = "2.0"
 url = "2.5.7"
-tokio = { version = "1.48", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.48", features = ["macros", "rt-multi-thread", "sync", "time"] }
 futures = "0.3"
 tokio-tungstenite = { version = "0.28", features = ["rustls-tls-native-roots"] }
 futures-util = "0.3"

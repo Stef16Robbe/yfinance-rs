@@ -46,6 +46,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Changed
 
 - Clean up example output so holder rows, corporate actions, historical action dates, and handled live Yahoo errors render as user-facing text instead of debug-shaped values.
+- Declare Rust 1.91 as the crate MSRV and enable direct Tokio `sync` and `time` features used by the crate.
 - Update ESG examples/docs to handle Yahoo's currently unavailable `esgScores` response instead of advertising unavailable live data.
 - README examples no longer advertise direct use of conversion helpers such as `money_to_f64`.
 - Build-time protobuf generation now uses a vendored `protoc` binary instead of relying on a system installation.
