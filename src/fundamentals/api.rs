@@ -5,7 +5,9 @@ use crate::{
     core::{
         YfClient, YfError,
         client::{CacheMode, RetryConfig},
-        conversions::{i64_to_datetime, money_from_f64, price_from_f64, string_to_period},
+        conversions::{i64_to_datetime, string_to_period},
+        currency_resolver::{CurrencyHints, ReportingCurrencyEvidence, ResolvedCurrencyUnit},
+        wire::{RawNum, RawNumU64},
     },
     fundamentals::wire::{TimeseriesData, TimeseriesEnvelope},
 };
@@ -18,6 +20,18 @@ use super::{
     BalanceSheetRow, CashflowRow, Earnings, EarningsQuarter, EarningsQuarterEps, EarningsYear,
     IncomeStatementRow,
 };
+
+#[derive(serde::Deserialize)]
+struct TimeseriesValueF64 {
+    #[serde(rename = "reportedValue")]
+    reported_value: Option<RawNum<f64>>,
+}
+
+#[derive(serde::Deserialize)]
+struct TimeseriesValueU64 {
+    #[serde(rename = "reportedValue")]
+    reported_value: Option<RawNumU64>,
+}
 
 /// Generic helper function to fetch and process timeseries data from the fundamentals API.
 ///
@@ -34,14 +48,23 @@ async fn fetch_timeseries_data<T, F>(
     client: &YfClient,
     symbol: &str,
     quarterly: bool,
+    override_currency: Option<Currency>,
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
     keys: &[&str],
+    monetary_keys: &[&str],
     endpoint_name: &str,
     process_item: F,
 ) -> Result<Vec<T>, YfError>
 where
-    F: Fn(&str, &serde_json::Value, &mut BTreeMap<i64, T>, &[i64], &str) -> Result<(), YfError>,
+    F: Fn(
+        &str,
+        &serde_json::Value,
+        &mut BTreeMap<i64, T>,
+        &[i64],
+        &str,
+        Option<&ResolvedCurrencyUnit>,
+    ) -> Result<(), YfError>,
 {
     let prefix = if quarterly { "quarterly" } else { "annual" };
     let types: Vec<String> = keys.iter().map(|k| format!("{prefix}{k}")).collect();
@@ -87,18 +110,101 @@ where
         return Ok(vec![]);
     }
 
+    let (direct_currency, needs_currency) =
+        timeseries_currency_evidence(&result_vec, prefix, monetary_keys)?;
+    let currency = if needs_currency {
+        Some(
+            client
+                .resolve_reporting_currency_unit(
+                    symbol,
+                    override_currency,
+                    ReportingCurrencyEvidence::TimeseriesCurrencyCode(direct_currency.as_deref()),
+                    cache_mode,
+                    retry_override,
+                )
+                .await?,
+        )
+    } else {
+        None
+    };
+
     let mut rows_map = BTreeMap::<i64, T>::new();
 
     for item in result_vec {
         if let (Some(timestamps), Some((key, values_json))) =
             (item.timestamp, item.values.into_iter().next())
         {
-            // Process the item using the provided closure
-            process_item(&key, &values_json, &mut rows_map, &timestamps, prefix)?;
+            process_item(
+                &key,
+                &values_json,
+                &mut rows_map,
+                &timestamps,
+                prefix,
+                currency.as_ref(),
+            )?;
         }
     }
 
     Ok(rows_map.into_values().rev().collect())
+}
+
+fn timeseries_currency_evidence(
+    result: &[TimeseriesData],
+    prefix: &str,
+    monetary_keys: &[&str],
+) -> Result<(Option<String>, bool), YfError> {
+    let monetary_types = monetary_keys
+        .iter()
+        .map(|key| format!("{prefix}{key}"))
+        .collect::<Vec<_>>();
+    let mut currency_code: Option<String> = None;
+    let mut needs_currency = false;
+
+    for item in result {
+        for (key, values_json) in &item.values {
+            if !monetary_types
+                .iter()
+                .any(|monetary_key| monetary_key == key)
+            {
+                continue;
+            }
+
+            let Some(values) = values_json.as_array() else {
+                continue;
+            };
+
+            for value in values {
+                if value
+                    .pointer("/reportedValue/raw")
+                    .is_none_or(serde_json::Value::is_null)
+                {
+                    continue;
+                }
+
+                needs_currency = true;
+                let Some(code) = value
+                    .get("currencyCode")
+                    .and_then(serde_json::Value::as_str)
+                    .map(str::trim)
+                    .filter(|code| !code.is_empty())
+                else {
+                    continue;
+                };
+
+                if let Some(existing) = currency_code.as_deref()
+                    && existing != code
+                {
+                    return Err(YfError::InvalidData(format!(
+                        "conflicting timeseries currencyCode values for {key}: {existing} and {code}"
+                    )));
+                }
+
+                currency_code.get_or_insert_with(|| code.to_string());
+            }
+        }
+    }
+
+    Ok((currency_code, needs_currency))
 }
 
 fn period_from_timestamp(timestamp: i64) -> Result<Period, YfError> {
@@ -120,24 +226,22 @@ fn row_for_timestamp<T>(
     }
 }
 
+fn optional_money_f64(
+    currency: Option<&ResolvedCurrencyUnit>,
+    value: Option<f64>,
+) -> Option<paft::money::Money> {
+    let currency = currency?;
+    value.and_then(|value| currency.money_from_f64(value))
+}
+
 pub(super) async fn income_statement(
     client: &YfClient,
     symbol: &str,
     quarterly: bool,
-    currency: Currency,
+    override_currency: Option<Currency>,
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
 ) -> Result<Vec<IncomeStatementRow>, YfError> {
-    use serde::Deserialize;
-
-    use crate::core::wire::RawNum;
-
-    #[derive(Deserialize)]
-    struct TimeseriesValueF64 {
-        #[serde(rename = "reportedValue")]
-        reported_value: Option<RawNum<f64>>,
-    }
-
     let keys = [
         "TotalRevenue",
         "GrossProfit",
@@ -164,8 +268,13 @@ pub(super) async fn income_statement(
                         values_json: &serde_json::Value,
                         rows_map: &mut BTreeMap<i64, IncomeStatementRow>,
                         timestamps: &[i64],
-                        prefix: &str|
+                        prefix: &str,
+                        currency: Option<&ResolvedCurrencyUnit>|
      -> Result<(), YfError> {
+        let Some(field) = key.strip_prefix(prefix) else {
+            return Ok(());
+        };
+
         if let Ok(values) = serde_json::from_value::<Vec<TimeseriesValueF64>>(values_json.clone()) {
             for (i, ts) in timestamps.iter().enumerate() {
                 let row = row_for_timestamp(rows_map, *ts, create_default_row)?;
@@ -173,23 +282,17 @@ pub(super) async fn income_statement(
                 let value = values
                     .get(i)
                     .and_then(|v| v.reported_value.and_then(|rv| rv.raw));
+                let money = optional_money_f64(currency, value);
 
-                if key == format!("{prefix}TotalRevenue") {
-                    row.total_revenue = value.and_then(|v| money_from_f64(v, currency.clone()));
-                } else if key == format!("{prefix}GrossProfit") {
-                    row.gross_profit = value.and_then(|v| money_from_f64(v, currency.clone()));
-                } else if key == format!("{prefix}OperatingIncome") {
-                    row.operating_income = value.and_then(|v| money_from_f64(v, currency.clone()));
-                } else if key == format!("{prefix}NetIncome") {
-                    row.net_income = value.and_then(|v| money_from_f64(v, currency.clone()));
-                } else if key == format!("{prefix}InterestExpense") {
-                    row.interest_expense = value.and_then(|v| money_from_f64(v, currency.clone()));
-                } else if key == format!("{prefix}TaxProvision") {
-                    row.income_tax_expense =
-                        value.and_then(|v| money_from_f64(v, currency.clone()));
-                } else if key == format!("{prefix}DepreciationAndAmortization") {
-                    row.depreciation_and_amortization =
-                        value.and_then(|v| money_from_f64(v, currency.clone()));
+                match field {
+                    "TotalRevenue" => row.total_revenue = money,
+                    "GrossProfit" => row.gross_profit = money,
+                    "OperatingIncome" => row.operating_income = money,
+                    "NetIncome" => row.net_income = money,
+                    "InterestExpense" => row.interest_expense = money,
+                    "TaxProvision" => row.income_tax_expense = money,
+                    "DepreciationAndAmortization" => row.depreciation_and_amortization = money,
+                    _ => {}
                 }
             }
         }
@@ -200,8 +303,10 @@ pub(super) async fn income_statement(
         client,
         symbol,
         quarterly,
+        override_currency,
         cache_mode,
         retry_override,
+        &keys,
         &keys,
         endpoint_name,
         process_item,
@@ -217,25 +322,10 @@ pub(super) async fn balance_sheet(
     client: &YfClient,
     symbol: &str,
     quarterly: bool,
-    currency: Currency,
+    override_currency: Option<Currency>,
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
 ) -> Result<Vec<BalanceSheetRow>, YfError> {
-    use serde::Deserialize;
-
-    use crate::core::wire::{RawNum, RawNumU64};
-
-    #[derive(Deserialize)]
-    struct TimeseriesValueF64 {
-        #[serde(rename = "reportedValue")]
-        reported_value: Option<RawNum<f64>>,
-    }
-    #[derive(Deserialize)]
-    struct TimeseriesValueU64 {
-        #[serde(rename = "reportedValue")]
-        reported_value: Option<RawNumU64>,
-    }
-
     let keys = [
         "TotalAssets",
         "TotalLiabilitiesNetMinorityInterest",
@@ -243,6 +333,21 @@ pub(super) async fn balance_sheet(
         "CashAndCashEquivalents",
         "LongTermDebt",
         "OrdinarySharesNumber",
+        "CurrentAssets",
+        "CurrentLiabilities",
+        "AccountsReceivable",
+        "Inventory",
+        "AccountsPayable",
+        "NetPPE",
+        "Goodwill",
+        "OtherIntangibleAssets",
+    ];
+    let monetary_keys = [
+        "TotalAssets",
+        "TotalLiabilitiesNetMinorityInterest",
+        "StockholdersEquity",
+        "CashAndCashEquivalents",
+        "LongTermDebt",
         "CurrentAssets",
         "CurrentLiabilities",
         "AccountsReceivable",
@@ -276,9 +381,14 @@ pub(super) async fn balance_sheet(
                         values_json: &serde_json::Value,
                         rows_map: &mut BTreeMap<i64, BalanceSheetRow>,
                         timestamps: &[i64],
-                        prefix: &str|
+                        prefix: &str,
+                        currency: Option<&ResolvedCurrencyUnit>|
      -> Result<(), YfError> {
-        if key.ends_with("OrdinarySharesNumber") {
+        let Some(field) = key.strip_prefix(prefix) else {
+            return Ok(());
+        };
+
+        if field == "OrdinarySharesNumber" {
             if let Ok(values) =
                 serde_json::from_value::<Vec<TimeseriesValueU64>>(values_json.clone())
             {
@@ -298,36 +408,23 @@ pub(super) async fn balance_sheet(
                 let value = values
                     .get(i)
                     .and_then(|v| v.reported_value.and_then(|rv| rv.raw));
+                let money = optional_money_f64(currency, value);
 
-                if key == format!("{prefix}TotalAssets") {
-                    row.total_assets = value.and_then(|v| money_from_f64(v, currency.clone()));
-                } else if key == format!("{prefix}TotalLiabilitiesNetMinorityInterest") {
-                    row.total_liabilities = value.and_then(|v| money_from_f64(v, currency.clone()));
-                } else if key == format!("{prefix}StockholdersEquity") {
-                    row.total_equity = value.and_then(|v| money_from_f64(v, currency.clone()));
-                } else if key == format!("{prefix}CashAndCashEquivalents") {
-                    row.cash = value.and_then(|v| money_from_f64(v, currency.clone()));
-                } else if key == format!("{prefix}LongTermDebt") {
-                    row.long_term_debt = value.and_then(|v| money_from_f64(v, currency.clone()));
-                } else if key == format!("{prefix}CurrentAssets") {
-                    row.current_assets = value.and_then(|v| money_from_f64(v, currency.clone()));
-                } else if key == format!("{prefix}CurrentLiabilities") {
-                    row.current_liabilities =
-                        value.and_then(|v| money_from_f64(v, currency.clone()));
-                } else if key == format!("{prefix}AccountsReceivable") {
-                    row.accounts_receivable =
-                        value.and_then(|v| money_from_f64(v, currency.clone()));
-                } else if key == format!("{prefix}Inventory") {
-                    row.inventory = value.and_then(|v| money_from_f64(v, currency.clone()));
-                } else if key == format!("{prefix}AccountsPayable") {
-                    row.accounts_payable = value.and_then(|v| money_from_f64(v, currency.clone()));
-                } else if key == format!("{prefix}NetPPE") {
-                    row.net_property_plant_equipment =
-                        value.and_then(|v| money_from_f64(v, currency.clone()));
-                } else if key == format!("{prefix}Goodwill") {
-                    row.goodwill = value.and_then(|v| money_from_f64(v, currency.clone()));
-                } else if key == format!("{prefix}OtherIntangibleAssets") {
-                    row.intangible_assets = value.and_then(|v| money_from_f64(v, currency.clone()));
+                match field {
+                    "TotalAssets" => row.total_assets = money,
+                    "TotalLiabilitiesNetMinorityInterest" => row.total_liabilities = money,
+                    "StockholdersEquity" => row.total_equity = money,
+                    "CashAndCashEquivalents" => row.cash = money,
+                    "LongTermDebt" => row.long_term_debt = money,
+                    "CurrentAssets" => row.current_assets = money,
+                    "CurrentLiabilities" => row.current_liabilities = money,
+                    "AccountsReceivable" => row.accounts_receivable = money,
+                    "Inventory" => row.inventory = money,
+                    "AccountsPayable" => row.accounts_payable = money,
+                    "NetPPE" => row.net_property_plant_equipment = money,
+                    "Goodwill" => row.goodwill = money,
+                    "OtherIntangibleAssets" => row.intangible_assets = money,
+                    _ => {}
                 }
             }
         }
@@ -338,9 +435,11 @@ pub(super) async fn balance_sheet(
         client,
         symbol,
         quarterly,
+        override_currency,
         cache_mode,
         retry_override,
         &keys,
+        &monetary_keys,
         endpoint_name,
         process_item,
     )
@@ -352,20 +451,10 @@ pub(super) async fn cashflow(
     client: &YfClient,
     symbol: &str,
     quarterly: bool,
-    currency: Currency,
+    override_currency: Option<Currency>,
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
 ) -> Result<Vec<CashflowRow>, YfError> {
-    use serde::Deserialize;
-
-    use crate::core::wire::RawNum;
-
-    #[derive(Deserialize)]
-    struct TimeseriesValueF64 {
-        #[serde(rename = "reportedValue")]
-        reported_value: Option<RawNum<f64>>,
-    }
-
     let keys = [
         "OperatingCashFlow",
         "CapitalExpenditure",
@@ -388,8 +477,13 @@ pub(super) async fn cashflow(
                         values_json: &serde_json::Value,
                         rows_map: &mut BTreeMap<i64, CashflowRow>,
                         timestamps: &[i64],
-                        prefix: &str|
+                        prefix: &str,
+                        currency: Option<&ResolvedCurrencyUnit>|
      -> Result<(), YfError> {
+        let Some(field) = key.strip_prefix(prefix) else {
+            return Ok(());
+        };
+
         if let Ok(values) = serde_json::from_value::<Vec<TimeseriesValueF64>>(values_json.clone()) {
             for (i, ts) in timestamps.iter().enumerate() {
                 let row = row_for_timestamp(rows_map, *ts, create_default_row)?;
@@ -397,20 +491,15 @@ pub(super) async fn cashflow(
                 let value = values
                     .get(i)
                     .and_then(|v| v.reported_value.and_then(|rv| rv.raw));
+                let money = optional_money_f64(currency, value);
 
-                if key == format!("{prefix}OperatingCashFlow") {
-                    row.operating_cashflow =
-                        value.and_then(|v| money_from_f64(v, currency.clone()));
-                } else if key == format!("{prefix}CapitalExpenditure") {
-                    row.capital_expenditures =
-                        value.and_then(|v| money_from_f64(v, currency.clone()));
-                } else if key == format!("{prefix}FreeCashFlow") {
-                    row.free_cash_flow = value.and_then(|v| money_from_f64(v, currency.clone()));
-                } else if key == format!("{prefix}NetIncome") {
-                    row.net_income = value.and_then(|v| money_from_f64(v, currency.clone()));
-                } else if key == format!("{prefix}DepreciationAndAmortization") {
-                    row.depreciation_and_amortization =
-                        value.and_then(|v| money_from_f64(v, currency.clone()));
+                match field {
+                    "OperatingCashFlow" => row.operating_cashflow = money,
+                    "CapitalExpenditure" => row.capital_expenditures = money,
+                    "FreeCashFlow" => row.free_cash_flow = money,
+                    "NetIncome" => row.net_income = money,
+                    "DepreciationAndAmortization" => row.depreciation_and_amortization = money,
+                    _ => {}
                 }
             }
         }
@@ -421,8 +510,10 @@ pub(super) async fn cashflow(
         client,
         symbol,
         quarterly,
+        override_currency,
         cache_mode,
         retry_override,
+        &keys,
         &keys,
         endpoint_name,
         process_item,
@@ -445,10 +536,32 @@ pub(super) async fn cashflow(
     Ok(result)
 }
 
+fn earnings_has_monetary_values(earnings: &crate::fundamentals::wire::EarningsNode) -> bool {
+    let raw_present = |value: Option<&crate::core::wire::RawNum<f64>>| {
+        value.and_then(|v| v.raw.as_ref()).is_some()
+    };
+
+    earnings.financials_chart.as_ref().is_some_and(|chart| {
+        chart.yearly.as_ref().is_some_and(|rows| {
+            rows.iter()
+                .any(|row| raw_present(row.revenue.as_ref()) || raw_present(row.earnings.as_ref()))
+        }) || chart.quarterly.as_ref().is_some_and(|rows| {
+            rows.iter()
+                .any(|row| raw_present(row.revenue.as_ref()) || raw_present(row.earnings.as_ref()))
+        })
+    }) || earnings.earnings_chart.as_ref().is_some_and(|chart| {
+        chart.quarterly.as_ref().is_some_and(|rows| {
+            rows.iter()
+                .any(|row| raw_present(row.actual.as_ref()) || raw_present(row.estimate.as_ref()))
+        })
+    })
+}
+
+#[allow(clippy::too_many_lines)]
 pub(super) async fn earnings(
     client: &YfClient,
     symbol: &str,
-    currency: Currency,
+    override_currency: Option<Currency>,
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
 ) -> Result<Earnings, YfError> {
@@ -456,6 +569,27 @@ pub(super) async fn earnings(
     let e = root
         .earnings
         .ok_or_else(|| YfError::MissingData("earnings missing".into()))?;
+    client
+        .store_currency_hints(
+            symbol,
+            CurrencyHints::from_quote_summary_financial(e.financial_currency.as_deref()),
+        )
+        .await;
+    let currency = if earnings_has_monetary_values(&e) {
+        Some(
+            client
+                .resolve_reporting_currency_unit(
+                    symbol,
+                    override_currency,
+                    ReportingCurrencyEvidence::FinancialCurrency(e.financial_currency.as_deref()),
+                    cache_mode,
+                    retry_override,
+                )
+                .await?,
+        )
+    } else {
+        None
+    };
 
     let yearly = e
         .financials_chart
@@ -467,11 +601,11 @@ pub(super) async fn earnings(
                     y.date.and_then(|date| {
                         i32::try_from(date).ok().map(|year| EarningsYear {
                             year,
-                            revenue: y.revenue.as_ref().and_then(|x| {
-                                x.raw.and_then(|v| money_from_f64(v, currency.clone()))
+                            revenue: y.revenue.as_ref().and_then(|x| x.raw).and_then(|v| {
+                                currency.as_ref().and_then(|unit| unit.money_from_f64(v))
                             }),
-                            earnings: y.earnings.as_ref().and_then(|x| {
-                                x.raw.and_then(|v| money_from_f64(v, currency.clone()))
+                            earnings: y.earnings.as_ref().and_then(|x| x.raw).and_then(|v| {
+                                currency.as_ref().and_then(|unit| unit.money_from_f64(v))
                             }),
                         })
                     })
@@ -480,59 +614,59 @@ pub(super) async fn earnings(
         })
         .unwrap_or_default();
 
-    let quarterly =
-        e.financials_chart
-            .as_ref()
-            .and_then(|fc| fc.quarterly.as_ref())
-            .map(|v| {
-                v.iter()
-                    .filter_map(|q| {
-                        let period = q.date.as_deref()?;
-                        let period = match string_to_period(period) {
-                            Ok(period) => period,
-                            Err(err) => return Some(Err(err)),
-                        };
-                        Some(Ok(EarningsQuarter {
-                            period,
-                            revenue: q.revenue.as_ref().and_then(|x| {
-                                x.raw.and_then(|v| money_from_f64(v, currency.clone()))
-                            }),
-                            earnings: q.earnings.as_ref().and_then(|x| {
-                                x.raw.and_then(|v| money_from_f64(v, currency.clone()))
-                            }),
-                        }))
-                    })
-                    .collect::<Result<Vec<_>, YfError>>()
-            })
-            .transpose()?
-            .unwrap_or_default();
+    let quarterly = e
+        .financials_chart
+        .as_ref()
+        .and_then(|fc| fc.quarterly.as_ref())
+        .map(|v| {
+            v.iter()
+                .filter_map(|q| {
+                    let period = q.date.as_deref()?;
+                    let period = match string_to_period(period) {
+                        Ok(period) => period,
+                        Err(err) => return Some(Err(err)),
+                    };
+                    Some(Ok(EarningsQuarter {
+                        period,
+                        revenue: q.revenue.as_ref().and_then(|x| x.raw).and_then(|v| {
+                            currency.as_ref().and_then(|unit| unit.money_from_f64(v))
+                        }),
+                        earnings: q.earnings.as_ref().and_then(|x| x.raw).and_then(|v| {
+                            currency.as_ref().and_then(|unit| unit.money_from_f64(v))
+                        }),
+                    }))
+                })
+                .collect::<Result<Vec<_>, YfError>>()
+        })
+        .transpose()?
+        .unwrap_or_default();
 
-    let quarterly_eps =
-        e.earnings_chart
-            .as_ref()
-            .and_then(|ec| ec.quarterly.as_ref())
-            .map(|v| {
-                v.iter()
-                    .filter_map(|q| {
-                        let period = q.date.as_deref()?;
-                        let period = match string_to_period(period) {
-                            Ok(period) => period,
-                            Err(err) => return Some(Err(err)),
-                        };
-                        Some(Ok(EarningsQuarterEps {
-                            period,
-                            actual: q.actual.as_ref().and_then(|x| {
-                                x.raw.and_then(|v| price_from_f64(v, currency.clone()))
-                            }),
-                            estimate: q.estimate.as_ref().and_then(|x| {
-                                x.raw.and_then(|v| price_from_f64(v, currency.clone()))
-                            }),
-                        }))
-                    })
-                    .collect::<Result<Vec<_>, YfError>>()
-            })
-            .transpose()?
-            .unwrap_or_default();
+    let quarterly_eps = e
+        .earnings_chart
+        .as_ref()
+        .and_then(|ec| ec.quarterly.as_ref())
+        .map(|v| {
+            v.iter()
+                .filter_map(|q| {
+                    let period = q.date.as_deref()?;
+                    let period = match string_to_period(period) {
+                        Ok(period) => period,
+                        Err(err) => return Some(Err(err)),
+                    };
+                    Some(Ok(EarningsQuarterEps {
+                        period,
+                        actual: q.actual.as_ref().and_then(|x| x.raw).and_then(|v| {
+                            currency.as_ref().and_then(|unit| unit.price_from_f64(v))
+                        }),
+                        estimate: q.estimate.as_ref().and_then(|x| x.raw).and_then(|v| {
+                            currency.as_ref().and_then(|unit| unit.price_from_f64(v))
+                        }),
+                    }))
+                })
+                .collect::<Result<Vec<_>, YfError>>()
+        })
+        .transpose()?
+        .unwrap_or_default();
 
     Ok(Earnings {
         yearly,

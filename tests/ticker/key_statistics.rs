@@ -1,6 +1,7 @@
 use httpmock::Method::GET;
 use httpmock::MockServer;
 use paft::fundamentals::statistics::KeyStatistics;
+use paft::money::{Currency, IsoCurrency};
 use url::Url;
 use yfinance_rs::core::conversions::money_to_f64;
 use yfinance_rs::{Ticker, YfClient};
@@ -59,6 +60,87 @@ fn assert_v7_key_statistics(stats: &KeyStatistics, raw_quote: &serde_json::Value
             .ok()
             .map(|v| v / paft::Decimal::from(100))
     );
+}
+
+#[tokio::test]
+async fn key_statistics_market_cap_uses_major_units_for_minor_unit_quote_currency() {
+    let server = MockServer::start();
+    let sym = "TSCO.L";
+    let crumb = "test-crumb";
+    let quote_body = r#"{
+      "quoteResponse": {
+        "result": [{
+          "symbol": "TSCO.L",
+          "quoteType": "EQUITY",
+          "currency": "GBp",
+          "financialCurrency": "GBP",
+          "regularMarketPrice": 444.1,
+          "fiftyTwoWeekHigh": 455.0,
+          "fiftyTwoWeekLow": 300.0,
+          "epsTrailingTwelveMonths": 0.27,
+          "dividendRate": 0.15,
+          "marketCap": 28024838144,
+          "sharesOutstanding": 6310478847
+        }],
+        "error": null
+      }
+    }"#;
+
+    let quote_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", sym);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(quote_body);
+    });
+    let key_statistics_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", crate::common::KEY_STATISTICS_MODULES)
+            .query_param("crumb", crumb);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(r#"{"quoteSummary":{"result":[{}],"error":null}}"#);
+    });
+
+    let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._preauth("cookie", crumb)
+        .build()
+        .unwrap();
+
+    let stats = Ticker::new(&client, sym).key_statistics().await.unwrap();
+
+    quote_mock.assert();
+    key_statistics_mock.assert();
+    let market_cap = stats.market_cap.as_ref().expect("market cap should map");
+    assert_eq!(market_cap.currency(), &Currency::Iso(IsoCurrency::GBP));
+    assert!((money_to_f64(market_cap) - 28_024_838_144.0).abs() < 0.1);
+
+    let eps = stats
+        .eps_trailing_twelve_months
+        .as_ref()
+        .expect("EPS should map");
+    assert_eq!(eps.currency(), &Currency::Iso(IsoCurrency::GBP));
+    assert!((money_to_f64(eps) - 0.27).abs() < 1e-9);
+
+    let dividend = stats
+        .dividend_per_share_forward
+        .as_ref()
+        .expect("dividend should map");
+    assert_eq!(dividend.currency(), &Currency::Iso(IsoCurrency::GBP));
+    assert!((money_to_f64(dividend) - 0.15).abs() < 1e-9);
+
+    let high = stats
+        .fifty_two_week_high
+        .as_ref()
+        .expect("52-week high should map");
+    assert_eq!(high.currency(), &Currency::Iso(IsoCurrency::GBP));
+    assert!((money_to_f64(high) - 4.55).abs() < 1e-9);
 }
 
 #[tokio::test]

@@ -91,7 +91,7 @@ async fn offline_info_uses_recorded_fixtures() {
     let info = ticker.info().await.unwrap();
 
     // Assert all mocks were hit
-    quote_mock.assert();
+    assert!(quote_mock.calls() >= 1, "v7 quote should populate info");
     key_statistics_mock.assert();
     assert!(
         profile_mock.calls() >= 1,

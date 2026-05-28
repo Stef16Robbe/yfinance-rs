@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use serde::Deserialize;
 use url::Url;
 
@@ -7,12 +5,12 @@ use crate::{
     YfClient, YfError,
     core::{
         client::{CacheMode, RetryConfig},
-        conversions::{decimal_from_f64, price_from_f64, string_to_asset_kind, string_to_exchange},
+        conversions::{decimal_from_f64, string_to_asset_kind, string_to_exchange},
+        currency_resolver::{CurrencyHints, ResolvedCurrencyUnit, TradingCurrencyEvidence},
         net,
     },
     screener::YahooQuoteType,
 };
-use paft::money::Currency;
 
 use super::model::{OptionChain, OptionContract};
 use chrono::{NaiveDate, TimeZone, Utc};
@@ -40,6 +38,7 @@ pub async fn expiration_dates(
     Ok(first.expiration_dates.unwrap_or_default())
 }
 
+#[allow(clippy::too_many_lines)]
 pub async fn option_chain(
     client: &YfClient,
     symbol: &str,
@@ -56,6 +55,20 @@ pub async fn option_chain(
         .and_then(|oc| oc.result)
         .and_then(|mut v| v.pop())
         .ok_or_else(|| YfError::MissingData("empty options result".into()))?;
+
+    if let Some(quote) = first.quote.as_ref() {
+        client
+            .store_currency_hints(
+                symbol,
+                CurrencyHints::from_options_quote(
+                    quote.currency.as_deref(),
+                    quote.exchange.as_deref(),
+                    quote.full_exchange_name.as_deref(),
+                    quote.quote_type.as_deref(),
+                ),
+            )
+            .await;
+    }
 
     let currency_from_response = currency_from_result(&first);
     let underlying_from_response = underlying_instrument_from_result(&first);
@@ -74,30 +87,20 @@ pub async fn option_chain(
         })
     });
 
-    let (currency, underlying) = if let Some(currency) = currency_from_response {
-        (
-            currency,
-            underlying_instrument(client, symbol, underlying_from_response).await?,
+    let currency = client
+        .resolve_trading_currency_unit(
+            symbol,
+            None,
+            TradingCurrencyEvidence::OptionsQuote(currency_from_response.as_deref()),
+            cache_mode,
+            retry_override,
         )
-    } else {
-        let quote = super::quote::fetch_quote(client, symbol, cache_mode, retry_override).await?;
-        let currency = quote
-            .price
-            .as_ref()
-            .map(|m| m.currency().clone())
-            .or_else(|| quote.previous_close.as_ref().map(|m| m.currency().clone()))
-            .ok_or_else(|| {
-                YfError::MissingData("unable to determine currency from options or quote".into())
-            })?;
-        (
-            currency,
-            underlying_from_response.unwrap_or(quote.instrument),
-        )
-    };
+        .await?;
+    let underlying = underlying_instrument(client, symbol, underlying_from_response).await?;
 
     let map_side = |side: Option<Vec<OptContractNode>>,
                     option_side: OptionSide,
-                    currency: &Currency|
+                    currency: &ResolvedCurrencyUnit|
      -> Vec<OptionContract> {
         side.unwrap_or_default()
             .into_iter()
@@ -107,7 +110,7 @@ pub async fn option_chain(
                 let exp_date: NaiveDate = exp_dt.date_naive();
                 let strike = c
                     .strike
-                    .and_then(|strike| price_from_f64(strike, currency.clone()))?;
+                    .and_then(|strike| currency.price_from_f64(strike))?;
                 let key = OptionContractKey::new(underlying.clone(), option_side, strike, exp_date);
                 let contract_instrument = c
                     .contract_symbol
@@ -117,11 +120,9 @@ pub async fn option_chain(
                 Some(OptionContract {
                     key,
                     contract_instrument,
-                    price: c
-                        .last_price
-                        .and_then(|v| price_from_f64(v, currency.clone())),
-                    bid: c.bid.and_then(|v| price_from_f64(v, currency.clone())),
-                    ask: c.ask.and_then(|v| price_from_f64(v, currency.clone())),
+                    price: c.last_price.and_then(|v| currency.price_from_f64(v)),
+                    bid: c.bid.and_then(|v| currency.price_from_f64(v)),
+                    ask: c.ask.and_then(|v| currency.price_from_f64(v)),
                     volume: c.volume,
                     open_interest: c.open_interest,
                     implied_volatility: c.implied_volatility.and_then(decimal_from_f64),
@@ -348,9 +349,6 @@ struct OptContractNode {
     in_the_money: Option<bool>,
 }
 
-fn currency_from_result(node: &OptResultNode) -> Option<Currency> {
-    node.quote
-        .as_ref()
-        .and_then(|q| q.currency.as_deref())
-        .and_then(|code| Currency::from_str(code).ok())
+fn currency_from_result(node: &OptResultNode) -> Option<String> {
+    node.quote.as_ref().and_then(|q| q.currency.clone())
 }

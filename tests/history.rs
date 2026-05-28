@@ -2,6 +2,8 @@ mod common;
 
 #[path = "history/adjust_from_splits_only.rs"]
 mod adjust_from_splits_only;
+#[path = "history/action_currency_synthetic.rs"]
+mod history_action_currency_synthetic;
 #[path = "history/adjust.rs"]
 mod history_adjust;
 #[path = "history/fractional_splits.rs"]

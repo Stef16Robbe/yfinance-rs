@@ -33,17 +33,17 @@
             "raw": 0.231
           },
           "enterpriseToEbitda": {
-            "fmt": "17.01",
-            "raw": 17.01
+            "fmt": "16.88",
+            "raw": 16.875
           },
           "enterpriseToRevenue": {
-            "fmt": "9.86",
-            "raw": 9.858
+            "fmt": "9.78",
+            "raw": 9.78
           },
           "enterpriseValue": {
-            "fmt": "3.14T",
-            "longFmt": "3,137,655,799,808",
-            "raw": 3137655799808
+            "fmt": "3.11T",
+            "longFmt": "3,112,696,020,992",
+            "raw": 3112696020992
           },
           "fiveYearAverageReturn": {},
           "floatShares": {
@@ -279,9 +279,9 @@
           "maxSupply": {},
           "navPrice": {},
           "nonDilutedMarketCap": {
-            "fmt": "3.09T",
-            "longFmt": "3,090,451,689,905",
-            "raw": 3090451689905
+            "fmt": "3.07T",
+            "longFmt": "3,065,492,149,299",
+            "raw": 3065492149299
           },
           "open": {
             "fmt": "411.05",

@@ -9,6 +9,10 @@ fn usd_price(value: f64) -> Price {
     price_from_f64(value, Currency::Iso(IsoCurrency::USD)).expect("known-good USD price")
 }
 
+fn fixture(endpoint: &str, symbol: &str) -> String {
+    crate::common::fixture(endpoint, symbol, "json")
+}
+
 #[tokio::test]
 async fn offline_price_target_happy() {
     let server = MockServer::start();
@@ -37,8 +41,17 @@ async fn offline_price_target_happy() {
             .header("content-type", "application/json")
             .body(body);
     });
+    let quote_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", sym);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(fixture("quote_v7", sym));
+    });
 
     let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
@@ -51,6 +64,7 @@ async fn offline_price_target_happy() {
     let pt = t.analyst_price_target(None).await.unwrap();
 
     mock.assert();
+    quote_mock.assert();
 
     assert_eq!(pt.mean, Some(usd_price(200.0)));
     assert_eq!(pt.high, Some(usd_price(250.0)));
@@ -109,8 +123,17 @@ async fn price_target_invalid_crumb_then_retry_succeeds() {
             }"#,
             );
     });
+    let quote_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", sym);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(fixture("quote_v7", sym));
+    });
 
     let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
@@ -128,6 +151,7 @@ async fn price_target_invalid_crumb_then_retry_succeeds() {
     cookie.assert();
     crumb.assert();
     ok.assert();
+    quote_mock.assert();
 
     assert_eq!(pt.mean, Some(usd_price(123.45)));
     assert_eq!(pt.high, Some(usd_price(150.0)));

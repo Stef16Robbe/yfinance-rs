@@ -56,6 +56,7 @@ async fn history_skips_split_components_that_overflow_action_ratio() {
     let body = r#"{
       "chart": {
         "result": [{
+          "meta": { "currency": "USD" },
           "timestamp": [1000, 2000],
           "indicators": {
             "quote": [{

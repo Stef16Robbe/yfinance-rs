@@ -499,8 +499,8 @@ impl Ticker {
 
     /// Fetches the analyst price target.
     ///
-    /// Provide `Some(currency)` to override the inferred reporting currency; pass `None`
-    /// to use the cached profile-based heuristic.
+    /// Provide `Some(currency)` to override the auto-resolved currency for this call;
+    /// pass `None` to enrich currency metadata from Yahoo and infer only when needed.
     ///
     /// # Errors
     ///
@@ -518,8 +518,8 @@ impl Ticker {
     ///
     /// This includes earnings estimates, revenue estimates, EPS trends, and EPS revisions for various periods.
     ///
-    /// Provide `Some(currency)` to override the inferred reporting currency; pass `None`
-    /// to use the cached profile-based heuristic.
+    /// Provide `Some(currency)` to override the auto-resolved currency for this call;
+    /// pass `None` to enrich currency metadata from Yahoo and infer only when needed.
     ///
     /// # Errors
     ///
@@ -559,8 +559,8 @@ impl Ticker {
 
     /// Fetches the annual income statement.
     ///
-    /// Provide `Some(currency)` to override the inferred reporting currency; pass `None`
-    /// to use the cached profile-based heuristic.
+    /// Provide `Some(currency)` to override the auto-resolved reporting currency for this call;
+    /// pass `None` to enrich currency metadata from Yahoo and infer only when needed.
     ///
     /// # Errors
     ///
@@ -576,8 +576,8 @@ impl Ticker {
 
     /// Fetches the quarterly income statement.
     ///
-    /// Provide `Some(currency)` to override the inferred reporting currency; pass `None`
-    /// to use the cached profile-based heuristic.
+    /// Provide `Some(currency)` to override the auto-resolved reporting currency for this call;
+    /// pass `None` to enrich currency metadata from Yahoo and infer only when needed.
     ///
     /// # Errors
     ///
@@ -593,8 +593,8 @@ impl Ticker {
 
     /// Fetches the annual balance sheet.
     ///
-    /// Provide `Some(currency)` to override the inferred reporting currency; pass `None`
-    /// to use the cached profile-based heuristic.
+    /// Provide `Some(currency)` to override the auto-resolved reporting currency for this call;
+    /// pass `None` to enrich currency metadata from Yahoo and infer only when needed.
     ///
     /// # Errors
     ///
@@ -610,8 +610,8 @@ impl Ticker {
 
     /// Fetches the quarterly balance sheet.
     ///
-    /// Provide `Some(currency)` to override the inferred reporting currency; pass `None`
-    /// to use the cached profile-based heuristic.
+    /// Provide `Some(currency)` to override the auto-resolved reporting currency for this call;
+    /// pass `None` to enrich currency metadata from Yahoo and infer only when needed.
     ///
     /// # Errors
     ///
@@ -627,8 +627,8 @@ impl Ticker {
 
     /// Fetches the annual cash flow statement.
     ///
-    /// Provide `Some(currency)` to override the inferred reporting currency; pass `None`
-    /// to use the cached profile-based heuristic.
+    /// Provide `Some(currency)` to override the auto-resolved reporting currency for this call;
+    /// pass `None` to enrich currency metadata from Yahoo and infer only when needed.
     ///
     /// # Errors
     ///
@@ -644,8 +644,8 @@ impl Ticker {
 
     /// Fetches the quarterly cash flow statement.
     ///
-    /// Provide `Some(currency)` to override the inferred reporting currency; pass `None`
-    /// to use the cached profile-based heuristic.
+    /// Provide `Some(currency)` to override the auto-resolved reporting currency for this call;
+    /// pass `None` to enrich currency metadata from Yahoo and infer only when needed.
     ///
     /// # Errors
     ///
@@ -661,8 +661,8 @@ impl Ticker {
 
     /// Fetches earnings history and estimates.
     ///
-    /// Provide `Some(currency)` to override the inferred reporting currency; pass `None`
-    /// to use the cached profile-based heuristic.
+    /// Provide `Some(currency)` to override the auto-resolved reporting currency for this call;
+    /// pass `None` to enrich currency metadata from Yahoo and infer only when needed.
     ///
     /// # Errors
     ///

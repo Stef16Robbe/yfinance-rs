@@ -219,8 +219,9 @@ const COUNTRY_TO_CURRENCY_RAW: &[(&str, &str)] = &[
 static COUNTRY_TO_CURRENCY: LazyLock<HashMap<&'static str, Currency>> = LazyLock::new(|| {
     let mut map = HashMap::new();
     for (country, code) in COUNTRY_TO_CURRENCY_RAW {
-        let parsed = (*code).parse().unwrap_or(Currency::Iso(IsoCurrency::USD));
-        map.insert(*country, parsed);
+        if let Ok(parsed) = (*code).parse() {
+            map.insert(*country, parsed);
+        }
     }
     map
 });

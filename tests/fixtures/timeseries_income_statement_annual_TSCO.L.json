@@ -177,64 +177,6 @@
         ]
       },
       {
-        "annualTaxProvision": [
-          {
-            "asOfDate": "2023-02-28",
-            "currencyCode": "GBP",
-            "dataId": 20145,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "224.00M",
-              "raw": 224000000.0
-            }
-          },
-          {
-            "asOfDate": "2024-02-29",
-            "currencyCode": "GBP",
-            "dataId": 20145,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "525.00M",
-              "raw": 525000000.0
-            }
-          },
-          {
-            "asOfDate": "2025-02-28",
-            "currencyCode": "GBP",
-            "dataId": 20145,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "611.00M",
-              "raw": 611000000.0
-            }
-          },
-          {
-            "asOfDate": "2026-02-28",
-            "currencyCode": "GBP",
-            "dataId": 20145,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "616.00M",
-              "raw": 616000000.0
-            }
-          }
-        ],
-        "meta": {
-          "symbol": [
-            "TSCO.L"
-          ],
-          "type": [
-            "annualTaxProvision"
-          ]
-        },
-        "timestamp": [
-          1677542400,
-          1709164800,
-          1740700800,
-          1772236800
-        ]
-      },
-      {
         "annualGrossProfit": [
           {
             "asOfDate": "2023-02-28",
@@ -283,6 +225,64 @@
           ],
           "type": [
             "annualGrossProfit"
+          ]
+        },
+        "timestamp": [
+          1677542400,
+          1709164800,
+          1740700800,
+          1772236800
+        ]
+      },
+      {
+        "annualTaxProvision": [
+          {
+            "asOfDate": "2023-02-28",
+            "currencyCode": "GBP",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "224.00M",
+              "raw": 224000000.0
+            }
+          },
+          {
+            "asOfDate": "2024-02-29",
+            "currencyCode": "GBP",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "525.00M",
+              "raw": 525000000.0
+            }
+          },
+          {
+            "asOfDate": "2025-02-28",
+            "currencyCode": "GBP",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "611.00M",
+              "raw": 611000000.0
+            }
+          },
+          {
+            "asOfDate": "2026-02-28",
+            "currencyCode": "GBP",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "616.00M",
+              "raw": 616000000.0
+            }
+          }
+        ],
+        "meta": {
+          "symbol": [
+            "TSCO.L"
+          ],
+          "type": [
+            "annualTaxProvision"
           ]
         },
         "timestamp": [

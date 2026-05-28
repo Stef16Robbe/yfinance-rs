@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Removed `HistoryBuilder::keepna` and `DownloadBuilder::keepna`. `paft::Candle` requires valid OHLC prices, so malformed history rows are always dropped instead of fabricating placeholder prices.
 - Replaced the old lossy float-to-money/price/decimal helpers with checked conversion helpers. `core::conversions` is now hidden from public docs and remains internal Yahoo-to-`paft` adapter plumbing with no stability guarantee.
 - Missing or malformed provider classification/date fields now fail or drop the affected row instead of being coerced into plausible values such as epoch timestamps, `Hold`, `Maintain`, `Buy`, `Officer`, `Equity`, or `1970` periods.
+- Missing or unparseable Yahoo currency metadata no longer silently falls back to USD. Required monetary responses now return typed data errors when no valid currency can be resolved, and optional monetary fields/actions are omitted instead of fabricated.
 
 ### Fixed
 
@@ -28,12 +29,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Malformed raw OHLC rows are validated before auto-adjustment, so adjustment math cannot turn invalid Yahoo prices into emitted candles.
 - Download rounding and repair now leave values unchanged when conversion fails instead of falling back to zero.
 - Download repair now scales OHLC rows atomically, leaving the whole row unchanged if any repaired price cannot be represented.
+- History now uses `chart.meta.currency` for candles and default dividend/capital-gain currency before attempting any inferred fallback, while event-level action currencies override the chart default.
+- Yahoo unit currency codes such as `GBp`, `GBX`, `ZAc`, and `ILA` are normalized to their major ISO currencies; per-share `Price` values are scaled from quote units, while aggregate `Money` values stay in major units.
+- v7 quote key statistics now distinguish quote-unit prices from major-unit market cap and financial per-share fields, so minor-unit listings such as `TSCO.L` no longer scale EPS/dividend values by the quote-price unit.
+- Currency enrichment now caches successful empty v7 quote currency responses as confirmed missing and consistently reuses typed contextual currency cache entries.
+- Heuristic currency cache entries are now provisional until stronger Yahoo currency fields are confirmed missing, so later direct/enriched evidence can replace stale profile or listing inference.
+- Currency listing fallback now infers Yahoo quote units for minor-unit exchanges such as London (`GBp`) instead of assuming major ISO units.
+- Fundamentals timeseries statements now use same-payload `currencyCode` values before issuing quote/profile enrichment requests, and invalid provider currency codes surface as data errors instead of falling through to heuristics.
+- Analyst estimate row-level currency fields no longer poison symbol-level inferred caches, and optional holder monetary values are omitted when currency cannot be resolved.
+- Analyst revenue estimate currency now stays scoped to analyst estimate rows instead of overwriting reporting-currency cache entries.
+- Option chains now route missing contract currency through the trading-currency resolver, allowing v7 quote enrichment, listing/exchange inference, and profile fallback instead of depending on already-converted quote prices.
 
 ### Changed
 
 - Clean up example output so holder rows, corporate actions, historical action dates, and handled live Yahoo errors render as user-facing text instead of debug-shaped values.
 - Update ESG examples/docs to handle Yahoo's currently unavailable `esgScores` response instead of advertising unavailable live data.
 - README examples no longer advertise direct use of conversion helpers such as `money_to_f64`.
+- Currency auto-resolution is now source-aware and typed by purpose (`Trading`, `Reporting`, `CorporateAction`, and `AnalystEstimate`). Direct Yahoo evidence wins over quote/quoteSummary enrichment, listing inference, and profile-country heuristics.
+- Internal currency resolution now uses purpose-specific evidence types rather than a generic raw currency-code argument, reducing the chance that endpoint-specific fields mutate the wrong contextual cache.
+- `None` currency overrides continue to auto-enrich by querying Yahoo for stronger currency evidence when an endpoint omits currency data. `Some(currency)` overrides remain per-call only and no longer mutate inferred currency caches.
+- `YfClient::clear_cache()` now clears URL response cache, currency hint cache, resolved currency cache, and instrument cache; `invalidate_cache_entry()` remains URL-cache only.
 
 ## [0.8.0] - 2026-05-27
 

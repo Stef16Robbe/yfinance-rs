@@ -49,6 +49,8 @@ pub struct IncomeRowNode {
 /* --- earnings --- */
 #[derive(Deserialize)]
 pub struct EarningsNode {
+    #[serde(rename = "financialCurrency")]
+    pub(crate) financial_currency: Option<String>,
     #[serde(rename = "financialsChart")]
     pub(crate) financials_chart: Option<FinancialsChartNode>,
     #[serde(rename = "earningsChart")]

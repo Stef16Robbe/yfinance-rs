@@ -90,6 +90,7 @@ pub struct Events {
 pub struct DividendEvent {
     pub(crate) amount: Option<f64>,
     pub(crate) date: Option<i64>,
+    pub(crate) currency: Option<String>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -107,6 +108,7 @@ pub struct SplitEvent {
 pub struct CapitalGainEvent {
     pub(crate) amount: Option<f64>,
     pub(crate) date: Option<i64>,
+    pub(crate) currency: Option<String>,
 }
 
 /// Accepts numeric split components as integers, floats, numeric strings, or null/missing.

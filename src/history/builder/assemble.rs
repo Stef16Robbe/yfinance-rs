@@ -1,6 +1,5 @@
-use crate::core::conversions::{
-    decimal_from_f64, i64_to_datetime, price_from_f64_with_currency_str,
-};
+use crate::core::conversions::i64_to_datetime;
+use crate::core::{conversions::decimal_from_f64, currency_resolver::ResolvedCurrencyUnit};
 use crate::history::wire::QuoteBlock;
 use paft::market::responses::history::Candle;
 use paft::money::Price;
@@ -13,7 +12,7 @@ pub fn assemble_candles(
     adj: &[Option<f64>],
     auto_adjust: bool,
     cum_split_after: &[f64],
-    currency: Option<&str>,
+    currency: &ResolvedCurrencyUnit,
 ) -> Vec<Candle> {
     let mut out = Vec::new();
 
@@ -52,7 +51,7 @@ pub fn assemble_candles(
                 high,
                 low,
                 close,
-                close_unadj: price_from_f64_with_currency_str(raw_close, currency),
+                close_unadj: currency.price_from_f64(raw_close),
                 volume: volume0,
                 provider: (),
             });
@@ -85,12 +84,12 @@ fn candle_prices(
     high: f64,
     low: f64,
     close: f64,
-    currency: Option<&str>,
+    currency: &ResolvedCurrencyUnit,
 ) -> Option<(Price, Price, Price, Price)> {
     Some((
-        price_from_f64_with_currency_str(open, currency)?,
-        price_from_f64_with_currency_str(high, currency)?,
-        price_from_f64_with_currency_str(low, currency)?,
-        price_from_f64_with_currency_str(close, currency)?,
+        currency.price_from_f64(open)?,
+        currency.price_from_f64(high)?,
+        currency.price_from_f64(low)?,
+        currency.price_from_f64(close)?,
     ))
 }

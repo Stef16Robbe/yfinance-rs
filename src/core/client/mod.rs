@@ -7,8 +7,7 @@ mod retry;
 
 use crate::core::YfError;
 use crate::core::client::constants::DEFAULT_BASE_INSIDER_SEARCH;
-use crate::core::currency::currency_for_country;
-use paft::money::{Currency, IsoCurrency};
+use crate::core::currency_resolver::{CurrencyCacheKey, CurrencyHints, ResolvedCurrency};
 pub use retry::{Backoff, CacheMode, RetryConfig};
 
 use constants::{
@@ -84,7 +83,8 @@ pub struct YfClient {
     api_preference: ApiPreference,
 
     retry: RetryConfig,
-    reporting_currency_cache: Arc<RwLock<HashMap<String, Currency>>>,
+    pub(crate) currency_cache: Arc<RwLock<HashMap<CurrencyCacheKey, ResolvedCurrency>>>,
+    pub(crate) currency_hints: Arc<RwLock<HashMap<String, CurrencyHints>>>,
     // Cache of resolved instruments by original ticker string
     instrument_cache: Arc<RwLock<HashMap<String, paft::domain::Instrument>>>,
     cache: Option<Arc<CacheStore>>,
@@ -199,13 +199,17 @@ impl YfClient {
 
     /// Clears the entire in-memory cache.
     ///
-    /// This is an asynchronous operation that will acquire a write lock on the cache.
-    /// It does nothing if caching is disabled for the client.
+    /// This is an asynchronous operation that acquires write locks on the URL,
+    /// currency, and instrument caches. Currency and instrument caches are cleared
+    /// even when URL response caching is disabled.
     pub async fn clear_cache(&self) {
         if let Some(store) = &self.cache {
             let mut guard = store.map.write().await;
             guard.clear();
         }
+        self.currency_cache.write().await.clear();
+        self.currency_hints.write().await.clear();
+        self.instrument_cache.write().await.clear();
     }
 
     /// Removes a specific URL-based entry from the in-memory cache.
@@ -218,58 +222,6 @@ impl YfClient {
             let mut guard = store.map.write().await;
             guard.remove(&key);
         }
-    }
-
-    async fn cached_reporting_currency(&self, symbol: &str) -> Option<Currency> {
-        let guard = self.reporting_currency_cache.read().await;
-        guard.get(symbol).cloned()
-    }
-
-    async fn store_reporting_currency(&self, symbol: &str, currency: Currency) {
-        let mut guard = self.reporting_currency_cache.write().await;
-        guard.insert(symbol.to_string(), currency);
-    }
-
-    /// Returns the cached or inferred reporting currency for a symbol.
-    pub(crate) async fn reporting_currency(
-        &self,
-        symbol: &str,
-        override_currency: Option<Currency>,
-    ) -> Currency {
-        if let Some(currency) = override_currency {
-            self.store_reporting_currency(symbol, currency.clone())
-                .await;
-            return currency;
-        }
-
-        if let Some(currency) = self.cached_reporting_currency(symbol).await {
-            return currency;
-        }
-
-        let mut debug_reason: Option<String> = None;
-        let currency = match crate::profile::load_profile(self, symbol).await {
-            Ok(profile) => extract_currency_from_profile(&profile).unwrap_or_else(|| {
-                debug_reason = Some("profile missing country or unsupported currency".into());
-                Currency::Iso(IsoCurrency::USD)
-            }),
-            Err(err) => {
-                debug_reason = Some(format!("failed to load profile: {err}"));
-                Currency::Iso(IsoCurrency::USD)
-            }
-        };
-
-        if let Some(reason) =
-            debug_reason.filter(|_| std::env::var("YF_DEBUG").ok().as_deref() == Some("1"))
-        {
-            eprintln!(
-                "YF_DEBUG(currency): {symbol} -> {reason}; using {}",
-                currency.code()
-            );
-        }
-
-        self.store_reporting_currency(symbol, currency.clone())
-            .await;
-        currency
     }
 
     #[cfg_attr(
@@ -405,17 +357,6 @@ pub struct YfClientBuilder {
     // New fields for custom client and proxy configuration
     custom_client: Option<Client>,
     proxy: Option<reqwest::Proxy>,
-}
-
-fn extract_currency_from_profile(profile: &crate::profile::Profile) -> Option<Currency> {
-    match profile {
-        crate::profile::Profile::Company(company) => company
-            .address
-            .as_ref()
-            .and_then(|addr| addr.country.as_deref())
-            .and_then(currency_for_country),
-        _ => None,
-    }
 }
 
 impl YfClientBuilder {
@@ -858,7 +799,8 @@ impl YfClientBuilder {
             #[cfg(feature = "test-mode")]
             api_preference: self.api_preference.unwrap_or(ApiPreference::ApiThenScrape),
             retry: self.retry.unwrap_or_default(),
-            reporting_currency_cache: Arc::new(RwLock::new(HashMap::new())),
+            currency_cache: Arc::new(RwLock::new(HashMap::new())),
+            currency_hints: Arc::new(RwLock::new(HashMap::new())),
             instrument_cache: Arc::new(RwLock::new(HashMap::new())),
             cache: self.cache_ttl.map(|ttl| {
                 Arc::new(CacheStore {

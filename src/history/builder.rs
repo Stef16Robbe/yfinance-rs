@@ -3,9 +3,15 @@ mod adjust;
 mod assemble;
 mod fetch;
 
-use crate::core::client::{CacheMode, RetryConfig};
 use crate::core::conversions::{string_to_asset_kind, string_to_exchange};
 use crate::core::{YfClient, YfError};
+use crate::core::{
+    client::{CacheMode, RetryConfig},
+    currency_resolver::{
+        CorporateActionCurrencyEvidence, CurrencyHints, ResolvedCurrencyUnit,
+        TradingCurrencyEvidence,
+    },
+};
 use crate::history::wire::MetaNode;
 use chrono_tz::Tz;
 use paft::domain::Instrument;
@@ -176,26 +182,65 @@ impl HistoryBuilder {
         .await?;
 
         cache_history_instrument(&self.client, &self.symbol, fetched.meta.as_ref()).await?;
+        if let Some(meta) = fetched.meta.as_ref() {
+            self.client
+                .store_currency_hints(
+                    &self.symbol,
+                    CurrencyHints::from_chart(
+                        meta.currency.as_deref(),
+                        meta.exchange_name.as_deref(),
+                        meta.full_exchange_name.as_deref(),
+                        meta.instrument_type.as_deref(),
+                    ),
+                )
+                .await;
+        }
 
         // 2) Corporate actions & split ratios
-        let reporting_currency = self.client.reporting_currency(&self.symbol, None).await;
+        let chart_currency = fetched.meta.as_ref().and_then(|m| m.currency.as_deref());
+        let currency = if has_complete_ohlc_row(&fetched.quote, fetched.ts.len()) {
+            Some(
+                self.client
+                    .resolve_trading_currency_unit(
+                        &self.symbol,
+                        None,
+                        TradingCurrencyEvidence::ChartMeta(chart_currency),
+                        self.cache_mode,
+                        self.retry_override.as_ref(),
+                    )
+                    .await?,
+            )
+        } else {
+            None
+        };
+        let action_currency = action_default_currency(
+            &self.client,
+            &self.symbol,
+            fetched.events.as_ref(),
+            chart_currency,
+            currency.as_ref(),
+            self.cache_mode,
+            self.retry_override.as_ref(),
+        )
+        .await;
 
         let (mut actions_out, split_events) =
-            extract_actions(fetched.events.as_ref(), &reporting_currency);
+            extract_actions(fetched.events.as_ref(), action_currency.as_ref());
 
         // 3) Cumulative split factors after each bar
         let cum_split_after = cumulative_split_after(&fetched.ts, &split_events);
 
         // 4) Assemble candles (+ raw close) with/without adjustments
-        let currency = fetched.meta.as_ref().and_then(|m| m.currency.as_deref());
-        let candles = assemble_candles(
-            &fetched.ts,
-            &fetched.quote,
-            &fetched.adjclose,
-            self.auto_adjust,
-            &cum_split_after,
-            currency,
-        );
+        let candles = currency.as_ref().map_or_else(Vec::new, |currency| {
+            assemble_candles(
+                &fetched.ts,
+                &fetched.quote,
+                &fetched.adjclose,
+                self.auto_adjust,
+                &cum_split_after,
+                currency,
+            )
+        });
 
         // ensure actions sorted (extract_actions already sorts, keep consistent)
         actions_out.sort_by_key(|a| match a {
@@ -219,6 +264,64 @@ impl HistoryBuilder {
 }
 
 /* --- tiny private helper --- */
+
+fn has_complete_ohlc_row(quote: &crate::history::wire::QuoteBlock, len: usize) -> bool {
+    (0..len).any(|idx| {
+        quote.open.get(idx).and_then(|value| *value).is_some()
+            && quote.high.get(idx).and_then(|value| *value).is_some()
+            && quote.low.get(idx).and_then(|value| *value).is_some()
+            && quote.close.get(idx).and_then(|value| *value).is_some()
+    })
+}
+
+async fn action_default_currency(
+    client: &YfClient,
+    symbol: &str,
+    events: Option<&crate::history::wire::Events>,
+    chart_currency: Option<&str>,
+    trading_currency: Option<&ResolvedCurrencyUnit>,
+    cache_mode: CacheMode,
+    retry_override: Option<&RetryConfig>,
+) -> Option<ResolvedCurrencyUnit> {
+    if !events_need_default_currency(events) {
+        return trading_currency.cloned();
+    }
+
+    if let Some(currency) = trading_currency {
+        return Some(currency.clone());
+    }
+
+    client
+        .resolve_corporate_action_currency_unit(
+            symbol,
+            None,
+            CorporateActionCurrencyEvidence::ChartMeta(chart_currency),
+            cache_mode,
+            retry_override,
+        )
+        .await
+        .ok()
+}
+
+fn events_need_default_currency(events: Option<&crate::history::wire::Events>) -> bool {
+    let Some(events) = events else {
+        return false;
+    };
+
+    events.dividends.as_ref().is_some_and(|events| {
+        events
+            .values()
+            .any(|event| event.amount.is_some() && is_missing_currency(event.currency.as_deref()))
+    }) || events.capital_gains.as_ref().is_some_and(|events| {
+        events
+            .values()
+            .any(|event| event.amount.is_some() && is_missing_currency(event.currency.as_deref()))
+    })
+}
+
+fn is_missing_currency(currency: Option<&str>) -> bool {
+    currency.is_none_or(|currency| currency.trim().is_empty())
+}
 
 fn map_meta(m: Option<&MetaNode>) -> Option<HistoryMeta> {
     m.as_ref().map(|mm| HistoryMeta {

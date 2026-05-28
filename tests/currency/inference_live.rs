@@ -58,8 +58,8 @@ async fn live_reporting_currency_inference() -> Result<(), Box<dyn std::error::E
             .and_then(|row| row.total_revenue.as_ref().map(|m| m.currency().clone()));
         assert_eq!(
             cached_currency,
-            Some(Currency::Iso(IsoCurrency::USD)),
-            "{symbol} cache should reflect last override"
+            Some(expected.clone()),
+            "{symbol} cache should retain inferred currency after override"
         );
     }
 

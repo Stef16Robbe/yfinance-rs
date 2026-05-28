@@ -211,6 +211,72 @@ async fn option_chain_currency_fallback_fetches_quote() {
 }
 
 #[tokio::test]
+async fn option_chain_missing_currency_uses_resolver_inference_after_quote_failure() {
+    let server = crate::common::setup_server();
+    let symbol = "TSCO.L";
+    let date = 1_737_072_000_i64;
+
+    let body = r#"{
+      "optionChain": {
+        "result": [{
+          "underlyingSymbol":"TSCO.L",
+          "quote": {
+            "symbol":"TSCO.L",
+            "quoteType":"EQUITY",
+            "fullExchangeName":"London Stock Exchange",
+            "exchange":"LSE"
+          },
+          "options": [{
+            "expirationDate": 1737072000,
+            "calls": [{
+              "contractSymbol":"TSCO250117C00444100",
+              "strike":444.1,
+              "expiration":1737072000
+            }],
+            "puts": []
+          }]
+        }],
+        "error": null
+      }
+    }"#;
+
+    let options_mock = server.mock(|when, then| {
+        when.method(httpmock::Method::GET)
+            .path(format!("/v7/finance/options/{symbol}"))
+            .query_param("date", date.to_string());
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+    let quote_mock = server.mock(|when, then| {
+        when.method(httpmock::Method::GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", symbol);
+        then.status(500);
+    });
+
+    let client = YfClient::builder()
+        .base_options_v7(Url::parse(&format!("{}/v7/finance/options/", server.base_url())).unwrap())
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+
+    let chain = Ticker::new(&client, symbol)
+        .option_chain(Some(date))
+        .await
+        .unwrap();
+
+    options_mock.assert();
+    assert!(quote_mock.calls() >= 1);
+    let contract = chain.calls().next().expect("call contract");
+    assert_eq!(
+        money_to_currency_str(&contract.key.strike).as_deref(),
+        Some("GBP")
+    );
+    assert!((money_to_f64(&contract.key.strike) - 4.441).abs() < 1e-9);
+}
+
+#[tokio::test]
 async fn option_chain_skips_bad_strikes_and_keeps_valid_contracts() {
     let server = crate::common::setup_server();
     let date = 1_737_072_000_i64;

@@ -6,10 +6,8 @@ use crate::{
     YfClient, YfError,
     core::{
         client::{CacheMode, RetryConfig},
-        conversions::{
-            decimal_from_f64, i64_to_datetime, money_from_f64_with_currency_str,
-            price_from_f64_with_currency_str, string_to_asset_kind,
-        },
+        conversions::{decimal_from_f64, i64_to_datetime, string_to_asset_kind},
+        currency_resolver::{CurrencyHints, ResolvedCurrencyUnit},
         net, quotesummary,
         wire::{RawNum, from_raw},
     },
@@ -96,6 +94,8 @@ pub struct V7QuoteNode {
     #[serde(rename = "dividendDate")]
     pub(crate) dividend_date: Option<i64>,
     pub(crate) currency: Option<String>,
+    #[serde(rename = "financialCurrency")]
+    pub(crate) financial_currency: Option<String>,
     #[serde(rename = "fullExchangeName")]
     pub(crate) full_exchange_name: Option<String>,
     pub(crate) exchange: Option<String>,
@@ -107,6 +107,10 @@ pub struct V7QuoteNode {
 }
 
 impl V7QuoteNode {
+    fn currency_units(&self) -> QuoteCurrencyUnits {
+        QuoteCurrencyUnits::from_quote_node(self)
+    }
+
     fn exchange(&self) -> Option<paft::domain::Exchange> {
         crate::core::conversions::string_to_exchange(
             self.full_exchange_name
@@ -140,7 +144,7 @@ impl V7QuoteNode {
 
     fn positive_book_level(&self, price: Option<f64>, size: Option<u64>) -> Option<BookLevel> {
         let price = price.filter(|p| p.is_finite() && *p > 0.0)?;
-        let price = price_from_f64_with_currency_str(price, self.currency.as_deref())?;
+        let price = self.currency_units().quote_price(price)?;
         Some(BookLevel::new(price, size.map(Decimal::from)))
     }
 
@@ -159,10 +163,8 @@ impl V7QuoteNode {
 
     pub(crate) fn to_snapshot(&self) -> Result<Snapshot, YfError> {
         let exchange = self.exchange();
-        let price = |value: Option<f64>| {
-            value
-                .and_then(|value| price_from_f64_with_currency_str(value, self.currency.as_deref()))
-        };
+        let currencies = self.currency_units();
+        let price = |value: Option<f64>| value.and_then(|value| currencies.quote_price(value));
 
         Ok(Snapshot {
             instrument: self.instrument(exchange)?,
@@ -180,27 +182,26 @@ impl V7QuoteNode {
     }
 
     pub(crate) fn to_key_statistics(&self) -> KeyStatistics {
-        let money = |value: Option<f64>| {
-            value
-                .and_then(|value| money_from_f64_with_currency_str(value, self.currency.as_deref()))
-        };
-        let price = |value: Option<f64>| {
-            value
-                .and_then(|value| price_from_f64_with_currency_str(value, self.currency.as_deref()))
-        };
+        let currencies = self.currency_units();
+        let quote_price =
+            |value: Option<f64>| value.and_then(|value| currencies.quote_price(value));
+        let quote_money =
+            |value: Option<f64>| value.and_then(|value| currencies.quote_money(value));
+        let financial_price =
+            |value: Option<f64>| value.and_then(|value| currencies.financial_price(value));
 
         KeyStatistics {
             as_of: self.as_of(),
-            market_cap: money(self.market_cap),
+            market_cap: quote_money(self.market_cap),
             shares_outstanding: self.shares_outstanding,
-            eps_trailing_twelve_months: price(self.eps_trailing_twelve_months),
+            eps_trailing_twelve_months: financial_price(self.eps_trailing_twelve_months),
             pe_trailing_twelve_months: Self::decimal(self.trailing_pe),
-            dividend_per_share_forward: price(self.dividend_rate),
+            dividend_per_share_forward: financial_price(self.dividend_rate),
             dividend_yield_trailing: Self::decimal(self.trailing_annual_dividend_yield),
             dividend_yield_forward: Self::percent_to_fraction(self.dividend_yield),
             ex_dividend_date: None,
-            fifty_two_week_high: price(self.fifty_two_week_high),
-            fifty_two_week_low: price(self.fifty_two_week_low),
+            fifty_two_week_high: quote_price(self.fifty_two_week_high),
+            fifty_two_week_low: quote_price(self.fifty_two_week_low),
             average_daily_volume_3m: self.average_daily_volume_3_month,
             beta: Self::decimal(self.beta),
         }
@@ -215,6 +216,59 @@ impl V7QuoteNode {
                 dividend_payment_date: Some(ts),
             })
     }
+}
+
+struct QuoteCurrencyUnits {
+    quote: Option<ResolvedCurrencyUnit>,
+    quote_major: Option<ResolvedCurrencyUnit>,
+    financial: Option<ResolvedCurrencyUnit>,
+}
+
+impl QuoteCurrencyUnits {
+    fn from_quote_node(node: &V7QuoteNode) -> Self {
+        let quote = node
+            .currency
+            .as_deref()
+            .and_then(ResolvedCurrencyUnit::from_code);
+        let quote_major = quote.as_ref().map(ResolvedCurrencyUnit::major_unit);
+        let financial = node
+            .financial_currency
+            .as_deref()
+            .and_then(nonempty)
+            .map_or_else(
+                || quote_major.clone(),
+                ResolvedCurrencyUnit::major_from_code,
+            );
+
+        Self {
+            quote,
+            quote_major,
+            financial,
+        }
+    }
+
+    fn quote_price(&self, value: f64) -> Option<paft::money::Price> {
+        self.quote
+            .as_ref()
+            .and_then(|currency| currency.price_from_f64(value))
+    }
+
+    fn quote_money(&self, value: f64) -> Option<paft::money::Money> {
+        self.quote_major
+            .as_ref()
+            .and_then(|currency| currency.money_from_f64(value))
+    }
+
+    fn financial_price(&self, value: f64) -> Option<paft::money::Price> {
+        self.financial
+            .as_ref()
+            .and_then(|currency| currency.price_from_f64(value))
+    }
+}
+
+fn nonempty(value: &str) -> Option<&str> {
+    let value = value.trim();
+    (!value.is_empty()).then_some(value)
 }
 
 #[derive(Deserialize)]
@@ -367,35 +421,121 @@ pub async fn fetch_v7_quotes(
         .result
         .ok_or_else(|| YfError::MissingData("v7 quoteResponse.result missing".into()))?;
 
-    // Populate instrument cache best-effort from v7 quote nodes
-    for n in &nodes {
-        if let Some(sym) = n.symbol.as_deref() {
-            let exch = crate::core::conversions::string_to_exchange(
-                n.full_exchange_name
-                    .clone()
-                    .or_else(|| n.exchange.clone())
-                    .or_else(|| n.market.clone())
-                    .or_else(|| n.market_cap_figure_exchange.clone()),
-            );
-            let kind = n
-                .quote_type
-                .as_deref()
-                .and_then(|s| string_to_asset_kind(s).ok());
-            let Some(kind) = kind else {
-                continue;
-            };
+    store_v7_quote_side_effects(client, symbols, &nodes).await;
 
-            let inst = match exch {
-                Some(ex) => Instrument::from_symbol_and_exchange(sym, ex, kind),
-                None => Instrument::from_symbol(sym, kind),
-            };
-            if let Ok(inst) = inst {
-                client.store_instrument(sym.to_string(), inst).await;
+    Ok(nodes)
+}
+
+async fn store_v7_quote_side_effects(
+    client: &YfClient,
+    requested_symbols: &[&str],
+    nodes: &[V7QuoteNode],
+) {
+    let mut resolved_requests = vec![false; requested_symbols.len()];
+
+    for node in nodes {
+        let provider_symbol = nonempty_symbol(node.symbol.as_deref());
+        if let Some(symbol) = provider_symbol {
+            store_quote_node_hints(client, symbol, node).await;
+            store_requested_alias_hints(
+                client,
+                requested_symbols,
+                &mut resolved_requests,
+                symbol,
+                node,
+            )
+            .await;
+            store_quote_node_instrument(client, symbol, node).await;
+        }
+
+        if requested_symbols.len() == 1 {
+            let requested = requested_symbols[0];
+            if provider_symbol.is_none_or(|symbol| !same_symbol(symbol, requested)) {
+                store_quote_node_hints(client, requested, node).await;
+                resolved_requests[0] = true;
             }
         }
     }
 
-    Ok(nodes)
+    for (symbol, resolved) in requested_symbols.iter().zip(resolved_requests) {
+        if !resolved {
+            client
+                .store_currency_hints(
+                    symbol,
+                    CurrencyHints::from_quote(None, None, None, None, None),
+                )
+                .await;
+        }
+    }
+}
+
+async fn store_quote_node_hints(client: &YfClient, symbol: &str, node: &V7QuoteNode) {
+    client
+        .store_currency_hints(
+            symbol,
+            CurrencyHints::from_quote(
+                node.currency.as_deref(),
+                node.financial_currency.as_deref(),
+                node.exchange.as_deref(),
+                node.full_exchange_name.as_deref(),
+                node.quote_type.as_deref(),
+            ),
+        )
+        .await;
+}
+
+async fn store_quote_node_instrument(client: &YfClient, symbol: &str, node: &V7QuoteNode) {
+    let exch = crate::core::conversions::string_to_exchange(
+        node.full_exchange_name
+            .clone()
+            .or_else(|| node.exchange.clone())
+            .or_else(|| node.market.clone())
+            .or_else(|| node.market_cap_figure_exchange.clone()),
+    );
+    let Some(kind) = node
+        .quote_type
+        .as_deref()
+        .and_then(|s| string_to_asset_kind(s).ok())
+    else {
+        return;
+    };
+
+    let inst = match exch {
+        Some(ex) => Instrument::from_symbol_and_exchange(symbol, ex, kind),
+        None => Instrument::from_symbol(symbol, kind),
+    };
+    if let Ok(inst) = inst {
+        client.store_instrument(symbol.to_string(), inst).await;
+    }
+}
+
+async fn store_requested_alias_hints(
+    client: &YfClient,
+    requested_symbols: &[&str],
+    resolved: &mut [bool],
+    provider_symbol: &str,
+    node: &V7QuoteNode,
+) {
+    for (idx, requested) in requested_symbols.iter().enumerate() {
+        if same_symbol(provider_symbol, requested) {
+            resolved[idx] = true;
+            if !same_cache_key(provider_symbol, requested) {
+                store_quote_node_hints(client, requested, node).await;
+            }
+        }
+    }
+}
+
+fn nonempty_symbol(symbol: Option<&str>) -> Option<&str> {
+    symbol.map(str::trim).filter(|symbol| !symbol.is_empty())
+}
+
+fn same_symbol(left: &str, right: &str) -> bool {
+    left.trim().eq_ignore_ascii_case(right.trim())
+}
+
+fn same_cache_key(left: &str, right: &str) -> bool {
+    left.trim() == right.trim()
 }
 
 impl TryFrom<V7QuoteNode> for Quote {
@@ -404,18 +544,19 @@ impl TryFrom<V7QuoteNode> for Quote {
     fn try_from(n: V7QuoteNode) -> Result<Self, Self::Error> {
         let exchange = n.exchange();
         let instrument = n.instrument(exchange)?;
+        let currencies = n.currency_units();
 
         Ok(Self {
             instrument,
             name: n.long_name.clone().or_else(|| n.short_name.clone()),
             price: n
                 .regular_market_price
-                .and_then(|price| price_from_f64_with_currency_str(price, n.currency.as_deref())),
+                .and_then(|price| currencies.quote_price(price)),
             bid: n.positive_book_level(n.bid, n.bid_size),
             ask: n.positive_book_level(n.ask, n.ask_size),
             previous_close: n
                 .regular_market_previous_close
-                .and_then(|price| price_from_f64_with_currency_str(price, n.currency.as_deref())),
+                .and_then(|price| currencies.quote_price(price)),
             day_volume: n.regular_market_volume,
             market_state: n.market_state.as_deref().and_then(|s| s.parse().ok()),
             as_of: n.as_of(),

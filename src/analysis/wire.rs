@@ -69,6 +69,8 @@ pub struct UpgradeNode {
 
 #[derive(Deserialize)]
 pub struct FinancialDataNode {
+    #[serde(rename = "financialCurrency")]
+    pub(crate) financial_currency: Option<String>,
     #[serde(rename = "targetMeanPrice")]
     pub(crate) target_mean_price: Option<RawNum<f64>>,
     #[serde(rename = "targetHighPrice")]
@@ -104,6 +106,8 @@ pub struct EarningsTrendItemNode {
 
 #[derive(Deserialize)]
 pub struct EarningsEstimateNode {
+    #[serde(rename = "earningsCurrency")]
+    pub(crate) earnings_currency: Option<String>,
     pub(crate) avg: Option<RawNum<f64>>,
     pub(crate) low: Option<RawNum<f64>>,
     pub(crate) high: Option<RawNum<f64>>,
@@ -116,6 +120,8 @@ pub struct EarningsEstimateNode {
 
 #[derive(Deserialize)]
 pub struct RevenueEstimateNode {
+    #[serde(rename = "revenueCurrency")]
+    pub(crate) revenue_currency: Option<String>,
     pub(crate) avg: Option<RawNum<i64>>,
     pub(crate) low: Option<RawNum<i64>>,
     pub(crate) high: Option<RawNum<i64>>,
@@ -128,6 +134,8 @@ pub struct RevenueEstimateNode {
 
 #[derive(Deserialize)]
 pub struct EpsTrendNode {
+    #[serde(rename = "epsTrendCurrency")]
+    pub(crate) eps_trend_currency: Option<String>,
     pub(crate) current: Option<RawNum<f64>>,
     #[serde(rename = "7daysAgo")]
     pub(crate) seven_days_ago: Option<RawNum<f64>>,

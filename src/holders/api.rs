@@ -8,15 +8,12 @@ use crate::core::wire::{from_raw, from_raw_date};
 use crate::core::{
     YfClient, YfError,
     client::{CacheMode, RetryConfig},
-    conversions::{
-        i64_to_datetime, string_to_insider_position, string_to_transaction_type,
-        u64_to_money_with_currency,
-    },
+    conversions::{i64_to_datetime, string_to_insider_position, string_to_transaction_type},
+    currency_resolver::{ReportingCurrencyEvidence, ResolvedCurrencyUnit},
     quotesummary,
 };
 use paft::Decimal;
 use paft::fundamentals::holders::{InsiderPosition, TransactionType};
-use paft::money::Currency;
 
 const MODULES: &str = "institutionOwnership,fundOwnership,majorHoldersBreakdown,insiderTransactions,insiderHolders,netSharePurchaseActivity";
 
@@ -110,26 +107,35 @@ fn required_row_value<T>(
     }
 }
 
-fn map_ownership_list(
+async fn map_ownership_list(
+    client: &YfClient,
+    symbol: &str,
     node: Option<super::wire::OwnershipNode>,
     module_name: &str,
-    currency: &Currency,
+    cache_mode: CacheMode,
+    retry_override: Option<&RetryConfig>,
 ) -> Result<Vec<InstitutionalHolder>, YfError> {
-    node.ok_or_else(|| YfError::MissingData(format!("{module_name} missing")))?
+    let holders = node
+        .ok_or_else(|| YfError::MissingData(format!("{module_name} missing")))?
         .ownership_list
-        .ok_or_else(|| YfError::MissingData(format!("{module_name}.ownershipList missing")))?
+        .ok_or_else(|| YfError::MissingData(format!("{module_name}.ownershipList missing")))?;
+
+    let currency = optional_reporting_currency(
+        client,
+        symbol,
+        holders.iter().any(|h| from_raw(h.value).is_some()),
+        cache_mode,
+        retry_override,
+    )
+    .await;
+
+    let rows = holders
         .into_iter()
         .filter_map(|h| {
             let holder = nonempty(h.organization)?;
             let date_reported =
                 from_raw_date(h.date_reported).and_then(|ts| i64_to_datetime(ts).ok())?;
-            let value = match from_raw(h.value)
-                .map(|v| u64_to_money_with_currency(v, currency.clone()))
-                .transpose()
-            {
-                Ok(value) => value,
-                Err(err) => return Some(Err(err)),
-            };
+            let value = optional_money_u64(currency.as_ref(), from_raw(h.value));
 
             Some(Ok(InstitutionalHolder {
                 holder,
@@ -139,7 +145,50 @@ fn map_ownership_list(
                 value,
             }))
         })
-        .collect()
+        .collect::<Result<Vec<_>, YfError>>()?;
+
+    Ok(rows)
+}
+
+async fn resolve_reporting_currency(
+    client: &YfClient,
+    symbol: &str,
+    cache_mode: CacheMode,
+    retry_override: Option<&RetryConfig>,
+) -> Result<ResolvedCurrencyUnit, YfError> {
+    client
+        .resolve_reporting_currency_unit(
+            symbol,
+            None,
+            ReportingCurrencyEvidence::None,
+            cache_mode,
+            retry_override,
+        )
+        .await
+}
+
+async fn optional_reporting_currency(
+    client: &YfClient,
+    symbol: &str,
+    needed: bool,
+    cache_mode: CacheMode,
+    retry_override: Option<&RetryConfig>,
+) -> Option<ResolvedCurrencyUnit> {
+    if !needed {
+        return None;
+    }
+
+    resolve_reporting_currency(client, symbol, cache_mode, retry_override)
+        .await
+        .ok()
+}
+
+fn optional_money_u64(
+    currency: Option<&ResolvedCurrencyUnit>,
+    value: Option<u64>,
+) -> Option<paft::money::Money> {
+    let currency = currency?;
+    value.and_then(|value| currency.money_from_u64(value).ok())
 }
 
 pub(super) async fn institutional_holders(
@@ -149,12 +198,15 @@ pub(super) async fn institutional_holders(
     retry_override: Option<&RetryConfig>,
 ) -> Result<Vec<InstitutionalHolder>, YfError> {
     let root = fetch_holders_modules(client, symbol, cache_mode, retry_override).await?;
-    let currency = client.reporting_currency(symbol, None).await;
     map_ownership_list(
+        client,
+        symbol,
         root.institution_ownership,
         "institutionOwnership",
-        &currency,
+        cache_mode,
+        retry_override,
     )
+    .await
 }
 
 pub(super) async fn mutual_fund_holders(
@@ -164,8 +216,15 @@ pub(super) async fn mutual_fund_holders(
     retry_override: Option<&RetryConfig>,
 ) -> Result<Vec<InstitutionalHolder>, YfError> {
     let root = fetch_holders_modules(client, symbol, cache_mode, retry_override).await?;
-    let currency = client.reporting_currency(symbol, None).await;
-    map_ownership_list(root.fund_ownership, "fundOwnership", &currency)
+    map_ownership_list(
+        client,
+        symbol,
+        root.fund_ownership,
+        "fundOwnership",
+        cache_mode,
+        retry_override,
+    )
+    .await
 }
 
 pub(super) async fn insider_transactions(
@@ -175,12 +234,20 @@ pub(super) async fn insider_transactions(
     retry_override: Option<&RetryConfig>,
 ) -> Result<Vec<InsiderTransaction>, YfError> {
     let root = fetch_holders_modules(client, symbol, cache_mode, retry_override).await?;
-    let currency = client.reporting_currency(symbol, None).await;
     let transactions = root
         .insider_transactions
         .ok_or_else(|| YfError::MissingData("insiderTransactions missing".into()))?
         .transactions
         .ok_or_else(|| YfError::MissingData("insiderTransactions.transactions missing".into()))?;
+
+    let currency = optional_reporting_currency(
+        client,
+        symbol,
+        transactions.iter().any(|t| from_raw(t.value).is_some()),
+        cache_mode,
+        retry_override,
+    )
+    .await;
 
     transactions
         .into_iter()
@@ -202,13 +269,7 @@ pub(super) async fn insider_transactions(
             };
             let transaction_date =
                 from_raw_date(t.start_date).and_then(|ts| i64_to_datetime(ts).ok())?;
-            let value = match from_raw(t.value)
-                .map(|v| u64_to_money_with_currency(v, currency.clone()))
-                .transpose()
-            {
-                Ok(value) => value,
-                Err(err) => return Some(Err(err)),
-            };
+            let value = optional_money_u64(currency.as_ref(), from_raw(t.value));
 
             Some(Ok(InsiderTransaction {
                 insider,

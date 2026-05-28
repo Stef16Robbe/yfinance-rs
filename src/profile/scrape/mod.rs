@@ -1,6 +1,6 @@
 //! Scrape the Yahoo quote HTML and extract profile data.
 
-use crate::{YfClient, YfError};
+use crate::{YfClient, YfError, core::currency_resolver::CurrencyHints};
 use paft::domain::Isin;
 use serde::Deserialize;
 
@@ -92,6 +92,17 @@ pub async fn load_from_scrape(client: &YfClient, symbol: &str) -> Result<Profile
             let sp = store
                 .summary_profile
                 .ok_or_else(|| YfError::MissingData("summaryProfile missing".into()))?;
+            let exchange = store
+                .quote_type
+                .as_ref()
+                .and_then(|q| q.exchange.as_deref());
+            let country = sp.country.clone();
+            client
+                .store_currency_hints(
+                    symbol,
+                    CurrencyHints::from_profile(country.as_deref(), exchange, Some(kind)),
+                )
+                .await;
             let address = Address {
                 street1: sp.address1,
                 street2: sp.address2,
@@ -117,6 +128,16 @@ pub async fn load_from_scrape(client: &YfClient, symbol: &str) -> Result<Profile
             let fp = store
                 .fund_profile
                 .ok_or_else(|| YfError::MissingData("fundProfile missing".into()))?;
+            let exchange = store
+                .quote_type
+                .as_ref()
+                .and_then(|q| q.exchange.as_deref());
+            client
+                .store_currency_hints(
+                    symbol,
+                    CurrencyHints::from_profile(None, exchange, Some(kind)),
+                )
+                .await;
             // Validate ISIN if present, return None if invalid
             let validated_isin = fp.isin.and_then(|isin_str| Isin::new(&isin_str).ok());
 
@@ -174,6 +195,8 @@ struct QuoteSummaryStore {
 
 #[derive(Deserialize)]
 struct QuoteTypeNode {
+    exchange: Option<String>,
+
     #[serde(rename = "quoteType")]
     kind: Option<String>,
 

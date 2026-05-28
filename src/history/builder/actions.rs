@@ -1,14 +1,13 @@
-use crate::core::conversions::{i64_to_datetime, price_from_f64};
+use crate::core::{conversions::i64_to_datetime, currency_resolver::ResolvedCurrencyUnit};
 use crate::history::wire::Events;
 use paft::market::action::Action;
-use paft::money::Currency;
 use std::num::NonZeroU32;
 
 const SPLIT_SCALE: f64 = 1_000_000.0;
 
 pub fn extract_actions(
     events: Option<&Events>,
-    currency: &Currency,
+    default_currency: Option<&ResolvedCurrencyUnit>,
 ) -> (Vec<Action>, Vec<(i64, f64)>) {
     let mut out: Vec<Action> = Vec::new();
     let mut split_events: Vec<(i64, f64)> = Vec::new();
@@ -25,10 +24,11 @@ pub fn extract_actions(
             let Ok(dt) = i64_to_datetime(ts) else {
                 continue;
             };
-            if let Some(amount) = d
-                .amount
-                .and_then(|amount| price_from_f64(amount, currency.clone()))
-            {
+            let currency = event_currency(d.currency.as_deref(), default_currency);
+            let Some(currency) = currency else {
+                continue;
+            };
+            if let Some(amount) = d.amount.and_then(|amount| currency.price_from_f64(amount)) {
                 out.push(Action::Dividend { ts: dt, amount });
             }
         }
@@ -42,10 +42,11 @@ pub fn extract_actions(
             let Ok(dt) = i64_to_datetime(ts) else {
                 continue;
             };
-            if let Some(gain) = g
-                .amount
-                .and_then(|gain| price_from_f64(gain, currency.clone()))
-            {
+            let currency = event_currency(g.currency.as_deref(), default_currency);
+            let Some(currency) = currency else {
+                continue;
+            };
+            if let Some(gain) = g.amount.and_then(|gain| currency.price_from_f64(gain)) {
                 out.push(Action::CapitalGain { ts: dt, gain });
             }
         }
@@ -83,6 +84,18 @@ pub fn extract_actions(
     split_events.sort_by_key(|(ts, _)| *ts);
 
     (out, split_events)
+}
+
+fn event_currency(
+    code: Option<&str>,
+    default_currency: Option<&ResolvedCurrencyUnit>,
+) -> Option<ResolvedCurrencyUnit> {
+    code.map(str::trim)
+        .filter(|code| !code.is_empty())
+        .map_or_else(
+            || default_currency.cloned(),
+            ResolvedCurrencyUnit::from_code,
+        )
 }
 
 fn event_timestamp(key: &str, date: Option<i64>) -> Option<i64> {

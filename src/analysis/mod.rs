@@ -94,8 +94,8 @@ impl AnalysisBuilder {
 
     /// Fetches the analyst price target summary.
     ///
-    /// Provide `Some(currency)` to override the inferred reporting currency; pass `None`
-    /// to use the cached profile-based heuristic.
+    /// Provide `Some(currency)` to override the auto-resolved currency for this call;
+    /// pass `None` to enrich currency metadata from Yahoo and infer only when needed.
     ///
     /// # Errors
     ///
@@ -104,15 +104,10 @@ impl AnalysisBuilder {
         self,
         override_currency: Option<Currency>,
     ) -> Result<PriceTarget, YfError> {
-        let currency = self
-            .client
-            .reporting_currency(&self.symbol, override_currency)
-            .await;
-
         api::analyst_price_target(
             &self.client,
             &self.symbol,
-            currency,
+            override_currency,
             self.cache_mode,
             self.retry_override.as_ref(),
         )
@@ -122,8 +117,8 @@ impl AnalysisBuilder {
     /// Fetches earnings trend data.
     ///
     /// This includes earnings estimates, revenue estimates, EPS trends, and EPS revisions.
-    /// Provide `Some(currency)` to override the inferred reporting currency; pass `None`
-    /// to use the cached profile-based heuristic.
+    /// Provide `Some(currency)` to override the auto-resolved currency for this call;
+    /// pass `None` to enrich currency metadata from Yahoo and infer only when needed.
     ///
     /// # Errors
     ///
@@ -132,15 +127,10 @@ impl AnalysisBuilder {
         self,
         override_currency: Option<Currency>,
     ) -> Result<Vec<EarningsTrendRow>, YfError> {
-        let currency = self
-            .client
-            .reporting_currency(&self.symbol, override_currency)
-            .await;
-
         api::earnings_trend(
             &self.client,
             &self.symbol,
-            currency,
+            override_currency,
             self.cache_mode,
             self.retry_override.as_ref(),
         )

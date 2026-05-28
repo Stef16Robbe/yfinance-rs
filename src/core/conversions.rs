@@ -9,11 +9,11 @@ use paft::domain::{AssetKind, Exchange, MarketState, Period};
 use paft::fundamentals::analysis::{RecommendationAction, RecommendationGrade};
 use paft::fundamentals::holders::{InsiderPosition, TransactionType};
 use paft::fundamentals::profile::FundKind;
-use paft::money::{Currency, IsoCurrency, MonetaryAmount, Money, Price};
+use paft::money::{Currency, MonetaryAmount, Money, Price};
 use rust_decimal::prelude::ToPrimitive;
 use std::{fmt::Display, str::FromStr};
 
-use crate::YfError;
+use crate::{YfError, core::currency_resolver::ResolvedCurrencyUnit};
 
 /// Converts a finite `f64` value to `Decimal`.
 ///
@@ -59,10 +59,8 @@ pub fn u64_to_money_with_currency(value: u64, currency: Currency) -> Result<Mone
 /// Convert a finite `f64` to `Money` with a parsed currency string.
 #[must_use]
 pub fn money_from_f64_with_currency_str(value: f64, currency_str: Option<&str>) -> Option<Money> {
-    let currency = currency_str
-        .and_then(|s| Currency::from_str(s).ok())
-        .unwrap_or(Currency::Iso(IsoCurrency::USD));
-    money_from_f64(value, currency)
+    let unit = currency_str.and_then(ResolvedCurrencyUnit::from_code)?;
+    unit.money_from_f64(value)
 }
 
 /// Convert a finite `f64` to `Price` with specified currency.
@@ -74,10 +72,8 @@ pub fn price_from_f64(value: f64, currency: Currency) -> Option<Price> {
 /// Convert a finite `f64` to `Price` with a parsed currency string.
 #[must_use]
 pub fn price_from_f64_with_currency_str(value: f64, currency_str: Option<&str>) -> Option<Price> {
-    let currency = currency_str
-        .and_then(|s| Currency::from_str(s).ok())
-        .unwrap_or(Currency::Iso(IsoCurrency::USD));
-    price_from_f64(value, currency)
+    let unit = currency_str.and_then(ResolvedCurrencyUnit::from_code)?;
+    unit.price_from_f64(value)
 }
 
 /// Currency-denominated value that exposes a decimal amount and currency.
