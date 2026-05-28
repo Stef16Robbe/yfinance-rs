@@ -1,13 +1,19 @@
-use std::io::Result;
+use std::io::{Error, Result};
 
 fn main() -> Result<()> {
     println!("cargo:rerun-if-changed=src/stream/yaticker.proto");
 
-    prost_build::compile_protos(&["src/stream/yaticker.proto"], &["src/stream/"]).map_err(|e| {
-        // This will ensure the error is printed clearly during the build
-        eprintln!("Failed to compile protos: {e}");
-        e
-    })?;
+    let protoc = protoc_bin_vendored::protoc_bin_path()
+        .map_err(|e| Error::other(format!("failed to locate vendored protoc: {e}")))?;
+
+    let mut config = prost_build::Config::new();
+    config.protoc_executable(protoc);
+    config
+        .compile_protos(&["src/stream/yaticker.proto"], &["src/stream/"])
+        .map_err(|e| {
+            eprintln!("failed to compile protos with vendored protoc: {e}");
+            e
+        })?;
 
     Ok(())
 }

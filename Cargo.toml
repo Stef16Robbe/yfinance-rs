@@ -43,6 +43,7 @@ polars = { version = "0.53", default-features = false, features = ["lazy", "roll
 
 [build-dependencies]
 prost-build = "0.14"
+protoc-bin-vendored = "3"
 
 [features]
 default = []
