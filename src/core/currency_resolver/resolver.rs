@@ -294,7 +294,8 @@ impl YfClient {
             return Ok(unit);
         }
 
-        self.enrich_profile_hints(symbol).await;
+        self.enrich_profile_hints(symbol, cache_mode, retry_override)
+            .await;
         if let Some(unit) = self
             .resolve_first_hint(symbol, CurrencyKind::Trading, &TRADING_PROFILE_HINTS)
             .await?
@@ -347,7 +348,8 @@ impl YfClient {
             return Ok(unit);
         }
 
-        self.enrich_profile_hints(symbol).await;
+        self.enrich_profile_hints(symbol, cache_mode, retry_override)
+            .await;
         if let Some(unit) = self
             .resolve_first_hint(symbol, CurrencyKind::Reporting, &REPORTING_PROFILE_HINTS)
             .await?

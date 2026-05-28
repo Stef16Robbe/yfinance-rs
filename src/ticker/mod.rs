@@ -201,6 +201,8 @@ impl Ticker {
     #[must_use]
     pub fn history_builder(&self) -> HistoryBuilder {
         HistoryBuilder::new(&self.client, &self.symbol)
+            .cache_mode(self.cache_mode)
+            .retry_policy(self.retry_override.clone())
     }
 
     /// Fetches historical price candles with default settings.
@@ -229,12 +231,7 @@ impl Ticker {
         if let Some(i) = interval {
             hb = hb.interval(i);
         }
-        hb = hb
-            .auto_adjust(true)
-            .prepost(prepost)
-            .actions(true)
-            .cache_mode(self.cache_mode)
-            .retry_policy(self.retry_override.clone());
+        hb = hb.auto_adjust(true).prepost(prepost).actions(true);
         hb.fetch().await
     }
 
@@ -316,10 +313,7 @@ impl Ticker {
         &self,
         range: Option<Range>,
     ) -> Result<Option<HistoryMeta>, crate::core::YfError> {
-        let mut hb = self
-            .history_builder()
-            .cache_mode(self.cache_mode)
-            .retry_policy(self.retry_override.clone());
+        let mut hb = self.history_builder();
         if let Some(r) = range {
             hb = hb.range(r);
         }

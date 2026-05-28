@@ -91,7 +91,7 @@ async fn fetch_info_parts(
             cache_mode,
             retry_override
         ),
-        crate::profile::load_profile(client, symbol),
+        crate::profile::load_profile_with_options(client, symbol, cache_mode, retry_override),
         analysis::AnalysisBuilder::new(client, symbol)
             .cache_mode(cache_mode)
             .retry_policy(retry_override.cloned())

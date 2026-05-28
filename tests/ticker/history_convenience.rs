@@ -1,7 +1,10 @@
 use httpmock::Method::GET;
 use httpmock::MockServer;
+use std::time::Duration;
 use url::Url;
 use yfinance_rs::YfClient;
+use yfinance_rs::core::YfError;
+use yfinance_rs::core::client::{Backoff, RetryConfig};
 use yfinance_rs::core::conversions::*;
 use yfinance_rs::core::{Interval, Range};
 
@@ -51,4 +54,41 @@ async fn ticker_history_convenience_builds_expected_query() {
     mock.assert();
     assert_eq!(bars.len(), 1);
     assert!((money_to_f64(&bars[0].close) - 100.5).abs() < 1e-9);
+}
+
+#[tokio::test]
+async fn ticker_history_builder_respects_ticker_retry_policy() {
+    let server = MockServer::start();
+    let sym = "RETRY";
+
+    let fail_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v8/finance/chart/{sym}"))
+            .query_param("range", "6mo")
+            .query_param("interval", "1d")
+            .query_param("includePrePost", "false")
+            .query_param("events", "div|split|capitalGains");
+        then.status(503).body("Service Unavailable");
+    });
+
+    let client = YfClient::builder()
+        .base_chart(Url::parse(&format!("{}/v8/finance/chart/", server.base_url())).unwrap())
+        .retry_enabled(false)
+        .build()
+        .unwrap();
+    let max_retries = 2;
+    let ticker_retry = RetryConfig {
+        backoff: Backoff::Fixed(Duration::from_millis(1)),
+        max_retries,
+        ..RetryConfig::default()
+    };
+
+    let ticker = yfinance_rs::Ticker::new(&client, sym).retry_policy(Some(ticker_retry));
+    let result = ticker.history_builder().fetch().await;
+
+    fail_mock.assert_calls((1 + max_retries) as usize);
+    match result {
+        Err(YfError::ServerError { status, .. }) => assert_eq!(status, 503),
+        other => panic!("expected ServerError after retries, got {other:?}"),
+    }
 }

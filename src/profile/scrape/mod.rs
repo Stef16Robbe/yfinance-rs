@@ -2,7 +2,10 @@
 
 use crate::{
     YfClient, YfError,
-    core::{client::SymbolEndpoint, currency_resolver::CurrencyHints},
+    core::{
+        client::{CacheMode, RetryConfig, SymbolEndpoint},
+        currency_resolver::CurrencyHints,
+    },
 };
 use paft::domain::Isin;
 use serde::Deserialize;
@@ -17,7 +20,12 @@ pub mod utils;
 use extract::extract_bootstrap_json;
 
 #[allow(clippy::too_many_lines)]
-pub async fn load_from_scrape(client: &YfClient, symbol: &str) -> Result<Profile, YfError> {
+pub async fn load_from_scrape(
+    client: &YfClient,
+    symbol: &str,
+    cache_mode: CacheMode,
+    retry_override: Option<&RetryConfig>,
+) -> Result<Profile, YfError> {
     let debug = std::env::var("YF_DEBUG").ok().as_deref() == Some("1");
 
     let mut url = client.symbol_url(SymbolEndpoint::Quote, symbol)?;
@@ -29,8 +37,8 @@ pub async fn load_from_scrape(client: &YfClient, symbol: &str) -> Result<Profile
     let body = crate::core::net::fetch_text_cached(
         client,
         &url,
-        crate::core::client::CacheMode::Use,
-        None,
+        cache_mode,
+        retry_override,
         "profile_html",
         symbol,
         "html",

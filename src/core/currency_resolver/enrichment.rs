@@ -86,7 +86,12 @@ impl YfClient {
         .await;
     }
 
-    pub(super) async fn enrich_profile_hints(&self, symbol: &str) {
+    pub(super) async fn enrich_profile_hints(
+        &self,
+        symbol: &str,
+        cache_mode: CacheMode,
+        retry_override: Option<&RetryConfig>,
+    ) {
         if !self
             .cached_currency_hints(symbol)
             .await
@@ -95,7 +100,10 @@ impl YfClient {
             return;
         }
 
-        let Ok(profile) = crate::profile::load_profile(self, symbol).await else {
+        let Ok(profile) =
+            crate::profile::load_profile_with_options(self, symbol, cache_mode, retry_override)
+                .await
+        else {
             return;
         };
 

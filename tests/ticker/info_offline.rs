@@ -1,6 +1,10 @@
 use httpmock::{Method::GET, Mock, MockServer};
+use std::time::Duration;
 use url::Url;
-use yfinance_rs::{ApiPreference, Ticker, YfClient};
+use yfinance_rs::{
+    ApiPreference, Ticker, YfClient,
+    core::client::{Backoff, CacheMode, RetryConfig},
+};
 
 fn mock_quote_summary_fixture<'a>(
     server: &'a MockServer,
@@ -32,6 +36,17 @@ fn mock_key_statistics<'a>(
         then.status(200)
             .header("content-type", "application/json")
             .body(fixture);
+    })
+}
+
+fn mock_info_quote<'a>(server: &'a MockServer, sym: &'a str) -> Mock<'a> {
+    server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", sym);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(crate::common::fixture("quote_v7", sym, "json"));
     })
 }
 
@@ -122,4 +137,81 @@ async fn offline_info_uses_recorded_fixtures() {
             .is_some(),
         "dividend payment date should fall back to v7 quote dividendDate"
     );
+}
+
+#[tokio::test]
+async fn ticker_info_profile_respects_ticker_cache_bypass() {
+    let server = MockServer::start();
+    let sym = "AAPL";
+    let crumb = "crumb";
+    let _quote_mock = mock_info_quote(&server, sym);
+    let profile_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "assetProfile,quoteType,fundProfile")
+            .query_param("crumb", crumb);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(crate::common::fixture(
+                "profile_api_assetProfile-quoteType-fundProfile",
+                sym,
+                "json",
+            ));
+    });
+
+    let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._api_preference(ApiPreference::ApiOnly)
+        ._preauth("cookie", crumb)
+        .cache_ttl(Duration::from_mins(1))
+        .retry_enabled(false)
+        .build()
+        .unwrap();
+
+    let ticker = Ticker::new(&client, sym).cache_mode(CacheMode::Bypass);
+
+    assert!(ticker.info().await.unwrap().profile.is_some());
+    assert!(ticker.info().await.unwrap().profile.is_some());
+    profile_mock.assert_calls(2);
+}
+
+#[tokio::test]
+async fn ticker_info_profile_respects_ticker_retry_policy() {
+    let server = MockServer::start();
+    let sym = "AAPL";
+    let crumb = "crumb";
+    let _quote_mock = mock_info_quote(&server, sym);
+    let profile_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "assetProfile,quoteType,fundProfile")
+            .query_param("crumb", crumb);
+        then.status(503).body("Service Unavailable");
+    });
+
+    let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._api_preference(ApiPreference::ApiOnly)
+        ._preauth("cookie", crumb)
+        .retry_enabled(false)
+        .build()
+        .unwrap();
+    let max_retries = 2;
+    let ticker_retry = RetryConfig {
+        backoff: Backoff::Fixed(Duration::from_millis(1)),
+        max_retries,
+        ..RetryConfig::default()
+    };
+
+    let ticker = Ticker::new(&client, sym).retry_policy(Some(ticker_retry));
+    let info = ticker.info().await.unwrap();
+
+    profile_mock.assert_calls((1 + max_retries) as usize);
+    assert!(info.profile.is_none());
 }
