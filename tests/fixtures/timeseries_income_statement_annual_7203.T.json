@@ -61,64 +61,6 @@
         ]
       },
       {
-        "annualTaxProvision": [
-          {
-            "asOfDate": "2023-03-31",
-            "currencyCode": "JPY",
-            "dataId": 20145,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "1.18T",
-              "raw": 1175765000000.0
-            }
-          },
-          {
-            "asOfDate": "2024-03-31",
-            "currencyCode": "JPY",
-            "dataId": 20145,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "1.89T",
-              "raw": 1893665000000.0
-            }
-          },
-          {
-            "asOfDate": "2025-03-31",
-            "currencyCode": "JPY",
-            "dataId": 20145,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "1.62T",
-              "raw": 1624835000000.0
-            }
-          },
-          {
-            "asOfDate": "2026-03-31",
-            "currencyCode": "JPY",
-            "dataId": 20145,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "1.17T",
-              "raw": 1167234000000.0
-            }
-          }
-        ],
-        "meta": {
-          "symbol": [
-            "7203.T"
-          ],
-          "type": [
-            "annualTaxProvision"
-          ]
-        },
-        "timestamp": [
-          1680220800,
-          1711843200,
-          1743379200,
-          1774915200
-        ]
-      },
-      {
         "annualTotalRevenue": [
           {
             "asOfDate": "2023-03-31",
@@ -167,6 +109,64 @@
           ],
           "type": [
             "annualTotalRevenue"
+          ]
+        },
+        "timestamp": [
+          1680220800,
+          1711843200,
+          1743379200,
+          1774915200
+        ]
+      },
+      {
+        "annualTaxProvision": [
+          {
+            "asOfDate": "2023-03-31",
+            "currencyCode": "JPY",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "1.18T",
+              "raw": 1175765000000.0
+            }
+          },
+          {
+            "asOfDate": "2024-03-31",
+            "currencyCode": "JPY",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "1.89T",
+              "raw": 1893665000000.0
+            }
+          },
+          {
+            "asOfDate": "2025-03-31",
+            "currencyCode": "JPY",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "1.62T",
+              "raw": 1624835000000.0
+            }
+          },
+          {
+            "asOfDate": "2026-03-31",
+            "currencyCode": "JPY",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "1.17T",
+              "raw": 1167234000000.0
+            }
+          }
+        ],
+        "meta": {
+          "symbol": [
+            "7203.T"
+          ],
+          "type": [
+            "annualTaxProvision"
           ]
         },
         "timestamp": [

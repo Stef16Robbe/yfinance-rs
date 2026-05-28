@@ -11,7 +11,7 @@
                 19.100000381469727,
                 18.88999938964844,
                 18.68000030517578,
-                18.729999542236328
+                18.75
               ]
             }
           ],
@@ -22,7 +22,7 @@
                 19.100000381469727,
                 18.88999938964844,
                 18.68000030517578,
-                18.729999542236328
+                18.75
               ],
               "high": [
                 19.38999938964844,
@@ -50,7 +50,7 @@
                 1252,
                 9171,
                 8195,
-                7367
+                8392
               ]
             }
           ]
@@ -93,9 +93,9 @@
           "range": "5d",
           "regularMarketDayHigh": 18.82,
           "regularMarketDayLow": 18.53,
-          "regularMarketPrice": 18.73,
-          "regularMarketTime": 1779977733,
-          "regularMarketVolume": 7367,
+          "regularMarketPrice": 18.75,
+          "regularMarketTime": 1779982557,
+          "regularMarketVolume": 8392,
           "shortName": "Gamestop Corp.                R",
           "symbol": "GS2C.DE",
           "timezone": "CEST",
