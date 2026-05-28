@@ -941,7 +941,14 @@ async fn sleep_backoff(b: &Backoff, attempt: u32) {
 
 #[inline]
 fn compute_backoff_duration(b: &Backoff, attempt: u32) -> Duration {
-    use std::time::Duration;
+    compute_backoff_duration_with_random(b, attempt, random_u128)
+}
+
+fn compute_backoff_duration_with_random(
+    b: &Backoff,
+    attempt: u32,
+    random: impl FnMut() -> Option<u128>,
+) -> Duration {
     match *b {
         Backoff::Fixed(d) => d,
         Backoff::Exponential {
@@ -956,20 +963,62 @@ fn compute_backoff_duration(b: &Backoff, attempt: u32) -> Duration {
                 d = max;
             }
             if jitter {
-                let nanos = d.as_nanos();
-                let j = u64::try_from(nanos / 2).unwrap_or(0)
-                    * ((u64::from(attempt) % 5 + 1) * 13 % 100)
-                    / 100;
-                let add = attempt.is_multiple_of(2);
-                d = if add {
-                    d.saturating_add(Duration::from_nanos(j))
-                } else {
-                    d.saturating_sub(Duration::from_nanos(j))
-                };
+                d = jitter_duration(d, max, random);
             }
             d
         }
     }
+}
+
+fn random_u128() -> Option<u128> {
+    let mut bytes = [0; 16];
+    getrandom::fill(&mut bytes).ok()?;
+    Some(u128::from_le_bytes(bytes))
+}
+
+fn jitter_duration(d: Duration, max: Duration, random: impl FnMut() -> Option<u128>) -> Duration {
+    if d.is_zero() {
+        return d;
+    }
+
+    let lower = d.as_nanos() / 2;
+    let upper = d
+        .as_nanos()
+        .saturating_add(d.as_nanos() / 2)
+        .min(max.as_nanos());
+    let Some(nanos) = random_nanos_inclusive(lower, upper, random) else {
+        return d;
+    };
+
+    duration_from_nanos(nanos)
+}
+
+fn random_nanos_inclusive(
+    lower: u128,
+    upper: u128,
+    mut random: impl FnMut() -> Option<u128>,
+) -> Option<u128> {
+    let width = upper - lower + 1;
+    let acceptance_zone = u128::MAX - (u128::MAX % width);
+
+    loop {
+        let candidate = random()?;
+        if candidate < acceptance_zone {
+            return Some(lower + candidate % width);
+        }
+    }
+}
+
+fn duration_from_nanos(nanos: u128) -> Duration {
+    const NANOS_PER_SEC: u128 = 1_000_000_000;
+
+    let secs = nanos / NANOS_PER_SEC;
+    let subsec_nanos = nanos % NANOS_PER_SEC;
+
+    Duration::new(
+        u64::try_from(secs).unwrap_or(u64::MAX),
+        u32::try_from(subsec_nanos).expect("subsecond nanoseconds are below one second"),
+    )
 }
 
 #[cfg(test)]
@@ -1117,5 +1166,35 @@ mod tests {
 
         assert_eq!(client.cache_get(&quote).await.as_deref(), Some("quote"));
         assert!(client.cache_get(&chart).await.is_none());
+    }
+
+    #[test]
+    fn exponential_jitter_uses_random_input() {
+        let backoff = Backoff::Exponential {
+            base: Duration::from_millis(100),
+            factor: 2.0,
+            max: Duration::from_secs(1),
+            jitter: true,
+        };
+
+        let low = compute_backoff_duration_with_random(&backoff, 0, || Some(0));
+        let high = compute_backoff_duration_with_random(&backoff, 0, || Some(100_000_000));
+
+        assert_eq!(low, Duration::from_millis(50));
+        assert_eq!(high, Duration::from_millis(150));
+    }
+
+    #[test]
+    fn exponential_jitter_respects_max_delay() {
+        let backoff = Backoff::Exponential {
+            base: Duration::from_secs(1),
+            factor: 2.0,
+            max: Duration::from_secs(1),
+            jitter: true,
+        };
+
+        let delay = compute_backoff_duration_with_random(&backoff, 3, || Some(500_000_000));
+
+        assert_eq!(delay, Duration::from_secs(1));
     }
 }

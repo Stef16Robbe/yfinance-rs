@@ -4751,6 +4751,7 @@ dependencies = [
  "chrono-tz",
  "futures",
  "futures-util",
+ "getrandom 0.3.3",
  "httpmock",
  "paft",
  "polars",

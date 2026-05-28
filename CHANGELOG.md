@@ -28,6 +28,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - `StreamMethod::Websocket` startup failures are now returned from `StreamBuilder::start().await`
   instead of being logged in the spawned task while the caller receives `Ok`.
+- Exponential retry backoff now uses real random jitter instead of a deterministic
+  attempt-number formula, avoiding synchronized retries across clients.
 - Convert malformed Yahoo/user-provided symbols, missing quote symbols, missing currency metadata, and uncloneable retry requests into `Result` errors instead of panicking.
 - Surface unavailable Yahoo ESG modules through `ProviderFeatureUnavailable` diagnostics and strict-mode data-quality errors, so missing provider data is not indistinguishable from a valid zero-involvement result for callers that audit projection quality.
 - Normalize HTTP status handling through shared fetch helpers so quoteSummary and fundamentals-timeseries failures return typed `YfError` variants and are not cached as parseable response bodies.
