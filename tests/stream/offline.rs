@@ -1,7 +1,7 @@
 use tokio::time::{Duration, timeout};
 use url::Url;
-use yfinance_rs::StreamMethod;
 use yfinance_rs::core::client::CacheMode;
+use yfinance_rs::{AssetKind, StreamMethod};
 
 #[tokio::test]
 async fn stream_websocket_reports_initial_connection_failure() {
@@ -205,5 +205,94 @@ async fn stream_polling_emits_on_volume_only_change_with_diff_only() {
     assert!(
         second.volume.unwrap_or(0) > 0,
         "second update should carry positive volume delta when price is unchanged"
+    );
+}
+
+#[tokio::test]
+async fn stream_polling_does_not_cache_untyped_instrument_fallback() {
+    let server = crate::common::setup_server();
+
+    let body1 = r#"{
+        "quoteResponse": {
+            "result": [
+                {
+                    "symbol": "MSFT",
+                    "regularMarketPrice": 420.00,
+                    "regularMarketPreviousClose": 420.00,
+                    "regularMarketVolume": 1000,
+                    "currency": "USD"
+                }
+            ],
+            "error": null
+        }
+    }"#;
+
+    let body2 = r#"{
+        "quoteResponse": {
+            "result": [
+                {
+                    "symbol": "MSFT",
+                    "quoteType": "EQUITY",
+                    "regularMarketPrice": 421.00,
+                    "regularMarketPreviousClose": 420.00,
+                    "regularMarketVolume": 1500,
+                    "currency": "USD"
+                }
+            ],
+            "error": null
+        }
+    }"#;
+
+    let mut m1 = server.mock(|when, then| {
+        when.method(httpmock::Method::GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "MSFT");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body1);
+    });
+
+    let client = yfinance_rs::YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+
+    let builder = yfinance_rs::StreamBuilder::new(&client)
+        .symbols(["MSFT"])
+        .method(StreamMethod::Polling)
+        .interval(Duration::from_millis(100))
+        .cache_mode(CacheMode::Bypass);
+
+    let (handle, mut rx) = builder.start().await.unwrap();
+
+    let first = timeout(Duration::from_secs(3), rx.recv()).await;
+    m1.delete();
+    let _m2 = server.mock(|when, then| {
+        when.method(httpmock::Method::GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "MSFT");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body2);
+    });
+    let second = timeout(Duration::from_secs(3), rx.recv()).await;
+
+    handle.abort();
+
+    let first = first
+        .expect("timed out waiting for first update")
+        .expect("stream closed before first update");
+    let second = second
+        .expect("timed out waiting for second update")
+        .expect("stream closed before second update");
+
+    assert_eq!(
+        first.instrument.kind.to_string(),
+        "YAHOO_STREAM_UNTYPED",
+        "missing quoteType should use the explicit untyped stream fallback"
+    );
+    assert!(
+        matches!(second.instrument.kind, AssetKind::Equity),
+        "later typed quote data should replace the uncached untyped fallback"
     );
 }
