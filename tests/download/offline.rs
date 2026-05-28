@@ -1,11 +1,11 @@
 use httpmock::Method::GET;
-use httpmock::MockServer;
+use httpmock::{Mock, MockServer};
 use url::Url;
 
 use crate::common;
 use yfinance_rs::core::conversions::*;
 use yfinance_rs::core::{Interval, Range};
-use yfinance_rs::{DownloadBuilder, YfClient, YfError};
+use yfinance_rs::{DownloadBuilder, DownloadConcurrency, YfClient, YfError};
 
 fn has_more_than_two_decimals(x: f64) -> bool {
     if !x.is_finite() {
@@ -13,6 +13,21 @@ fn has_more_than_two_decimals(x: f64) -> bool {
     }
     let cents = (x * 100.0).round();
     (x - cents / 100.0).abs() > 1e-12
+}
+
+async fn wait_for_mock_calls(
+    mock: &Mock<'_>,
+    expected: usize,
+    timeout: std::time::Duration,
+) -> bool {
+    let started = tokio::time::Instant::now();
+    while started.elapsed() < timeout {
+        if mock.calls_async().await >= expected {
+            return true;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+    mock.calls_async().await >= expected
 }
 
 #[tokio::test]
@@ -69,6 +84,80 @@ async fn download_multi_symbols_happy_path() {
         .collect();
     assert!(keys.iter().any(|s| s == "AAPL"));
     assert!(keys.iter().any(|s| s == "MSFT"));
+}
+
+#[tokio::test]
+async fn download_respects_configured_concurrency_limit() {
+    let server = common::setup_server();
+
+    let m_aapl = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v8/finance/chart/AAPL")
+            .query_param("range", "6mo")
+            .query_param("interval", "1d")
+            .query_param("includePrePost", "false")
+            .query_param("events", "div|split|capitalGains");
+        then.status(200)
+            .header("content-type", "application/json")
+            .delay(std::time::Duration::from_secs(1))
+            .body(common::fixture("history_chart", "AAPL", "json"));
+    });
+
+    let m_msft = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v8/finance/chart/MSFT")
+            .query_param("range", "6mo")
+            .query_param("interval", "1d")
+            .query_param("includePrePost", "false")
+            .query_param("events", "div|split|capitalGains");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(common::fixture("history_chart", "MSFT", "json"));
+    });
+
+    let client = YfClient::builder()
+        .base_chart(Url::parse(&format!("{}/v8/finance/chart/", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+
+    let download = DownloadBuilder::new(&client)
+        .symbols(["AAPL", "MSFT"])
+        .concurrency(DownloadConcurrency::new(1).unwrap())
+        .run();
+    let handle = tokio::spawn(download);
+
+    assert!(
+        wait_for_mock_calls(&m_aapl, 1, std::time::Duration::from_millis(750)).await,
+        "first symbol was not requested"
+    );
+    assert_eq!(
+        m_msft.calls_async().await,
+        0,
+        "second symbol started before the configured concurrency slot was released"
+    );
+
+    let res = handle.await.unwrap().unwrap();
+
+    m_aapl.assert();
+    m_msft.assert();
+
+    let symbols: Vec<_> = res
+        .entries
+        .iter()
+        .map(|entry| entry.instrument.symbol.as_str())
+        .collect();
+    assert_eq!(symbols, vec!["AAPL", "MSFT"]);
+}
+
+#[test]
+fn download_concurrency_rejects_zero() {
+    match DownloadConcurrency::new(0) {
+        Err(YfError::InvalidParams(message)) => {
+            assert!(message.contains("concurrency"));
+        }
+        Err(other) => panic!("expected invalid params error, got {other:?}"),
+        Ok(_) => panic!("expected zero concurrency to be rejected"),
+    }
 }
 
 #[tokio::test]

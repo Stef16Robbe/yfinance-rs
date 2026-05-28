@@ -1,4 +1,4 @@
-use futures::future::try_join_all;
+use futures::{StreamExt, TryStreamExt, stream};
 
 use crate::{
     core::client::{CacheMode, RetryConfig},
@@ -11,6 +11,39 @@ use paft::money::Price;
 use rust_decimal::prelude::FromPrimitive;
 type DateRange = (chrono::DateTime<chrono::Utc>, chrono::DateTime<chrono::Utc>);
 type MaybeDateRange = Option<DateRange>;
+
+/// Maximum number of per-symbol history requests a [`DownloadBuilder`] runs at once.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct DownloadConcurrency(usize);
+
+impl DownloadConcurrency {
+    /// Default download concurrency.
+    pub const DEFAULT: Self = Self(8);
+
+    /// Builds a validated download concurrency limit.
+    ///
+    /// # Errors
+    ///
+    /// Returns `YfError::InvalidParams` if `value` is zero.
+    pub fn new(value: usize) -> Result<Self, YfError> {
+        if value == 0 {
+            return Err(YfError::InvalidParams(
+                "download concurrency must be at least 1".into(),
+            ));
+        }
+        Ok(Self(value))
+    }
+
+    const fn get(self) -> usize {
+        self.0
+    }
+}
+
+impl Default for DownloadConcurrency {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
 
 /// A builder for downloading historical data for multiple symbols concurrently.
 ///
@@ -38,6 +71,7 @@ pub struct DownloadBuilder {
 
     cache_mode: CacheMode,
     retry_override: Option<RetryConfig>,
+    concurrency: DownloadConcurrency,
 }
 
 impl DownloadBuilder {
@@ -166,6 +200,7 @@ impl DownloadBuilder {
             repair: false,
             cache_mode: CacheMode::Use,
             retry_override: None,
+            concurrency: DownloadConcurrency::DEFAULT,
         }
     }
 
@@ -180,6 +215,13 @@ impl DownloadBuilder {
     #[must_use]
     pub fn retry_policy(mut self, cfg: Option<RetryConfig>) -> Self {
         self.retry_override = cfg;
+        self
+    }
+
+    /// Sets the maximum number of per-symbol history requests to run at once. (Default: `8`)
+    #[must_use]
+    pub const fn concurrency(mut self, concurrency: DownloadConcurrency) -> Self {
+        self.concurrency = concurrency;
         self
     }
 
@@ -286,17 +328,26 @@ impl DownloadBuilder {
         let need_adjust_in_fetch = self.auto_adjust || self.back_adjust;
         let period_dt = self.precompute_period_dt()?;
 
-        let futures = self.symbols.iter().map(|sym| {
-            let sym = sym.clone();
-            let hb = self.build_history_for_symbol(&sym, period_dt, need_adjust_in_fetch);
+        let mut joined: Vec<(usize, String, HistoryResponse)> =
+            stream::iter(self.symbols.iter().cloned().enumerate())
+                .map(|(index, sym)| {
+                    let hb = self.build_history_for_symbol(&sym, period_dt, need_adjust_in_fetch);
 
-            async move {
-                let full: HistoryResponse = hb.fetch_full().await?;
-                Ok::<(String, HistoryResponse), YfError>((sym, full))
-            }
-        });
+                    async move {
+                        let full: HistoryResponse = hb.fetch_full().await?;
+                        Ok::<(usize, String, HistoryResponse), YfError>((index, sym, full))
+                    }
+                })
+                .buffer_unordered(self.concurrency.get())
+                .try_collect()
+                .await?;
 
-        let joined: Vec<(String, HistoryResponse)> = try_join_all(futures).await?;
+        joined.sort_unstable_by_key(|(index, _, _)| *index);
+        let joined: Vec<(String, HistoryResponse)> = joined
+            .into_iter()
+            .map(|(_, sym, full)| (sym, full))
+            .collect();
+
         self.process_joined_results(joined, need_adjust_in_fetch)
             .await
     }

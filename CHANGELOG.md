@@ -51,6 +51,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
+- `DownloadBuilder` now caps per-symbol history fetch concurrency to 8 requests by default and exposes `DownloadConcurrency` plus `DownloadBuilder::concurrency()` for callers that need a different limit.
 - Clean up example output so holder rows, corporate actions, historical action dates, and handled live Yahoo errors render as user-facing text instead of debug-shaped values.
 - Declare Rust 1.91 as the crate MSRV and enable direct Tokio `sync` and `time` features used by the crate.
 - Update ESG examples/docs to handle Yahoo's currently unavailable `esgScores` response instead of advertising unavailable live data.

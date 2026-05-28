@@ -157,7 +157,7 @@ pub use core::client::ApiPreference;
 pub use core::{CacheMode, RetryConfig, YfClient, YfClientBuilder, YfError};
 
 // Provider-specific builders and utilities
-pub use download::DownloadBuilder;
+pub use download::{DownloadBuilder, DownloadConcurrency};
 pub use esg::EsgBuilder;
 pub use fundamentals::FundamentalsBuilder;
 pub use history::HistoryBuilder;
