@@ -1,4 +1,5 @@
 use crate::core::conversions::i64_to_datetime;
+use crate::core::{ProjectionContext, ProjectionIssue, YfError};
 use crate::core::{conversions::decimal_from_f64, currency_resolver::ResolvedCurrencyUnit};
 use crate::history::wire::QuoteBlock;
 use paft::market::responses::history::Candle;
@@ -13,12 +14,24 @@ pub fn assemble_candles(
     auto_adjust: bool,
     cum_split_after: &[f64],
     currency: &ResolvedCurrencyUnit,
-) -> Vec<Candle> {
+    ctx: &mut ProjectionContext,
+) -> Result<Vec<Candle>, YfError> {
     let mut out = Vec::new();
 
     for (i, &t) in ts.iter().enumerate() {
-        let Ok(ts) = i64_to_datetime(t) else {
-            continue;
+        let ts = match i64_to_datetime(t) {
+            Ok(ts) => ts,
+            Err(err) => {
+                ctx.dropped_item(
+                    "candle",
+                    Some(t.to_string()),
+                    ProjectionIssue::InvalidField {
+                        field: "timestamp",
+                        details: err.to_string(),
+                    },
+                )?;
+                continue;
+            }
         };
         let getter_f64 = |v: &Vec<Option<f64>>| v.get(i).and_then(|x| *x);
         let open = getter_f64(&q.open);
@@ -27,10 +40,13 @@ pub fn assemble_candles(
         let close = getter_f64(&q.close);
         let volume0 = q.volume.get(i).and_then(|x| *x);
 
-        let Some((mut open, mut high, mut low, mut close)) =
-            raw_ohlc_values(open, high, low, close)
-        else {
-            continue;
+        let (mut open, mut high, mut low, mut close) = match raw_ohlc_values(open, high, low, close)
+        {
+            Ok(values) => values,
+            Err(reason) => {
+                ctx.dropped_item("candle", Some(t.to_string()), reason)?;
+                continue;
+            }
         };
         let raw_close = close;
 
@@ -44,21 +60,39 @@ pub fn assemble_candles(
             close *= pf;
         }
 
-        if let Some((open, high, low, close)) = candle_prices(open, high, low, close, currency) {
-            out.push(Candle {
-                ts,
-                open,
-                high,
-                low,
-                close,
-                close_unadj: currency.price_from_f64(raw_close),
-                volume: volume0,
-                provider: (),
-            });
+        let Some((open, high, low, close)) = candle_prices(open, high, low, close, currency) else {
+            ctx.dropped_item(
+                "candle",
+                Some(t.to_string()),
+                ProjectionIssue::ConversionFailed {
+                    target: "candle prices",
+                },
+            )?;
+            continue;
+        };
+        let close_unadj = currency.price_from_f64(raw_close);
+        if close_unadj.is_none() {
+            ctx.omitted_present_field(
+                "quote.close_unadj",
+                Some(t.to_string()),
+                ProjectionIssue::ConversionFailed {
+                    target: "unadjusted close price",
+                },
+            )?;
         }
+        out.push(Candle {
+            ts,
+            open,
+            high,
+            low,
+            close,
+            close_unadj,
+            volume: volume0,
+            provider: (),
+        });
     }
 
-    out
+    Ok(out)
 }
 
 fn raw_ohlc_values(
@@ -66,17 +100,56 @@ fn raw_ohlc_values(
     high: Option<f64>,
     low: Option<f64>,
     close: Option<f64>,
-) -> Option<(f64, f64, f64, f64)> {
-    Some((
-        valid_decimal_value(open?)?,
-        valid_decimal_value(high?)?,
-        valid_decimal_value(low?)?,
-        valid_decimal_value(close?)?,
+) -> Result<(f64, f64, f64, f64), ProjectionIssue> {
+    let mut missing = Vec::new();
+    if open.is_none() {
+        missing.push("open");
+    }
+    if high.is_none() {
+        missing.push("high");
+    }
+    if low.is_none() {
+        missing.push("low");
+    }
+    if close.is_none() {
+        missing.push("close");
+    }
+    if !missing.is_empty() {
+        let fields = match missing.as_slice() {
+            ["open"] => &["open"][..],
+            ["high"] => &["high"][..],
+            ["low"] => &["low"][..],
+            ["close"] => &["close"][..],
+            ["open", "high"] => &["open", "high"][..],
+            ["open", "low"] => &["open", "low"][..],
+            ["open", "close"] => &["open", "close"][..],
+            ["high", "low"] => &["high", "low"][..],
+            ["high", "close"] => &["high", "close"][..],
+            ["low", "close"] => &["low", "close"][..],
+            ["open", "high", "low"] => &["open", "high", "low"][..],
+            ["open", "high", "close"] => &["open", "high", "close"][..],
+            ["open", "low", "close"] => &["open", "low", "close"][..],
+            ["high", "low", "close"] => &["high", "low", "close"][..],
+            _ => &["open", "high", "low", "close"][..],
+        };
+        return Err(ProjectionIssue::MissingRequiredFields { fields });
+    }
+
+    Ok((
+        valid_decimal_value("open", open.expect("checked above"))?,
+        valid_decimal_value("high", high.expect("checked above"))?,
+        valid_decimal_value("low", low.expect("checked above"))?,
+        valid_decimal_value("close", close.expect("checked above"))?,
     ))
 }
 
-fn valid_decimal_value(value: f64) -> Option<f64> {
-    decimal_from_f64(value).map(|_| value)
+fn valid_decimal_value(field: &'static str, value: f64) -> Result<f64, ProjectionIssue> {
+    decimal_from_f64(value)
+        .map(|_| value)
+        .ok_or_else(|| ProjectionIssue::InvalidField {
+            field,
+            details: format!("non-finite or not representable as Decimal: {value}"),
+        })
 }
 
 fn candle_prices(

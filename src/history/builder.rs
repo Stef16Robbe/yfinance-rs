@@ -4,7 +4,7 @@ mod assemble;
 mod fetch;
 
 use crate::core::conversions::{string_to_asset_kind, string_to_exchange};
-use crate::core::{YfClient, YfError};
+use crate::core::{DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfError, YfResponse};
 use crate::core::{
     client::{CacheMode, RetryConfig},
     currency_resolver::{
@@ -50,6 +50,7 @@ pub struct HistoryBuilder {
     pub(crate) cache_mode: CacheMode,
     #[doc(hidden)]
     pub(crate) retry_override: Option<RetryConfig>,
+    data_quality: DataQuality,
 }
 
 impl HistoryBuilder {
@@ -66,6 +67,7 @@ impl HistoryBuilder {
             include_actions: true,
             cache_mode: CacheMode::Default,
             retry_override: None,
+            data_quality: DataQuality::BestEffort,
         }
     }
 
@@ -81,6 +83,19 @@ impl HistoryBuilder {
     pub fn retry_policy(mut self, cfg: Option<RetryConfig>) -> Self {
         self.retry_override = cfg;
         self
+    }
+
+    /// Sets how provider projection issues are handled.
+    #[must_use]
+    pub const fn data_quality(mut self, policy: DataQuality) -> Self {
+        self.data_quality = policy;
+        self
+    }
+
+    /// Fails when Yahoo data cannot be projected losslessly.
+    #[must_use]
+    pub const fn strict(self) -> Self {
+        self.data_quality(DataQuality::Strict)
     }
 
     /// Sets a relative time range for the request (e.g., `1y`, `6mo`).
@@ -141,8 +156,20 @@ impl HistoryBuilder {
     ///
     /// Returns a `YfError` if the network request fails or the API response cannot be parsed.
     pub async fn fetch(self) -> Result<Vec<Candle>, YfError> {
-        let resp = self.fetch_full().await?;
-        Ok(resp.candles)
+        Ok(self.fetch_with_diagnostics().await?.into_data())
+    }
+
+    /// Executes the request and returns candles with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `YfError` if the network request fails, the API returns an error,
+    /// or strict data-quality mode rejects a projection issue.
+    pub async fn fetch_with_diagnostics(self) -> Result<YfResponse<Vec<Candle>>, YfError> {
+        Ok(self
+            .fetch_full_with_diagnostics()
+            .await?
+            .map(|resp| resp.candles))
     }
 
     /// Executes the request and returns the full response, including candles, actions, and metadata.
@@ -167,6 +194,18 @@ impl HistoryBuilder {
         )
     )]
     pub async fn fetch_full(self) -> Result<HistoryResponse, YfError> {
+        Ok(self.fetch_full_with_diagnostics().await?.into_data())
+    }
+
+    /// Executes the request and returns the full response with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `YfError` if the network request fails, the API returns an error,
+    /// or strict data-quality mode rejects a projection issue.
+    pub async fn fetch_full_with_diagnostics(self) -> Result<YfResponse<HistoryResponse>, YfError> {
+        let mut ctx = ProjectionContext::new("history_chart", self.data_quality);
+
         // 1) Fetch and parse the /chart payload into owned blocks
         let fetched = fetch_chart(
             &self.client,
@@ -221,17 +260,18 @@ impl HistoryBuilder {
             currency.as_ref(),
             self.cache_mode,
             self.retry_override.as_ref(),
+            &mut ctx,
         )
-        .await;
+        .await?;
 
         let (mut actions_out, split_events) =
-            extract_actions(fetched.events.as_ref(), action_currency.as_ref());
+            extract_actions(fetched.events.as_ref(), action_currency.as_ref(), &mut ctx)?;
 
         // 3) Cumulative split factors after each bar
         let cum_split_after = cumulative_split_after(&fetched.ts, &split_events);
 
         // 4) Assemble candles (+ raw close) with/without adjustments
-        let candles = currency.as_ref().map_or_else(Vec::new, |currency| {
+        let candles = if let Some(currency) = currency.as_ref() {
             assemble_candles(
                 &fetched.ts,
                 &fetched.quote,
@@ -239,8 +279,20 @@ impl HistoryBuilder {
                 self.auto_adjust,
                 &cum_split_after,
                 currency,
-            )
-        });
+                &mut ctx,
+            )?
+        } else {
+            if has_any_ohlc_value(&fetched.quote, fetched.ts.len()) {
+                ctx.dropped_item(
+                    "candle",
+                    None,
+                    ProjectionIssue::MissingRequiredFields {
+                        fields: &["open", "high", "low", "close"],
+                    },
+                )?;
+            }
+            Vec::new()
+        };
 
         // ensure actions sorted (extract_actions already sorts, keep consistent)
         actions_out.sort_by_key(|a| match a {
@@ -253,13 +305,13 @@ impl HistoryBuilder {
         // 5) Map metadata
         let meta_out = map_meta(fetched.meta.as_ref());
 
-        Ok(HistoryResponse {
+        Ok(ctx.finish(HistoryResponse {
             candles,
             actions: actions_out,
             adjusted: self.auto_adjust,
             meta: meta_out,
             provider: (),
-        })
+        }))
     }
 }
 
@@ -274,6 +326,16 @@ fn has_complete_ohlc_row(quote: &crate::history::wire::QuoteBlock, len: usize) -
     })
 }
 
+fn has_any_ohlc_value(quote: &crate::history::wire::QuoteBlock, len: usize) -> bool {
+    (0..len).any(|idx| {
+        quote.open.get(idx).and_then(|value| *value).is_some()
+            || quote.high.get(idx).and_then(|value| *value).is_some()
+            || quote.low.get(idx).and_then(|value| *value).is_some()
+            || quote.close.get(idx).and_then(|value| *value).is_some()
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
 async fn action_default_currency(
     client: &YfClient,
     symbol: &str,
@@ -282,16 +344,17 @@ async fn action_default_currency(
     trading_currency: Option<&ResolvedCurrencyUnit>,
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
-) -> Option<ResolvedCurrencyUnit> {
+    ctx: &mut ProjectionContext,
+) -> Result<Option<ResolvedCurrencyUnit>, YfError> {
     if !events_need_default_currency(events) {
-        return trading_currency.cloned();
+        return Ok(trading_currency.cloned());
     }
 
     if let Some(currency) = trading_currency {
-        return Some(currency.clone());
+        return Ok(Some(currency.clone()));
     }
 
-    client
+    match client
         .resolve_corporate_action_currency_unit(
             symbol,
             None,
@@ -300,7 +363,23 @@ async fn action_default_currency(
             retry_override,
         )
         .await
-        .ok()
+    {
+        Ok(currency) => Ok(Some(currency)),
+        Err(err) => {
+            if ctx.policy() == DataQuality::Strict {
+                Err(err)
+            } else {
+                ctx.omitted_present_field(
+                    "chart.meta.currency",
+                    None,
+                    ProjectionIssue::ProviderError {
+                        message: err.to_string(),
+                    },
+                )?;
+                Ok(None)
+            }
+        }
+    }
 }
 
 fn events_need_default_currency(events: Option<&crate::history::wire::Events>) -> bool {

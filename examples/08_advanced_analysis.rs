@@ -19,7 +19,7 @@ async fn main() -> Result<(), YfError> {
     let symbol = "AAPL";
     let ticker_aapl = Ticker::new(&client, symbol);
     section_earnings_and_shares(symbol, &ticker_aapl).await?;
-    section_capital_gains().await?;
+    Box::pin(section_capital_gains()).await?;
     section_price_target(symbol, &ticker_aapl).await?;
     section_recommendations(symbol, &ticker_aapl).await?;
     section_isin_calendar(symbol, &ticker_aapl).await?;

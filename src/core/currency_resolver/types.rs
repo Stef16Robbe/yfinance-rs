@@ -15,7 +15,7 @@ impl CurrencyKind {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum CurrencySource {
+pub enum CurrencySource {
     DirectProvider,
     CachedProvider,
     QuoteEnrichment,
@@ -25,7 +25,7 @@ pub(super) enum CurrencySource {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub(super) enum EvidenceStrength {
+pub enum EvidenceStrength {
     ProfileHeuristic,
     ListingHeuristic,
     EnrichedProvider,
@@ -56,6 +56,20 @@ impl ResolvedCurrency {
             source,
             strength,
         }
+    }
+
+    pub(crate) const fn source(&self) -> CurrencySource {
+        self.source
+    }
+
+    pub(crate) const fn strength(&self) -> EvidenceStrength {
+        self.strength
+    }
+}
+
+impl CurrencySource {
+    pub(crate) const fn is_direct_provider(self) -> bool {
+        matches!(self, Self::DirectProvider)
     }
 }
 

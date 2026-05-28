@@ -81,6 +81,10 @@ pub enum YfError {
     #[error("Invalid data in response: {0}")]
     InvalidData(String),
 
+    /// Indicates that provider data could not be projected losslessly in strict mode.
+    #[error("Provider data quality issue: {0}")]
+    DataQuality(Box<crate::core::diagnostics::YfWarning>),
+
     /// An error indicating that the parameters provided by the caller were invalid.
     #[error("Invalid parameters: {0}")]
     InvalidParams(String),

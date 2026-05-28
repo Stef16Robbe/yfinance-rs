@@ -1,66 +1,183 @@
-use crate::core::{conversions::i64_to_datetime, currency_resolver::ResolvedCurrencyUnit};
+use crate::core::{
+    ProjectionContext, ProjectionIssue, YfError, conversions::i64_to_datetime,
+    currency_resolver::ResolvedCurrencyUnit,
+};
 use crate::history::wire::Events;
 use paft::market::action::Action;
 use std::num::NonZeroU32;
 
 const SPLIT_SCALE: f64 = 1_000_000.0;
 
+pub type ExtractedActions = (Vec<Action>, Vec<(i64, f64)>);
+
+#[allow(clippy::too_many_lines)]
 pub fn extract_actions(
     events: Option<&Events>,
     default_currency: Option<&ResolvedCurrencyUnit>,
-) -> (Vec<Action>, Vec<(i64, f64)>) {
+    ctx: &mut ProjectionContext,
+) -> Result<ExtractedActions, YfError> {
     let mut out: Vec<Action> = Vec::new();
     let mut split_events: Vec<(i64, f64)> = Vec::new();
 
     let Some(ev) = events else {
-        return (out, split_events);
+        return Ok((out, split_events));
     };
 
     if let Some(divs) = ev.dividends.as_ref() {
         for (k, d) in divs {
             let Some(ts) = event_timestamp(k, d.date) else {
+                ctx.dropped_item(
+                    "dividend",
+                    Some(k.clone()),
+                    ProjectionIssue::MissingRequiredField { field: "date" },
+                )?;
                 continue;
             };
-            let Ok(dt) = i64_to_datetime(ts) else {
+            let dt = match i64_to_datetime(ts) {
+                Ok(dt) => dt,
+                Err(err) => {
+                    ctx.dropped_item(
+                        "dividend",
+                        Some(k.clone()),
+                        ProjectionIssue::InvalidField {
+                            field: "date",
+                            details: err.to_string(),
+                        },
+                    )?;
+                    continue;
+                }
+            };
+            let Some(amount) = d.amount else {
+                ctx.dropped_item(
+                    "dividend",
+                    Some(k.clone()),
+                    ProjectionIssue::MissingRequiredField { field: "amount" },
+                )?;
                 continue;
             };
-            let currency = event_currency(d.currency.as_deref(), default_currency);
-            let Some(currency) = currency else {
+            let currency = match event_currency(d.currency.as_deref(), default_currency) {
+                Ok(Some(currency)) => currency,
+                Ok(None) => {
+                    ctx.dropped_item(
+                        "dividend",
+                        Some(k.clone()),
+                        ProjectionIssue::CurrencyUnresolved,
+                    )?;
+                    continue;
+                }
+                Err(reason) => {
+                    ctx.dropped_item("dividend", Some(k.clone()), reason)?;
+                    continue;
+                }
+            };
+            let Some(amount) = currency.price_from_f64(amount) else {
+                ctx.dropped_item(
+                    "dividend",
+                    Some(k.clone()),
+                    ProjectionIssue::ConversionFailed {
+                        target: "dividend amount",
+                    },
+                )?;
                 continue;
             };
-            if let Some(amount) = d.amount.and_then(|amount| currency.price_from_f64(amount)) {
-                out.push(Action::Dividend { ts: dt, amount });
-            }
+            out.push(Action::Dividend { ts: dt, amount });
         }
     }
 
     if let Some(gains) = ev.capital_gains.as_ref() {
         for (k, g) in gains {
             let Some(ts) = event_timestamp(k, g.date) else {
+                ctx.dropped_item(
+                    "capital_gain",
+                    Some(k.clone()),
+                    ProjectionIssue::MissingRequiredField { field: "date" },
+                )?;
                 continue;
             };
-            let Ok(dt) = i64_to_datetime(ts) else {
+            let dt = match i64_to_datetime(ts) {
+                Ok(dt) => dt,
+                Err(err) => {
+                    ctx.dropped_item(
+                        "capital_gain",
+                        Some(k.clone()),
+                        ProjectionIssue::InvalidField {
+                            field: "date",
+                            details: err.to_string(),
+                        },
+                    )?;
+                    continue;
+                }
+            };
+            let Some(amount) = g.amount else {
+                ctx.dropped_item(
+                    "capital_gain",
+                    Some(k.clone()),
+                    ProjectionIssue::MissingRequiredField { field: "amount" },
+                )?;
                 continue;
             };
-            let currency = event_currency(g.currency.as_deref(), default_currency);
-            let Some(currency) = currency else {
+            let currency = match event_currency(g.currency.as_deref(), default_currency) {
+                Ok(Some(currency)) => currency,
+                Ok(None) => {
+                    ctx.dropped_item(
+                        "capital_gain",
+                        Some(k.clone()),
+                        ProjectionIssue::CurrencyUnresolved,
+                    )?;
+                    continue;
+                }
+                Err(reason) => {
+                    ctx.dropped_item("capital_gain", Some(k.clone()), reason)?;
+                    continue;
+                }
+            };
+            let Some(gain) = currency.price_from_f64(amount) else {
+                ctx.dropped_item(
+                    "capital_gain",
+                    Some(k.clone()),
+                    ProjectionIssue::ConversionFailed {
+                        target: "capital gain amount",
+                    },
+                )?;
                 continue;
             };
-            if let Some(gain) = g.amount.and_then(|gain| currency.price_from_f64(gain)) {
-                out.push(Action::CapitalGain { ts: dt, gain });
-            }
+            out.push(Action::CapitalGain { ts: dt, gain });
         }
     }
 
     if let Some(splits) = ev.splits.as_ref() {
         for (k, s) in splits {
             let Some(ts) = event_timestamp(k, s.date) else {
+                ctx.dropped_item(
+                    "split",
+                    Some(k.clone()),
+                    ProjectionIssue::MissingRequiredField { field: "date" },
+                )?;
                 continue;
             };
-            let Ok(dt) = i64_to_datetime(ts) else {
-                continue;
+            let dt = match i64_to_datetime(ts) {
+                Ok(dt) => dt,
+                Err(err) => {
+                    ctx.dropped_item(
+                        "split",
+                        Some(k.clone()),
+                        ProjectionIssue::InvalidField {
+                            field: "date",
+                            details: err.to_string(),
+                        },
+                    )?;
+                    continue;
+                }
             };
             let Some((num, den)) = normalize_split_event(s) else {
+                ctx.dropped_item(
+                    "split",
+                    Some(k.clone()),
+                    ProjectionIssue::InvalidField {
+                        field: "splitRatio",
+                        details: "missing, zero, negative, non-finite, or too large".into(),
+                    },
+                )?;
                 continue;
             };
 
@@ -83,19 +200,22 @@ pub fn extract_actions(
     });
     split_events.sort_by_key(|(ts, _)| *ts);
 
-    (out, split_events)
+    Ok((out, split_events))
 }
 
 fn event_currency(
     code: Option<&str>,
     default_currency: Option<&ResolvedCurrencyUnit>,
-) -> Option<ResolvedCurrencyUnit> {
-    code.map(str::trim)
-        .filter(|code| !code.is_empty())
-        .map_or_else(
-            || default_currency.cloned(),
-            ResolvedCurrencyUnit::from_code,
-        )
+) -> Result<Option<ResolvedCurrencyUnit>, ProjectionIssue> {
+    let Some(code) = code.map(str::trim).filter(|code| !code.is_empty()) else {
+        return Ok(default_currency.cloned());
+    };
+
+    ResolvedCurrencyUnit::from_code(code)
+        .map(Some)
+        .ok_or_else(|| ProjectionIssue::InvalidCurrency {
+            code: code.to_string(),
+        })
 }
 
 fn event_timestamp(key: &str, date: Option<i64>) -> Option<i64> {

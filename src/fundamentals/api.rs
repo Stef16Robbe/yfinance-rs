@@ -3,10 +3,13 @@ use std::collections::{BTreeMap, btree_map::Entry};
 
 use crate::{
     core::{
-        YfClient, YfError,
+        DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfError, YfResponse,
         client::{CacheEndpoint, CacheMode, RetryConfig, SymbolEndpoint},
         conversions::{i64_to_datetime, string_to_period},
-        currency_resolver::{CurrencyHints, ReportingCurrencyEvidence, ResolvedCurrencyUnit},
+        currency_resolver::{
+            CurrencyHints, CurrencyKind, ReportingCurrencyEvidence, ResolvedCurrencyUnit,
+        },
+        diagnostics::{optional_money_f64, optional_price_f64},
         wire::{RawNum, RawNumU64},
     },
     fundamentals::wire::{TimeseriesData, TimeseriesEnvelope},
@@ -51,11 +54,12 @@ async fn fetch_timeseries_data<T, F>(
     override_currency: Option<Currency>,
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
+    data_quality: DataQuality,
     keys: &[&str],
     monetary_keys: &[&str],
-    endpoint_name: &str,
+    endpoint_name: &'static str,
     process_item: F,
-) -> Result<Vec<T>, YfError>
+) -> Result<YfResponse<Vec<T>>, YfError>
 where
     F: Fn(
         &str,
@@ -64,8 +68,10 @@ where
         &[i64],
         &str,
         Option<&ResolvedCurrencyUnit>,
+        &mut ProjectionContext,
     ) -> Result<(), YfError>,
 {
+    let mut ctx = ProjectionContext::new(endpoint_name, data_quality);
     let prefix = if quarterly { "quarterly" } else { "annual" };
     let types: Vec<String> = keys.iter().map(|k| format!("{prefix}{k}")).collect();
     let type_str = types.join(",");
@@ -109,23 +115,31 @@ where
         .unwrap_or_default();
 
     if result_vec.is_empty() {
-        return Ok(vec![]);
+        return Ok(ctx.finish(vec![]));
     }
 
     let (direct_currency, needs_currency) =
         timeseries_currency_evidence(&result_vec, prefix, monetary_keys)?;
     let currency = if needs_currency {
-        Some(
-            client
-                .resolve_reporting_currency_unit(
-                    symbol,
-                    override_currency,
-                    ReportingCurrencyEvidence::TimeseriesCurrencyCode(direct_currency.as_deref()),
-                    cache_mode,
-                    retry_override,
-                )
-                .await?,
-        )
+        match client
+            .resolve_reporting_currency_unit(
+                symbol,
+                override_currency,
+                ReportingCurrencyEvidence::TimeseriesCurrencyCode(direct_currency.as_deref()),
+                cache_mode,
+                retry_override,
+            )
+            .await
+        {
+            Ok(currency) => {
+                ctx.currency_resolution(client, symbol, CurrencyKind::Reporting)
+                    .await?;
+                Some(currency)
+            }
+            Err(err @ YfError::InvalidData(_)) => return Err(err),
+            Err(err) if data_quality == DataQuality::Strict => return Err(err),
+            Err(_) => None,
+        }
     } else {
         None
     };
@@ -133,21 +147,35 @@ where
     let mut rows_map = BTreeMap::<i64, T>::new();
 
     for item in result_vec {
-        if let (Some(timestamps), Some((key, values_json))) =
-            (item.timestamp, item.values.into_iter().next())
-        {
-            process_item(
-                &key,
-                &values_json,
-                &mut rows_map,
-                &timestamps,
-                prefix,
-                currency.as_ref(),
+        let Some(timestamps) = item.timestamp else {
+            ctx.dropped_item(
+                "timeseries_item",
+                None,
+                ProjectionIssue::MissingRequiredField { field: "timestamp" },
             )?;
-        }
+            continue;
+        };
+        let Some((key, values_json)) = item.values.into_iter().next() else {
+            ctx.dropped_item(
+                "timeseries_item",
+                None,
+                ProjectionIssue::MissingRequiredField { field: "values" },
+            )?;
+            continue;
+        };
+
+        process_item(
+            &key,
+            &values_json,
+            &mut rows_map,
+            &timestamps,
+            prefix,
+            currency.as_ref(),
+            &mut ctx,
+        )?;
     }
 
-    Ok(rows_map.into_values().rev().collect())
+    Ok(ctx.finish(rows_map.into_values().rev().collect()))
 }
 
 fn timeseries_currency_evidence(
@@ -214,6 +242,30 @@ fn period_from_timestamp(timestamp: i64) -> Result<Period, YfError> {
     string_to_period(&date)
 }
 
+fn parse_timeseries_values<T>(
+    ctx: &mut ProjectionContext,
+    key: &str,
+    values_json: &serde_json::Value,
+) -> Result<Option<Vec<T>>, YfError>
+where
+    T: serde::de::DeserializeOwned,
+{
+    match serde_json::from_value(values_json.clone()) {
+        Ok(values) => Ok(Some(values)),
+        Err(err) => {
+            ctx.dropped_item(
+                "timeseries_item",
+                Some(key.to_string()),
+                ProjectionIssue::InvalidField {
+                    field: "values",
+                    details: err.to_string(),
+                },
+            )?;
+            Ok(None)
+        }
+    }
+}
+
 fn row_for_timestamp<T>(
     rows_map: &mut BTreeMap<i64, T>,
     timestamp: i64,
@@ -228,14 +280,6 @@ fn row_for_timestamp<T>(
     }
 }
 
-fn optional_money_f64(
-    currency: Option<&ResolvedCurrencyUnit>,
-    value: Option<f64>,
-) -> Option<paft::money::Money> {
-    let currency = currency?;
-    value.and_then(|value| currency.money_from_f64(value))
-}
-
 pub(super) async fn income_statement(
     client: &YfClient,
     symbol: &str,
@@ -243,7 +287,8 @@ pub(super) async fn income_statement(
     override_currency: Option<Currency>,
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
-) -> Result<Vec<IncomeStatementRow>, YfError> {
+    data_quality: DataQuality,
+) -> Result<YfResponse<Vec<IncomeStatementRow>>, YfError> {
     let keys = [
         "TotalRevenue",
         "GrossProfit",
@@ -271,31 +316,41 @@ pub(super) async fn income_statement(
                         rows_map: &mut BTreeMap<i64, IncomeStatementRow>,
                         timestamps: &[i64],
                         prefix: &str,
-                        currency: Option<&ResolvedCurrencyUnit>|
+                        currency: Option<&ResolvedCurrencyUnit>,
+                        ctx: &mut ProjectionContext|
      -> Result<(), YfError> {
         let Some(field) = key.strip_prefix(prefix) else {
             return Ok(());
         };
 
-        if let Ok(values) = serde_json::from_value::<Vec<TimeseriesValueF64>>(values_json.clone()) {
-            for (i, ts) in timestamps.iter().enumerate() {
-                let row = row_for_timestamp(rows_map, *ts, create_default_row)?;
+        let Some(values) = parse_timeseries_values::<TimeseriesValueF64>(ctx, key, values_json)?
+        else {
+            return Ok(());
+        };
+        for (i, ts) in timestamps.iter().enumerate() {
+            let row = row_for_timestamp(rows_map, *ts, create_default_row)?;
 
-                let value = values
-                    .get(i)
-                    .and_then(|v| v.reported_value.and_then(|rv| rv.raw));
-                let money = optional_money_f64(currency, value);
+            let value = values
+                .get(i)
+                .and_then(|v| v.reported_value.and_then(|rv| rv.raw));
+            let money = optional_money_f64(
+                ctx,
+                "timeseries.reportedValue",
+                Some(format!("{field}@{ts}")),
+                currency,
+                value,
+                "statement monetary value",
+            )?;
 
-                match field {
-                    "TotalRevenue" => row.total_revenue = money,
-                    "GrossProfit" => row.gross_profit = money,
-                    "OperatingIncome" => row.operating_income = money,
-                    "NetIncome" => row.net_income = money,
-                    "InterestExpense" => row.interest_expense = money,
-                    "TaxProvision" => row.income_tax_expense = money,
-                    "DepreciationAndAmortization" => row.depreciation_and_amortization = money,
-                    _ => {}
-                }
+            match field {
+                "TotalRevenue" => row.total_revenue = money,
+                "GrossProfit" => row.gross_profit = money,
+                "OperatingIncome" => row.operating_income = money,
+                "NetIncome" => row.net_income = money,
+                "InterestExpense" => row.interest_expense = money,
+                "TaxProvision" => row.income_tax_expense = money,
+                "DepreciationAndAmortization" => row.depreciation_and_amortization = money,
+                _ => {}
             }
         }
         Ok(())
@@ -308,6 +363,7 @@ pub(super) async fn income_statement(
         override_currency,
         cache_mode,
         retry_override,
+        data_quality,
         &keys,
         &keys,
         endpoint_name,
@@ -327,7 +383,8 @@ pub(super) async fn balance_sheet(
     override_currency: Option<Currency>,
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
-) -> Result<Vec<BalanceSheetRow>, YfError> {
+    data_quality: DataQuality,
+) -> Result<YfResponse<Vec<BalanceSheetRow>>, YfError> {
     let keys = [
         "TotalAssets",
         "TotalLiabilitiesNetMinorityInterest",
@@ -384,33 +441,45 @@ pub(super) async fn balance_sheet(
                         rows_map: &mut BTreeMap<i64, BalanceSheetRow>,
                         timestamps: &[i64],
                         prefix: &str,
-                        currency: Option<&ResolvedCurrencyUnit>|
+                        currency: Option<&ResolvedCurrencyUnit>,
+                        ctx: &mut ProjectionContext|
      -> Result<(), YfError> {
         let Some(field) = key.strip_prefix(prefix) else {
             return Ok(());
         };
 
         if field == "OrdinarySharesNumber" {
-            if let Ok(values) =
-                serde_json::from_value::<Vec<TimeseriesValueU64>>(values_json.clone())
-            {
-                for (i, ts) in timestamps.iter().enumerate() {
-                    let row = row_for_timestamp(rows_map, *ts, create_default_row)?;
-                    row.shares_outstanding = values
-                        .get(i)
-                        .and_then(|v| v.reported_value.and_then(|rv| rv.raw));
-                }
+            let Some(values) =
+                parse_timeseries_values::<TimeseriesValueU64>(ctx, key, values_json)?
+            else {
+                return Ok(());
+            };
+            for (i, ts) in timestamps.iter().enumerate() {
+                let row = row_for_timestamp(rows_map, *ts, create_default_row)?;
+                row.shares_outstanding = values
+                    .get(i)
+                    .and_then(|v| v.reported_value.and_then(|rv| rv.raw));
             }
-        } else if let Ok(values) =
-            serde_json::from_value::<Vec<TimeseriesValueF64>>(values_json.clone())
-        {
+        } else {
+            let Some(values) =
+                parse_timeseries_values::<TimeseriesValueF64>(ctx, key, values_json)?
+            else {
+                return Ok(());
+            };
             for (i, ts) in timestamps.iter().enumerate() {
                 let row = row_for_timestamp(rows_map, *ts, create_default_row)?;
 
                 let value = values
                     .get(i)
                     .and_then(|v| v.reported_value.and_then(|rv| rv.raw));
-                let money = optional_money_f64(currency, value);
+                let money = optional_money_f64(
+                    ctx,
+                    "timeseries.reportedValue",
+                    Some(format!("{field}@{ts}")),
+                    currency,
+                    value,
+                    "statement monetary value",
+                )?;
 
                 match field {
                     "TotalAssets" => row.total_assets = money,
@@ -440,6 +509,7 @@ pub(super) async fn balance_sheet(
         override_currency,
         cache_mode,
         retry_override,
+        data_quality,
         &keys,
         &monetary_keys,
         endpoint_name,
@@ -456,7 +526,8 @@ pub(super) async fn cashflow(
     override_currency: Option<Currency>,
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
-) -> Result<Vec<CashflowRow>, YfError> {
+    data_quality: DataQuality,
+) -> Result<YfResponse<Vec<CashflowRow>>, YfError> {
     let keys = [
         "OperatingCashFlow",
         "CapitalExpenditure",
@@ -480,29 +551,39 @@ pub(super) async fn cashflow(
                         rows_map: &mut BTreeMap<i64, CashflowRow>,
                         timestamps: &[i64],
                         prefix: &str,
-                        currency: Option<&ResolvedCurrencyUnit>|
+                        currency: Option<&ResolvedCurrencyUnit>,
+                        ctx: &mut ProjectionContext|
      -> Result<(), YfError> {
         let Some(field) = key.strip_prefix(prefix) else {
             return Ok(());
         };
 
-        if let Ok(values) = serde_json::from_value::<Vec<TimeseriesValueF64>>(values_json.clone()) {
-            for (i, ts) in timestamps.iter().enumerate() {
-                let row = row_for_timestamp(rows_map, *ts, create_default_row)?;
+        let Some(values) = parse_timeseries_values::<TimeseriesValueF64>(ctx, key, values_json)?
+        else {
+            return Ok(());
+        };
+        for (i, ts) in timestamps.iter().enumerate() {
+            let row = row_for_timestamp(rows_map, *ts, create_default_row)?;
 
-                let value = values
-                    .get(i)
-                    .and_then(|v| v.reported_value.and_then(|rv| rv.raw));
-                let money = optional_money_f64(currency, value);
+            let value = values
+                .get(i)
+                .and_then(|v| v.reported_value.and_then(|rv| rv.raw));
+            let money = optional_money_f64(
+                ctx,
+                "timeseries.reportedValue",
+                Some(format!("{field}@{ts}")),
+                currency,
+                value,
+                "statement monetary value",
+            )?;
 
-                match field {
-                    "OperatingCashFlow" => row.operating_cashflow = money,
-                    "CapitalExpenditure" => row.capital_expenditures = money,
-                    "FreeCashFlow" => row.free_cash_flow = money,
-                    "NetIncome" => row.net_income = money,
-                    "DepreciationAndAmortization" => row.depreciation_and_amortization = money,
-                    _ => {}
-                }
+            match field {
+                "OperatingCashFlow" => row.operating_cashflow = money,
+                "CapitalExpenditure" => row.capital_expenditures = money,
+                "FreeCashFlow" => row.free_cash_flow = money,
+                "NetIncome" => row.net_income = money,
+                "DepreciationAndAmortization" => row.depreciation_and_amortization = money,
+                _ => {}
             }
         }
         Ok(())
@@ -515,6 +596,7 @@ pub(super) async fn cashflow(
         override_currency,
         cache_mode,
         retry_override,
+        data_quality,
         &keys,
         &keys,
         endpoint_name,
@@ -523,7 +605,7 @@ pub(super) async fn cashflow(
     .await?;
 
     // After filling values, calculate FCF if it's missing.
-    for row in &mut result {
+    for row in &mut result.data {
         if row.free_cash_flow.is_none()
             && let (Some(ocf), Some(capex)) = (
                 row.operating_cashflow.clone(),
@@ -566,7 +648,9 @@ pub(super) async fn earnings(
     override_currency: Option<Currency>,
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
-) -> Result<Earnings, YfError> {
+    data_quality: DataQuality,
+) -> Result<YfResponse<Earnings>, YfError> {
+    let mut ctx = ProjectionContext::new("earnings", data_quality);
     let root = fetch_modules(client, symbol, "earnings", cache_mode, retry_override).await?;
     let e = root
         .earnings
@@ -578,103 +662,184 @@ pub(super) async fn earnings(
         )
         .await;
     let currency = if earnings_has_monetary_values(&e) {
-        Some(
-            client
-                .resolve_reporting_currency_unit(
-                    symbol,
-                    override_currency,
-                    ReportingCurrencyEvidence::FinancialCurrency(e.financial_currency.as_deref()),
-                    cache_mode,
-                    retry_override,
-                )
-                .await?,
-        )
+        match client
+            .resolve_reporting_currency_unit(
+                symbol,
+                override_currency,
+                ReportingCurrencyEvidence::FinancialCurrency(e.financial_currency.as_deref()),
+                cache_mode,
+                retry_override,
+            )
+            .await
+        {
+            Ok(currency) => {
+                ctx.currency_resolution(client, symbol, CurrencyKind::Reporting)
+                    .await?;
+                Some(currency)
+            }
+            Err(err @ YfError::InvalidData(_)) => return Err(err),
+            Err(err) if data_quality == DataQuality::Strict => return Err(err),
+            Err(_) => None,
+        }
     } else {
         None
     };
 
-    let yearly = e
+    let mut yearly = Vec::new();
+    if let Some(rows) = e
         .financials_chart
         .as_ref()
         .and_then(|fc| fc.yearly.as_ref())
-        .map(|v| {
-            v.iter()
-                .filter_map(|y| {
-                    y.date.and_then(|date| {
-                        i32::try_from(date).ok().map(|year| EarningsYear {
-                            year,
-                            revenue: y.revenue.as_ref().and_then(|x| x.raw).and_then(|v| {
-                                currency.as_ref().and_then(|unit| unit.money_from_f64(v))
-                            }),
-                            earnings: y.earnings.as_ref().and_then(|x| x.raw).and_then(|v| {
-                                currency.as_ref().and_then(|unit| unit.money_from_f64(v))
-                            }),
-                        })
-                    })
-                })
-                .collect()
-        })
-        .unwrap_or_default();
+    {
+        for y in rows {
+            let Some(date) = y.date else {
+                ctx.dropped_item(
+                    "earnings_year",
+                    None,
+                    ProjectionIssue::MissingRequiredField { field: "date" },
+                )?;
+                continue;
+            };
+            let Ok(year) = i32::try_from(date) else {
+                ctx.dropped_item(
+                    "earnings_year",
+                    Some(date.to_string()),
+                    ProjectionIssue::InvalidField {
+                        field: "date",
+                        details: "year outside i32 range".into(),
+                    },
+                )?;
+                continue;
+            };
+            yearly.push(EarningsYear {
+                year,
+                revenue: optional_money_f64(
+                    &mut ctx,
+                    "financialsChart.yearly[].revenue",
+                    Some(year.to_string()),
+                    currency.as_ref(),
+                    y.revenue.as_ref().and_then(|x| x.raw),
+                    "earnings monetary value",
+                )?,
+                earnings: optional_money_f64(
+                    &mut ctx,
+                    "financialsChart.yearly[].earnings",
+                    Some(year.to_string()),
+                    currency.as_ref(),
+                    y.earnings.as_ref().and_then(|x| x.raw),
+                    "earnings monetary value",
+                )?,
+            });
+        }
+    }
 
-    let quarterly = e
+    let mut quarterly = Vec::new();
+    if let Some(rows) = e
         .financials_chart
         .as_ref()
         .and_then(|fc| fc.quarterly.as_ref())
-        .map(|v| {
-            v.iter()
-                .filter_map(|q| {
-                    let period = q.date.as_deref()?;
-                    let period = match string_to_period(period) {
-                        Ok(period) => period,
-                        Err(err) => return Some(Err(err)),
-                    };
-                    Some(Ok(EarningsQuarter {
-                        period,
-                        revenue: q.revenue.as_ref().and_then(|x| x.raw).and_then(|v| {
-                            currency.as_ref().and_then(|unit| unit.money_from_f64(v))
-                        }),
-                        earnings: q.earnings.as_ref().and_then(|x| x.raw).and_then(|v| {
-                            currency.as_ref().and_then(|unit| unit.money_from_f64(v))
-                        }),
-                    }))
-                })
-                .collect::<Result<Vec<_>, YfError>>()
-        })
-        .transpose()?
-        .unwrap_or_default();
+    {
+        for q in rows {
+            let Some(period_raw) = q.date.as_deref() else {
+                ctx.dropped_item(
+                    "earnings_quarter",
+                    None,
+                    ProjectionIssue::MissingRequiredField { field: "date" },
+                )?;
+                continue;
+            };
+            let period = match string_to_period(period_raw) {
+                Ok(period) => period,
+                Err(err) => {
+                    ctx.dropped_item(
+                        "earnings_quarter",
+                        Some(period_raw.to_string()),
+                        ProjectionIssue::InvalidField {
+                            field: "date",
+                            details: err.to_string(),
+                        },
+                    )?;
+                    continue;
+                }
+            };
+            quarterly.push(EarningsQuarter {
+                period,
+                revenue: optional_money_f64(
+                    &mut ctx,
+                    "financialsChart.quarterly[].revenue",
+                    Some(period_raw.to_string()),
+                    currency.as_ref(),
+                    q.revenue.as_ref().and_then(|x| x.raw),
+                    "earnings monetary value",
+                )?,
+                earnings: optional_money_f64(
+                    &mut ctx,
+                    "financialsChart.quarterly[].earnings",
+                    Some(period_raw.to_string()),
+                    currency.as_ref(),
+                    q.earnings.as_ref().and_then(|x| x.raw),
+                    "earnings monetary value",
+                )?,
+            });
+        }
+    }
 
-    let quarterly_eps = e
+    let mut quarterly_eps = Vec::new();
+    if let Some(rows) = e
         .earnings_chart
         .as_ref()
         .and_then(|ec| ec.quarterly.as_ref())
-        .map(|v| {
-            v.iter()
-                .filter_map(|q| {
-                    let period = q.date.as_deref()?;
-                    let period = match string_to_period(period) {
-                        Ok(period) => period,
-                        Err(err) => return Some(Err(err)),
-                    };
-                    Some(Ok(EarningsQuarterEps {
-                        period,
-                        actual: q.actual.as_ref().and_then(|x| x.raw).and_then(|v| {
-                            currency.as_ref().and_then(|unit| unit.price_from_f64(v))
-                        }),
-                        estimate: q.estimate.as_ref().and_then(|x| x.raw).and_then(|v| {
-                            currency.as_ref().and_then(|unit| unit.price_from_f64(v))
-                        }),
-                    }))
-                })
-                .collect::<Result<Vec<_>, YfError>>()
-        })
-        .transpose()?
-        .unwrap_or_default();
+    {
+        for q in rows {
+            let Some(period_raw) = q.date.as_deref() else {
+                ctx.dropped_item(
+                    "earnings_quarter_eps",
+                    None,
+                    ProjectionIssue::MissingRequiredField { field: "date" },
+                )?;
+                continue;
+            };
+            let period = match string_to_period(period_raw) {
+                Ok(period) => period,
+                Err(err) => {
+                    ctx.dropped_item(
+                        "earnings_quarter_eps",
+                        Some(period_raw.to_string()),
+                        ProjectionIssue::InvalidField {
+                            field: "date",
+                            details: err.to_string(),
+                        },
+                    )?;
+                    continue;
+                }
+            };
+            quarterly_eps.push(EarningsQuarterEps {
+                period,
+                actual: optional_price_f64(
+                    &mut ctx,
+                    "earningsChart.quarterly[].actual",
+                    Some(period_raw.to_string()),
+                    currency.as_ref(),
+                    q.actual.as_ref().and_then(|x| x.raw),
+                    "earnings price value",
+                )?,
+                estimate: optional_price_f64(
+                    &mut ctx,
+                    "earningsChart.quarterly[].estimate",
+                    Some(period_raw.to_string()),
+                    currency.as_ref(),
+                    q.estimate.as_ref().and_then(|x| x.raw),
+                    "earnings price value",
+                )?,
+            });
+        }
+    }
 
-    Ok(Earnings {
+    Ok(ctx.finish(Earnings {
         yearly,
         quarterly,
         quarterly_eps,
-    })
+    }))
 }
 
 pub(super) async fn calendar(
@@ -682,7 +847,9 @@ pub(super) async fn calendar(
     symbol: &str,
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
-) -> Result<super::Calendar, YfError> {
+    data_quality: DataQuality,
+) -> Result<YfResponse<super::Calendar>, YfError> {
+    let ctx = ProjectionContext::new("calendar", data_quality);
     let root = fetch_modules(client, symbol, "calendarEvents", cache_mode, retry_override).await?;
     let calendar_events = root
         .calendar_events
@@ -697,7 +864,7 @@ pub(super) async fn calendar(
         .map(i64_to_datetime)
         .collect::<Result<Vec<_>, YfError>>()?;
 
-    Ok(super::Calendar {
+    Ok(ctx.finish(super::Calendar {
         earnings_dates,
         ex_dividend_date: calendar_events
             .ex_dividend_date
@@ -709,9 +876,10 @@ pub(super) async fn calendar(
             .and_then(|x| x.raw)
             .map(i64_to_datetime)
             .transpose()?,
-    })
+    }))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) async fn shares(
     client: &YfClient,
     symbol: &str,
@@ -720,7 +888,9 @@ pub(super) async fn shares(
     quarterly: bool,
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
-) -> Result<Vec<ShareCount>, YfError> {
+    data_quality: DataQuality,
+) -> Result<YfResponse<Vec<ShareCount>>, YfError> {
+    let ctx = ProjectionContext::new("shares", data_quality);
     let end_ts = end.unwrap_or_else(Utc::now).timestamp();
     let start_ts = start
         .unwrap_or_else(|| Utc::now() - Duration::days(548))
@@ -771,11 +941,11 @@ pub(super) async fn shares(
         ..
     }) = result_data
     else {
-        return Ok(vec![]);
+        return Ok(ctx.finish(vec![]));
     };
 
     let Some(values_json) = values_map.remove(type_key) else {
-        return Ok(vec![]);
+        return Ok(ctx.finish(vec![]));
     };
 
     let values: Vec<super::wire::TimeseriesValue> =
@@ -791,5 +961,5 @@ pub(super) async fn shares(
         })
         .collect::<Result<Vec<_>, YfError>>()?;
 
-    Ok(counts)
+    Ok(ctx.finish(counts))
 }

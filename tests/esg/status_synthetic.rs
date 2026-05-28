@@ -1,6 +1,6 @@
 use httpmock::{Method::GET, MockServer};
 use url::Url;
-use yfinance_rs::{Ticker, YfClient};
+use yfinance_rs::{EsgBuilder, ProjectionIssue, Ticker, YfClient, YfError, YfWarning};
 
 fn preauthed_client(server: &MockServer) -> YfClient {
     YfClient::builder()
@@ -64,4 +64,53 @@ async fn esg_not_found_body_returns_error() {
 
     mock.assert();
     assert!(err.to_string().contains("No fundamentals data found"));
+}
+
+#[tokio::test]
+async fn missing_esg_module_is_reported_as_unavailable() {
+    let sym = "MSFT";
+    let server = MockServer::start();
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "esgScores")
+            .query_param("crumb", "crumb");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "quoteSummary": {
+                    "result": [{}],
+                    "error": null
+                  }
+                }"#,
+            );
+    });
+
+    let client = preauthed_client(&server);
+    let response = EsgBuilder::new(&client, sym)
+        .fetch_with_diagnostics()
+        .await
+        .unwrap();
+
+    mock.assert();
+    assert!(response.data.scores.is_none());
+    assert!(matches!(
+        response.diagnostics.warnings.first(),
+        Some(YfWarning::ProviderFeatureUnavailable {
+            feature: "esgScores",
+            reason: ProjectionIssue::ProviderUnavailable {
+                feature: "esgScores"
+            },
+            ..
+        })
+    ));
+
+    let err = EsgBuilder::new(&client, sym)
+        .strict()
+        .fetch()
+        .await
+        .unwrap_err();
+    assert!(matches!(err, YfError::DataQuality(_)));
 }

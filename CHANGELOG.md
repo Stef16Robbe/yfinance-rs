@@ -19,12 +19,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Missing or unparseable Yahoo currency metadata no longer silently falls back to USD. Required monetary responses now return typed data errors when no valid currency can be resolved, and optional monetary fields/actions are omitted instead of fabricated.
 - `CacheMode` now has a policy-driven `Default` mode. Volatile endpoints such as quotes, options, news, and screeners bypass the response cache by default; use `CacheMode::Use` to opt them into caching.
 
+### Added
+
+- Add adapter-level projection diagnostics through `YfResponse<T>`, `YfDiagnostics`, `YfWarning`, `ProjectionIssue`, and `DataQuality`, plus `strict()` and `*_with_diagnostics()` entry points on history, download, holders, fundamentals, analysis, ESG, news, search, and `Ticker::info()`.
+- History, holders, fundamentals, analysis, ESG, news, search, download, and aggregate info calls can now distinguish absent optional provider data from present Yahoo data that was dropped or omitted while projecting into strict `paft` values.
+
 ### Fixed
 
 - `StreamMethod::Websocket` startup failures are now returned from `StreamBuilder::start().await`
   instead of being logged in the spawned task while the caller receives `Ok`.
 - Convert malformed Yahoo/user-provided symbols, missing quote symbols, missing currency metadata, and uncloneable retry requests into `Result` errors instead of panicking.
-- Surface unavailable Yahoo ESG data as an error instead of returning an empty `EsgSummary`, so missing provider data is not indistinguishable from a valid zero-involvement result.
+- Surface unavailable Yahoo ESG modules through `ProviderFeatureUnavailable` diagnostics and strict-mode data-quality errors, so missing provider data is not indistinguishable from a valid zero-involvement result for callers that audit projection quality.
 - Normalize HTTP status handling through shared fetch helpers so quoteSummary and fundamentals-timeseries failures return typed `YfError` variants and are not cached as parseable response bodies.
 - Invalid Yahoo floats (`NaN`, infinities, and values that cannot fit the decimal backend) no longer become zero-valued financial data.
 - Optional `paft` fields now become `None` when Yahoo supplies an invalid numeric value, while valid sibling records are still preserved.

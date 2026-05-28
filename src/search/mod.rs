@@ -3,46 +3,87 @@ use paft::market::responses::search::{SearchResponse, SearchResult};
 use serde::Deserialize;
 use url::Url;
 
+use crate::core::ProjectionContext;
 use crate::core::client::{CacheEndpoint, CacheMode, RetryConfig};
 use crate::core::conversions::string_to_asset_kind;
-use crate::{YfClient, YfError};
+use crate::{DataQuality, ProjectionIssue, YfClient, YfError, YfResponse};
 
-fn parse_search_body(body: &str) -> Result<SearchResponse, YfError> {
+fn parse_search_body(body: &str, ctx: &mut ProjectionContext) -> Result<SearchResponse, YfError> {
     let env: V1SearchEnvelope = serde_json::from_str(body).map_err(YfError::Json)?;
 
     let quotes = env
         .quotes
         .ok_or_else(|| YfError::MissingData("search quotes missing".into()))?;
-    let results = quotes
-        .into_iter()
-        .filter_map(|q| {
-            let sym = q.symbol?.trim().to_string();
-            if sym.is_empty() {
-                return None;
+    let mut results = Vec::new();
+    for q in quotes {
+        let key = q.symbol.clone();
+        let Some(sym) = q.symbol.map(|sym| sym.trim().to_string()) else {
+            ctx.dropped_item(
+                "search_result",
+                key,
+                ProjectionIssue::MissingRequiredField { field: "symbol" },
+            )?;
+            continue;
+        };
+        if sym.is_empty() {
+            ctx.dropped_item(
+                "search_result",
+                key,
+                ProjectionIssue::MissingRequiredField { field: "symbol" },
+            )?;
+            continue;
+        }
+        let exchange_opt = q.exchange.and_then(|s| s.parse::<Exchange>().ok());
+        let kind = match q
+            .quote_type
+            .as_deref()
+            .map(string_to_asset_kind)
+            .transpose()
+        {
+            Ok(Some(kind)) => kind,
+            Ok(None) => {
+                ctx.dropped_item(
+                    "search_result",
+                    Some(sym),
+                    ProjectionIssue::MissingRequiredField { field: "quoteType" },
+                )?;
+                continue;
             }
-            let exchange_opt = q.exchange.and_then(|s| s.parse::<Exchange>().ok());
-            let Ok(Some(kind)) = q
-                .quote_type
-                .as_deref()
-                .map(string_to_asset_kind)
-                .transpose()
-            else {
-                return None;
-            };
-
-            let instrument = match exchange_opt {
-                Some(exchange) => Instrument::from_symbol_and_exchange(&sym, exchange, kind),
-                None => Instrument::from_symbol(&sym, kind),
+            Err(err) => {
+                ctx.dropped_item(
+                    "search_result",
+                    Some(sym),
+                    ProjectionIssue::InvalidField {
+                        field: "quoteType",
+                        details: err.to_string(),
+                    },
+                )?;
+                continue;
             }
-            .ok()?;
+        };
 
-            Some(SearchResult {
-                instrument,
-                name: q.longname.or(q.shortname),
-                provider: (),
-            })
-        })
-        .collect();
+        let instrument = match exchange_opt {
+            Some(exchange) => Instrument::from_symbol_and_exchange(&sym, exchange, kind),
+            None => Instrument::from_symbol(&sym, kind),
+        };
+        let Ok(instrument) = instrument else {
+            ctx.dropped_item(
+                "search_result",
+                Some(sym),
+                ProjectionIssue::InvalidField {
+                    field: "symbol",
+                    details: "invalid instrument symbol".into(),
+                },
+            )?;
+            continue;
+        };
+
+        results.push(SearchResult {
+            instrument,
+            name: q.longname.or(q.shortname),
+            provider: (),
+        });
+    }
 
     Ok(SearchResponse {
         results,
@@ -74,6 +115,7 @@ pub struct SearchBuilder {
     region: Option<String>,
     cache_mode: CacheMode,
     retry_override: Option<RetryConfig>,
+    data_quality: DataQuality,
 }
 
 impl SearchBuilder {
@@ -95,6 +137,7 @@ impl SearchBuilder {
             region: None,
             cache_mode: CacheMode::Default,
             retry_override: None,
+            data_quality: DataQuality::BestEffort,
         }
     }
 
@@ -110,6 +153,19 @@ impl SearchBuilder {
     pub fn retry_policy(mut self, cfg: Option<RetryConfig>) -> Self {
         self.retry_override = cfg;
         self
+    }
+
+    /// Sets how provider projection issues are handled.
+    #[must_use]
+    pub const fn data_quality(mut self, policy: DataQuality) -> Self {
+        self.data_quality = policy;
+        self
+    }
+
+    /// Fails when Yahoo data cannot be projected losslessly.
+    #[must_use]
+    pub const fn strict(self) -> Self {
+        self.data_quality(DataQuality::Strict)
     }
 
     /// (For testing) Overrides the base URL for the search API.
@@ -173,6 +229,16 @@ impl SearchBuilder {
     /// This method will return an error if the network request fails, the API returns a
     /// non-successful status code, or the response body cannot be parsed as a valid search result.
     pub async fn fetch(self) -> Result<SearchResponse, crate::core::YfError> {
+        Ok(self.fetch_with_diagnostics().await?.into_data())
+    }
+
+    /// Executes the search request with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or strict data-quality mode rejects a projection issue.
+    pub async fn fetch_with_diagnostics(self) -> Result<YfResponse<SearchResponse>, YfError> {
+        let mut ctx = ProjectionContext::new("search", self.data_quality);
         let mut url = self.base.clone();
         Self::append_query_params(
             &mut url,
@@ -207,7 +273,8 @@ impl SearchBuilder {
         )
         .await?;
 
-        parse_search_body(&body)
+        let data = parse_search_body(&body, &mut ctx)?;
+        Ok(ctx.finish(data))
     }
 
     fn append_query_params(

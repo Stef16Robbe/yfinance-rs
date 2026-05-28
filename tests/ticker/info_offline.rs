@@ -2,7 +2,7 @@ use httpmock::{Method::GET, Mock, MockServer};
 use std::time::Duration;
 use url::Url;
 use yfinance_rs::{
-    ApiPreference, Ticker, YfClient,
+    ApiPreference, ProjectionIssue, Ticker, YfClient, YfWarning,
     core::client::{Backoff, CacheMode, RetryConfig},
 };
 
@@ -137,6 +137,52 @@ async fn offline_info_uses_recorded_fixtures() {
             .is_some(),
         "dividend payment date should fall back to v7 quote dividendDate"
     );
+}
+
+#[tokio::test]
+async fn info_with_diagnostics_keeps_nested_esg_unavailable_warning() {
+    let server = MockServer::start();
+    let sym = "MSFT";
+    let crumb = "crumb";
+    let _quote_mock = mock_info_quote(&server, sym);
+    let esg_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "esgScores")
+            .query_param("crumb", crumb);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(r#"{"quoteSummary":{"result":[{}],"error":null}}"#);
+    });
+
+    let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._api_preference(ApiPreference::ApiOnly)
+        ._preauth("cookie", crumb)
+        .retry_enabled(false)
+        .build()
+        .unwrap();
+
+    let response = Ticker::new(&client, sym)
+        .info_with_diagnostics()
+        .await
+        .unwrap();
+
+    esg_mock.assert();
+    assert!(response.data.esg_scores.is_none());
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::ProviderFeatureUnavailable {
+            feature: "esgScores",
+            reason: ProjectionIssue::ProviderUnavailable {
+                feature: "esgScores"
+            },
+            ..
+        }
+    )));
 }
 
 #[tokio::test]

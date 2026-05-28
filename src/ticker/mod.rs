@@ -18,7 +18,7 @@ use crate::{
     EsgBuilder,
     core::client::RetryConfig,
     core::conversions::{datetime_to_i64, f64_from_currency_value},
-    core::{CacheMode, YfClient, YfError},
+    core::{CacheMode, DataQuality, YfClient, YfError, YfResponse},
     holders::HoldersBuilder,
     news::NewsBuilder,
 };
@@ -108,13 +108,12 @@ impl Ticker {
     /// similar to the `.info` attribute in the Python `yfinance` library. It makes several
     /// API calls concurrently to gather the data efficiently.
     ///
-    /// If a non-essential part of the data fails to load (e.g., ESG scores), the corresponding
-    /// fields in the `Info` struct will be `None`. A failure to load the core profile
-    /// will result in an error.
+    /// If a non-essential part of the data fails to load (e.g., profile or ESG scores),
+    /// the corresponding fields in the `Info` struct will be `None`.
     ///
     /// # Errors
     ///
-    /// This method will return an error if the core profile data cannot be fetched.
+    /// This method will return an error if the required quote data cannot be fetched.
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), err, fields(symbol = %self.symbol)))]
     pub async fn info(&self) -> Result<Info, YfError> {
         Box::pin(info::fetch_info(
@@ -124,6 +123,40 @@ impl Ticker {
             self.retry_override.as_ref(),
         ))
         .await
+    }
+
+    /// Fetches aggregate `Info` with projection diagnostics for optional submodules.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the required quote data cannot be fetched.
+    pub async fn info_with_diagnostics(&self) -> Result<YfResponse<Info>, YfError> {
+        Box::pin(info::fetch_info_with_diagnostics(
+            &self.client,
+            &self.symbol,
+            self.cache_mode,
+            self.retry_override.as_ref(),
+            DataQuality::BestEffort,
+        ))
+        .await
+    }
+
+    /// Fetches aggregate `Info` and fails if any optional submodule cannot be loaded.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the required quote data cannot be fetched
+    /// or any optional submodule fails to project cleanly.
+    pub async fn info_strict(&self) -> Result<Info, YfError> {
+        Ok(Box::pin(info::fetch_info_with_diagnostics(
+            &self.client,
+            &self.symbol,
+            self.cache_mode,
+            self.retry_override.as_ref(),
+            DataQuality::Strict,
+        ))
+        .await?
+        .into_data())
     }
 
     /* ---------------- Quotes ---------------- */
@@ -542,6 +575,17 @@ impl Ticker {
     /// This method will return an error if the request fails or the response cannot be parsed.
     pub async fn sustainability(&self) -> Result<paft::fundamentals::esg::EsgSummary, YfError> {
         self.esg_builder().fetch().await
+    }
+
+    /// Fetches ESG scores with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or strict data-quality mode rejects a projection issue.
+    pub async fn sustainability_with_diagnostics(
+        &self,
+    ) -> Result<YfResponse<paft::fundamentals::esg::EsgSummary>, YfError> {
+        self.esg_builder().fetch_with_diagnostics().await
     }
     /* ---------------- Fundamentals convenience ---------------- */
 

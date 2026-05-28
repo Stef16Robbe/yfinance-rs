@@ -3,7 +3,10 @@ use futures::{StreamExt, TryStreamExt, stream};
 use crate::{
     core::client::{CacheMode, RetryConfig},
     core::conversions::f64_from_currency_value,
-    core::{Candle, HistoryResponse, Interval, Range, YfClient, YfError},
+    core::{
+        Candle, DataQuality, HistoryResponse, Interval, ProjectionContext, Range, YfClient,
+        YfError, YfResponse,
+    },
     history::HistoryBuilder,
 };
 use paft::market::responses::download::{DownloadEntry, DownloadResponse};
@@ -72,6 +75,7 @@ pub struct DownloadBuilder {
     cache_mode: CacheMode,
     retry_override: Option<RetryConfig>,
     concurrency: DownloadConcurrency,
+    data_quality: DataQuality,
 }
 
 impl DownloadBuilder {
@@ -103,6 +107,7 @@ impl DownloadBuilder {
             .auto_adjust(need_adjust_in_fetch)
             .prepost(self.include_prepost)
             .actions(self.include_actions)
+            .data_quality(self.data_quality)
             .cache_mode(self.cache_mode)
             .retry_policy(self.retry_override.clone());
 
@@ -149,22 +154,38 @@ impl DownloadBuilder {
         }
     }
 
-    fn maybe_repair(&self, rows: &mut [Candle]) {
-        if self.repair {
-            repair_scale_outliers(rows);
+    fn maybe_repair(
+        &self,
+        rows: &mut [Candle],
+        symbol: &str,
+        ctx: &mut ProjectionContext,
+    ) -> Result<(), YfError> {
+        if !self.repair {
+            return Ok(());
         }
+        for key in repair_scale_outliers(rows) {
+            ctx.repaired_data(
+                "candle",
+                Some(format!("{symbol}:{key}")),
+                "scaled suspicious OHLC outlier",
+            )?;
+        }
+        Ok(())
     }
 
     async fn process_joined_results(
         &self,
-        joined: Vec<(String, HistoryResponse)>,
+        joined: Vec<(String, YfResponse<HistoryResponse>)>,
         _need_adjust_in_fetch: bool,
+        ctx: &mut ProjectionContext,
     ) -> Result<DownloadResponse, YfError> {
         let mut entries: Vec<DownloadEntry> = Vec::with_capacity(joined.len());
-        for (sym, mut resp) in joined {
+        for (sym, response) in joined {
+            ctx.extend(response.diagnostics.with_key_prefix(&sym));
+            let mut resp = response.data;
             // apply transforms to candles
             self.apply_back_adjust(&mut resp.candles);
-            self.maybe_repair(&mut resp.candles);
+            self.maybe_repair(&mut resp.candles, &sym, ctx)?;
             self.apply_rounding_if_enabled(&mut resp.candles);
 
             let instrument = self.client.cached_instrument(&sym).await.ok_or_else(|| {
@@ -201,6 +222,7 @@ impl DownloadBuilder {
             cache_mode: CacheMode::Default,
             retry_override: None,
             concurrency: DownloadConcurrency::DEFAULT,
+            data_quality: DataQuality::BestEffort,
         }
     }
 
@@ -216,6 +238,19 @@ impl DownloadBuilder {
     pub fn retry_policy(mut self, cfg: Option<RetryConfig>) -> Self {
         self.retry_override = cfg;
         self
+    }
+
+    /// Sets how provider projection issues are handled.
+    #[must_use]
+    pub const fn data_quality(mut self, policy: DataQuality) -> Self {
+        self.data_quality = policy;
+        self
+    }
+
+    /// Fails when Yahoo data cannot be projected losslessly.
+    #[must_use]
+    pub const fn strict(self) -> Self {
+        self.data_quality(DataQuality::Strict)
     }
 
     /// Sets the maximum number of per-symbol history requests to run at once. (Default: `8`)
@@ -321,21 +356,33 @@ impl DownloadBuilder {
     ///
     /// Returns an error if any of the underlying history requests fail.
     pub async fn run(self) -> Result<DownloadResponse, YfError> {
+        Ok(self.run_with_diagnostics().await?.into_data())
+    }
+
+    /// Executes the download and returns projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any history request fails or strict data-quality mode rejects a projection issue.
+    pub async fn run_with_diagnostics(self) -> Result<YfResponse<DownloadResponse>, YfError> {
         if self.symbols.is_empty() {
             return Err(YfError::InvalidParams("no symbols specified".into()));
         }
+        let mut ctx = ProjectionContext::new("download", self.data_quality);
 
         let need_adjust_in_fetch = self.auto_adjust || self.back_adjust;
         let period_dt = self.precompute_period_dt()?;
 
-        let mut joined: Vec<(usize, String, HistoryResponse)> =
+        let mut joined: Vec<(usize, String, YfResponse<HistoryResponse>)> =
             stream::iter(self.symbols.iter().cloned().enumerate())
                 .map(|(index, sym)| {
                     let hb = self.build_history_for_symbol(&sym, period_dt, need_adjust_in_fetch);
 
                     async move {
-                        let full: HistoryResponse = hb.fetch_full().await?;
-                        Ok::<(usize, String, HistoryResponse), YfError>((index, sym, full))
+                        let full = hb.fetch_full_with_diagnostics().await?;
+                        Ok::<(usize, String, YfResponse<HistoryResponse>), YfError>((
+                            index, sym, full,
+                        ))
                     }
                 })
                 .buffer_unordered(self.concurrency.get())
@@ -343,13 +390,15 @@ impl DownloadBuilder {
                 .await?;
 
         joined.sort_unstable_by_key(|(index, _, _)| *index);
-        let joined: Vec<(String, HistoryResponse)> = joined
+        let joined: Vec<(String, YfResponse<HistoryResponse>)> = joined
             .into_iter()
             .map(|(_, sym, full)| (sym, full))
             .collect();
 
-        self.process_joined_results(joined, need_adjust_in_fetch)
-            .await
+        let response = self
+            .process_joined_results(joined, need_adjust_in_fetch, &mut ctx)
+            .await?;
+        Ok(ctx.finish(response))
     }
 }
 
@@ -368,9 +417,10 @@ fn rounded_price(price: &Price) -> Option<Price> {
 /// Very lightweight "repair" pass:
 /// If a bar's close is ~100× the average of its neighbors (or ~1/100),
 /// scale that entire bar's OHLC accordingly. Volumes are left unchanged.
-fn repair_scale_outliers(rows: &mut [Candle]) {
+fn repair_scale_outliers(rows: &mut [Candle]) -> Vec<String> {
+    let mut repaired = Vec::new();
     if rows.len() < 3 {
-        return;
+        return repaired;
     }
 
     for i in 1..rows.len() - 1 {
@@ -415,7 +465,9 @@ fn repair_scale_outliers(rows: &mut [Candle]) {
             } else {
                 1.0 / ratio
             };
-            scale_row_prices(cur, scale);
+            if scale_row_prices(cur, scale) {
+                repaired.push(cur.ts.to_rfc3339());
+            }
             continue;
         }
 
@@ -426,33 +478,37 @@ fn repair_scale_outliers(rows: &mut [Candle]) {
             } else {
                 1.0 / ratio
             };
-            scale_row_prices(cur, scale);
+            if scale_row_prices(cur, scale) {
+                repaired.push(cur.ts.to_rfc3339());
+            }
         }
     }
+    repaired
 }
 
-fn scale_row_prices(c: &mut Candle, scale: f64) {
+fn scale_row_prices(c: &mut Candle, scale: f64) -> bool {
     let Some(scale) = rust_decimal::Decimal::from_f64_retain(scale) else {
-        return;
+        return false;
     };
 
     let Some(open) = scaled_price(&c.open, scale) else {
-        return;
+        return false;
     };
     let Some(high) = scaled_price(&c.high, scale) else {
-        return;
+        return false;
     };
     let Some(low) = scaled_price(&c.low, scale) else {
-        return;
+        return false;
     };
     let Some(close) = scaled_price(&c.close, scale) else {
-        return;
+        return false;
     };
 
     c.open = open;
     c.high = high;
     c.low = low;
     c.close = close;
+    true
 }
 
 fn scaled_price(price: &Price, scale: rust_decimal::Decimal) -> Option<Price> {

@@ -10,6 +10,8 @@
 pub mod client;
 pub(crate) mod currency;
 pub(crate) mod currency_resolver;
+/// Provider projection diagnostics.
+pub mod diagnostics;
 /// The primary error type (`YfError`) for the crate.
 pub mod error;
 /// Shared data models used across multiple API modules (e.g., `Quote`, `Candle`).
@@ -33,6 +35,11 @@ pub(crate) mod net;
 
 // convenient re-exports so most code can just `use crate::core::YfClient`
 pub use client::{CacheEndpoint, CacheMode, RetryConfig, YfClient, YfClientBuilder};
+pub(crate) use diagnostics::ProjectionContext;
+pub use diagnostics::{
+    DataQuality, ProjectionIssue, YfCurrencyKind, YfCurrencySource, YfDiagnostics,
+    YfEvidenceStrength, YfResponse, YfWarning,
+};
 pub use error::YfError;
 pub use models::{Action, Candle, HistoryMeta, HistoryResponse, Interval, Quote, Range};
 pub use services::{HistoryRequest, HistoryService};

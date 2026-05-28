@@ -15,4 +15,5 @@ pub use evidence::{
 };
 pub use hints::CurrencyHints;
 pub use types::{CurrencyCacheKey, CurrencyKind, ResolvedCurrency};
+pub use types::{CurrencySource, EvidenceStrength};
 pub use unit::ResolvedCurrencyUnit;

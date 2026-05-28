@@ -10,7 +10,7 @@ pub use model::{
 };
 
 use crate::core::{
-    YfClient, YfError,
+    DataQuality, YfClient, YfError, YfResponse,
     client::{CacheMode, RetryConfig},
 };
 use paft::money::Currency;
@@ -21,6 +21,7 @@ pub struct FundamentalsBuilder {
     symbol: String,
     cache_mode: CacheMode,
     retry_override: Option<RetryConfig>,
+    data_quality: DataQuality,
 }
 
 impl FundamentalsBuilder {
@@ -31,6 +32,7 @@ impl FundamentalsBuilder {
             symbol: symbol.into(),
             cache_mode: CacheMode::Default,
             retry_override: None,
+            data_quality: DataQuality::BestEffort,
         }
     }
 
@@ -48,6 +50,19 @@ impl FundamentalsBuilder {
         self
     }
 
+    /// Sets how provider projection issues are handled.
+    #[must_use]
+    pub const fn data_quality(mut self, policy: DataQuality) -> Self {
+        self.data_quality = policy;
+        self
+    }
+
+    /// Fails when Yahoo data cannot be projected losslessly.
+    #[must_use]
+    pub const fn strict(self) -> Self {
+        self.data_quality(DataQuality::Strict)
+    }
+
     /// Fetches the income statement.
     ///
     /// Set `quarterly` to `true` to get quarterly reports, or `false` for annual reports.
@@ -62,6 +77,22 @@ impl FundamentalsBuilder {
         quarterly: bool,
         override_currency: Option<Currency>,
     ) -> Result<Vec<IncomeStatementRow>, YfError> {
+        Ok(self
+            .income_statement_with_diagnostics(quarterly, override_currency)
+            .await?
+            .into_data())
+    }
+
+    /// Fetches the income statement with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `YfError` if the request fails or strict data-quality mode rejects a projection issue.
+    pub async fn income_statement_with_diagnostics(
+        &self,
+        quarterly: bool,
+        override_currency: Option<Currency>,
+    ) -> Result<YfResponse<Vec<IncomeStatementRow>>, YfError> {
         api::income_statement(
             &self.client,
             &self.symbol,
@@ -69,6 +100,7 @@ impl FundamentalsBuilder {
             override_currency,
             self.cache_mode,
             self.retry_override.as_ref(),
+            self.data_quality,
         )
         .await
     }
@@ -87,6 +119,22 @@ impl FundamentalsBuilder {
         quarterly: bool,
         override_currency: Option<Currency>,
     ) -> Result<Vec<BalanceSheetRow>, YfError> {
+        Ok(self
+            .balance_sheet_with_diagnostics(quarterly, override_currency)
+            .await?
+            .into_data())
+    }
+
+    /// Fetches the balance sheet with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `YfError` if the request fails or strict data-quality mode rejects a projection issue.
+    pub async fn balance_sheet_with_diagnostics(
+        &self,
+        quarterly: bool,
+        override_currency: Option<Currency>,
+    ) -> Result<YfResponse<Vec<BalanceSheetRow>>, YfError> {
         api::balance_sheet(
             &self.client,
             &self.symbol,
@@ -94,6 +142,7 @@ impl FundamentalsBuilder {
             override_currency,
             self.cache_mode,
             self.retry_override.as_ref(),
+            self.data_quality,
         )
         .await
     }
@@ -112,6 +161,22 @@ impl FundamentalsBuilder {
         quarterly: bool,
         override_currency: Option<Currency>,
     ) -> Result<Vec<CashflowRow>, YfError> {
+        Ok(self
+            .cashflow_with_diagnostics(quarterly, override_currency)
+            .await?
+            .into_data())
+    }
+
+    /// Fetches the cash flow statement with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `YfError` if the request fails or strict data-quality mode rejects a projection issue.
+    pub async fn cashflow_with_diagnostics(
+        &self,
+        quarterly: bool,
+        override_currency: Option<Currency>,
+    ) -> Result<YfResponse<Vec<CashflowRow>>, YfError> {
         api::cashflow(
             &self.client,
             &self.symbol,
@@ -119,6 +184,7 @@ impl FundamentalsBuilder {
             override_currency,
             self.cache_mode,
             self.retry_override.as_ref(),
+            self.data_quality,
         )
         .await
     }
@@ -129,12 +195,28 @@ impl FundamentalsBuilder {
     ///
     /// Returns a `YfError` if the network request fails or the API response cannot be parsed.
     pub async fn earnings(&self, override_currency: Option<Currency>) -> Result<Earnings, YfError> {
+        Ok(self
+            .earnings_with_diagnostics(override_currency)
+            .await?
+            .into_data())
+    }
+
+    /// Fetches earnings history and estimates with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `YfError` if the request fails or strict data-quality mode rejects a projection issue.
+    pub async fn earnings_with_diagnostics(
+        &self,
+        override_currency: Option<Currency>,
+    ) -> Result<YfResponse<Earnings>, YfError> {
         api::earnings(
             &self.client,
             &self.symbol,
             override_currency,
             self.cache_mode,
             self.retry_override.as_ref(),
+            self.data_quality,
         )
         .await
     }
@@ -145,11 +227,21 @@ impl FundamentalsBuilder {
     ///
     /// Returns a `YfError` if the network request fails or the API response cannot be parsed.
     pub async fn calendar(&self) -> Result<Calendar, YfError> {
+        Ok(self.calendar_with_diagnostics().await?.into_data())
+    }
+
+    /// Fetches corporate calendar events with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `YfError` if the request fails or strict data-quality mode rejects a projection issue.
+    pub async fn calendar_with_diagnostics(&self) -> Result<YfResponse<Calendar>, YfError> {
         api::calendar(
             &self.client,
             &self.symbol,
             self.cache_mode,
             self.retry_override.as_ref(),
+            self.data_quality,
         )
         .await
     }
@@ -162,6 +254,18 @@ impl FundamentalsBuilder {
     ///
     /// Returns a `YfError` if the network request fails or the API response cannot be parsed.
     pub async fn shares(&self, quarterly: bool) -> Result<Vec<ShareCount>, YfError> {
+        Ok(self.shares_with_diagnostics(quarterly).await?.into_data())
+    }
+
+    /// Fetches historical shares outstanding with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `YfError` if the request fails or strict data-quality mode rejects a projection issue.
+    pub async fn shares_with_diagnostics(
+        &self,
+        quarterly: bool,
+    ) -> Result<YfResponse<Vec<ShareCount>>, YfError> {
         api::shares(
             &self.client,
             &self.symbol,
@@ -170,6 +274,7 @@ impl FundamentalsBuilder {
             quarterly,
             self.cache_mode,
             self.retry_override.as_ref(),
+            self.data_quality,
         )
         .await
     }

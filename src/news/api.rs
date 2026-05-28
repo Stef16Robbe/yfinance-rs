@@ -2,7 +2,7 @@ use serde::Serialize;
 
 use crate::{
     core::{
-        YfClient, YfError,
+        DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfError,
         client::{CacheEndpoint, CacheMode, RetryConfig},
         conversions::i64_to_datetime,
         net,
@@ -23,6 +23,7 @@ struct NewsPayload<'a> {
     service_config: ServiceConfig<'a>,
 }
 
+#[allow(clippy::too_many_lines)]
 pub(super) async fn fetch_news(
     client: &YfClient,
     symbol: &str,
@@ -30,7 +31,9 @@ pub(super) async fn fetch_news(
     tab: NewsTab,
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
-) -> Result<Vec<NewsArticle>, YfError> {
+    data_quality: DataQuality,
+) -> Result<crate::YfResponse<Vec<NewsArticle>>, YfError> {
+    let mut ctx = ProjectionContext::new("news", data_quality);
     let mut url = client.base_news().join("xhr/ncp")?;
     url.query_pairs_mut()
         .append_pair("queryRef", tab_as_str(tab))
@@ -66,34 +69,81 @@ pub(super) async fn fetch_news(
         .and_then(|ts| ts.stream)
         .unwrap_or_default();
 
-    let results = articles
-        .into_iter()
-        .filter_map(|raw_item| {
-            // Filter out ads or items that are not valid articles
-            if raw_item.ad.is_some() {
-                return None;
+    let mut results = Vec::new();
+    for raw_item in articles {
+        let key = Some(raw_item.id.clone());
+        if raw_item.ad.is_some() {
+            ctx.dropped_item(
+                "news_article",
+                key.clone(),
+                ProjectionIssue::ProviderUnavailable { feature: "article" },
+            )?;
+            continue;
+        }
+
+        let Some(content) = raw_item.content else {
+            ctx.dropped_item(
+                "news_article",
+                key.clone(),
+                ProjectionIssue::MissingRequiredField { field: "content" },
+            )?;
+            continue;
+        };
+        let Some(title) = content.title else {
+            ctx.dropped_item(
+                "news_article",
+                key.clone(),
+                ProjectionIssue::MissingRequiredField { field: "title" },
+            )?;
+            continue;
+        };
+        let Some(pub_date_str) = content.pub_date else {
+            ctx.dropped_item(
+                "news_article",
+                key.clone(),
+                ProjectionIssue::MissingRequiredField { field: "pubDate" },
+            )?;
+            continue;
+        };
+
+        let timestamp = match chrono::DateTime::parse_from_rfc3339(&pub_date_str) {
+            Ok(date) => date.timestamp(),
+            Err(err) => {
+                ctx.dropped_item(
+                    "news_article",
+                    key.clone(),
+                    ProjectionIssue::InvalidField {
+                        field: "pubDate",
+                        details: err.to_string(),
+                    },
+                )?;
+                continue;
             }
+        };
+        let published_at = match i64_to_datetime(timestamp) {
+            Ok(date) => date,
+            Err(err) => {
+                ctx.dropped_item(
+                    "news_article",
+                    key.clone(),
+                    ProjectionIssue::InvalidField {
+                        field: "pubDate",
+                        details: err.to_string(),
+                    },
+                )?;
+                continue;
+            }
+        };
 
-            let content = raw_item.content?;
-            let title = content.title?;
-            let pub_date_str = content.pub_date?;
+        results.push(NewsArticle {
+            uuid: raw_item.id,
+            title,
+            publisher: content.provider.and_then(|p| p.display_name),
+            link: content.canonical_url.and_then(|u| u.url),
+            published_at,
+            provider: (),
+        });
+    }
 
-            // Parse the RFC3339 string to a timestamp
-            let timestamp = chrono::DateTime::parse_from_rfc3339(&pub_date_str)
-                .ok()?
-                .timestamp();
-            let published_at = i64_to_datetime(timestamp).ok()?;
-
-            Some(NewsArticle {
-                uuid: raw_item.id,
-                title,
-                publisher: content.provider.and_then(|p| p.display_name),
-                link: content.canonical_url.and_then(|u| u.url),
-                published_at,
-                provider: (),
-            })
-        })
-        .collect();
-
-    Ok(results)
+    Ok(ctx.finish(results))
 }

@@ -18,7 +18,7 @@ pub enum NewsTab {
 pub use model::NewsArticle;
 
 use crate::{
-    YfClient, YfError,
+    DataQuality, YfClient, YfError, YfResponse,
     core::client::{CacheMode, RetryConfig},
 };
 
@@ -38,6 +38,7 @@ pub struct NewsBuilder {
     tab: NewsTab,
     cache_mode: CacheMode,
     retry_override: Option<RetryConfig>,
+    data_quality: DataQuality,
 }
 
 impl NewsBuilder {
@@ -50,6 +51,7 @@ impl NewsBuilder {
             tab: NewsTab::default(),
             cache_mode: CacheMode::Default,
             retry_override: None,
+            data_quality: DataQuality::BestEffort,
         }
     }
 
@@ -65,6 +67,19 @@ impl NewsBuilder {
     pub fn retry_policy(mut self, cfg: Option<RetryConfig>) -> Self {
         self.retry_override = cfg;
         self
+    }
+
+    /// Sets how provider projection issues are handled.
+    #[must_use]
+    pub const fn data_quality(mut self, policy: DataQuality) -> Self {
+        self.data_quality = policy;
+        self
+    }
+
+    /// Fails when Yahoo data cannot be projected losslessly.
+    #[must_use]
+    pub const fn strict(self) -> Self {
+        self.data_quality(DataQuality::Strict)
     }
 
     /// Sets the maximum number of news articles to return.
@@ -88,6 +103,15 @@ impl NewsBuilder {
     /// Returns a `YfError` if the request to the Yahoo Finance API fails,
     /// if the response cannot be parsed, or if there's a network issue.
     pub async fn fetch(self) -> Result<Vec<NewsArticle>, YfError> {
+        Ok(self.fetch_with_diagnostics().await?.into_data())
+    }
+
+    /// Executes the request and fetches news articles with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `YfError` if the request fails or strict data-quality mode rejects a projection issue.
+    pub async fn fetch_with_diagnostics(self) -> Result<YfResponse<Vec<NewsArticle>>, YfError> {
         api::fetch_news(
             &self.client,
             &self.symbol,
@@ -95,6 +119,7 @@ impl NewsBuilder {
             self.tab,
             self.cache_mode,
             self.retry_override.as_ref(),
+            self.data_quality,
         )
         .await
     }

@@ -154,7 +154,11 @@ pub mod ticker;
 // --- re-exports (public API remains the same names as before) ---
 // Core types that are provider-specific
 pub use core::client::ApiPreference;
-pub use core::{CacheEndpoint, CacheMode, RetryConfig, YfClient, YfClientBuilder, YfError};
+pub use core::{
+    CacheEndpoint, CacheMode, DataQuality, ProjectionIssue, RetryConfig, YfClient, YfClientBuilder,
+    YfCurrencyKind, YfCurrencySource, YfDiagnostics, YfError, YfEvidenceStrength, YfResponse,
+    YfWarning,
+};
 
 // Provider-specific builders and utilities
 pub use download::{DownloadBuilder, DownloadConcurrency};

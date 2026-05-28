@@ -1,6 +1,6 @@
 use httpmock::{Method::GET, MockServer};
 use url::Url;
-use yfinance_rs::{ApiPreference, Ticker, YfClient};
+use yfinance_rs::{ApiPreference, HoldersBuilder, ProjectionIssue, Ticker, YfClient, YfWarning};
 
 #[tokio::test]
 async fn insider_roster_missing_position_is_not_defaulted_to_officer() {
@@ -103,4 +103,64 @@ async fn optional_holder_value_is_omitted_when_currency_cannot_be_resolved() {
     assert_eq!(rows[0].holder, "No Currency Capital");
     assert_eq!(rows[0].shares, Some(10));
     assert!(rows[0].value.is_none());
+}
+
+#[tokio::test]
+async fn holder_diagnostics_report_present_value_with_unresolved_currency() {
+    let sym = "NOCURRENCY";
+    let server = MockServer::start();
+    let modules = "institutionOwnership,fundOwnership,majorHoldersBreakdown,insiderTransactions,insiderHolders,netSharePurchaseActivity";
+
+    let holders_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", modules)
+            .query_param("crumb", "crumb");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "quoteSummary": {
+                    "result": [{
+                      "institutionOwnership": {
+                        "ownershipList": [{
+                          "organization": "No Currency Capital",
+                          "position": { "raw": 10 },
+                          "reportDate": { "raw": 1704067200 },
+                          "value": { "raw": 12345 }
+                        }]
+                      }
+                    }],
+                    "error": null
+                  }
+                }"#,
+            );
+    });
+
+    let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._api_preference(ApiPreference::ApiOnly)
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let response = HoldersBuilder::new(&client, sym)
+        .institutional_holders_with_diagnostics()
+        .await
+        .unwrap();
+
+    holders_mock.assert();
+    assert_eq!(response.data.len(), 1);
+    assert!(response.data[0].value.is_none());
+    assert!(matches!(
+        response.diagnostics.warnings.first(),
+        Some(YfWarning::OmittedPresentField {
+            path: "ownershipList[].value",
+            reason: ProjectionIssue::CurrencyUnresolved,
+            ..
+        })
+    ));
 }

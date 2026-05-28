@@ -1,5 +1,6 @@
 use crate::{
-    YfClient, YfError, analysis,
+    DataQuality, YfClient, YfError, YfResponse, analysis,
+    core::ProjectionContext,
     core::client::{CacheMode, RetryConfig},
     esg, fundamentals,
     profile::Profile,
@@ -8,16 +9,35 @@ use crate::{
 use paft::fundamentals::statistics::KeyStatistics;
 
 /// Private helper to handle optional async results, logging errors in debug mode.
-fn log_err_async<T>(res: Result<T, YfError>, name: &str, symbol: &str) -> Option<T> {
+fn log_err_async<T>(
+    ctx: &mut ProjectionContext,
+    res: Result<T, YfError>,
+    name: &'static str,
+    symbol: &str,
+) -> Result<Option<T>, YfError> {
     match res {
-        Ok(data) => Some(data),
+        Ok(data) => Ok(Some(data)),
         Err(e) => {
             if std::env::var("YF_DEBUG").ok().as_deref() == Some("1") {
                 eprintln!("YF_DEBUG(info): failed to fetch '{name}' for {symbol}: {e}");
             }
-            None
+            ctx.suppressed_error(name, &e)?;
+            Ok(None)
         }
     }
+}
+
+fn log_response_async<T>(
+    ctx: &mut ProjectionContext,
+    res: Result<YfResponse<T>, YfError>,
+    name: &'static str,
+    symbol: &str,
+) -> Result<Option<T>, YfError> {
+    let Some(response) = log_err_async(ctx, res, name, symbol)? else {
+        return Ok(None);
+    };
+    ctx.extend(response.diagnostics);
+    Ok(Some(response.data))
 }
 
 pub(super) async fn fetch_info(
@@ -26,6 +46,25 @@ pub(super) async fn fetch_info(
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
 ) -> Result<Info, YfError> {
+    Ok(fetch_info_with_diagnostics(
+        client,
+        symbol,
+        cache_mode,
+        retry_override,
+        DataQuality::BestEffort,
+    )
+    .await?
+    .into_data())
+}
+
+pub(super) async fn fetch_info_with_diagnostics(
+    client: &YfClient,
+    symbol: &str,
+    cache_mode: CacheMode,
+    retry_override: Option<&RetryConfig>,
+    data_quality: DataQuality,
+) -> Result<YfResponse<Info>, YfError> {
+    let mut ctx = ProjectionContext::new("info", data_quality);
     let (
         quote,
         quote_summary_key_statistics,
@@ -34,7 +73,26 @@ pub(super) async fn fetch_info(
         rec_summary,
         esg_summary,
         calendar,
-    ) = Box::pin(fetch_info_parts(client, symbol, cache_mode, retry_override)).await?;
+    ) = Box::pin(fetch_info_parts(
+        client,
+        symbol,
+        cache_mode,
+        retry_override,
+        data_quality,
+    ))
+    .await?;
+    let quote_summary_key_statistics = log_err_async(
+        &mut ctx,
+        quote_summary_key_statistics,
+        "key_statistics",
+        symbol,
+    )?;
+    let profile = log_err_async(&mut ctx, profile, "profile", symbol)?;
+    let price_target = log_response_async(&mut ctx, price_target, "price_target", symbol)?;
+    let rec_summary = log_response_async(&mut ctx, rec_summary, "recommendations_summary", symbol)?;
+    let esg_summary = log_response_async(&mut ctx, esg_summary, "esg_scores", symbol)?;
+    let calendar = log_response_async(&mut ctx, calendar, "calendar", symbol)?;
+
     let key_statistics = quote_summary_key_statistics.map_or_else(
         || quote.to_key_statistics(),
         |quote_summary| {
@@ -43,7 +101,7 @@ pub(super) async fn fetch_info(
     );
     let snapshot = quote.to_snapshot()?;
 
-    Ok(Info {
+    Ok(ctx.finish(Info {
         snapshot,
         key_statistics,
         profile,
@@ -51,7 +109,7 @@ pub(super) async fn fetch_info(
         price_target,
         recommendation_summary: rec_summary,
         esg_scores: esg_summary.and_then(|s| s.scores),
-    })
+    }))
 }
 
 async fn fetch_info_parts(
@@ -59,22 +117,24 @@ async fn fetch_info_parts(
     symbol: &str,
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
+    data_quality: DataQuality,
 ) -> Result<
     (
         crate::core::quotes::V7QuoteNode,
-        Option<KeyStatistics>,
-        Option<Profile>,
-        Option<paft::fundamentals::analysis::PriceTarget>,
-        Option<paft::fundamentals::analysis::RecommendationSummary>,
-        Option<paft::fundamentals::esg::EsgSummary>,
-        Option<paft::fundamentals::statements::Calendar>,
+        Result<KeyStatistics, YfError>,
+        Result<Profile, YfError>,
+        Result<YfResponse<paft::fundamentals::analysis::PriceTarget>, YfError>,
+        Result<YfResponse<paft::fundamentals::analysis::RecommendationSummary>, YfError>,
+        Result<YfResponse<paft::fundamentals::esg::EsgSummary>, YfError>,
+        Result<YfResponse<paft::fundamentals::statements::Calendar>, YfError>,
     ),
     YfError,
 > {
     let symbols = [symbol];
     let calendar_builder = fundamentals::FundamentalsBuilder::new(client, symbol)
         .cache_mode(cache_mode)
-        .retry_policy(retry_override.cloned());
+        .retry_policy(retry_override.cloned())
+        .data_quality(data_quality);
     let (
         quote_res,
         key_statistics_res,
@@ -95,35 +155,32 @@ async fn fetch_info_parts(
         analysis::AnalysisBuilder::new(client, symbol)
             .cache_mode(cache_mode)
             .retry_policy(retry_override.cloned())
-            .analyst_price_target(None),
+            .data_quality(data_quality)
+            .analyst_price_target_with_diagnostics(None),
         analysis::AnalysisBuilder::new(client, symbol)
             .cache_mode(cache_mode)
             .retry_policy(retry_override.cloned())
-            .recommendations_summary(),
+            .data_quality(data_quality)
+            .recommendations_summary_with_diagnostics(),
         esg::EsgBuilder::new(client, symbol)
             .cache_mode(cache_mode)
             .retry_policy(retry_override.cloned())
-            .fetch(),
-        calendar_builder.calendar()
+            .data_quality(data_quality)
+            .fetch_with_diagnostics(),
+        calendar_builder.calendar_with_diagnostics()
     );
 
     let mut quotes = quote_res?;
     let quote = quotes.pop().ok_or_else(|| {
         YfError::MissingData(format!("no quote result found for symbol {symbol}"))
     })?;
-    let key_statistics = log_err_async(key_statistics_res, "key_statistics", symbol);
-    let profile = log_err_async(profile_res, "profile", symbol);
-    let price_target = log_err_async(price_target_res, "price_target", symbol);
-    let rec_summary = log_err_async(rec_summary_res, "recommendations_summary", symbol);
-    let esg_summary = log_err_async(esg_res, "esg_scores", symbol);
-    let calendar = log_err_async(calendar_res, "calendar", symbol);
     Ok((
         quote,
-        key_statistics,
-        profile,
-        price_target,
-        rec_summary,
-        esg_summary,
-        calendar,
+        key_statistics_res,
+        profile_res,
+        price_target_res,
+        rec_summary_res,
+        esg_res,
+        calendar_res,
     ))
 }

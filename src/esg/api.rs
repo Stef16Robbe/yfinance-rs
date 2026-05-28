@@ -1,6 +1,6 @@
 use crate::{
     core::{
-        YfClient, YfError,
+        DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfError, YfResponse,
         client::{CacheMode, RetryConfig},
         conversions::decimal_from_f64,
         quotesummary,
@@ -15,7 +15,9 @@ pub(super) async fn fetch_esg_scores(
     symbol: &str,
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
-) -> Result<EsgSummary, YfError> {
+    data_quality: DataQuality,
+) -> Result<YfResponse<EsgSummary>, YfError> {
+    let mut ctx = ProjectionContext::new("esg", data_quality);
     let root: V10Result = quotesummary::fetch_module_result(
         client,
         symbol,
@@ -26,9 +28,18 @@ pub(super) async fn fetch_esg_scores(
     )
     .await?;
 
-    let esg = root
-        .esg_scores
-        .ok_or_else(|| YfError::MissingData("esgScores module missing from response".into()))?;
+    let Some(esg) = root.esg_scores else {
+        ctx.provider_feature_unavailable(
+            "esgScores",
+            ProjectionIssue::ProviderUnavailable {
+                feature: "esgScores",
+            },
+        )?;
+        return Ok(ctx.finish(EsgSummary {
+            scores: None,
+            involvement: Vec::new(),
+        }));
+    };
 
     // Map to paft types: paft::fundamentals::EsgScores now has only environmental/social/governance.
     let scores = EsgScores {
@@ -39,9 +50,9 @@ pub(super) async fn fetch_esg_scores(
 
     // Collect involvement booleans as individual entries with simple categories.
     let mut involvement: Vec<EsgInvolvement> = Vec::new();
-    let mut push_flag = |name: &str, val: Option<bool>| -> Result<(), YfError> {
+    let mut push_flag = |name: &str, val: Option<bool>| {
         let Some(val) = val else {
-            return Err(YfError::MissingData(format!("esgScores.{name} missing")));
+            return;
         };
         if val {
             involvement.push(EsgInvolvement {
@@ -49,27 +60,26 @@ pub(super) async fn fetch_esg_scores(
                 score: None,
             });
         }
-        Ok(())
     };
-    push_flag("adult", esg.adult)?;
-    push_flag("alcoholic", esg.alcoholic)?;
-    push_flag("animal_testing", esg.animal_testing)?;
-    push_flag("catholic", esg.catholic)?;
-    push_flag("controversial_weapons", esg.controversial_weapons)?;
-    push_flag("small_arms", esg.small_arms)?;
-    push_flag("fur_leather", esg.fur_leather)?;
-    push_flag("gambling", esg.gambling)?;
-    push_flag("gmo", esg.gmo)?;
-    push_flag("military_contract", esg.military_contract)?;
-    push_flag("nuclear", esg.nuclear)?;
-    push_flag("palm_oil", esg.palm_oil)?;
-    push_flag("pesticides", esg.pesticides)?;
-    push_flag("thermal_coal", esg.thermal_coal)?;
-    push_flag("tobacco", esg.tobacco)?;
+    push_flag("adult", esg.adult);
+    push_flag("alcoholic", esg.alcoholic);
+    push_flag("animal_testing", esg.animal_testing);
+    push_flag("catholic", esg.catholic);
+    push_flag("controversial_weapons", esg.controversial_weapons);
+    push_flag("small_arms", esg.small_arms);
+    push_flag("fur_leather", esg.fur_leather);
+    push_flag("gambling", esg.gambling);
+    push_flag("gmo", esg.gmo);
+    push_flag("military_contract", esg.military_contract);
+    push_flag("nuclear", esg.nuclear);
+    push_flag("palm_oil", esg.palm_oil);
+    push_flag("pesticides", esg.pesticides);
+    push_flag("thermal_coal", esg.thermal_coal);
+    push_flag("tobacco", esg.tobacco);
 
     // Return scores together with involvement in a single summary
-    Ok(EsgSummary {
+    Ok(ctx.finish(EsgSummary {
         scores: Some(scores),
         involvement,
-    })
+    }))
 }
