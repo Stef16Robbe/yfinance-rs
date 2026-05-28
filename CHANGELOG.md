@@ -60,6 +60,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Analyst revenue estimate currency now stays scoped to analyst estimate rows instead of overwriting reporting-currency cache entries.
 - Option chains now route missing contract currency through the trading-currency resolver, allowing v7 quote enrichment, listing/exchange inference, and profile fallback instead of depending on already-converted quote prices.
 - Centralized Yahoo crumb-auth retries so optional- and required-crumb endpoints clear stale cached crumbs and reacquire credentials when authenticated responses return 401/403, including quote v7, options, search, screener, quoteSummary, and fundamentals-timeseries.
+- Crumb-auth retries now evict cached invalid-crumb response bodies, bypass cache reads during the fresh-credential retry, and return an auth error if Yahoo still returns an invalid-crumb body after refresh.
 - Yahoo auth now sends the stored cookie explicitly during crumb acquisition and crumb-authenticated requests, so `custom_client(reqwest::Client::new())` no longer depends on `reqwest` cookie storage.
 - Crumb acquisition now rejects non-success HTTP statuses before reading the body and trims successful crumb bodies before caching them.
 - Build Yahoo symbol path URLs with one percent-encoding helper instead of `Url::join`, preventing symbols containing URL syntax from changing the request target.

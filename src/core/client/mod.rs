@@ -264,6 +264,12 @@ impl YfClient {
         drop(guard);
     }
 
+    pub(crate) async fn cache_remove_key(&self, key: &str) {
+        if let Some(store) = &self.cache {
+            store.map.write().await.remove(key);
+        }
+    }
+
     pub(crate) fn post_cache_key(url: &Url, body: &str) -> String {
         post_cache_key(url, body)
     }

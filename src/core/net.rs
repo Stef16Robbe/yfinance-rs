@@ -297,6 +297,7 @@ where
         && let Some(body) = client.cache_get_key(cache_key).await
     {
         if should_retry_invalid_crumb_body(config, detect_invalid_crumb_body, &body) {
+            client.cache_remove_key(cache_key).await;
             return Ok(AuthAttempt::InvalidCrumb);
         }
 
@@ -339,16 +340,38 @@ async fn retry_with_fresh_crumb<F>(
 where
     F: Fn(Url) -> reqwest::RequestBuilder + Send + Sync,
 {
+    client.cache_remove_key(cache_key).await;
     client.clear_crumb().await;
     let crumb = ensure_crumb(client, "Crumb is not set after refreshing credentials").await?;
     let crumb_url = url_with_crumb(base_url, &crumb);
+    let retry_config = AuthFetchConfig {
+        cache_mode: retry_cache_mode(config),
+        ..config
+    };
 
-    match fetch_text_auth_attempt(client, crumb_url, cache_key, config, build_request, false)
-        .await?
+    match fetch_text_auth_attempt(
+        client,
+        crumb_url,
+        cache_key,
+        retry_config,
+        build_request,
+        true,
+    )
+    .await?
     {
         AuthAttempt::Success { body, url } => Ok((body, url)),
         AuthAttempt::Status { status, url } => Err(status_error_code(status, &url)),
-        AuthAttempt::InvalidCrumb => unreachable!("invalid crumb body detection is disabled"),
+        AuthAttempt::InvalidCrumb => Err(YfError::Auth(
+            "Yahoo returned an invalid crumb response after refreshing credentials".into(),
+        )),
+    }
+}
+
+const fn retry_cache_mode(config: AuthFetchConfig<'_>) -> CacheMode {
+    if config.cache_mode.writes(config.cache_endpoint) {
+        CacheMode::Refresh
+    } else {
+        CacheMode::Bypass
     }
 }
 
@@ -381,4 +404,146 @@ fn should_retry_invalid_crumb_body(
 
 const fn is_auth_status(status: u16) -> bool {
     status == 401 || status == 403
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use httpmock::{Method::GET, Mock, MockServer};
+
+    use super::*;
+
+    const INVALID_CRUMB_BODY: &str =
+        r#"{"quoteResponse":{"result":null,"error":{"description":"Invalid Crumb"}}}"#;
+    const OK_BODY: &str = r#"{"quoteResponse":{"result":[],"error":null}}"#;
+
+    #[must_use]
+    fn server_url(server: &MockServer, path_and_query: &str) -> Url {
+        Url::parse(&format!("{}{}", server.base_url(), path_and_query)).expect("valid mock URL")
+    }
+
+    #[must_use]
+    fn cached_client(server: &MockServer) -> YfClient {
+        YfClient::builder()
+            .cookie_url(server_url(server, "/consent"))
+            .crumb_url(server_url(server, "/v1/test/getcrumb"))
+            .cache_ttl(Duration::from_mins(1))
+            .build()
+            .expect("client builds")
+    }
+
+    #[must_use]
+    const fn quote_auth_config() -> AuthFetchConfig<'static> {
+        AuthFetchConfig {
+            auth_mode: AuthMode::OptionalCrumb,
+            cache_endpoint: CacheEndpoint::Quote,
+            cache_mode: CacheMode::Use,
+            cache_body: None,
+            retry_override: None,
+            endpoint: "quote_v7",
+            fixture_key: "AAPL",
+            ext: "json",
+            retry_on_invalid_crumb_body: true,
+        }
+    }
+
+    #[must_use]
+    fn mock_credentials(server: &'_ MockServer) -> (Mock<'_>, Mock<'_>) {
+        let cookie = server.mock(|when, then| {
+            when.method(GET).path("/consent");
+            then.status(200).header("set-cookie", "A=B; Path=/");
+        });
+        let crumb = server.mock(|when, then| {
+            when.method(GET).path("/v1/test/getcrumb");
+            then.status(200).body("fresh-crumb");
+        });
+        (cookie, crumb)
+    }
+
+    #[tokio::test]
+    async fn cached_invalid_crumb_body_is_evicted_before_fresh_crumb_retry() {
+        let server = MockServer::start();
+        let (_cookie, _crumb) = mock_credentials(&server);
+        let api = server.mock(|when, then| {
+            when.method(GET)
+                .path("/v7/finance/quote")
+                .query_param("symbols", "AAPL")
+                .query_param("crumb", "fresh-crumb");
+            then.status(200)
+                .header("content-type", "application/json")
+                .body(OK_BODY);
+        });
+
+        let client = cached_client(&server);
+        let base_url = server_url(&server, "/v7/finance/quote?symbols=AAPL");
+        let cache_key = base_url.as_str().to_string();
+        client
+            .cache_put_key(
+                CacheEndpoint::Quote,
+                cache_key.clone(),
+                INVALID_CRUMB_BODY,
+                None,
+            )
+            .await;
+
+        let (body, used_url) =
+            fetch_text_with_auth_retry(&client, base_url, quote_auth_config(), |url| {
+                client.http().get(url)
+            })
+            .await
+            .expect("fresh crumb retry succeeds");
+
+        assert_eq!(body, OK_BODY);
+        assert!(
+            used_url
+                .query_pairs()
+                .any(|(key, value)| { key == "crumb" && value == "fresh-crumb" })
+        );
+        assert_eq!(
+            client.cache_get_key(&cache_key).await.as_deref(),
+            Some(OK_BODY)
+        );
+        api.assert();
+    }
+
+    #[tokio::test]
+    async fn invalid_crumb_body_after_refresh_returns_auth_error() {
+        let server = MockServer::start();
+        let (_cookie, _crumb) = mock_credentials(&server);
+        let api = server.mock(|when, then| {
+            when.method(GET)
+                .path("/v7/finance/quote")
+                .query_param("symbols", "AAPL")
+                .query_param("crumb", "fresh-crumb");
+            then.status(200)
+                .header("content-type", "application/json")
+                .body(INVALID_CRUMB_BODY);
+        });
+
+        let client = cached_client(&server);
+        let base_url = server_url(&server, "/v7/finance/quote?symbols=AAPL");
+        let cache_key = base_url.as_str().to_string();
+        let build_request = |url| client.http().get(url);
+
+        let err = retry_with_fresh_crumb(
+            &client,
+            base_url,
+            &cache_key,
+            quote_auth_config(),
+            &build_request,
+        )
+        .await
+        .expect_err("invalid crumb body is an auth error");
+
+        match err {
+            YfError::Auth(message) => assert!(
+                message.contains("invalid crumb response after refreshing credentials"),
+                "unexpected auth error: {message}",
+            ),
+            other => panic!("expected auth error, got {other:?}"),
+        }
+        assert!(client.cache_get_key(&cache_key).await.is_none());
+        api.assert();
+    }
 }
