@@ -1,0 +1,252 @@
+{
+  "quoteSummary": {
+    "error": null,
+    "result": [
+      {
+        "assetProfile": {
+          "address1": "Valley Forge, PA 19482",
+          "address2": "PO Box 2600",
+          "address3": "Vanguard Index Funds",
+          "companyOfficers": [],
+          "executiveTeam": [],
+          "longBusinessSummary": "The fund manager employs an indexing investment approach designed to track the performance of the CRSP U.S. Total Market Index (the “Target Index”), which represents 100% of the investable U.S. stock market, as determined by the index provider. Under normal circumstances, the fund invests at least 80% of its net assets, plus the amount of any borrowings for investment purposes, in the stocks that make up the target index.",
+          "maxAge": 86400,
+          "phone": "800-523-1036"
+        },
+        "fundProfile": {
+          "brokerages": [
+            "TradeStation Securities",
+            "Northwestern Mutual Inv Srvc, LLC",
+            "Cetera Advisors LLC",
+            "Cetera Advisor Networks LLC",
+            "Protected Investors of America",
+            "Comerica Bank",
+            "E TRADE Financial",
+            "H&R Block Financial Advisors Inc",
+            "American Trust Custody",
+            "Morgan Stanley - Brokerage Accounts",
+            "Pershing FundCenter",
+            "Schwab Institutional",
+            "EP Fee Small",
+            "Shareholders Services Group",
+            "JPMorgan",
+            "Merrill Lynch",
+            "T. Rowe Price",
+            "TD Ameritrade Trust Company",
+            "(Junk)CommonWealth PPS",
+            "LPL SAM Eligible",
+            "Fidelity Retail FundsNetwork",
+            "Fidelity Institutional FundsNetwork",
+            "DATALynx",
+            "Ameriprise Brokerage",
+            "Federated TrustConnect",
+            "Cetera Advisors LLC – PAM, PRIME, Premier, mAA Advisor",
+            "Cetera Wealth Services LLC – PAM, PRIME, Premier, mAA Advisor",
+            "Nationwide Retirement Resource",
+            "RBC Wealth Management-Advisory Eligible",
+            "Schwab Institutional Only",
+            "Mony Securities Corp",
+            "SunAmerica Securities Premier / Pinnacle",
+            "Vanguard NTF",
+            "ETrade No Load Fee",
+            "SunGard Transaction Network",
+            "Royal Alliance",
+            "Raymond James",
+            "Raymond James WRAP Eligible",
+            "Bear Stearns No-Load Transaction Fee",
+            "Commonwealth Universe",
+            "FTJ FundChoice",
+            "Robert W. Baird & Co.",
+            "HSBC Brokerage (USA) Inc",
+            "JPMorgan INVEST",
+            "WFA MF Advisory Updated 5.4.26",
+            "RBC Wealth Management-Network Eligible",
+            "DailyAccess Corporation RTC",
+            "DailyAccess Corporation FRIAG",
+            "WR Hambrecht Co LLC",
+            "Sterne, Agee & Leach, Inc.,",
+            "EP Fee Large",
+            "ING Financial Ptnrs PAM and PRIME Approv",
+            "Firstrade",
+            "Scottrade TF",
+            "Standard Retirement Services, Inc.",
+            "Diversified 401(k)",
+            "Sun Life CPS",
+            "Sun Life Recordkeeper Plus",
+            "Principal Advantage",
+            "TIAA-CREF Brokerage Services",
+            "Fidelity Advisor 401(k) I Shares",
+            "Thrivent – Advisory Eligible",
+            "Morgan Stanley Consulting Group Advisor",
+            "Morgan Stanley Select UMA",
+            "Matrix Financial Solutions",
+            "Trade PMR Transaction Fee",
+            "DWS Retirement Sevs Investment Offerings",
+            "TD Ameritrade Retail",
+            "TD Ameritrade Institutional",
+            "Nationwide Retirement Clear Adva",
+            "ING Financial Advisers - SAS Funds",
+            "NYLIM 401(k) Complete",
+            "Hartford RK Plus",
+            "Hartford CPS",
+            "Met Life Resources MFSP Alliance List",
+            "ADP Access",
+            "Mid Atlantic Capital Group",
+            "HD Vest - Vest Advisor",
+            "Securities America Advisors",
+            "Bear Stearns",
+            "JP MORGAN NO-LOAD NTF",
+            "JP MORGAN LOAD",
+            "JP MORGAN NO-LOAD TRANSACTION FEE",
+            "Northwestern Mutual Investment Services, Llc",
+            "MSWM Brokerage",
+            "WFA Fdntl Choice/PIM Updated 5.4.26",
+            "ADP Access Open Fund Architecture",
+            "ADP Access Tier 0",
+            "DailyAccess Corporation Mid-Atlantic",
+            "RBC Wealth Management-Wrap Eligible",
+            "Waddell & Reed Choice MAP Flex",
+            "E-Plan Services, Inc.",
+            "H Beck Inc.",
+            "ING Financial Partners Inc.",
+            "Securities America Inc.",
+            "Morgan Stanley Portfolio Management",
+            "Nationwide Retirement Flexible Advantage",
+            "Smith Barney Portfolio Manager",
+            "Merrill Edge",
+            "DailyAccess Corporation Matrix",
+            "DailyAccess Corporation MATC",
+            "WF MFAQ Screen Updated 12/31/2016",
+            "Cetera Financial Specialist LLC – Premier, mAA Advisor",
+            "LPL SWM",
+            "Schwab Advisor Services All Funds Available",
+            "ADP Access IPS Z",
+            "Lincoln Investment Planning",
+            "Pershing Retirement Plan Network",
+            "HD Vest",
+            "Kestra Financial",
+            "Commonwealth (PPS Access Program)",
+            "Commonwealth (NTF - PPS/Advisory)",
+            "Commonwealth (PPS/Advisory)",
+            "ADP Advisor Access 3(21) Tier 0",
+            "ADP Advisor Access Tier 0",
+            "ADP Advisor Access Tier 2",
+            "LPL ETP Eligible Brokerage",
+            "LPL ETP Eligible Advisory",
+            "LPL Brokerage Availability",
+            "Thrivent – Retail Eligible",
+            "Pruco Securities LLC -PruChoice Mutual Funds",
+            "Pruco Securities LLC -PruChoice ETF’s",
+            "Pruco Securities LLC -PruUMA’s Mutual Funds",
+            "Pruco Securities LLC -PruUMA ETF’s",
+            "Avantax",
+            "Allowab (non-advisory)",
+            "Mid Atlantic Clearing and Settlement",
+            "Schwab Advisor Services Transaction-Fee Funds",
+            "Schwab Advisor Services Institutional Share Class Funds",
+            "Schwab Advisor Services Index Funds",
+            "Schwab Advisor Services Select List Advisor Edition"
+          ],
+          "categoryName": "Large Blend",
+          "family": "Vanguard",
+          "feesExpensesInvestment": {
+            "annualHoldingsTurnover": {},
+            "annualReportExpenseRatio": {
+              "fmt": "0.04%",
+              "raw": 0.0004
+            },
+            "deferredSalesLoad": {},
+            "frontEndSalesLoad": {},
+            "grossExpRatio": {
+              "fmt": "0.04%",
+              "raw": 0.0004
+            },
+            "netExpRatio": {
+              "fmt": "0.04%",
+              "raw": 0.0004
+            },
+            "projectionValues": {
+              "10y": {
+                "fmt": "0",
+                "raw": 0.0
+              },
+              "3y": {
+                "fmt": "0",
+                "raw": 0.0
+              },
+              "5y": {
+                "fmt": "0",
+                "raw": 0.0
+              }
+            },
+            "totalNetAssets": {},
+            "twelveBOne": {}
+          },
+          "feesExpensesInvestmentCat": {
+            "annualHoldingsTurnover": {},
+            "annualReportExpenseRatio": {
+              "fmt": "0.78%",
+              "raw": 0.0078231
+            },
+            "deferredSalesLoad": {},
+            "frontEndSalesLoad": {},
+            "projectionValuesCat": {
+              "10y": {
+                "fmt": "0",
+                "raw": 0.0
+              },
+              "3y": {
+                "fmt": "0",
+                "raw": 0.0
+              },
+              "5y": {
+                "fmt": "0",
+                "raw": 0.0
+              }
+            },
+            "totalNetAssets": {},
+            "twelveBOne": {}
+          },
+          "initAipInvestment": {},
+          "initInvestment": {
+            "fmt": "0",
+            "raw": 0.0
+          },
+          "initIraInvestment": {},
+          "legalType": null,
+          "managementInfo": {
+            "managerBio": "Nicholas Birkett, CFA, Portfolio Manager at Vanguard. He worked in investment banking from 2005 to 2016, has been with Vanguard since 2017, and has co-managed the Fund since August 2023. Education: B.S., University of Bath.",
+            "managerName": "",
+            "startdate": {
+              "fmt": "2025-02-18",
+              "raw": 1739836800
+            }
+          },
+          "maxAge": 1,
+          "styleBoxUrl": "https://s.yimg.com/lq/i/fi/3_0stylelargeeq2.gif",
+          "subseqAipInvestment": {},
+          "subseqInvestment": {
+            "fmt": "0",
+            "raw": 0.0
+          },
+          "subseqIraInvestment": {}
+        },
+        "quoteType": {
+          "exchange": "NAS",
+          "firstTradeDateEpochUtc": 974125800,
+          "gmtOffSetMilliseconds": -14400000,
+          "longName": "Vanguard Total Stock Mkt Idx Adm",
+          "maxAge": 1,
+          "messageBoardId": "finmb_6184536",
+          "quoteType": "MUTUALFUND",
+          "shortName": "Vanguard Total Stock Market Ind",
+          "symbol": "VTSAX",
+          "timeZoneFullName": "America/New_York",
+          "timeZoneShortName": "EDT",
+          "underlyingSymbol": "VTSAX",
+          "uuid": "67edf5e1-0b51-36d6-bd58-6b7e110c8852"
+        }
+      }
+    ]
+  }
+}

@@ -28,6 +28,7 @@ async fn live_profile_fund_for_record() {
     }
     let client = yfinance_rs::YfClient::builder().build().unwrap();
     let _ = yfinance_rs::profile::load_profile(&client, "QQQ").await;
+    let _ = yfinance_rs::profile::load_profile(&client, "VTSAX").await;
 }
 
 #[tokio::test]

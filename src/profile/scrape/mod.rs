@@ -10,7 +10,7 @@ use crate::{
 use paft::domain::Isin;
 use serde::Deserialize;
 
-use super::{Address, Company, Fund, Profile};
+use super::{Address, Company, Fund, Profile, YahooProfileKind, resolve_fund_kind};
 
 #[cfg(feature = "debug-dumps")]
 use crate::profile::debug::{debug_dump_extracted_json, debug_dump_html};
@@ -75,8 +75,12 @@ pub async fn load_from_scrape(
         })
         .unwrap_or_else(|| symbol.to_string());
 
-    let inferred_kind = if store.fund_profile.is_some() {
-        Some("ETF")
+    let inferred_kind = if let Some(fp) = store.fund_profile.as_ref() {
+        if fp.legal_type.as_deref() == Some("Mutual Fund") {
+            Some("MUTUALFUND")
+        } else {
+            Some("ETF")
+        }
     } else if store.summary_profile.is_some() {
         Some("EQUITY")
     } else {
@@ -101,8 +105,8 @@ pub async fn load_from_scrape(
         );
     }
 
-    match kind {
-        "EQUITY" => {
+    match YahooProfileKind::from_quote_type(kind)? {
+        YahooProfileKind::Company => {
             let sp = store
                 .summary_profile
                 .ok_or_else(|| YfError::MissingData("summaryProfile missing".into()))?;
@@ -114,7 +118,11 @@ pub async fn load_from_scrape(
             client
                 .store_currency_hints(
                     symbol,
-                    CurrencyHints::from_profile(country.as_deref(), exchange, Some(kind)),
+                    CurrencyHints::from_profile(
+                        country.as_deref(),
+                        exchange,
+                        Some(YahooProfileKind::Company.quote_type()),
+                    ),
                 )
                 .await;
             let address = Address {
@@ -138,7 +146,7 @@ pub async fn load_from_scrape(
                 isin: validated_isin,
             }))
         }
-        "ETF" => {
+        YahooProfileKind::Fund(fund_quote_kind) => {
             let fp = store
                 .fund_profile
                 .ok_or_else(|| YfError::MissingData("fundProfile missing".into()))?;
@@ -149,7 +157,7 @@ pub async fn load_from_scrape(
             client
                 .store_currency_hints(
                     symbol,
-                    CurrencyHints::from_profile(None, exchange, Some(kind)),
+                    CurrencyHints::from_profile(None, exchange, Some(fund_quote_kind.quote_type())),
                 )
                 .await;
             // Validate ISIN if present, return None if invalid
@@ -158,14 +166,10 @@ pub async fn load_from_scrape(
             Ok(Profile::Fund(Fund {
                 name,
                 family: fp.family,
-                kind: crate::core::conversions::string_to_fund_kind(fp.legal_type)?
-                    .ok_or_else(|| YfError::MissingData("fundProfile.legalType missing".into()))?,
+                kind: resolve_fund_kind(fp.legal_type, fund_quote_kind)?,
                 isin: validated_isin,
             }))
         }
-        other => Err(YfError::InvalidParams(format!(
-            "unsupported or unknown quoteType: {other}"
-        ))),
     }
 }
 

@@ -2,17 +2,16 @@
 
 use crate::{
     YfClient, YfError,
-    core::currency_resolver::CurrencyHints,
     core::{
         client::{CacheMode, RetryConfig},
-        conversions::string_to_fund_kind,
+        currency_resolver::CurrencyHints,
         quotesummary,
     },
 };
 use paft::domain::Isin;
 use serde::Deserialize;
 
-use super::{Address, Company, Fund, Profile};
+use super::{Address, Company, Fund, Profile, YahooProfileKind, resolve_fund_kind};
 
 pub async fn load_from_quote_summary_api(
     client: &YfClient,
@@ -42,8 +41,8 @@ pub async fn load_from_quote_summary_api(
         .and_then(|q| q.long_name.clone().or_else(|| q.short_name.clone()))
         .unwrap_or_else(|| symbol.to_string());
 
-    match kind {
-        "EQUITY" => {
+    match YahooProfileKind::from_quote_type(kind)? {
+        YahooProfileKind::Company => {
             let sp = first
                 .asset_profile
                 .ok_or_else(|| YfError::MissingData("assetProfile missing".into()))?;
@@ -55,7 +54,11 @@ pub async fn load_from_quote_summary_api(
             client
                 .store_currency_hints(
                     symbol,
-                    CurrencyHints::from_profile(country.as_deref(), exchange, Some(kind)),
+                    CurrencyHints::from_profile(
+                        country.as_deref(),
+                        exchange,
+                        Some(YahooProfileKind::Company.quote_type()),
+                    ),
                 )
                 .await;
             let address = Address {
@@ -79,7 +82,7 @@ pub async fn load_from_quote_summary_api(
                 isin: validated_isin,
             }))
         }
-        "ETF" => {
+        YahooProfileKind::Fund(fund_quote_kind) => {
             let fp = first
                 .fund_profile
                 .ok_or_else(|| YfError::MissingData("fundProfile missing".into()))?;
@@ -90,7 +93,7 @@ pub async fn load_from_quote_summary_api(
             client
                 .store_currency_hints(
                     symbol,
-                    CurrencyHints::from_profile(None, exchange, Some(kind)),
+                    CurrencyHints::from_profile(None, exchange, Some(fund_quote_kind.quote_type())),
                 )
                 .await;
 
@@ -100,14 +103,10 @@ pub async fn load_from_quote_summary_api(
             Ok(Profile::Fund(Fund {
                 name,
                 family: fp.family,
-                kind: string_to_fund_kind(fp.legal_type)?
-                    .ok_or_else(|| YfError::MissingData("fundProfile.legalType missing".into()))?,
+                kind: resolve_fund_kind(fp.legal_type, fund_quote_kind)?,
                 isin: validated_isin,
             }))
         }
-        other => Err(YfError::InvalidParams(format!(
-            "unsupported quoteType: {other}"
-        ))),
     }
 }
 

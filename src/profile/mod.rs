@@ -14,11 +14,77 @@ pub(crate) mod debug;
 
 use crate::{
     YfClient, YfError,
-    core::client::{CacheMode, RetryConfig},
+    core::{
+        client::{CacheMode, RetryConfig},
+        conversions::string_to_fund_kind,
+    },
 };
+use paft::fundamentals::profile::FundKind;
 
 mod model;
 pub use model::{Address, Company, Fund, Profile};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum YahooProfileKind {
+    Company,
+    Fund(FundQuoteKind),
+}
+
+impl YahooProfileKind {
+    fn from_quote_type(quote_type: &str) -> Result<Self, YfError> {
+        match quote_type {
+            "EQUITY" => Ok(Self::Company),
+            "ETF" => Ok(Self::Fund(FundQuoteKind::Etf)),
+            "MUTUALFUND" => Ok(Self::Fund(FundQuoteKind::MutualFund)),
+            other => Err(YfError::InvalidParams(format!(
+                "unsupported quoteType: {other}"
+            ))),
+        }
+    }
+
+    const fn quote_type(self) -> &'static str {
+        match self {
+            Self::Company => "EQUITY",
+            Self::Fund(fund) => fund.quote_type(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FundQuoteKind {
+    Etf,
+    MutualFund,
+}
+
+impl FundQuoteKind {
+    const fn quote_type(self) -> &'static str {
+        match self {
+            Self::Etf => "ETF",
+            Self::MutualFund => "MUTUALFUND",
+        }
+    }
+
+    const fn fund_kind(self) -> FundKind {
+        match self {
+            Self::Etf => FundKind::Etf,
+            Self::MutualFund => FundKind::MutualFund,
+        }
+    }
+}
+
+fn resolve_fund_kind(
+    legal_type: Option<String>,
+    quote_kind: FundQuoteKind,
+) -> Result<FundKind, YfError> {
+    if let Some(kind) = string_to_fund_kind(legal_type)? {
+        return Ok(kind);
+    }
+
+    match quote_kind {
+        FundQuoteKind::MutualFund => Ok(quote_kind.fund_kind()),
+        FundQuoteKind::Etf => Err(YfError::MissingData("fundProfile.legalType missing".into())),
+    }
+}
 
 /// Helper to contain the API->Scrape fallback logic.
 #[cfg_attr(feature = "tracing", tracing::instrument(skip(client), err, fields(symbol = %symbol)))]

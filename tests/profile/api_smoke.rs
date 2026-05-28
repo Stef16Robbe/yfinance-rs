@@ -92,3 +92,47 @@ async fn profile_api_fund_happy() {
         _ => panic!("expected Fund"),
     }
 }
+
+#[tokio::test]
+async fn profile_api_mutual_fund_happy() {
+    let server = setup_server();
+    let sym = "VTSAX";
+    let crumb = "test-crumb";
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "assetProfile,quoteType,fundProfile")
+            .query_param("crumb", crumb);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(crate::common::fixture(
+                "profile_api_assetProfile-quoteType-fundProfile",
+                sym,
+                "json",
+            ));
+    });
+
+    let client = YfClient::builder()
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._api_preference(ApiPreference::ApiOnly)
+        ._preauth("cookie", crumb)
+        .build()
+        .unwrap();
+
+    let prof = yfinance_rs::profile::load_profile(&client, sym)
+        .await
+        .unwrap();
+    mock.assert();
+
+    match prof {
+        Profile::Fund(f) => {
+            assert_eq!(f.name, "Vanguard Total Stock Mkt Idx Adm");
+            assert_eq!(f.family.as_deref(), Some("Vanguard"));
+            assert_eq!(f.kind.to_string(), "MUTUAL_FUND");
+        }
+        _ => panic!("expected Fund"),
+    }
+}
