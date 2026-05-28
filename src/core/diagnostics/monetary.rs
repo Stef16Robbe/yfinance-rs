@@ -47,16 +47,16 @@ pub fn optional_money_i64(
     })
 }
 
-pub fn optional_money_f64(
+pub fn optional_money_decimal(
     ctx: &mut ProjectionContext,
     path: &'static str,
     key: Option<String>,
     unit: Option<&ResolvedCurrencyUnit>,
-    value: Option<f64>,
+    value: Option<Decimal>,
     target: &'static str,
 ) -> Result<Option<paft::money::Money>, YfError> {
     optional_with_unit(ctx, path, key, unit, value, target, |unit, value| {
-        unit.money_from_f64(value)
+        unit.money_from_decimal(value).ok()
     })
 }
 

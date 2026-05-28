@@ -63,6 +63,16 @@ pub fn money_from_f64_with_currency_str(value: f64, currency_str: Option<&str>) 
     unit.money_from_f64(value)
 }
 
+/// Convert an exact decimal amount to `Money` with a parsed currency string.
+#[must_use]
+pub fn money_from_decimal_with_currency_str(
+    value: Decimal,
+    currency_str: Option<&str>,
+) -> Option<Money> {
+    let unit = currency_str.and_then(ResolvedCurrencyUnit::from_code)?;
+    unit.money_from_decimal(value).ok()
+}
+
 /// Convert a finite `f64` to `Price` with specified currency.
 #[must_use]
 pub fn price_from_f64(value: f64, currency: Currency) -> Option<Price> {

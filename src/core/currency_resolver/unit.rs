@@ -62,11 +62,11 @@ impl ResolvedCurrencyUnit {
         self.money_from_decimal(decimal)
     }
 
-    fn scaled_decimal_from_f64(&self, value: f64) -> Option<Decimal> {
-        decimal_from_f64(value).and_then(|decimal| decimal.checked_mul(self.scale))
+    pub fn money_from_decimal(&self, decimal: Decimal) -> Result<Money, YfError> {
+        Ok(Money::new(decimal, self.currency.clone())?)
     }
 
-    fn money_from_decimal(&self, decimal: Decimal) -> Result<Money, YfError> {
-        Ok(Money::new(decimal, self.currency.clone())?)
+    fn scaled_decimal_from_f64(&self, value: f64) -> Option<Decimal> {
+        decimal_from_f64(value).and_then(|decimal| decimal.checked_mul(self.scale))
     }
 }

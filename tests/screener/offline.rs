@@ -48,6 +48,62 @@ async fn offline_predefined_day_gainers_uses_get_with_expected_params() {
 }
 
 #[tokio::test]
+async fn predefined_screener_market_cap_preserves_large_integer_precision() {
+    let server = MockServer::start();
+    let exact = 9_007_199_254_740_993_i64;
+    let body = format!(
+        r#"{{
+      "finance": {{
+        "error": null,
+        "result": [{{
+          "count": 1,
+          "quotes": [{{
+            "symbol": "BIG",
+            "quoteType": "EQUITY",
+            "shortName": "Big Inc.",
+            "regularMarketPrice": 10.0,
+            "marketCap": {exact},
+            "currency": "USD"
+          }}]
+        }}]
+      }}
+    }}"#
+    );
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v1/finance/screener/predefined/saved")
+            .query_param("scrIds", "day_gainers")
+            .query_param("corsDomain", "finance.yahoo.com")
+            .query_param("formatted", "false")
+            .query_param("lang", "en-US")
+            .query_param("region", "US");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let client = YfClient::default();
+    let base = Url::parse(&format!(
+        "{}/v1/finance/screener/predefined/saved",
+        server.base_url()
+    ))
+    .unwrap();
+    let response = ScreenerBuilder::predefined(&client, PredefinedScreener::DayGainers)
+        .predefined_screener_base(base)
+        .cache_mode(CacheMode::Bypass)
+        .fetch()
+        .await
+        .unwrap();
+
+    mock.assert();
+    let market_cap = response.results[0]
+        .market_cap
+        .as_ref()
+        .expect("market cap should map");
+    assert_eq!(market_cap.amount(), paft::Decimal::from(exact));
+}
+
+#[tokio::test]
 async fn predefined_screener_401_with_stale_cached_crumb_refreshes_before_retry() {
     let server = MockServer::start();
     let first = server.mock(|when, then| {

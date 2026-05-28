@@ -25,6 +25,11 @@ fn usd(value: f64) -> Money {
     money_from_f64(value, Currency::Iso(IsoCurrency::USD)).expect("known-good USD literal")
 }
 
+fn usd_i64(value: i64) -> Money {
+    Money::new(paft::Decimal::from(value), Currency::Iso(IsoCurrency::USD))
+        .expect("known-good USD literal")
+}
+
 #[tokio::test]
 async fn calendar_maps_dividend_dates_to_distinct_paft_fields() {
     let server = MockServer::start();
@@ -107,6 +112,44 @@ async fn income_statement_new_fields_are_mapped_to_paft_names() {
         row.depreciation_and_amortization,
         Some(usd(11_445_000_000.0))
     );
+}
+
+#[tokio::test]
+async fn income_statement_preserves_large_integer_statement_values() {
+    let server = MockServer::start();
+    let symbol = "BIG";
+    let exact = 9_007_199_254_740_993_i64;
+    let body = format!(
+        r#"{{
+      "timeseries": {{
+        "result": [
+          {{"meta": {{}}, "timestamp": [1727654400], "annualTotalRevenue": [{{"reportedValue": {{"raw": {exact}}}}}]}}
+        ],
+        "error": null
+      }}
+    }}"#
+    );
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!(
+                "/ws/fundamentals-timeseries/v1/finance/timeseries/{symbol}"
+            ))
+            .query_param_exists("type");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let ticker = make_ticker(&server, symbol);
+    let rows = ticker
+        .income_stmt(Some(Currency::Iso(IsoCurrency::USD)))
+        .await
+        .unwrap();
+
+    mock.assert();
+    let row = rows.first().expect("statement row should be present");
+    assert_eq!(row.total_revenue, Some(usd_i64(exact)));
 }
 
 #[tokio::test]

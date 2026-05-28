@@ -8,7 +8,7 @@ use crate::{
         conversions::{decimal_from_f64, i64_to_datetime, string_to_asset_kind},
         currency_resolver::{CurrencyHints, ResolvedCurrencyUnit},
         net, quotesummary,
-        wire::{RawNum, from_raw},
+        wire::{JsonDecimal, RawNum, from_raw},
     },
 };
 use paft::Decimal;
@@ -76,7 +76,7 @@ pub struct V7QuoteNode {
     #[serde(rename = "fiftyTwoWeekLow")]
     pub(crate) fifty_two_week_low: Option<f64>,
     #[serde(rename = "marketCap")]
-    pub(crate) market_cap: Option<f64>,
+    pub(crate) market_cap: Option<JsonDecimal>,
     #[serde(rename = "sharesOutstanding")]
     pub(crate) shares_outstanding: Option<u64>,
     #[serde(rename = "epsTrailingTwelveMonths")]
@@ -184,8 +184,11 @@ impl V7QuoteNode {
         let currencies = self.currency_units();
         let quote_price =
             |value: Option<f64>| value.and_then(|value| currencies.quote_price(value));
-        let quote_money =
-            |value: Option<f64>| value.and_then(|value| currencies.quote_money(value));
+        let quote_money = |value: Option<JsonDecimal>| {
+            value
+                .map(JsonDecimal::into_decimal)
+                .and_then(|value| currencies.quote_money(value))
+        };
         let financial_price =
             |value: Option<f64>| value.and_then(|value| currencies.financial_price(value));
 
@@ -252,10 +255,10 @@ impl QuoteCurrencyUnits {
             .and_then(|currency| currency.price_from_f64(value))
     }
 
-    fn quote_money(&self, value: f64) -> Option<paft::money::Money> {
+    fn quote_money(&self, value: Decimal) -> Option<paft::money::Money> {
         self.quote_major
             .as_ref()
-            .and_then(|currency| currency.money_from_f64(value))
+            .and_then(|currency| currency.money_from_decimal(value).ok())
     }
 
     fn financial_price(&self, value: f64) -> Option<paft::money::Price> {

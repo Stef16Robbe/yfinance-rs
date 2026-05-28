@@ -1,4 +1,4 @@
-use crate::core::wire::{RawDate, RawNum, RawNumU64};
+use crate::core::wire::{RawDate, RawDecimal, RawNum, RawNumU64};
 use serde::Deserialize;
 
 /* ---------------- Serde mapping (only what we need) ---------------- */
@@ -34,16 +34,16 @@ pub struct IncomeRowNode {
     pub(crate) end_date: Option<RawDate>,
     #[allow(dead_code)]
     #[serde(rename = "totalRevenue")]
-    pub(crate) total_revenue: Option<RawNum<f64>>,
+    pub(crate) total_revenue: Option<RawDecimal>,
     #[allow(dead_code)]
     #[serde(rename = "grossProfit")]
-    pub(crate) gross_profit: Option<RawNum<f64>>,
+    pub(crate) gross_profit: Option<RawDecimal>,
     #[allow(dead_code)]
     #[serde(rename = "operatingIncome")]
-    pub(crate) operating_income: Option<RawNum<f64>>,
+    pub(crate) operating_income: Option<RawDecimal>,
     #[allow(dead_code)]
     #[serde(rename = "netIncome")]
-    pub(crate) net_income: Option<RawNum<f64>>,
+    pub(crate) net_income: Option<RawDecimal>,
 }
 
 /* --- earnings --- */
@@ -66,15 +66,15 @@ pub struct FinancialsChartNode {
 #[derive(Deserialize)]
 pub struct FinancialYearNode {
     pub(crate) date: Option<i64>,
-    pub(crate) revenue: Option<RawNum<f64>>,
-    pub(crate) earnings: Option<RawNum<f64>>,
+    pub(crate) revenue: Option<RawDecimal>,
+    pub(crate) earnings: Option<RawDecimal>,
 }
 
 #[derive(Deserialize)]
 pub struct FinancialQuarterNode {
     pub(crate) date: Option<String>,
-    pub(crate) revenue: Option<RawNum<f64>>,
-    pub(crate) earnings: Option<RawNum<f64>>,
+    pub(crate) revenue: Option<RawDecimal>,
+    pub(crate) earnings: Option<RawDecimal>,
 }
 
 #[derive(Deserialize)]

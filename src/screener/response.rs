@@ -9,8 +9,10 @@ use super::query::{YahooExchangeCode, YahooQuoteType};
 use crate::{
     YfError,
     core::conversions::{
-        money_from_f64_with_currency_str, price_from_f64_with_currency_str, string_to_asset_kind,
+        money_from_decimal_with_currency_str, price_from_f64_with_currency_str,
+        string_to_asset_kind,
     },
+    core::wire::JsonDecimal,
 };
 
 /// Response from a Yahoo screener request.
@@ -127,7 +129,7 @@ struct WireQuote {
     regular_market_volume: Option<u64>,
     #[serde(rename = "marketCap")]
     #[serde(default)]
-    market_cap: Option<f64>,
+    market_cap: Option<JsonDecimal>,
     #[serde(default)]
     currency: Option<String>,
     #[serde(flatten)]
@@ -161,9 +163,12 @@ impl From<WireQuote> for ScreenerResult {
         let price = wire
             .regular_market_price
             .and_then(|price| price_from_f64_with_currency_str(price, wire.currency.as_deref()));
-        let market_cap = wire.market_cap.and_then(|market_cap| {
-            money_from_f64_with_currency_str(market_cap, wire.currency.as_deref())
-        });
+        let market_cap = wire
+            .market_cap
+            .map(JsonDecimal::into_decimal)
+            .and_then(|market_cap| {
+                money_from_decimal_with_currency_str(market_cap, wire.currency.as_deref())
+            });
 
         Self {
             symbol: wire.symbol,

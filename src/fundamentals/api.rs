@@ -9,8 +9,8 @@ use crate::{
         currency_resolver::{
             CurrencyHints, CurrencyKind, ReportingCurrencyEvidence, ResolvedCurrencyUnit,
         },
-        diagnostics::{optional_money_f64, optional_price_f64},
-        wire::{RawDate, RawNum, RawNumU64},
+        diagnostics::{optional_money_decimal, optional_price_f64},
+        wire::{RawDate, RawDecimal, RawNumU64},
     },
     fundamentals::wire::{TimeseriesData, TimeseriesEnvelope},
 };
@@ -25,9 +25,9 @@ use super::{
 };
 
 #[derive(serde::Deserialize)]
-struct TimeseriesValueF64 {
+struct TimeseriesValueDecimal {
     #[serde(rename = "reportedValue")]
-    reported_value: Option<RawNum<f64>>,
+    reported_value: Option<RawDecimal>,
 }
 
 #[derive(serde::Deserialize)]
@@ -337,7 +337,8 @@ pub(super) async fn income_statement(
             return Ok(());
         };
 
-        let Some(values) = parse_timeseries_values::<TimeseriesValueF64>(ctx, key, values_json)?
+        let Some(values) =
+            parse_timeseries_values::<TimeseriesValueDecimal>(ctx, key, values_json)?
         else {
             return Ok(());
         };
@@ -356,7 +357,7 @@ pub(super) async fn income_statement(
             let value = values
                 .get(i)
                 .and_then(|v| v.reported_value.and_then(|rv| rv.raw));
-            let money = optional_money_f64(
+            let money = optional_money_decimal(
                 ctx,
                 "timeseries.reportedValue",
                 Some(format!("{field}@{ts}")),
@@ -494,7 +495,7 @@ pub(super) async fn balance_sheet(
             }
         } else {
             let Some(values) =
-                parse_timeseries_values::<TimeseriesValueF64>(ctx, key, values_json)?
+                parse_timeseries_values::<TimeseriesValueDecimal>(ctx, key, values_json)?
             else {
                 return Ok(());
             };
@@ -513,7 +514,7 @@ pub(super) async fn balance_sheet(
                 let value = values
                     .get(i)
                     .and_then(|v| v.reported_value.and_then(|rv| rv.raw));
-                let money = optional_money_f64(
+                let money = optional_money_decimal(
                     ctx,
                     "timeseries.reportedValue",
                     Some(format!("{field}@{ts}")),
@@ -599,7 +600,8 @@ pub(super) async fn cashflow(
             return Ok(());
         };
 
-        let Some(values) = parse_timeseries_values::<TimeseriesValueF64>(ctx, key, values_json)?
+        let Some(values) =
+            parse_timeseries_values::<TimeseriesValueDecimal>(ctx, key, values_json)?
         else {
             return Ok(());
         };
@@ -618,7 +620,7 @@ pub(super) async fn cashflow(
             let value = values
                 .get(i)
                 .and_then(|v| v.reported_value.and_then(|rv| rv.raw));
-            let money = optional_money_f64(
+            let money = optional_money_decimal(
                 ctx,
                 "timeseries.reportedValue",
                 Some(format!("{field}@{ts}")),
@@ -681,22 +683,27 @@ pub(super) async fn cashflow(
 }
 
 fn earnings_has_monetary_values(earnings: &crate::fundamentals::wire::EarningsNode) -> bool {
-    let raw_present = |value: Option<&crate::core::wire::RawNum<f64>>| {
+    let decimal_present = |value: Option<&crate::core::wire::RawDecimal>| {
+        value.and_then(|v| v.raw.as_ref()).is_some()
+    };
+    let f64_present = |value: Option<&crate::core::wire::RawNum<f64>>| {
         value.and_then(|v| v.raw.as_ref()).is_some()
     };
 
     earnings.financials_chart.as_ref().is_some_and(|chart| {
         chart.yearly.as_ref().is_some_and(|rows| {
-            rows.iter()
-                .any(|row| raw_present(row.revenue.as_ref()) || raw_present(row.earnings.as_ref()))
+            rows.iter().any(|row| {
+                decimal_present(row.revenue.as_ref()) || decimal_present(row.earnings.as_ref())
+            })
         }) || chart.quarterly.as_ref().is_some_and(|rows| {
-            rows.iter()
-                .any(|row| raw_present(row.revenue.as_ref()) || raw_present(row.earnings.as_ref()))
+            rows.iter().any(|row| {
+                decimal_present(row.revenue.as_ref()) || decimal_present(row.earnings.as_ref())
+            })
         })
     }) || earnings.earnings_chart.as_ref().is_some_and(|chart| {
         chart.quarterly.as_ref().is_some_and(|rows| {
             rows.iter()
-                .any(|row| raw_present(row.actual.as_ref()) || raw_present(row.estimate.as_ref()))
+                .any(|row| f64_present(row.actual.as_ref()) || f64_present(row.estimate.as_ref()))
         })
     })
 }
@@ -773,7 +780,7 @@ pub(super) async fn earnings(
             };
             yearly.push(EarningsYear {
                 year,
-                revenue: optional_money_f64(
+                revenue: optional_money_decimal(
                     &mut ctx,
                     "financialsChart.yearly[].revenue",
                     Some(year.to_string()),
@@ -781,7 +788,7 @@ pub(super) async fn earnings(
                     y.revenue.as_ref().and_then(|x| x.raw),
                     "earnings monetary value",
                 )?,
-                earnings: optional_money_f64(
+                earnings: optional_money_decimal(
                     &mut ctx,
                     "financialsChart.yearly[].earnings",
                     Some(year.to_string()),
@@ -824,7 +831,7 @@ pub(super) async fn earnings(
             };
             quarterly.push(EarningsQuarter {
                 period,
-                revenue: optional_money_f64(
+                revenue: optional_money_decimal(
                     &mut ctx,
                     "financialsChart.quarterly[].revenue",
                     Some(period_raw.to_string()),
@@ -832,7 +839,7 @@ pub(super) async fn earnings(
                     q.revenue.as_ref().and_then(|x| x.raw),
                     "earnings monetary value",
                 )?,
-                earnings: optional_money_f64(
+                earnings: optional_money_decimal(
                     &mut ctx,
                     "financialsChart.quarterly[].earnings",
                     Some(period_raw.to_string()),

@@ -144,6 +144,63 @@ async fn key_statistics_market_cap_uses_major_units_for_minor_unit_quote_currenc
 }
 
 #[tokio::test]
+async fn key_statistics_market_cap_preserves_large_integer_precision() {
+    let server = MockServer::start();
+    let sym = "BIG";
+    let crumb = "test-crumb";
+    let exact = 9_007_199_254_740_993_i64;
+    let quote_body = format!(
+        r#"{{
+      "quoteResponse": {{
+        "result": [{{
+          "symbol": "{sym}",
+          "quoteType": "EQUITY",
+          "currency": "USD",
+          "regularMarketPrice": 10.0,
+          "marketCap": {exact}
+        }}],
+        "error": null
+      }}
+    }}"#
+    );
+
+    let quote_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", sym);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(quote_body);
+    });
+    let key_statistics_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", crate::common::KEY_STATISTICS_MODULES)
+            .query_param("crumb", crumb);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(r#"{"quoteSummary":{"result":[{}],"error":null}}"#);
+    });
+
+    let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._preauth("cookie", crumb)
+        .build()
+        .unwrap();
+
+    let stats = Ticker::new(&client, sym).key_statistics().await.unwrap();
+
+    quote_mock.assert();
+    key_statistics_mock.assert();
+    let market_cap = stats.market_cap.as_ref().expect("market cap should map");
+    assert_eq!(market_cap.amount(), paft::Decimal::from(exact));
+    assert_eq!(market_cap.currency(), &Currency::Iso(IsoCurrency::USD));
+}
+
+#[tokio::test]
 async fn key_statistics_merge_v7_quote_and_quote_summary_fixtures() {
     let server = MockServer::start();
     let sym = "MSFT";
