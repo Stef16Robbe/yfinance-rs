@@ -3,7 +3,7 @@ use httpmock::MockServer;
 use paft::money::{Currency, IsoCurrency, Money};
 use url::Url;
 use yfinance_rs::core::conversions::money_from_f64;
-use yfinance_rs::{Ticker, YfClient, YfError};
+use yfinance_rs::{FundamentalsBuilder, Ticker, YfClient, YfError, YfWarning};
 
 fn usd(value: f64) -> Money {
     money_from_f64(value, Currency::Iso(IsoCurrency::USD)).expect("known-good USD literal")
@@ -61,10 +61,11 @@ async fn cashflow_computes_fcf_when_missing() {
         .build()
         .unwrap();
 
-    let t = Ticker::new(&client, sym);
-    let rows = t.cashflow(None).await.unwrap();
-
-    mock.assert();
+    let response = FundamentalsBuilder::new(&client, sym)
+        .cashflow_with_diagnostics(false, None)
+        .await
+        .unwrap();
+    let rows = response.data;
 
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].operating_cashflow, Some(usd(100.0)));
@@ -75,6 +76,23 @@ async fn cashflow_computes_fcf_when_missing() {
         "fcf = ocf + capex (where capex is negative)"
     );
     assert_eq!(rows[0].net_income, Some(usd(65.0)));
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::RepairedData {
+            item: "cash_flow",
+            repair: "inferred missing free cash flow from operating cash flow and capital expenditure",
+            ..
+        }
+    )));
+
+    let err = FundamentalsBuilder::new(&client, sym)
+        .strict()
+        .cashflow(false, None)
+        .await
+        .unwrap_err();
+
+    mock.assert_calls(2);
+    assert!(matches!(err, YfError::DataQuality(_)));
 }
 
 #[tokio::test]

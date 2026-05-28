@@ -26,6 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Add adapter-level projection diagnostics through `YfResponse<T>`, `YfDiagnostics`, `YfWarning`, `ProjectionIssue`, and `DataQuality`, plus `strict()` and `*_with_diagnostics()` entry points on history, download, holders, fundamentals, analysis, ESG, news, search, and `Ticker::info()`.
 - History, holders, fundamentals, analysis, ESG, news, search, download, and aggregate info calls can now distinguish absent optional provider data from present Yahoo data that was dropped or omitted while projecting into strict `paft` values.
+- Add `YfWarning::CoercedPresentField` for present provider fields that are represented only after a lossy coercion such as rounding.
 
 ### Fixed
 
@@ -39,6 +40,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Invalid Yahoo floats (`NaN`, infinities, and values that cannot fit the decimal backend) no longer become zero-valued financial data.
 - Optional `paft` fields now become `None` when Yahoo supplies an invalid numeric value, while valid sibling records are still preserved.
 - Calendar, holder, ESG, and analyst mappers now route present-but-unrepresentable date and decimal fields through projection diagnostics instead of silently omitting them or failing best-effort calls.
+- Recommendation, analyst-count, search-exchange, history-timezone, inferred cash-flow, and share-count projections now report present-but-invalid, rounded, or inferred provider values through diagnostics; strict mode rejects those losses instead of silently returning `None` or coerced data.
 - Malformed required records, including bad OHLC candles, option contracts with invalid strikes, and invalid dividend/capital-gain amounts, are skipped item-by-item.
 - Missing or invalid Yahoo timestamps no longer become Unix epoch/default datetimes in quote, history, news, holder, analyst, calendar, and fundamentals mappings.
 - Missing quote/search/screener/download instrument kinds no longer default to equity; provider asset-kind metadata is required where the public model needs an instrument.

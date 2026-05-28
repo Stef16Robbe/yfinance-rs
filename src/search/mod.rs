@@ -33,7 +33,28 @@ fn parse_search_body(body: &str, ctx: &mut ProjectionContext) -> Result<SearchRe
             )?;
             continue;
         }
-        let exchange_opt = q.exchange.and_then(|s| s.parse::<Exchange>().ok());
+        let exchange_opt = match q
+            .exchange
+            .as_deref()
+            .map(str::trim)
+            .filter(|exchange| !exchange.is_empty())
+        {
+            Some(exchange) => match exchange.parse::<Exchange>() {
+                Ok(exchange) => Some(exchange),
+                Err(err) => {
+                    ctx.omitted_present_field(
+                        "quotes[].exchange",
+                        Some(sym.clone()),
+                        ProjectionIssue::InvalidField {
+                            field: "exchange",
+                            details: err.to_string(),
+                        },
+                    )?;
+                    None
+                }
+            },
+            None => None,
+        };
         let kind = match q
             .quote_type
             .as_deref()

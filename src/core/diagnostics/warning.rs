@@ -27,6 +27,17 @@ pub enum YfWarning {
         /// Why the field was omitted.
         reason: ProjectionIssue,
     },
+    /// A provider field was present and represented only after a lossy coercion.
+    CoercedPresentField {
+        /// Stable endpoint or mapper name.
+        endpoint: &'static str,
+        /// Stable field path within the provider payload.
+        path: &'static str,
+        /// Provider key, timestamp, symbol, or row identifier when available.
+        key: Option<String>,
+        /// Description of the coercion.
+        coercion: String,
+    },
     /// A requested provider module or feature was unavailable.
     ProviderFeatureUnavailable {
         /// Stable endpoint or mapper name.
@@ -94,6 +105,16 @@ impl fmt::Display for YfWarning {
                 "{endpoint}: omitted present field {path}{}: {reason}",
                 fmt_key(key.as_deref())
             ),
+            Self::CoercedPresentField {
+                endpoint,
+                path,
+                key,
+                coercion,
+            } => write!(
+                f,
+                "{endpoint}: coerced present field {path}{}: {coercion}",
+                fmt_key(key.as_deref())
+            ),
             Self::ProviderFeatureUnavailable {
                 endpoint,
                 feature,
@@ -155,6 +176,17 @@ impl YfWarning {
                 path,
                 key: Some(prefixed_key(prefix, key)),
                 reason,
+            },
+            Self::CoercedPresentField {
+                endpoint,
+                path,
+                key,
+                coercion,
+            } => Self::CoercedPresentField {
+                endpoint,
+                path,
+                key: Some(prefixed_key(prefix, key)),
+                coercion,
             },
             Self::RepairedData {
                 endpoint,

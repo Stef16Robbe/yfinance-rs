@@ -1,7 +1,7 @@
 use httpmock::Method::GET;
 use httpmock::MockServer;
 use url::Url;
-use yfinance_rs::{SearchBuilder, YfClient};
+use yfinance_rs::{ProjectionIssue, SearchBuilder, YfClient, YfError, YfWarning};
 
 fn fixture(endpoint: &str, key: &str) -> String {
     crate::common::fixture(endpoint, key, "json")
@@ -109,4 +109,62 @@ async fn search_403_with_stale_cached_crumb_refreshes_before_retry() {
             .iter()
             .any(|q| q.instrument.symbol.as_str() == "AAPL")
     );
+}
+
+#[tokio::test]
+async fn invalid_search_exchange_is_reported_as_projection_loss() {
+    let query = "bad exchange";
+    let server = MockServer::start();
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v1/finance/search")
+            .query_param("q", query)
+            .query_param("quotesCount", "10")
+            .query_param("newsCount", "0")
+            .query_param("listsCount", "0");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "quotes": [{
+                    "symbol": "BADX",
+                    "quoteType": "EQUITY",
+                    "exchange": "!!!"
+                  }]
+                }"#,
+            );
+    });
+
+    let client = YfClient::builder().build().unwrap();
+    let base = Url::parse(&format!("{}/v1/finance/search", server.base_url())).unwrap();
+
+    let response = SearchBuilder::new(&client, query)
+        .search_base(base.clone())
+        .fetch_with_diagnostics()
+        .await
+        .unwrap();
+
+    assert_eq!(response.data.results.len(), 1);
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::OmittedPresentField {
+            path: "quotes[].exchange",
+            reason: ProjectionIssue::InvalidField {
+                field: "exchange",
+                ..
+            },
+            ..
+        }
+    )));
+
+    let err = SearchBuilder::new(&client, query)
+        .search_base(base)
+        .strict()
+        .fetch()
+        .await
+        .unwrap_err();
+
+    mock.assert_calls(2);
+    assert!(matches!(err, YfError::DataQuality(_)));
 }

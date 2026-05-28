@@ -10,13 +10,17 @@ use crate::{
         currency_resolver::{
             AnalystEstimateCurrencyEvidence, CurrencyHints, CurrencyKind, TradingCurrencyEvidence,
         },
-        diagnostics::{optional_decimal_f64, optional_money_i64, optional_price_f64},
-        wire::{from_raw, from_raw_u32_round},
+        diagnostics::{
+            optional_decimal_f64, optional_money_i64, optional_price_f64, optional_u32_from_i64,
+            optional_u32_from_raw_f64,
+        },
+        wire::from_raw,
     },
 };
 
 use super::fetch::fetch_modules;
 use super::model::{PriceTarget, RecommendationRow, RecommendationSummary, UpgradeDowngradeRow};
+use super::wire::RecommendationNode;
 use paft::domain::Period;
 use paft::fundamentals::analysis::{
     EarningsEstimate, EpsRevisions, EpsTrend, RecommendationAction, RecommendationGrade,
@@ -63,6 +67,60 @@ fn required_period(
     }
 }
 
+#[derive(Clone, Copy)]
+struct RecommendationCountPaths {
+    strong_buy: &'static str,
+    buy: &'static str,
+    hold: &'static str,
+    sell: &'static str,
+    strong_sell: &'static str,
+}
+
+type RecommendationCounts = (
+    Option<u32>,
+    Option<u32>,
+    Option<u32>,
+    Option<u32>,
+    Option<u32>,
+);
+
+const TREND_COUNT_PATHS: RecommendationCountPaths = RecommendationCountPaths {
+    strong_buy: "recommendationTrend.trend[].strongBuy",
+    buy: "recommendationTrend.trend[].buy",
+    hold: "recommendationTrend.trend[].hold",
+    sell: "recommendationTrend.trend[].sell",
+    strong_sell: "recommendationTrend.trend[].strongSell",
+};
+
+const LATEST_COUNT_PATHS: RecommendationCountPaths = RecommendationCountPaths {
+    strong_buy: "recommendationTrend.trend[0].strongBuy",
+    buy: "recommendationTrend.trend[0].buy",
+    hold: "recommendationTrend.trend[0].hold",
+    sell: "recommendationTrend.trend[0].sell",
+    strong_sell: "recommendationTrend.trend[0].strongSell",
+};
+
+fn recommendation_counts(
+    ctx: &mut ProjectionContext,
+    paths: RecommendationCountPaths,
+    key: Option<String>,
+    node: &RecommendationNode,
+) -> Result<RecommendationCounts, YfError> {
+    Ok((
+        optional_u32_from_i64(
+            ctx,
+            paths.strong_buy,
+            key.clone(),
+            "strongBuy",
+            node.strong_buy,
+        )?,
+        optional_u32_from_i64(ctx, paths.buy, key.clone(), "buy", node.buy)?,
+        optional_u32_from_i64(ctx, paths.hold, key.clone(), "hold", node.hold)?,
+        optional_u32_from_i64(ctx, paths.sell, key.clone(), "sell", node.sell)?,
+        optional_u32_from_i64(ctx, paths.strong_sell, key, "strongSell", node.strong_sell)?,
+    ))
+}
+
 /* ---------- Public entry points (mapping wire → public models) ---------- */
 
 pub(super) async fn recommendation_trend(
@@ -94,7 +152,7 @@ pub(super) async fn recommendation_trend(
         let Some(period) = required_period(
             &mut ctx,
             "recommendation_trend",
-            key,
+            key.clone(),
             "period",
             n.period.as_deref(),
         )?
@@ -102,13 +160,16 @@ pub(super) async fn recommendation_trend(
             continue;
         };
 
+        let (strong_buy, buy, hold, sell, strong_sell) =
+            recommendation_counts(&mut ctx, TREND_COUNT_PATHS, key, &n)?;
+
         rows.push(RecommendationRow {
             period,
-            strong_buy: n.strong_buy.and_then(|v| u32::try_from(v).ok()),
-            buy: n.buy.and_then(|v| u32::try_from(v).ok()),
-            hold: n.hold.and_then(|v| u32::try_from(v).ok()),
-            sell: n.sell.and_then(|v| u32::try_from(v).ok()),
-            strong_sell: n.strong_sell.and_then(|v| u32::try_from(v).ok()),
+            strong_buy,
+            buy,
+            hold,
+            sell,
+            strong_sell,
         });
     }
 
@@ -165,14 +226,9 @@ pub(super) async fn recommendation_summary(
                 )?;
                 None
             };
-        (
-            latest_period,
-            t.strong_buy.and_then(|v| u32::try_from(v).ok()),
-            t.buy.and_then(|v| u32::try_from(v).ok()),
-            t.hold.and_then(|v| u32::try_from(v).ok()),
-            t.sell.and_then(|v| u32::try_from(v).ok()),
-            t.strong_sell.and_then(|v| u32::try_from(v).ok()),
-        )
+        let (sb, b, h, s, ss) =
+            recommendation_counts(&mut ctx, LATEST_COUNT_PATHS, t.period.clone(), t)?;
+        (latest_period, sb, b, h, s, ss)
     } else {
         (None, None, None, None, None, None)
     };
@@ -389,11 +445,19 @@ pub(super) async fn analyst_price_target(
         "analyst price value",
     )?;
 
+    let number_of_analysts = optional_u32_from_raw_f64(
+        &mut ctx,
+        "financialData.numberOfAnalystOpinions",
+        Some(symbol.to_string()),
+        "numberOfAnalystOpinions",
+        fd.number_of_analyst_opinions,
+    )?;
+
     Ok(ctx.finish(PriceTarget {
         mean,
         high,
         low,
-        number_of_analysts: from_raw_u32_round(fd.number_of_analyst_opinions),
+        number_of_analysts,
     }))
 }
 
@@ -430,12 +494,14 @@ pub(super) async fn earnings_trend(
             .as_ref()
             .and_then(|trend| trend.eps_trend_currency.clone());
 
+        let period_key = n.period.clone();
+
         let (
             earnings_estimate_avg,
             earnings_estimate_low,
             earnings_estimate_high,
             earnings_estimate_year_ago_eps,
-            earnings_estimate_num_analysts,
+            earnings_estimate_num_analysts_raw,
             earnings_estimate_growth,
         ) = n
             .earnings_estimate
@@ -445,7 +511,7 @@ pub(super) async fn earnings_trend(
                     from_raw(e.low),
                     from_raw(e.high),
                     from_raw(e.year_ago_eps),
-                    from_raw_u32_round(e.num_analysts),
+                    e.num_analysts,
                     from_raw(e.growth),
                 )
             })
@@ -456,7 +522,7 @@ pub(super) async fn earnings_trend(
             revenue_estimate_low,
             revenue_estimate_high,
             revenue_estimate_year_ago_revenue,
-            revenue_estimate_num_analysts,
+            revenue_estimate_num_analysts_raw,
             revenue_estimate_growth,
         ) = n
             .revenue_estimate
@@ -466,7 +532,7 @@ pub(super) async fn earnings_trend(
                     from_raw(e.low),
                     from_raw(e.high),
                     from_raw(e.year_ago_revenue),
-                    from_raw_u32_round(e.num_analysts),
+                    e.num_analysts,
                     from_raw(e.growth),
                 )
             })
@@ -500,10 +566,10 @@ pub(super) async fn earnings_trend(
             .eps_revisions
             .map(|e| {
                 (
-                    from_raw_u32_round(e.up_last_7_days),
-                    from_raw_u32_round(e.up_last_30_days),
-                    from_raw_u32_round(e.down_last_7_days),
-                    from_raw_u32_round(e.down_last_30_days),
+                    e.up_last_7_days,
+                    e.up_last_30_days,
+                    e.down_last_7_days,
+                    e.down_last_30_days,
                 )
             })
             .unwrap_or_default();
@@ -596,20 +662,63 @@ pub(super) async fn earnings_trend(
         let Some(period) = required_period(
             &mut ctx,
             "earnings_trend",
-            n.period.clone(),
+            period_key.clone(),
             "period",
-            n.period.as_deref(),
+            period_key.as_deref(),
         )?
         else {
             continue;
         };
+
+        let earnings_estimate_num_analysts = optional_u32_from_raw_f64(
+            &mut ctx,
+            "earningsTrend[].earningsEstimate.numberOfAnalysts",
+            period_key.clone(),
+            "numberOfAnalysts",
+            earnings_estimate_num_analysts_raw,
+        )?;
+        let revenue_estimate_num_analysts = optional_u32_from_raw_f64(
+            &mut ctx,
+            "earningsTrend[].revenueEstimate.numberOfAnalysts",
+            period_key.clone(),
+            "numberOfAnalysts",
+            revenue_estimate_num_analysts_raw,
+        )?;
+        let eps_revisions_up_last_7_days = optional_u32_from_raw_f64(
+            &mut ctx,
+            "earningsTrend[].epsRevisions.upLast7days",
+            period_key.clone(),
+            "upLast7days",
+            eps_revisions_up_last_7_days,
+        )?;
+        let eps_revisions_up_last_30_days = optional_u32_from_raw_f64(
+            &mut ctx,
+            "earningsTrend[].epsRevisions.upLast30days",
+            period_key.clone(),
+            "upLast30days",
+            eps_revisions_up_last_30_days,
+        )?;
+        let eps_revisions_down_last_7_days = optional_u32_from_raw_f64(
+            &mut ctx,
+            "earningsTrend[].epsRevisions.downLast7days",
+            period_key.clone(),
+            "downLast7days",
+            eps_revisions_down_last_7_days,
+        )?;
+        let eps_revisions_down_last_30_days = optional_u32_from_raw_f64(
+            &mut ctx,
+            "earningsTrend[].epsRevisions.downLast30days",
+            period_key.clone(),
+            "downLast30days",
+            eps_revisions_down_last_30_days,
+        )?;
 
         rows.push(EarningsTrendRow {
             period,
             growth: optional_decimal_f64(
                 &mut ctx,
                 "earningsTrend[].growth",
-                n.period.clone(),
+                period_key.clone(),
                 from_raw(n.growth),
                 "earnings trend growth",
             )?,
@@ -617,7 +726,7 @@ pub(super) async fn earnings_trend(
                 avg: optional_price_f64(
                     &mut ctx,
                     "earningsTrend[].earningsEstimate.avg",
-                    n.period.clone(),
+                    period_key.clone(),
                     earnings_unit.as_ref(),
                     earnings_estimate_avg,
                     "analyst price value",
@@ -625,7 +734,7 @@ pub(super) async fn earnings_trend(
                 low: optional_price_f64(
                     &mut ctx,
                     "earningsTrend[].earningsEstimate.low",
-                    n.period.clone(),
+                    period_key.clone(),
                     earnings_unit.as_ref(),
                     earnings_estimate_low,
                     "analyst price value",
@@ -633,7 +742,7 @@ pub(super) async fn earnings_trend(
                 high: optional_price_f64(
                     &mut ctx,
                     "earningsTrend[].earningsEstimate.high",
-                    n.period.clone(),
+                    period_key.clone(),
                     earnings_unit.as_ref(),
                     earnings_estimate_high,
                     "analyst price value",
@@ -641,7 +750,7 @@ pub(super) async fn earnings_trend(
                 year_ago_eps: optional_price_f64(
                     &mut ctx,
                     "earningsTrend[].earningsEstimate.yearAgoEps",
-                    n.period.clone(),
+                    period_key.clone(),
                     earnings_unit.as_ref(),
                     earnings_estimate_year_ago_eps,
                     "analyst price value",
@@ -650,7 +759,7 @@ pub(super) async fn earnings_trend(
                 growth: optional_decimal_f64(
                     &mut ctx,
                     "earningsTrend[].earningsEstimate.growth",
-                    n.period.clone(),
+                    period_key.clone(),
                     earnings_estimate_growth,
                     "earnings estimate growth",
                 )?,
@@ -659,7 +768,7 @@ pub(super) async fn earnings_trend(
                 avg: optional_money_i64(
                     &mut ctx,
                     "earningsTrend[].revenueEstimate.avg",
-                    n.period.clone(),
+                    period_key.clone(),
                     revenue_unit.as_ref(),
                     revenue_estimate_avg,
                     "analyst monetary value",
@@ -667,7 +776,7 @@ pub(super) async fn earnings_trend(
                 low: optional_money_i64(
                     &mut ctx,
                     "earningsTrend[].revenueEstimate.low",
-                    n.period.clone(),
+                    period_key.clone(),
                     revenue_unit.as_ref(),
                     revenue_estimate_low,
                     "analyst monetary value",
@@ -675,7 +784,7 @@ pub(super) async fn earnings_trend(
                 high: optional_money_i64(
                     &mut ctx,
                     "earningsTrend[].revenueEstimate.high",
-                    n.period.clone(),
+                    period_key.clone(),
                     revenue_unit.as_ref(),
                     revenue_estimate_high,
                     "analyst monetary value",
@@ -683,7 +792,7 @@ pub(super) async fn earnings_trend(
                 year_ago_revenue: optional_money_i64(
                     &mut ctx,
                     "earningsTrend[].revenueEstimate.yearAgoRevenue",
-                    n.period.clone(),
+                    period_key.clone(),
                     revenue_unit.as_ref(),
                     revenue_estimate_year_ago_revenue,
                     "analyst monetary value",
@@ -692,7 +801,7 @@ pub(super) async fn earnings_trend(
                 growth: optional_decimal_f64(
                     &mut ctx,
                     "earningsTrend[].revenueEstimate.growth",
-                    n.period.clone(),
+                    period_key.clone(),
                     revenue_estimate_growth,
                     "revenue estimate growth",
                 )?,
@@ -701,7 +810,7 @@ pub(super) async fn earnings_trend(
                 current: optional_price_f64(
                     &mut ctx,
                     "earningsTrend[].epsTrend.current",
-                    n.period.clone(),
+                    period_key.clone(),
                     eps_unit.as_ref(),
                     eps_trend_current,
                     "analyst price value",
@@ -711,7 +820,7 @@ pub(super) async fn earnings_trend(
                     if let Some(v) = optional_price_f64(
                         &mut ctx,
                         "earningsTrend[].epsTrend.7daysAgo",
-                        n.period.clone(),
+                        period_key.clone(),
                         eps_unit.as_ref(),
                         eps_trend_7_days_ago,
                         "analyst price value",
@@ -722,7 +831,7 @@ pub(super) async fn earnings_trend(
                     if let Some(v) = optional_price_f64(
                         &mut ctx,
                         "earningsTrend[].epsTrend.30daysAgo",
-                        n.period.clone(),
+                        period_key.clone(),
                         eps_unit.as_ref(),
                         eps_trend_30_days_ago,
                         "analyst price value",
@@ -733,7 +842,7 @@ pub(super) async fn earnings_trend(
                     if let Some(v) = optional_price_f64(
                         &mut ctx,
                         "earningsTrend[].epsTrend.60daysAgo",
-                        n.period.clone(),
+                        period_key.clone(),
                         eps_unit.as_ref(),
                         eps_trend_60_days_ago,
                         "analyst price value",
@@ -744,7 +853,7 @@ pub(super) async fn earnings_trend(
                     if let Some(v) = optional_price_f64(
                         &mut ctx,
                         "earningsTrend[].epsTrend.90daysAgo",
-                        n.period.clone(),
+                        period_key.clone(),
                         eps_unit.as_ref(),
                         eps_trend_90_days_ago,
                         "analyst price value",

@@ -266,17 +266,31 @@ where
     }
 }
 
-fn row_for_timestamp<T>(
-    rows_map: &mut BTreeMap<i64, T>,
+fn row_for_timestamp<'a, T>(
+    ctx: &mut ProjectionContext,
+    rows_map: &'a mut BTreeMap<i64, T>,
     timestamp: i64,
+    key: String,
     create: impl FnOnce(Period) -> T,
-) -> Result<&mut T, YfError> {
-    match rows_map.entry(timestamp) {
-        Entry::Occupied(entry) => Ok(entry.into_mut()),
-        Entry::Vacant(entry) => {
-            let period = period_from_timestamp(timestamp)?;
-            Ok(entry.insert(create(period)))
+) -> Result<Option<&'a mut T>, YfError> {
+    let period = match period_from_timestamp(timestamp) {
+        Ok(period) => period,
+        Err(err) => {
+            ctx.dropped_item(
+                "timeseries_row",
+                Some(key),
+                ProjectionIssue::InvalidField {
+                    field: "timestamp",
+                    details: err.to_string(),
+                },
+            )?;
+            return Ok(None);
         }
+    };
+
+    match rows_map.entry(timestamp) {
+        Entry::Occupied(entry) => Ok(Some(entry.into_mut())),
+        Entry::Vacant(entry) => Ok(Some(entry.insert(create(period)))),
     }
 }
 
@@ -328,7 +342,16 @@ pub(super) async fn income_statement(
             return Ok(());
         };
         for (i, ts) in timestamps.iter().enumerate() {
-            let row = row_for_timestamp(rows_map, *ts, create_default_row)?;
+            let Some(row) = row_for_timestamp(
+                ctx,
+                rows_map,
+                *ts,
+                format!("{field}@{ts}"),
+                create_default_row,
+            )?
+            else {
+                continue;
+            };
 
             let value = values
                 .get(i)
@@ -455,7 +478,16 @@ pub(super) async fn balance_sheet(
                 return Ok(());
             };
             for (i, ts) in timestamps.iter().enumerate() {
-                let row = row_for_timestamp(rows_map, *ts, create_default_row)?;
+                let Some(row) = row_for_timestamp(
+                    ctx,
+                    rows_map,
+                    *ts,
+                    format!("{field}@{ts}"),
+                    create_default_row,
+                )?
+                else {
+                    continue;
+                };
                 row.shares_outstanding = values
                     .get(i)
                     .and_then(|v| v.reported_value.and_then(|rv| rv.raw));
@@ -467,7 +499,16 @@ pub(super) async fn balance_sheet(
                 return Ok(());
             };
             for (i, ts) in timestamps.iter().enumerate() {
-                let row = row_for_timestamp(rows_map, *ts, create_default_row)?;
+                let Some(row) = row_for_timestamp(
+                    ctx,
+                    rows_map,
+                    *ts,
+                    format!("{field}@{ts}"),
+                    create_default_row,
+                )?
+                else {
+                    continue;
+                };
 
                 let value = values
                     .get(i)
@@ -563,7 +604,16 @@ pub(super) async fn cashflow(
             return Ok(());
         };
         for (i, ts) in timestamps.iter().enumerate() {
-            let row = row_for_timestamp(rows_map, *ts, create_default_row)?;
+            let Some(row) = row_for_timestamp(
+                ctx,
+                rows_map,
+                *ts,
+                format!("{field}@{ts}"),
+                create_default_row,
+            )?
+            else {
+                continue;
+            };
 
             let value = values
                 .get(i)
@@ -604,6 +654,9 @@ pub(super) async fn cashflow(
     )
     .await?;
 
+    let mut ctx = ProjectionContext::new(endpoint_name, data_quality);
+    ctx.extend(result.diagnostics);
+
     // After filling values, calculate FCF if it's missing.
     for row in &mut result.data {
         if row.free_cash_flow.is_none()
@@ -613,11 +666,18 @@ pub(super) async fn cashflow(
             )
         {
             // In timeseries API, capex is negative for cash outflow.
-            row.free_cash_flow = ocf.try_add(&capex).ok();
+            if let Ok(free_cash_flow) = ocf.try_add(&capex) {
+                ctx.repaired_data(
+                    "cash_flow",
+                    Some(row.period.to_string()),
+                    "inferred missing free cash flow from operating cash flow and capital expenditure",
+                )?;
+                row.free_cash_flow = Some(free_cash_flow);
+            }
         }
     }
 
-    Ok(result)
+    Ok(ctx.finish(result.data))
 }
 
 fn earnings_has_monetary_values(earnings: &crate::fundamentals::wire::EarningsNode) -> bool {
@@ -963,7 +1023,7 @@ pub(super) async fn shares(
     retry_override: Option<&RetryConfig>,
     data_quality: DataQuality,
 ) -> Result<YfResponse<Vec<ShareCount>>, YfError> {
-    let ctx = ProjectionContext::new("shares", data_quality);
+    let mut ctx = ProjectionContext::new("shares", data_quality);
     let end_ts = end.unwrap_or_else(Utc::now).timestamp();
     let start_ts = start
         .unwrap_or_else(|| Utc::now() - Duration::days(548))
@@ -1021,18 +1081,42 @@ pub(super) async fn shares(
         return Ok(ctx.finish(vec![]));
     };
 
-    let values: Vec<super::wire::TimeseriesValue> =
-        serde_json::from_value(values_json).map_err(YfError::Json)?;
+    let values: Vec<super::wire::TimeseriesValue> = match serde_json::from_value(values_json) {
+        Ok(values) => values,
+        Err(err) => {
+            ctx.dropped_item(
+                "share_count",
+                Some(type_key.to_string()),
+                ProjectionIssue::InvalidField {
+                    field: "values",
+                    details: err.to_string(),
+                },
+            )?;
+            return Ok(ctx.finish(Vec::new()));
+        }
+    };
 
-    let counts = timestamps
-        .into_iter()
-        .zip(values)
-        .filter_map(|(ts, val)| {
-            val.reported_value
-                .and_then(|rv| rv.raw)
-                .map(|shares| i64_to_datetime(ts).map(|date| ShareCount { date, shares }))
-        })
-        .collect::<Result<Vec<_>, YfError>>()?;
+    let mut counts = Vec::new();
+    for (ts, val) in timestamps.into_iter().zip(values) {
+        let Some(shares) = val.reported_value.and_then(|rv| rv.raw) else {
+            continue;
+        };
+        let date = match i64_to_datetime(ts) {
+            Ok(date) => date,
+            Err(err) => {
+                ctx.dropped_item(
+                    "share_count",
+                    Some(format!("{type_key}@{ts}")),
+                    ProjectionIssue::InvalidField {
+                        field: "timestamp",
+                        details: err.to_string(),
+                    },
+                )?;
+                continue;
+            }
+        };
+        counts.push(ShareCount { date, shares });
+    }
 
     Ok(ctx.finish(counts))
 }

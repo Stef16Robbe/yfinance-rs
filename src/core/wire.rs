@@ -9,19 +9,6 @@ pub fn from_raw<T>(raw: Option<RawNum<T>>) -> Option<T> {
     raw.and_then(|n| n.raw)
 }
 
-pub fn from_raw_u32_round(r: Option<RawNum<f64>>) -> Option<u32> {
-    r.and_then(|n| n.raw).and_then(|v| {
-        let rounded = v.round();
-        if rounded >= 0.0 && rounded <= f64::from(u32::MAX) {
-            // This cast is safe as we check the bounds of rounded.
-            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-            Some(rounded as u32)
-        } else {
-            None
-        }
-    })
-}
-
 #[derive(Deserialize, Clone, Copy)]
 pub struct RawDate {
     pub(crate) raw: Option<i64>,

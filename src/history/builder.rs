@@ -304,7 +304,7 @@ impl HistoryBuilder {
         });
 
         // 5) Map metadata
-        let meta_out = map_meta(fetched.meta.as_ref());
+        let meta_out = map_meta(fetched.meta.as_ref(), &mut ctx)?;
 
         Ok(ctx.finish(HistoryResponse {
             candles,
@@ -444,14 +444,41 @@ fn is_missing_currency(currency: Option<&str>) -> bool {
     currency.is_none_or(|currency| currency.trim().is_empty())
 }
 
-fn map_meta(m: Option<&MetaNode>) -> Option<HistoryMeta> {
-    m.as_ref().map(|mm| HistoryMeta {
-        timezone: mm
-            .timezone
-            .as_ref()
-            .and_then(|tz_str| tz_str.parse::<Tz>().ok()),
-        utc_offset_seconds: mm.gmtoffset,
-    })
+fn map_meta(
+    meta: Option<&MetaNode>,
+    ctx: &mut ProjectionContext,
+) -> Result<Option<HistoryMeta>, YfError> {
+    let Some(meta) = meta else {
+        return Ok(None);
+    };
+
+    let timezone = match meta
+        .timezone
+        .as_deref()
+        .map(str::trim)
+        .filter(|timezone| !timezone.is_empty())
+    {
+        Some(timezone) => match timezone.parse::<Tz>() {
+            Ok(timezone) => Some(timezone),
+            Err(err) => {
+                ctx.omitted_present_field(
+                    "chart.meta.timezone",
+                    meta.symbol.clone(),
+                    ProjectionIssue::InvalidField {
+                        field: "timezone",
+                        details: err.to_string(),
+                    },
+                )?;
+                None
+            }
+        },
+        None => None,
+    };
+
+    Ok(Some(HistoryMeta {
+        timezone,
+        utc_offset_seconds: meta.gmtoffset,
+    }))
 }
 
 async fn cache_history_instrument(
