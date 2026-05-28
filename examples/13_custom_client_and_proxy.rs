@@ -11,8 +11,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let custom_client = Client::builder()
         // Set user agent to avoid 429 errors
         .user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
-        // You must enable cookie storage to avoid 403 Invalid Cookie errors
-        .cookie_store(true)
         .timeout(Duration::from_secs(30))
         .connect_timeout(Duration::from_secs(10))
         .pool_idle_timeout(Duration::from_secs(90))
@@ -83,7 +81,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let advanced_client = Client::builder()
         .timeout(Duration::from_mins(1))
         .connect_timeout(Duration::from_secs(15))
-        .cookie_store(true)
         .pool_idle_timeout(Duration::from_mins(2))
         .pool_max_idle_per_host(10)
         .tcp_keepalive(Some(Duration::from_mins(1)))

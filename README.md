@@ -516,6 +516,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 #### Custom Reqwest Client
 
 For full control over HTTP configuration, you can provide your own reqwest client:
+`YfClient` handles Yahoo auth cookies internally, so the custom client does not
+need `cookie_store(true)` unless your own reqwest usage requires it.
 
 ```rust
 use yfinance_rs::{YfClient, Ticker};

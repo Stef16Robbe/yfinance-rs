@@ -226,9 +226,8 @@ where
         return Ok(AuthAttempt::Success { body, url });
     }
 
-    let resp = client
-        .send_with_retry(build_request(url.clone()), config.retry_override)
-        .await?;
+    let req = client.with_auth_cookie(build_request(url.clone())).await;
+    let resp = client.send_with_retry(req, config.retry_override).await?;
 
     if !resp.status().is_success() {
         return Ok(AuthAttempt::Status {

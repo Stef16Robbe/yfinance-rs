@@ -235,64 +235,6 @@
         ]
       },
       {
-        "annualStockholdersEquity": [
-          {
-            "asOfDate": "2022-06-30",
-            "currencyCode": "USD",
-            "dataId": 23215,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "166.54B",
-              "raw": 166542000000.0
-            }
-          },
-          {
-            "asOfDate": "2023-06-30",
-            "currencyCode": "USD",
-            "dataId": 23215,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "206.22B",
-              "raw": 206223000000.0
-            }
-          },
-          {
-            "asOfDate": "2024-06-30",
-            "currencyCode": "USD",
-            "dataId": 23215,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "268.48B",
-              "raw": 268477000000.0
-            }
-          },
-          {
-            "asOfDate": "2025-06-30",
-            "currencyCode": "USD",
-            "dataId": 23215,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "343.48B",
-              "raw": 343479000000.0
-            }
-          }
-        ],
-        "meta": {
-          "symbol": [
-            "MSFT"
-          ],
-          "type": [
-            "annualStockholdersEquity"
-          ]
-        },
-        "timestamp": [
-          1656547200,
-          1688083200,
-          1719705600,
-          1751241600
-        ]
-      },
-      {
         "annualCurrentLiabilities": [
           {
             "asOfDate": "2022-06-30",
@@ -341,6 +283,64 @@
           ],
           "type": [
             "annualCurrentLiabilities"
+          ]
+        },
+        "timestamp": [
+          1656547200,
+          1688083200,
+          1719705600,
+          1751241600
+        ]
+      },
+      {
+        "annualStockholdersEquity": [
+          {
+            "asOfDate": "2022-06-30",
+            "currencyCode": "USD",
+            "dataId": 23215,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "166.54B",
+              "raw": 166542000000.0
+            }
+          },
+          {
+            "asOfDate": "2023-06-30",
+            "currencyCode": "USD",
+            "dataId": 23215,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "206.22B",
+              "raw": 206223000000.0
+            }
+          },
+          {
+            "asOfDate": "2024-06-30",
+            "currencyCode": "USD",
+            "dataId": 23215,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "268.48B",
+              "raw": 268477000000.0
+            }
+          },
+          {
+            "asOfDate": "2025-06-30",
+            "currencyCode": "USD",
+            "dataId": 23215,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "343.48B",
+              "raw": 343479000000.0
+            }
+          }
+        ],
+        "meta": {
+          "symbol": [
+            "MSFT"
+          ],
+          "type": [
+            "annualStockholdersEquity"
           ]
         },
         "timestamp": [

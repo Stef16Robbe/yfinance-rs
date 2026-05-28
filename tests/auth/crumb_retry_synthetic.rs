@@ -49,6 +49,65 @@ async fn api_fetches_cookie_and_crumb_first() {
 }
 
 #[tokio::test]
+async fn custom_client_without_cookie_store_sends_auth_cookie() {
+    let server = common::setup_server();
+    let sym = "AAPL";
+
+    let cookie = server.mock(|when, then| {
+        when.method(GET).path("/consent");
+        then.status(200).header(
+            "set-cookie",
+            "A=B; Max-Age=315360000; Domain=.yahoo.com; Path=/; Secure; SameSite=None",
+        );
+    });
+
+    let crumb = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v1/test/getcrumb")
+            .header("cookie", "A=B");
+        then.status(200).body("crumb-value");
+    });
+
+    let api = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "assetProfile,quoteType,fundProfile")
+            .query_param("crumb", "crumb-value")
+            .header("cookie", "A=B");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(common::fixture(
+                "profile_api_assetProfile-quoteType-fundProfile",
+                sym,
+                "json",
+            ));
+    });
+
+    let client = YfClient::builder()
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        .cookie_url(Url::parse(&format!("{}/consent", server.base_url())).unwrap())
+        .crumb_url(Url::parse(&format!("{}/v1/test/getcrumb", server.base_url())).unwrap())
+        .custom_client(reqwest::Client::new())
+        .build()
+        .unwrap();
+
+    let p = yfinance_rs::profile::load_profile(&client, sym)
+        .await
+        .unwrap();
+
+    cookie.assert();
+    crumb.assert();
+    api.assert();
+
+    match p {
+        Profile::Company(c) => assert_eq!(c.name, "Apple Inc."),
+        _ => panic!("expected Company"),
+    }
+}
+
+#[tokio::test]
 async fn api_retries_on_invalid_crumb_then_succeeds() {
     let server = common::setup_server();
 

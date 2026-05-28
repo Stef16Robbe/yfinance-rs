@@ -550,6 +550,8 @@ impl YfClientBuilder {
     /// This allows you to configure advanced features like custom TLS settings,
     /// connection pooling, or other reqwest-specific options. When this is set,
     /// other HTTP-related builder methods (timeout, `connect_timeout`, proxy) are ignored.
+    /// Yahoo authentication cookies are still handled by `YfClient`, so custom
+    /// clients do not need `reqwest`'s cookie store enabled.
     ///
     /// # Example
     ///

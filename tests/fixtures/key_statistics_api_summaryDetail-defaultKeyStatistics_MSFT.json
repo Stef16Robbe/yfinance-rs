@@ -56,8 +56,8 @@
             "raw": 19.33773
           },
           "forwardPE": {
-            "fmt": "22.05",
-            "raw": 22.048347
+            "fmt": "21.87",
+            "raw": 21.868649
           },
           "fundFamily": null,
           "fundInceptionDate": {},
@@ -125,8 +125,8 @@
             "raw": 2
           },
           "priceToBook": {
-            "fmt": "7.64",
-            "raw": 7.6441
+            "fmt": "7.58",
+            "raw": 7.581799
           },
           "priceToSalesTrailing12Months": {},
           "profitMargins": {
@@ -187,13 +187,13 @@
             "raw": 0.088542
           },
           "ask": {
-            "fmt": "429.98",
-            "raw": 429.98
+            "fmt": "428.00",
+            "raw": 428.0
           },
           "askSize": {
-            "fmt": "400",
-            "longFmt": "400",
-            "raw": 400
+            "fmt": "200",
+            "longFmt": "200",
+            "raw": 200
           },
           "averageDailyVolume10Day": {
             "fmt": "31.4M",
@@ -264,16 +264,16 @@
             "raw": 0.79
           },
           "forwardPE": {
-            "fmt": "22.05",
-            "raw": 22.048347
+            "fmt": "21.87",
+            "raw": 21.868649
           },
           "fromCurrency": null,
           "fullyDilutedValue": {},
           "lastMarket": null,
           "marketCap": {
-            "fmt": "3.17T",
-            "longFmt": "3,167,224,594,432",
-            "raw": 3167224594432
+            "fmt": "3.14T",
+            "longFmt": "3,141,411,012,608",
+            "raw": 3141411012608
           },
           "maxAge": 1,
           "maxSupply": {},
@@ -302,8 +302,8 @@
             "raw": 2
           },
           "priceToSalesTrailing12Months": {
-            "fmt": "9.95",
-            "raw": 9.9512825
+            "fmt": "9.87",
+            "raw": 9.870177
           },
           "qtdReturn": {},
           "regularMarketDayHigh": {
@@ -323,9 +323,9 @@
             "raw": 412.67
           },
           "regularMarketVolume": {
-            "fmt": "14.3M",
-            "longFmt": "14,303,317",
-            "raw": 14303317
+            "fmt": "15.98M",
+            "longFmt": "15,980,888",
+            "raw": 15980888
           },
           "startDate": {},
           "strikePrice": {},
@@ -342,17 +342,17 @@
             "raw": 0.008626747
           },
           "trailingPE": {
-            "fmt": "25.38",
-            "raw": 25.37887
+            "fmt": "25.17",
+            "raw": 25.172026
           },
           "twoHundredDayAverage": {
             "fmt": "459.33",
             "raw": 459.33035
           },
           "volume": {
-            "fmt": "14.3M",
-            "longFmt": "14,303,317",
-            "raw": 14303317
+            "fmt": "15.98M",
+            "longFmt": "15,980,888",
+            "raw": 15980888
           },
           "volume24Hr": {},
           "volume24HrMarketCapPercent": {},
