@@ -51,6 +51,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Option chains now route missing contract currency through the trading-currency resolver, allowing v7 quote enrichment, listing/exchange inference, and profile fallback instead of depending on already-converted quote prices.
 - Centralized Yahoo crumb-auth retries so optional- and required-crumb endpoints clear stale cached crumbs and reacquire credentials when authenticated responses return 401/403, including quote v7, options, search, screener, quoteSummary, and fundamentals-timeseries.
 - Yahoo auth now sends the stored cookie explicitly during crumb acquisition and crumb-authenticated requests, so `custom_client(reqwest::Client::new())` no longer depends on `reqwest` cookie storage.
+- Crumb acquisition now rejects non-success HTTP statuses before reading the body and trims successful crumb bodies before caching them.
 - Build Yahoo symbol path URLs with one percent-encoding helper instead of `Url::join`, preventing symbols containing URL syntax from changing the request target.
 - Expired URL cache entries are now pruned opportunistically on cache reads and writes, and stale crumb-authenticated cache keys are removed when Yahoo credentials are refreshed.
 - `Ticker`-level cache and retry settings now propagate consistently through history builders, action helpers, and profile loading inside `Ticker::info()`.

@@ -1,6 +1,6 @@
 //! Cookie & crumb acquisition for Yahoo endpoints.
 
-use crate::core::error::YfError;
+use crate::core::{error::YfError, net::status_error};
 use reqwest::{
     RequestBuilder,
     header::{COOKIE, HeaderMap, SET_COOKIE},
@@ -70,15 +70,21 @@ impl super::YfClient {
         drop(state); // release read lock before making http call
 
         let url = self.crumb_url.clone();
-        let req = self.http.get(url).header(COOKIE, cookie);
+        let req = self.http.get(url.clone()).header(COOKIE, cookie);
         let resp = self.send_with_retry(req, None).await?;
+
+        if !resp.status().is_success() {
+            return Err(status_error(resp.status(), &url));
+        }
+
         let crumb = resp.text().await?;
+        let crumb = crumb.trim();
 
         if crumb.is_empty() || crumb.contains('{') || crumb.contains('<') {
             return Err(YfError::Auth(format!("Received invalid crumb: {crumb}")));
         }
 
-        self.state.write().await.crumb = Some(crumb);
+        self.state.write().await.crumb = Some(crumb.to_owned());
         Ok(())
     }
 }
