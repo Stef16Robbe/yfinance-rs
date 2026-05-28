@@ -82,20 +82,20 @@ where
         .append_pair("period1", &start_ts.to_string())
         .append_pair("period2", &end_ts.to_string());
 
-    client.ensure_credentials().await?;
-    if let Some(crumb) = client.crumb().await {
-        url.query_pairs_mut().append_pair("crumb", &crumb);
-    }
-
     let endpoint = format!("timeseries_{endpoint_name}_{prefix}");
-    let body = crate::core::net::fetch_text_cached(
+    let (body, _) = crate::core::net::fetch_text_with_auth_retry(
         client,
-        &url,
-        cache_mode,
-        retry_override,
-        &endpoint,
-        symbol,
-        "json",
+        url,
+        crate::core::net::AuthFetchConfig {
+            auth_mode: crate::core::net::AuthMode::RequiredCrumb,
+            cache_mode,
+            retry_override,
+            endpoint: &endpoint,
+            fixture_key: symbol,
+            ext: "json",
+            retry_on_invalid_crumb_body: true,
+        },
+        |url| client.http().get(url),
     )
     .await?;
 
@@ -737,20 +737,20 @@ pub(super) async fn shares(
         .append_pair("period1", &start_ts.to_string())
         .append_pair("period2", &end_ts.to_string());
 
-    client.ensure_credentials().await?;
-    if let Some(crumb) = client.crumb().await {
-        url.query_pairs_mut().append_pair("crumb", &crumb);
-    }
-
     let endpoint = format!("timeseries_{type_key}");
-    let body = crate::core::net::fetch_text_cached(
+    let (body, _) = crate::core::net::fetch_text_with_auth_retry(
         client,
-        &url,
-        cache_mode,
-        retry_override,
-        &endpoint,
-        symbol,
-        "json",
+        url,
+        crate::core::net::AuthFetchConfig {
+            auth_mode: crate::core::net::AuthMode::RequiredCrumb,
+            cache_mode,
+            retry_override,
+            endpoint: &endpoint,
+            fixture_key: symbol,
+            ext: "json",
+            retry_on_invalid_crumb_body: true,
+        },
+        |url| client.http().get(url),
     )
     .await?;
 

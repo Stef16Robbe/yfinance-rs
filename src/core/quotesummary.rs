@@ -49,33 +49,27 @@ pub async fn fetch(
         cache_mode: CacheMode,
         retry_override: Option<&RetryConfig>,
     ) -> Result<V10Envelope, YfError> {
-        client.ensure_credentials().await?;
-
-        let crumb = client
-            .crumb()
-            .await
-            .ok_or_else(|| YfError::Auth("Crumb is not set".into()))?;
-
         let mut url = client.base_quote_api().join(symbol)?;
-        {
-            let mut qp = url.query_pairs_mut();
-            qp.append_pair("modules", modules);
-            qp.append_pair("crumb", &crumb);
-        }
+        url.query_pairs_mut().append_pair("modules", modules);
 
         // Create a sanitized key from module names for a unique fixture filename.
         let module_key = modules
             .replace(',', "-")
             .replace(|c: char| !c.is_alphanumeric() && c != '-', "");
         let fixture_endpoint = format!("{caller}_api_{module_key}");
-        let text = net::fetch_text_cached(
+        let (text, _) = net::fetch_text_with_auth_retry(
             client,
-            &url,
-            cache_mode,
-            retry_override,
-            &fixture_endpoint,
-            symbol,
-            "json",
+            url,
+            net::AuthFetchConfig {
+                auth_mode: net::AuthMode::RequiredCrumb,
+                cache_mode,
+                retry_override,
+                endpoint: &fixture_endpoint,
+                fixture_key: symbol,
+                ext: "json",
+                retry_on_invalid_crumb_body: true,
+            },
+            |url| client.http().get(url),
         )
         .await?;
 
@@ -85,35 +79,15 @@ pub async fn fetch(
         serde_json::from_str(&text).map_err(YfError::Json)
     }
 
-    for attempt in 0..=1 {
-        let env =
-            attempt_fetch(client, symbol, modules, caller, cache_mode, retry_override).await?;
+    let env = attempt_fetch(client, symbol, modules, caller, cache_mode, retry_override).await?;
 
-        if let Some(error) = env.quote_summary.as_ref().and_then(|qs| qs.error.as_ref()) {
-            let desc = error.description.to_ascii_lowercase();
-            if desc.contains("invalid crumb") && attempt == 0 {
-                if std::env::var("YF_DEBUG").ok().as_deref() == Some("1") {
-                    eprintln!("YF_DEBUG: Invalid crumb in {caller}; refreshing and retrying.");
-                }
-                #[cfg(feature = "tracing")]
-                tracing::event!(
-                    tracing::Level::WARN,
-                    "invalid crumb; refreshing and retrying"
-                );
-                client.clear_crumb().await;
-                continue;
-            }
-            #[cfg(feature = "tracing")]
-            tracing::event!(tracing::Level::ERROR, description = %error.description, "quoteSummary error");
-            return Err(YfError::Api(format!("yahoo error: {}", error.description)));
-        }
-
-        return Ok(env);
+    if let Some(error) = env.quote_summary.as_ref().and_then(|qs| qs.error.as_ref()) {
+        #[cfg(feature = "tracing")]
+        tracing::event!(tracing::Level::ERROR, description = %error.description, "quoteSummary error");
+        return Err(YfError::Api(format!("yahoo error: {}", error.description)));
     }
 
-    Err(YfError::Api(format!(
-        "{caller} API call failed after retry"
-    )))
+    Ok(env)
 }
 
 pub async fn fetch_module_result<T>(

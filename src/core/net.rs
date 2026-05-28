@@ -9,6 +9,29 @@ use crate::core::{
     client::{CacheMode, RetryConfig},
 };
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum AuthMode {
+    OptionalCrumb,
+    RequiredCrumb,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct AuthFetchConfig<'a> {
+    pub auth_mode: AuthMode,
+    pub cache_mode: CacheMode,
+    pub retry_override: Option<&'a RetryConfig>,
+    pub endpoint: &'a str,
+    pub fixture_key: &'a str,
+    pub ext: &'a str,
+    pub retry_on_invalid_crumb_body: bool,
+}
+
+enum AuthAttempt {
+    Success { body: String, url: Url },
+    Status { status: u16, url: Url },
+    InvalidCrumb,
+}
+
 /// Read the response body as text.
 /// In `test-mode`, if `YF_RECORD=1`, the body is saved as a fixture via `net_fixtures`.
 #[allow(unused_variables)]
@@ -124,4 +147,153 @@ pub async fn fetch_text_cached(
     }
 
     Ok(text)
+}
+
+pub async fn fetch_text_with_auth_retry<F>(
+    client: &YfClient,
+    base_url: Url,
+    config: AuthFetchConfig<'_>,
+    build_request: F,
+) -> Result<(String, Url), YfError>
+where
+    F: Fn(Url) -> reqwest::RequestBuilder + Send + Sync,
+{
+    match config.auth_mode {
+        AuthMode::OptionalCrumb => {
+            match fetch_text_auth_attempt(client, base_url.clone(), config, &build_request, true)
+                .await?
+            {
+                AuthAttempt::Success { body, url } => Ok((body, url)),
+                AuthAttempt::Status { status, url } if !is_auth_status(status) => {
+                    Err(status_error_code(status, &url))
+                }
+                AuthAttempt::InvalidCrumb => {
+                    retry_with_fresh_crumb(client, base_url, config, &build_request).await
+                }
+                AuthAttempt::Status { .. } => {
+                    let crumb =
+                        ensure_crumb(client, "Crumb is not set after ensuring credentials").await?;
+                    let crumb_url = url_with_crumb(base_url.clone(), &crumb);
+
+                    match fetch_text_auth_attempt(client, crumb_url, config, &build_request, true)
+                        .await?
+                    {
+                        AuthAttempt::Success { body, url } => Ok((body, url)),
+                        AuthAttempt::Status { status, url } if !is_auth_status(status) => {
+                            Err(status_error_code(status, &url))
+                        }
+                        AuthAttempt::Status { .. } | AuthAttempt::InvalidCrumb => {
+                            retry_with_fresh_crumb(client, base_url, config, &build_request).await
+                        }
+                    }
+                }
+            }
+        }
+        AuthMode::RequiredCrumb => {
+            let crumb = ensure_crumb(client, "Crumb is not set").await?;
+            let crumb_url = url_with_crumb(base_url.clone(), &crumb);
+
+            match fetch_text_auth_attempt(client, crumb_url, config, &build_request, true).await? {
+                AuthAttempt::Success { body, url } => Ok((body, url)),
+                AuthAttempt::Status { status, url } if !is_auth_status(status) => {
+                    Err(status_error_code(status, &url))
+                }
+                AuthAttempt::Status { .. } | AuthAttempt::InvalidCrumb => {
+                    retry_with_fresh_crumb(client, base_url, config, &build_request).await
+                }
+            }
+        }
+    }
+}
+
+async fn fetch_text_auth_attempt<F>(
+    client: &YfClient,
+    url: Url,
+    config: AuthFetchConfig<'_>,
+    build_request: &F,
+    detect_invalid_crumb_body: bool,
+) -> Result<AuthAttempt, YfError>
+where
+    F: Fn(Url) -> reqwest::RequestBuilder + Send + Sync,
+{
+    if config.cache_mode == CacheMode::Use
+        && let Some(body) = client.cache_get(&url).await
+    {
+        if should_retry_invalid_crumb_body(config, detect_invalid_crumb_body, &body) {
+            return Ok(AuthAttempt::InvalidCrumb);
+        }
+
+        return Ok(AuthAttempt::Success { body, url });
+    }
+
+    let resp = client
+        .send_with_retry(build_request(url.clone()), config.retry_override)
+        .await?;
+
+    if !resp.status().is_success() {
+        return Ok(AuthAttempt::Status {
+            status: resp.status().as_u16(),
+            url,
+        });
+    }
+
+    let body =
+        get_success_text(resp, &url, config.endpoint, config.fixture_key, config.ext).await?;
+
+    if should_retry_invalid_crumb_body(config, detect_invalid_crumb_body, &body) {
+        return Ok(AuthAttempt::InvalidCrumb);
+    }
+
+    if config.cache_mode != CacheMode::Bypass {
+        client.cache_put(&url, &body, None).await;
+    }
+
+    Ok(AuthAttempt::Success { body, url })
+}
+
+async fn retry_with_fresh_crumb<F>(
+    client: &YfClient,
+    base_url: Url,
+    config: AuthFetchConfig<'_>,
+    build_request: &F,
+) -> Result<(String, Url), YfError>
+where
+    F: Fn(Url) -> reqwest::RequestBuilder + Send + Sync,
+{
+    client.clear_crumb().await;
+    let crumb = ensure_crumb(client, "Crumb is not set after refreshing credentials").await?;
+    let crumb_url = url_with_crumb(base_url, &crumb);
+
+    match fetch_text_auth_attempt(client, crumb_url, config, build_request, false).await? {
+        AuthAttempt::Success { body, url } => Ok((body, url)),
+        AuthAttempt::Status { status, url } => Err(status_error_code(status, &url)),
+        AuthAttempt::InvalidCrumb => unreachable!("invalid crumb body detection is disabled"),
+    }
+}
+
+async fn ensure_crumb(client: &YfClient, missing_message: &str) -> Result<String, YfError> {
+    client.ensure_credentials().await?;
+    client
+        .crumb()
+        .await
+        .ok_or_else(|| YfError::Auth(missing_message.into()))
+}
+
+fn url_with_crumb(mut url: Url, crumb: &str) -> Url {
+    url.query_pairs_mut().append_pair("crumb", crumb);
+    url
+}
+
+fn should_retry_invalid_crumb_body(
+    config: AuthFetchConfig<'_>,
+    detect_invalid_crumb_body: bool,
+    body: &str,
+) -> bool {
+    config.retry_on_invalid_crumb_body
+        && detect_invalid_crumb_body
+        && body.to_ascii_lowercase().contains("invalid crumb")
+}
+
+const fn is_auth_status(status: u16) -> bool {
+    status == 401 || status == 403
 }

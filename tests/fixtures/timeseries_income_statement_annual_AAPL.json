@@ -452,64 +452,6 @@
         ]
       },
       {
-        "annualTaxProvision": [
-          {
-            "asOfDate": "2022-09-30",
-            "currencyCode": "USD",
-            "dataId": 20145,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "19.30B",
-              "raw": 19300000000.0
-            }
-          },
-          {
-            "asOfDate": "2023-09-30",
-            "currencyCode": "USD",
-            "dataId": 20145,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "16.74B",
-              "raw": 16741000000.0
-            }
-          },
-          {
-            "asOfDate": "2024-09-30",
-            "currencyCode": "USD",
-            "dataId": 20145,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "29.75B",
-              "raw": 29749000000.0
-            }
-          },
-          {
-            "asOfDate": "2025-09-30",
-            "currencyCode": "USD",
-            "dataId": 20145,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "20.72B",
-              "raw": 20719000000.0
-            }
-          }
-        ],
-        "meta": {
-          "symbol": [
-            "AAPL"
-          ],
-          "type": [
-            "annualTaxProvision"
-          ]
-        },
-        "timestamp": [
-          1664496000,
-          1696032000,
-          1727654400,
-          1759190400
-        ]
-      },
-      {
         "annualGrossProfit": [
           {
             "asOfDate": "2022-09-30",
@@ -558,6 +500,64 @@
           ],
           "type": [
             "annualGrossProfit"
+          ]
+        },
+        "timestamp": [
+          1664496000,
+          1696032000,
+          1727654400,
+          1759190400
+        ]
+      },
+      {
+        "annualTaxProvision": [
+          {
+            "asOfDate": "2022-09-30",
+            "currencyCode": "USD",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "19.30B",
+              "raw": 19300000000.0
+            }
+          },
+          {
+            "asOfDate": "2023-09-30",
+            "currencyCode": "USD",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "16.74B",
+              "raw": 16741000000.0
+            }
+          },
+          {
+            "asOfDate": "2024-09-30",
+            "currencyCode": "USD",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "29.75B",
+              "raw": 29749000000.0
+            }
+          },
+          {
+            "asOfDate": "2025-09-30",
+            "currencyCode": "USD",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "20.72B",
+              "raw": 20719000000.0
+            }
+          }
+        ],
+        "meta": {
+          "symbol": [
+            "AAPL"
+          ],
+          "type": [
+            "annualTaxProvision"
           ]
         },
         "timestamp": [

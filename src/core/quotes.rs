@@ -1,6 +1,5 @@
 // src/core/quotes.rs
 use serde::Deserialize;
-use url::Url;
 
 use crate::{
     YfClient, YfError,
@@ -342,94 +341,26 @@ pub async fn fetch_v7_quotes(
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
 ) -> Result<Vec<V7QuoteNode>, YfError> {
-    // Inner function to attempt the fetch, allowing for an auth retry.
-    async fn attempt_fetch(
-        client: &YfClient,
-        symbols: &[&str],
-        crumb: Option<&str>,
-        cache_mode: CacheMode,
-        retry_override: Option<&RetryConfig>,
-    ) -> Result<(String, Url, Option<u16>), YfError> {
-        let mut url = client.base_quote_v7().clone();
-        {
-            let mut qp = url.query_pairs_mut();
-            qp.append_pair("symbols", &symbols.join(","));
-            if let Some(c) = crumb {
-                qp.append_pair("crumb", c);
-            }
-        }
+    let mut url = client.base_quote_v7().clone();
+    url.query_pairs_mut()
+        .append_pair("symbols", &symbols.join(","));
+    let fixture_key = symbols.join("-");
 
-        if cache_mode == CacheMode::Use
-            && let Some(body) = client.cache_get(&url).await
-        {
-            return Ok((body, url, None));
-        }
-
-        let resp = client
-            .send_with_retry(
-                client
-                    .http()
-                    .get(url.clone())
-                    .header("accept", "application/json"),
-                retry_override,
-            )
-            .await?;
-
-        if resp.status().is_success() {
-            let body =
-                net::get_success_text(resp, &url, "quote_v7", &symbols.join("-"), "json").await?;
-            if cache_mode != CacheMode::Bypass {
-                client.cache_put(&url, &body, None).await;
-            }
-            Ok((body, url, None))
-        } else {
-            Ok((String::new(), url, Some(resp.status().as_u16())))
-        }
-    }
-
-    // First attempt, without a crumb.
-    let (body, url, maybe_status) =
-        attempt_fetch(client, symbols, None, cache_mode, retry_override).await?;
-
-    let body_to_parse = if let Some(status_code) = maybe_status {
-        // If unauthorized, get a crumb and retry.
-        if status_code == 401 || status_code == 403 {
-            client.ensure_credentials().await?;
-            let crumb = client.crumb().await.ok_or_else(|| {
-                YfError::Auth("Crumb is not set after ensuring credentials".into())
-            })?;
-
-            // Second attempt, with a crumb.
-            let (body, url, maybe_status) =
-                attempt_fetch(client, symbols, Some(&crumb), cache_mode, retry_override).await?;
-
-            if let Some(status_code) = maybe_status {
-                if status_code == 401 || status_code == 403 {
-                    client.clear_crumb().await;
-                    client.ensure_credentials().await?;
-                    let crumb = client.crumb().await.ok_or_else(|| {
-                        YfError::Auth("Crumb is not set after refreshing credentials".into())
-                    })?;
-                    let (body, url, maybe_status) =
-                        attempt_fetch(client, symbols, Some(&crumb), cache_mode, retry_override)
-                            .await?;
-
-                    if let Some(status_code) = maybe_status {
-                        return Err(net::status_error_code(status_code, &url));
-                    }
-                    body
-                } else {
-                    return Err(net::status_error_code(status_code, &url));
-                }
-            } else {
-                body
-            }
-        } else {
-            return Err(net::status_error_code(status_code, &url));
-        }
-    } else {
-        body
-    };
+    let (body_to_parse, _) = net::fetch_text_with_auth_retry(
+        client,
+        url,
+        net::AuthFetchConfig {
+            auth_mode: net::AuthMode::OptionalCrumb,
+            cache_mode,
+            retry_override,
+            endpoint: "quote_v7",
+            fixture_key: &fixture_key,
+            ext: "json",
+            retry_on_invalid_crumb_body: true,
+        },
+        |url| client.http().get(url).header("accept", "application/json"),
+    )
+    .await?;
 
     let env: V7Envelope = serde_json::from_str(&body_to_parse)?;
     let nodes = env

@@ -370,105 +370,26 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
         url: Url,
         fixture_key: &str,
     ) -> Result<(String, Url), YfError> {
-        let resp = self
-            .client
-            .send_with_retry(
+        crate::core::net::fetch_text_with_auth_retry(
+            &self.client,
+            url,
+            crate::core::net::AuthFetchConfig {
+                auth_mode: crate::core::net::AuthMode::OptionalCrumb,
+                cache_mode: CacheMode::Bypass,
+                retry_override: self.retry_override.as_ref(),
+                endpoint: "screener_predefined",
+                fixture_key,
+                ext: "json",
+                retry_on_invalid_crumb_body: true,
+            },
+            |url| {
                 self.client
                     .http()
-                    .get(url.clone())
-                    .header("accept", "application/json"),
-                self.retry_override.as_ref(),
-            )
-            .await?;
-
-        if resp.status().is_success() {
-            let body = crate::core::net::get_success_text(
-                resp,
-                &url,
-                "screener_predefined",
-                fixture_key,
-                "json",
-            )
-            .await?;
-            return Ok((body, url));
-        }
-
-        let status = resp.status().as_u16();
-        if status != 401 && status != 403 {
-            return Err(crate::core::net::status_error_code(status, &url));
-        }
-
-        self.client.ensure_credentials().await?;
-        let crumb = self
-            .client
-            .crumb()
-            .await
-            .ok_or_else(|| YfError::Auth("Crumb is not set".into()))?;
-
-        let mut url2 = url.clone();
-        url2.query_pairs_mut().append_pair("crumb", &crumb);
-        let resp = self
-            .client
-            .send_with_retry(
-                self.client
-                    .http()
-                    .get(url2.clone())
-                    .header("accept", "application/json"),
-                self.retry_override.as_ref(),
-            )
-            .await?;
-
-        if !resp.status().is_success() {
-            let retry_status = resp.status();
-            if retry_status.as_u16() != 401 && retry_status.as_u16() != 403 {
-                return Err(crate::core::net::status_error(retry_status, &url2));
-            }
-
-            self.client.clear_crumb().await;
-            self.client.ensure_credentials().await?;
-            let crumb = self
-                .client
-                .crumb()
-                .await
-                .ok_or_else(|| YfError::Auth("Crumb is not set".into()))?;
-
-            let mut url3 = url.clone();
-            url3.query_pairs_mut().append_pair("crumb", &crumb);
-            let resp = self
-                .client
-                .send_with_retry(
-                    self.client
-                        .http()
-                        .get(url3.clone())
-                        .header("accept", "application/json"),
-                    self.retry_override.as_ref(),
-                )
-                .await?;
-
-            if !resp.status().is_success() {
-                return Err(crate::core::net::status_error(resp.status(), &url3));
-            }
-
-            let body = crate::core::net::get_success_text(
-                resp,
-                &url3,
-                "screener_predefined",
-                fixture_key,
-                "json",
-            )
-            .await?;
-            return Ok((body, url3));
-        }
-
-        let body = crate::core::net::get_success_text(
-            resp,
-            &url2,
-            "screener_predefined",
-            fixture_key,
-            "json",
+                    .get(url)
+                    .header("accept", "application/json")
+            },
         )
-        .await?;
-        Ok((body, url2))
+        .await
     }
 
     async fn post_with_auth_retry(
@@ -477,99 +398,29 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
         body: &Value,
         fixture_key: &str,
     ) -> Result<String, YfError> {
-        let resp = self
-            .client
-            .send_with_retry(
+        let (body, _) = crate::core::net::fetch_text_with_auth_retry(
+            &self.client,
+            url,
+            crate::core::net::AuthFetchConfig {
+                auth_mode: crate::core::net::AuthMode::OptionalCrumb,
+                cache_mode: CacheMode::Bypass,
+                retry_override: self.retry_override.as_ref(),
+                endpoint: "screener_custom",
+                fixture_key,
+                ext: "json",
+                retry_on_invalid_crumb_body: true,
+            },
+            |url| {
                 self.client
                     .http()
-                    .post(url.clone())
+                    .post(url)
                     .header("accept", "application/json")
-                    .json(body),
-                self.retry_override.as_ref(),
-            )
-            .await?;
+                    .json(body)
+            },
+        )
+        .await?;
 
-        if resp.status().is_success() {
-            return crate::core::net::get_success_text(
-                resp,
-                &url,
-                "screener_custom",
-                fixture_key,
-                "json",
-            )
-            .await;
-        }
-
-        let status = resp.status().as_u16();
-        if status != 401 && status != 403 {
-            return Err(crate::core::net::status_error_code(status, &url));
-        }
-
-        self.client.ensure_credentials().await?;
-        let crumb = self
-            .client
-            .crumb()
-            .await
-            .ok_or_else(|| YfError::Auth("Crumb is not set".into()))?;
-
-        let mut url2 = url.clone();
-        url2.query_pairs_mut().append_pair("crumb", &crumb);
-        let resp = self
-            .client
-            .send_with_retry(
-                self.client
-                    .http()
-                    .post(url2.clone())
-                    .header("accept", "application/json")
-                    .json(body),
-                self.retry_override.as_ref(),
-            )
-            .await?;
-
-        if !resp.status().is_success() {
-            let retry_status = resp.status();
-            if retry_status.as_u16() != 401 && retry_status.as_u16() != 403 {
-                return Err(crate::core::net::status_error(retry_status, &url2));
-            }
-
-            self.client.clear_crumb().await;
-            self.client.ensure_credentials().await?;
-            let crumb = self
-                .client
-                .crumb()
-                .await
-                .ok_or_else(|| YfError::Auth("Crumb is not set".into()))?;
-
-            let mut url3 = url.clone();
-            url3.query_pairs_mut().append_pair("crumb", &crumb);
-            let resp = self
-                .client
-                .send_with_retry(
-                    self.client
-                        .http()
-                        .post(url3.clone())
-                        .header("accept", "application/json")
-                        .json(body),
-                    self.retry_override.as_ref(),
-                )
-                .await?;
-
-            if !resp.status().is_success() {
-                return Err(crate::core::net::status_error(resp.status(), &url3));
-            }
-
-            return crate::core::net::get_success_text(
-                resp,
-                &url3,
-                "screener_custom",
-                fixture_key,
-                "json",
-            )
-            .await;
-        }
-
-        crate::core::net::get_success_text(resp, &url2, "screener_custom", fixture_key, "json")
-            .await
+        Ok(body)
     }
 }
 

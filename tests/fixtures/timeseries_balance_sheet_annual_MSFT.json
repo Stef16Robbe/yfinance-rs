@@ -409,64 +409,6 @@
         ]
       },
       {
-        "annualOtherIntangibleAssets": [
-          {
-            "asOfDate": "2022-06-30",
-            "currencyCode": "USD",
-            "dataId": 23155,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "11.30B",
-              "raw": 11298000000.0
-            }
-          },
-          {
-            "asOfDate": "2023-06-30",
-            "currencyCode": "USD",
-            "dataId": 23155,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "9.37B",
-              "raw": 9366000000.0
-            }
-          },
-          {
-            "asOfDate": "2024-06-30",
-            "currencyCode": "USD",
-            "dataId": 23155,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "27.60B",
-              "raw": 27597000000.0
-            }
-          },
-          {
-            "asOfDate": "2025-06-30",
-            "currencyCode": "USD",
-            "dataId": 23155,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "22.60B",
-              "raw": 22604000000.0
-            }
-          }
-        ],
-        "meta": {
-          "symbol": [
-            "MSFT"
-          ],
-          "type": [
-            "annualOtherIntangibleAssets"
-          ]
-        },
-        "timestamp": [
-          1656547200,
-          1688083200,
-          1719705600,
-          1751241600
-        ]
-      },
-      {
         "annualTotalAssets": [
           {
             "asOfDate": "2022-06-30",
@@ -515,6 +457,64 @@
           ],
           "type": [
             "annualTotalAssets"
+          ]
+        },
+        "timestamp": [
+          1656547200,
+          1688083200,
+          1719705600,
+          1751241600
+        ]
+      },
+      {
+        "annualOtherIntangibleAssets": [
+          {
+            "asOfDate": "2022-06-30",
+            "currencyCode": "USD",
+            "dataId": 23155,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "11.30B",
+              "raw": 11298000000.0
+            }
+          },
+          {
+            "asOfDate": "2023-06-30",
+            "currencyCode": "USD",
+            "dataId": 23155,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "9.37B",
+              "raw": 9366000000.0
+            }
+          },
+          {
+            "asOfDate": "2024-06-30",
+            "currencyCode": "USD",
+            "dataId": 23155,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "27.60B",
+              "raw": 27597000000.0
+            }
+          },
+          {
+            "asOfDate": "2025-06-30",
+            "currencyCode": "USD",
+            "dataId": 23155,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "22.60B",
+              "raw": 22604000000.0
+            }
+          }
+        ],
+        "meta": {
+          "symbol": [
+            "MSFT"
+          ],
+          "type": [
+            "annualOtherIntangibleAssets"
           ]
         },
         "timestamp": [

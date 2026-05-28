@@ -106,3 +106,56 @@ async fn api_retries_on_invalid_crumb_then_succeeds() {
         _ => panic!("expected Company"),
     }
 }
+
+#[tokio::test]
+async fn api_retries_on_stale_crumb_http_status_then_succeeds() {
+    let server = common::setup_server();
+
+    let sym = "AAPL";
+    let stale = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "assetProfile,quoteType,fundProfile")
+            .query_param("crumb", "stale-crumb");
+        then.status(403).body("forbidden");
+    });
+
+    let (cookie_mock, crumb_mock) = common::mock_cookie_crumb(&server);
+
+    let ok = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "assetProfile,quoteType,fundProfile")
+            .query_param("crumb", "crumb-value");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(common::fixture(
+                "profile_api_assetProfile-quoteType-fundProfile",
+                sym,
+                "json",
+            ));
+    });
+
+    let client = YfClient::builder()
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        .cookie_url(Url::parse(&format!("{}/consent", server.base_url())).unwrap())
+        .crumb_url(Url::parse(&format!("{}/v1/test/getcrumb", server.base_url())).unwrap())
+        ._preauth("cookie", "stale-crumb")
+        .build()
+        .unwrap();
+
+    let p = yfinance_rs::profile::load_profile(&client, sym)
+        .await
+        .unwrap();
+    stale.assert();
+    cookie_mock.assert();
+    crumb_mock.assert();
+    ok.assert();
+
+    match p {
+        Profile::Company(c) => assert_eq!(c.name, "Apple Inc."),
+        _ => panic!("expected Company"),
+    }
+}

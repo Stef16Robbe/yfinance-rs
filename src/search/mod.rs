@@ -173,7 +173,6 @@ impl SearchBuilder {
     ///
     /// This method will return an error if the network request fails, the API returns a
     /// non-successful status code, or the response body cannot be parsed as a valid search result.
-    #[allow(clippy::too_many_lines)]
     pub async fn fetch(self) -> Result<SearchResponse, crate::core::YfError> {
         let mut url = self.base.clone();
         Self::append_query_params(
@@ -186,122 +185,27 @@ impl SearchBuilder {
             self.region.as_deref(),
         );
 
-        if self.cache_mode == CacheMode::Use
-            && let Some(body) = self.client.cache_get(&url).await
-        {
-            return parse_search_body(&body);
-        }
+        let (body, _) = crate::core::net::fetch_text_with_auth_retry(
+            &self.client,
+            url,
+            crate::core::net::AuthFetchConfig {
+                auth_mode: crate::core::net::AuthMode::OptionalCrumb,
+                cache_mode: self.cache_mode,
+                retry_override: self.retry_override.as_ref(),
+                endpoint: "search_v1",
+                fixture_key: &self.query,
+                ext: "json",
+                retry_on_invalid_crumb_body: true,
+            },
+            |url| {
+                self.client
+                    .http()
+                    .get(url)
+                    .header("accept", "application/json")
+            },
+        )
+        .await?;
 
-        let http = self.client.http().clone();
-        let mut resp = self
-            .client
-            .send_with_retry(
-                http.get(url.clone()).header("accept", "application/json"),
-                self.retry_override.as_ref(),
-            )
-            .await?;
-
-        if !resp.status().is_success() {
-            let code = resp.status().as_u16();
-
-            if code == 401 || code == 403 {
-                self.client.ensure_credentials().await?;
-                let crumb = self
-                    .client
-                    .crumb()
-                    .await
-                    .ok_or_else(|| crate::core::YfError::Auth("Crumb is not set".into()))?;
-
-                let mut url2 = self.base.clone();
-                Self::append_query_params(
-                    &mut url2,
-                    &self.query,
-                    self.quotes_count,
-                    self.news_count,
-                    self.lists_count,
-                    self.lang.as_deref(),
-                    self.region.as_deref(),
-                );
-                url2.query_pairs_mut().append_pair("crumb", &crumb);
-
-                resp = self
-                    .client
-                    .send_with_retry(
-                        http.get(url2.clone()).header("accept", "application/json"),
-                        self.retry_override.as_ref(),
-                    )
-                    .await?;
-
-                if !resp.status().is_success() {
-                    let retry_status = resp.status().as_u16();
-                    if retry_status != 401 && retry_status != 403 {
-                        return Err(crate::core::net::status_error_code(retry_status, &url2));
-                    }
-
-                    self.client.clear_crumb().await;
-                    self.client.ensure_credentials().await?;
-                    let crumb = self
-                        .client
-                        .crumb()
-                        .await
-                        .ok_or_else(|| crate::core::YfError::Auth("Crumb is not set".into()))?;
-
-                    let mut url3 = self.base.clone();
-                    Self::append_query_params(
-                        &mut url3,
-                        &self.query,
-                        self.quotes_count,
-                        self.news_count,
-                        self.lists_count,
-                        self.lang.as_deref(),
-                        self.region.as_deref(),
-                    );
-                    url3.query_pairs_mut().append_pair("crumb", &crumb);
-
-                    resp = self
-                        .client
-                        .send_with_retry(
-                            http.get(url3.clone()).header("accept", "application/json"),
-                            self.retry_override.as_ref(),
-                        )
-                        .await?;
-
-                    let body = crate::core::net::get_success_text(
-                        resp,
-                        &url3,
-                        "search_v1",
-                        &self.query,
-                        "json",
-                    )
-                    .await?;
-                    if self.cache_mode != CacheMode::Bypass {
-                        self.client.cache_put(&url3, &body, None).await;
-                    }
-                    return parse_search_body(&body);
-                }
-
-                let body = crate::core::net::get_success_text(
-                    resp,
-                    &url2,
-                    "search_v1",
-                    &self.query,
-                    "json",
-                )
-                .await?;
-                if self.cache_mode != CacheMode::Bypass {
-                    self.client.cache_put(&url2, &body, None).await;
-                }
-                return parse_search_body(&body);
-            }
-
-            return Err(crate::core::net::status_error_code(code, &url));
-        }
-
-        let body = crate::core::net::get_success_text(resp, &url, "search_v1", &self.query, "json")
-            .await?;
-        if self.cache_mode != CacheMode::Bypass {
-            self.client.cache_put(&url, &body, None).await;
-        }
         parse_search_body(&body)
     }
 

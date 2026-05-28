@@ -20,10 +20,9 @@ pub use model::{Address, Company, Fund, Profile};
 /// Helper to contain the API->Scrape fallback logic.
 #[cfg_attr(feature = "tracing", tracing::instrument(skip(client), err, fields(symbol = %symbol)))]
 async fn load_with_fallback(client: &YfClient, symbol: &str) -> Result<Profile, YfError> {
-    client.ensure_credentials().await?;
-
     match api::load_from_quote_summary_api(client, symbol).await {
         Ok(p) => Ok(p),
+        Err(e @ YfError::Auth(_)) => Err(e),
         Err(e) => {
             if std::env::var("YF_DEBUG").ok().as_deref() == Some("1") {
                 eprintln!("YF_DEBUG: API call failed ({e}), falling back to scrape.");
@@ -55,10 +54,7 @@ pub async fn load_profile(client: &YfClient, symbol: &str) -> Result<Profile, Yf
         use crate::core::client::ApiPreference;
         match client.api_preference() {
             ApiPreference::ApiThenScrape => load_with_fallback(client, symbol).await,
-            ApiPreference::ApiOnly => {
-                client.ensure_credentials().await?;
-                api::load_from_quote_summary_api(client, symbol).await
-            }
+            ApiPreference::ApiOnly => api::load_from_quote_summary_api(client, symbol).await,
             ApiPreference::ScrapeOnly => scrape::load_from_scrape(client, symbol).await,
         }
     }

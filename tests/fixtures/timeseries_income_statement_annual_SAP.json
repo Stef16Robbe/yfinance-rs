@@ -225,64 +225,6 @@
         ]
       },
       {
-        "annualTaxProvision": [
-          {
-            "asOfDate": "2022-12-31",
-            "currencyCode": "EUR",
-            "dataId": 20145,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "1.45B",
-              "raw": 1446000000.0
-            }
-          },
-          {
-            "asOfDate": "2023-12-31",
-            "currencyCode": "EUR",
-            "dataId": 20145,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "1.74B",
-              "raw": 1741000000.0
-            }
-          },
-          {
-            "asOfDate": "2024-12-31",
-            "currencyCode": "EUR",
-            "dataId": 20145,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "1.61B",
-              "raw": 1614000000.0
-            }
-          },
-          {
-            "asOfDate": "2025-12-31",
-            "currencyCode": "EUR",
-            "dataId": 20145,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "2.94B",
-              "raw": 2944000000.0
-            }
-          }
-        ],
-        "meta": {
-          "symbol": [
-            "SAP"
-          ],
-          "type": [
-            "annualTaxProvision"
-          ]
-        },
-        "timestamp": [
-          1672444800,
-          1703980800,
-          1735603200,
-          1767139200
-        ]
-      },
-      {
         "annualGrossProfit": [
           {
             "asOfDate": "2022-12-31",
@@ -331,6 +273,64 @@
           ],
           "type": [
             "annualGrossProfit"
+          ]
+        },
+        "timestamp": [
+          1672444800,
+          1703980800,
+          1735603200,
+          1767139200
+        ]
+      },
+      {
+        "annualTaxProvision": [
+          {
+            "asOfDate": "2022-12-31",
+            "currencyCode": "EUR",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "1.45B",
+              "raw": 1446000000.0
+            }
+          },
+          {
+            "asOfDate": "2023-12-31",
+            "currencyCode": "EUR",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "1.74B",
+              "raw": 1741000000.0
+            }
+          },
+          {
+            "asOfDate": "2024-12-31",
+            "currencyCode": "EUR",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "1.61B",
+              "raw": 1614000000.0
+            }
+          },
+          {
+            "asOfDate": "2025-12-31",
+            "currencyCode": "EUR",
+            "dataId": 20145,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "2.94B",
+              "raw": 2944000000.0
+            }
+          }
+        ],
+        "meta": {
+          "symbol": [
+            "SAP"
+          ],
+          "type": [
+            "annualTaxProvision"
           ]
         },
         "timestamp": [

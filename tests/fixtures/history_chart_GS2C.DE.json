@@ -7,56 +7,56 @@
           "adjclose": [
             {
               "adjclose": [
-                19.25,
                 19.06999969482422,
                 19.100000381469727,
                 18.88999938964844,
-                null
+                18.68000030517578,
+                18.799999237060547
               ]
             }
           ],
           "quote": [
             {
               "close": [
-                19.25,
                 19.06999969482422,
                 19.100000381469727,
                 18.88999938964844,
-                null
+                18.68000030517578,
+                18.799999237060547
               ],
               "high": [
-                19.489999771118164,
                 19.38999938964844,
                 19.1200008392334,
                 19.010000228881836,
-                18.850000381469727
+                18.850000381469727,
+                18.81999969482422
               ],
               "low": [
-                19.200000762939453,
                 18.969999313354492,
                 19.020000457763672,
                 18.799999237060547,
-                18.5
+                18.5,
+                18.530000686645508
               ],
               "open": [
-                19.38999938964844,
                 19.36000061035156,
                 19.020000457763672,
                 18.940000534057617,
-                18.850000381469727
+                18.850000381469727,
+                18.59000015258789
               ],
               "volume": [
-                7716,
                 2320,
                 1252,
                 9171,
-                8195
+                8195,
+                7317
               ]
             }
           ]
         },
         "meta": {
-          "chartPreviousClose": 19.27,
+          "chartPreviousClose": 19.25,
           "currency": "EUR",
           "currentTradingPeriod": {
             "post": {
@@ -81,7 +81,7 @@
           "dataGranularity": "1d",
           "exchangeName": "GER",
           "exchangeTimezoneName": "Europe/Berlin",
-          "fiftyTwoWeekHigh": 32.895,
+          "fiftyTwoWeekHigh": 28.405,
           "fiftyTwoWeekLow": 16.98,
           "firstTradeDate": 1198742400,
           "fullExchangeName": "XETRA",
@@ -91,11 +91,11 @@
           "longName": "GameStop Corp.",
           "priceHint": 2,
           "range": "5d",
-          "regularMarketDayHigh": 18.85,
-          "regularMarketDayLow": 18.5,
-          "regularMarketPrice": 18.68,
-          "regularMarketTime": 1779896144,
-          "regularMarketVolume": 8195,
+          "regularMarketDayHigh": 18.82,
+          "regularMarketDayLow": 18.53,
+          "regularMarketPrice": 18.8,
+          "regularMarketTime": 1779976836,
+          "regularMarketVolume": 7317,
           "shortName": "Gamestop Corp.                R",
           "symbol": "GS2C.DE",
           "timezone": "CEST",
@@ -114,11 +114,11 @@
           ]
         },
         "timestamp": [
-          1779346800,
           1779433200,
           1779692400,
           1779778800,
-          1779865200
+          1779865200,
+          1779951600
         ]
       }
     ]

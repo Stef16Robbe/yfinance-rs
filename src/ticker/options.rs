@@ -204,7 +204,6 @@ async fn fetch_options_raw(
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
 ) -> Result<(String, Url), YfError> {
-    let http = client.http().clone();
     let base = client.base_options_v7();
 
     let mut url = base.join(symbol)?;
@@ -215,90 +214,22 @@ async fn fetch_options_raw(
         }
     }
 
-    if cache_mode == CacheMode::Use
-        && let Some(body) = client.cache_get(&url).await
-    {
-        return Ok((body, url));
-    }
-
-    let req = http.get(url.clone()).header("accept", "application/json");
-    let mut resp = client.send_with_retry(req, retry_override).await?;
-
-    if resp.status().is_success() {
-        let fixture_key = date.map_or_else(|| symbol.to_string(), |d| format!("{symbol}_{d}"));
-        let body = net::get_success_text(resp, &url, "options_v7", &fixture_key, "json").await?;
-        if cache_mode != CacheMode::Bypass {
-            client.cache_put(&url, &body, None).await;
-        }
-        return Ok((body, url));
-    }
-
-    let code = resp.status().as_u16();
-    if code != 401 && code != 403 {
-        return Err(net::status_error_code(code, &url));
-    }
-
-    client.ensure_credentials().await?;
-    let crumb = client
-        .crumb()
-        .await
-        .ok_or_else(|| net::status_error_code(code, &url))?;
-
-    let mut url2 = base.join(symbol)?;
-    {
-        let mut qp = url2.query_pairs_mut();
-        if let Some(d) = date {
-            qp.append_pair("date", &d.to_string());
-        }
-        qp.append_pair("crumb", &crumb);
-    }
-
-    let req2 = http.get(url2.clone()).header("accept", "application/json");
-    resp = client.send_with_retry(req2, retry_override).await?;
-
-    if !resp.status().is_success() {
-        let retry_status = resp.status();
-        if retry_status.as_u16() != 401 && retry_status.as_u16() != 403 {
-            return Err(net::status_error(retry_status, &url2));
-        }
-
-        client.clear_crumb().await;
-        client.ensure_credentials().await?;
-        let crumb = client
-            .crumb()
-            .await
-            .ok_or_else(|| net::status_error_code(code, &url))?;
-
-        let mut url3 = base.join(symbol)?;
-        {
-            let mut qp = url3.query_pairs_mut();
-            if let Some(d) = date {
-                qp.append_pair("date", &d.to_string());
-            }
-            qp.append_pair("crumb", &crumb);
-        }
-
-        let req3 = http.get(url3.clone()).header("accept", "application/json");
-        resp = client.send_with_retry(req3, retry_override).await?;
-
-        if !resp.status().is_success() {
-            return Err(net::status_error(resp.status(), &url3));
-        }
-
-        let fixture_key = date.map_or_else(|| symbol.to_string(), |d| format!("{symbol}_{d}"));
-        let body = net::get_success_text(resp, &url3, "options_v7", &fixture_key, "json").await?;
-        if cache_mode != CacheMode::Bypass {
-            client.cache_put(&url3, &body, None).await;
-        }
-        return Ok((body, url3));
-    }
-
     let fixture_key = date.map_or_else(|| symbol.to_string(), |d| format!("{symbol}_{d}"));
-    let body = net::get_success_text(resp, &url2, "options_v7", &fixture_key, "json").await?;
-    if cache_mode != CacheMode::Bypass {
-        client.cache_put(&url2, &body, None).await;
-    }
-    Ok((body, url2))
+    net::fetch_text_with_auth_retry(
+        client,
+        url,
+        net::AuthFetchConfig {
+            auth_mode: net::AuthMode::OptionalCrumb,
+            cache_mode,
+            retry_override,
+            endpoint: "options_v7",
+            fixture_key: &fixture_key,
+            ext: "json",
+            retry_on_invalid_crumb_body: true,
+        },
+        |url| client.http().get(url).header("accept", "application/json"),
+    )
+    .await
 }
 
 /* ---------------- Minimal serde mapping for v7 options ---------------- */
