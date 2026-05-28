@@ -1,5 +1,7 @@
 mod common;
 
+#[path = "quotes/error_synthetic.rs"]
+mod quotes_error_synth;
 #[path = "quotes/names.rs"]
 mod quotes_names;
 #[path = "quotes/new_fields.rs"]

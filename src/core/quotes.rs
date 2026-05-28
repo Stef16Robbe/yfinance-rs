@@ -35,8 +35,12 @@ pub struct V7Envelope {
 #[derive(Deserialize)]
 pub struct V7QuoteResponse {
     pub(crate) result: Option<Vec<V7QuoteNode>>,
-    #[allow(dead_code)]
-    pub(crate) error: Option<serde_json::Value>,
+    pub(crate) error: Option<V7Error>,
+}
+
+#[derive(Deserialize)]
+pub struct V7Error {
+    pub(crate) description: String,
 }
 
 #[derive(Deserialize, Clone)]
@@ -368,9 +372,18 @@ pub async fn fetch_v7_quotes(
     .await?;
 
     let env: V7Envelope = serde_json::from_str(&body_to_parse)?;
-    let nodes = env
+    let quote_response = env
         .quote_response
-        .ok_or_else(|| YfError::MissingData("v7 quoteResponse missing".into()))?
+        .ok_or_else(|| YfError::MissingData("v7 quoteResponse missing".into()))?;
+    if let Some(error) = quote_response.error.as_ref() {
+        crate::core::logging::trace_error!(
+            description = %error.description,
+            "quoteResponse error"
+        );
+        return Err(YfError::Api(format!("yahoo error: {}", error.description)));
+    }
+
+    let nodes = quote_response
         .result
         .ok_or_else(|| YfError::MissingData("v7 quoteResponse.result missing".into()))?;
 
