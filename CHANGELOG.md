@@ -24,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Missing or unparseable Yahoo currency metadata no longer silently falls back to USD. Required monetary responses now return typed data errors when no valid currency can be resolved, and optional monetary fields/actions are omitted instead of fabricated.
 - `CacheMode` now has a policy-driven `Default` mode. Volatile endpoints such as quotes, options, news, and screeners bypass the response cache by default; use `CacheMode::Use` to opt them into caching.
 - Removed lossy tuple-based `Ticker::dividends()`, `Ticker::splits()`, and `Ticker::capital_gains()` helpers. Use `Ticker::actions()` and match on typed `Action` variants instead.
+- Removed the always-empty `Info::esg_scores` field. Yahoo no longer returns the backing `esgScores` module; use `Ticker::sustainability()` for explicit best-effort ESG requests.
 
 ### Added
 
@@ -36,7 +37,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Text redaction now masks crumb and auth-like query parameters after comma-separated
   Yahoo query values such as quoteSummary modules.
-- `Ticker::info()` now batches its quoteSummary modules into one request, avoids duplicate `financialData` fetches, and skips Yahoo's dead ESG module; use `Ticker::sustainability()` for an explicit ESG request.
+- `Ticker::info()` now batches its quoteSummary modules into one request, avoids duplicate `financialData` fetches, and no longer exposes an always-empty ESG field for Yahoo's dead `esgScores` module; use `Ticker::sustainability()` for explicit best-effort ESG requests.
 - `Ticker::isin()` now validates ISIN check digits and avoids raw fallback matches that are not tied to the requested symbol.
 - Holder convenience methods now request only the quoteSummary module they project instead of fetching every holder/insider module for each call.
 - `StreamMethod::Websocket` startup failures are now returned from `StreamBuilder::start().await`

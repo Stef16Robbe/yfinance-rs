@@ -156,7 +156,6 @@ pub(super) async fn fetch_info_with_diagnostics(
         calendar,
         price_target,
         recommendation_summary: rec_summary,
-        esg_scores: None,
     }))
 }
 

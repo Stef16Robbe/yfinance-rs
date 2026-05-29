@@ -101,13 +101,13 @@ impl Ticker {
         self
     }
 
-    /// Fetches a comprehensive `Info` struct containing quote, profile, analysis, and ESG data.
+    /// Fetches a comprehensive `Info` struct containing quote, profile, calendar, and analysis data.
     ///
     /// This method conveniently aggregates data from multiple endpoints into a single struct,
     /// similar to the `.info` attribute in the Python `yfinance` library. It makes several
     /// API calls concurrently to gather the data efficiently.
     ///
-    /// If a non-essential part of the data fails to load (e.g., profile or ESG scores),
+    /// If a non-essential part of the data fails to load (e.g., profile or analyst data),
     /// the corresponding fields in the `Info` struct will be `None`.
     ///
     /// # Errors
@@ -574,7 +574,7 @@ impl Ticker {
             .retry_policy(self.retry_override.clone())
     }
 
-    /// Fetches the ESG (Environmental, Social, Governance) scores for the ticker.
+    /// Fetches ESG (Environmental, Social, Governance) scores and involvement data for the ticker.
     ///
     /// # Errors
     ///
@@ -583,7 +583,7 @@ impl Ticker {
         self.esg_builder().fetch().await
     }
 
-    /// Fetches ESG scores with projection diagnostics.
+    /// Fetches ESG scores and involvement data with projection diagnostics.
     ///
     /// # Errors
     ///

@@ -173,14 +173,13 @@ async fn info_with_diagnostics_does_not_fetch_dead_esg_module() {
         .build()
         .unwrap();
 
-    let response = Ticker::new(&client, sym)
+    Ticker::new(&client, sym)
         .info_with_diagnostics()
         .await
         .unwrap();
 
     info_mock.assert();
     esg_mock.assert_calls(0);
-    assert!(response.data.esg_scores.is_none());
 }
 
 #[tokio::test]

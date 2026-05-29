@@ -4,7 +4,6 @@ pub use paft::market::options::{OptionChain, OptionContract};
 use crate::profile::Profile;
 use paft::aggregates::Snapshot;
 use paft::fundamentals::analysis::{PriceTarget, RecommendationSummary};
-use paft::fundamentals::esg::EsgScores;
 use paft::fundamentals::statements::Calendar;
 use paft::fundamentals::statistics::KeyStatistics;
 use serde::{Deserialize, Serialize};
@@ -28,6 +27,4 @@ pub struct Info {
     pub price_target: Option<PriceTarget>,
     /// Latest recommendation summary.
     pub recommendation_summary: Option<RecommendationSummary>,
-    /// ESG scores.
-    pub esg_scores: Option<EsgScores>,
 }
