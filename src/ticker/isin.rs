@@ -5,6 +5,7 @@ use crate::{
         net,
     },
 };
+use paft::domain::Isin;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -37,7 +38,7 @@ pub(super) async fn fetch_isin(
         return Ok(Some(isin));
     }
 
-    if let Some(isin) = scan_raw_body(&body) {
+    if let Some(isin) = scan_raw_body(&body, &input_norm) {
         return Ok(Some(isin));
     }
 
@@ -85,57 +86,33 @@ fn parse_as_json_value(body: &str, input_norm: &str) -> Option<String> {
 
 fn parse_as_flat_suggest(body: &str, input_norm: &str) -> Option<String> {
     if let Ok(raw_arr) = serde_json::from_str::<Vec<FlatSuggest>>(body) {
+        let allow_unscoped = raw_arr.len() == 1;
         for r in &raw_arr {
-            if let Some(isin) = r.isin.as_deref()
-                && looks_like_isin(isin)
-                && r.symbol.as_deref().map(normalize_sym) == Some(input_norm.to_string())
+            if let Some(isin) = r.isin.as_deref().and_then(validated_isin)
+                && symbol_scope_matches(r.symbol.as_deref(), input_norm, allow_unscoped)
             {
-                return Some(isin.to_uppercase());
-            }
-            if let Some(value) = r.value.as_deref() {
-                let parts: Vec<String> = value
-                    .split('|')
-                    .map(|p| p.trim().to_string())
-                    .filter(|p| !p.is_empty())
-                    .collect();
-                if let Some(isin) = pick_from_parts(&parts, input_norm) {
-                    return Some(isin);
-                }
-            }
-        }
-        for r in &raw_arr {
-            if let Some(isin) = r.isin.as_deref()
-                && looks_like_isin(isin)
-            {
-                return Some(isin.to_uppercase());
+                return Some(isin);
             }
             if let Some(value) = r.value.as_deref()
-                && let Some(tok) = value
-                    .split('|')
-                    .map(str::trim)
-                    .find(|tok| looks_like_isin(tok))
+                && let Some(isin) = pick_from_pipe_value(value, input_norm)
             {
-                return Some((*tok).to_uppercase());
+                return Some(isin);
             }
         }
     }
     None
 }
 
-fn scan_raw_body(body: &str) -> Option<String> {
-    let mut token = String::new();
-    for ch in body.chars() {
-        if ch.is_ascii_alphanumeric() {
-            token.push(ch);
-            if token.len() > 12 {
-                token.remove(0);
-            }
-            if token.len() == 12 && looks_like_isin(&token) {
-                crate::core::logging::trace_debug!(isin = %token, "fallback raw scan found ISIN");
-                return Some(token.to_uppercase());
-            }
-        } else {
-            token.clear();
+fn scan_raw_body(body: &str, input_norm: &str) -> Option<String> {
+    for token in body.split(['"', '\'', ',', '(', ')', '[', ']', ';']) {
+        if token.contains('|')
+            && let Some(isin) = pick_from_pipe_value(token, input_norm)
+        {
+            crate::core::logging::trace_debug!(
+                isin = %isin,
+                "fallback raw scan found symbol-matched ISIN"
+            );
+            return Some(isin);
         }
     }
     None
@@ -180,20 +157,20 @@ fn extract_from_json_value(v: &serde_json::Value, target_norm: &str) -> Option<S
 
     for arr in arrays {
         if let Some(a) = arr.as_array() {
+            let allow_unscoped = a.len() == 1;
             for item in a {
                 if let Some(obj) = item.as_object() {
+                    let symbol = obj
+                        .get("Symbol")
+                        .and_then(|x| x.as_str())
+                        .or_else(|| obj.get("symbol").and_then(|x| x.as_str()));
+
                     for k in ["Isin", "isin", "ISIN"] {
-                        if let Some(isin_val) = obj.get(k).and_then(|x| x.as_str())
-                            && looks_like_isin(isin_val)
+                        if let Some(isin) =
+                            obj.get(k).and_then(|x| x.as_str()).and_then(validated_isin)
+                            && symbol_scope_matches(symbol, target_norm, allow_unscoped)
                         {
-                            let sym = obj
-                                .get("Symbol")
-                                .and_then(|x| x.as_str())
-                                .or_else(|| obj.get("symbol").and_then(|x| x.as_str()))
-                                .unwrap_or("");
-                            if sym.is_empty() || normalize_sym(sym) == target_norm {
-                                return Some(isin_val.to_uppercase());
-                            }
+                            return Some(isin);
                         }
                     }
 
@@ -202,28 +179,16 @@ fn extract_from_json_value(v: &serde_json::Value, target_norm: &str) -> Option<S
                         .and_then(|x| x.as_str())
                         .or_else(|| obj.get("value").and_then(|x| x.as_str()))
                         .unwrap_or("");
-                    if !value_str.is_empty() {
-                        let parts: Vec<String> = value_str
-                            .split('|')
-                            .map(|p| p.trim().to_string())
-                            .filter(|p| !p.is_empty())
-                            .collect();
-                        if let Some(isin) = pick_from_parts(&parts, target_norm) {
-                            return Some(isin);
-                        }
+                    if !value_str.is_empty()
+                        && let Some(isin) = pick_from_pipe_value(value_str, target_norm)
+                    {
+                        return Some(isin);
                     }
 
-                    if let Some(sym) = obj
-                        .get("Symbol")
-                        .and_then(|x| x.as_str())
-                        .or_else(|| obj.get("symbol").and_then(|x| x.as_str()))
-                        && normalize_sym(sym) == target_norm
-                    {
+                    if symbol.is_some_and(|sym| normalize_sym(sym) == target_norm) {
                         for (_k, v) in obj {
-                            if let Some(s) = v.as_str()
-                                && looks_like_isin(s)
-                            {
-                                return Some(s.to_uppercase());
+                            if let Some(isin) = v.as_str().and_then(validated_isin) {
+                                return Some(isin);
                             }
                         }
                     }
@@ -245,31 +210,27 @@ fn normalize_sym(s: &str) -> String {
     t.to_ascii_lowercase()
 }
 
-fn looks_like_isin(s: &str) -> bool {
-    let t = s.trim();
-    if t.len() != 12 {
-        return false;
-    }
-    let b = t.as_bytes();
-    if !(b[0].is_ascii_alphabetic() && b[1].is_ascii_alphabetic()) {
-        return false;
-    }
-    if !t[2..11].chars().all(|c| c.is_ascii_alphanumeric()) {
-        return false;
-    }
-    b[11].is_ascii_digit()
+fn symbol_scope_matches(symbol: Option<&str>, target_norm: &str, allow_unscoped: bool) -> bool {
+    symbol
+        .filter(|symbol| !symbol.trim().is_empty())
+        .map_or(allow_unscoped, |symbol| {
+            normalize_sym(symbol) == target_norm
+        })
 }
 
-fn pick_from_parts(parts: &[String], target_norm: &str) -> Option<String> {
-    if let Some(first) = parts.first()
-        && normalize_sym(first) == target_norm
-        && let Some(isin) = parts
-            .iter()
-            .map(std::string::String::as_str)
-            .find(|s| looks_like_isin(s))
-    {
-        return Some(isin.to_uppercase());
+fn validated_isin(candidate: &str) -> Option<String> {
+    Isin::new(candidate).ok().map(String::from)
+}
+
+fn pick_from_pipe_value(value: &str, target_norm: &str) -> Option<String> {
+    let mut parts = value
+        .split('|')
+        .map(str::trim)
+        .filter(|part| !part.is_empty());
+    let first = parts.next()?;
+    if normalize_sym(first) != target_norm {
+        return None;
     }
 
-    None
+    parts.find_map(validated_isin)
 }
