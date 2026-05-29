@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::{fmt, marker::PhantomData};
 
 use paft::domain::AssetKind;
 use serde::Serialize;
@@ -130,14 +130,36 @@ impl ResultOffset {
 }
 
 /// A finite numeric filter value.
+///
+/// Use [`ScreenerNumber::new`] for floating-point values. Integer values can be
+/// passed directly to numeric field builders.
+#[derive(Clone, Copy, PartialEq)]
+pub struct ScreenerNumber(ScreenerNumberKind);
+
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum ScreenerNumber {
-    /// Finite floating-point filter value.
-    Float(f64),
-    /// Unsigned integer filter value.
+enum ScreenerNumberKind {
+    Float(FiniteF64),
     Unsigned(u64),
-    /// Signed integer filter value.
     Signed(i64),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct FiniteF64(f64);
+
+impl FiniteF64 {
+    fn new(value: f64) -> Result<Self, YfError> {
+        if !value.is_finite() {
+            return Err(YfError::InvalidParams(
+                "screener numeric value must be finite".into(),
+            ));
+        }
+
+        Ok(Self(value))
+    }
+
+    fn into_json_number(self) -> serde_json::Number {
+        serde_json::Number::from_f64(self.0).expect("FiniteF64 stores finite values")
+    }
 }
 
 impl ScreenerNumber {
@@ -147,46 +169,49 @@ impl ScreenerNumber {
     ///
     /// Returns `YfError::InvalidParams` for `NaN` or infinite values.
     pub fn new(value: f64) -> Result<Self, YfError> {
-        if !value.is_finite() {
-            return Err(YfError::InvalidParams(
-                "screener numeric value must be finite".into(),
-            ));
-        }
-        Ok(Self::Float(value))
+        Ok(Self(ScreenerNumberKind::Float(FiniteF64::new(value)?)))
     }
 
     fn to_value(self) -> Value {
-        match self {
-            Self::Float(value) => {
-                Value::Number(serde_json::Number::from_f64(value).expect("finite number"))
-            }
-            Self::Unsigned(value) => Value::Number(serde_json::Number::from(value)),
-            Self::Signed(value) => Value::Number(serde_json::Number::from(value)),
+        match self.0 {
+            ScreenerNumberKind::Float(value) => Value::Number(value.into_json_number()),
+            ScreenerNumberKind::Unsigned(value) => Value::Number(serde_json::Number::from(value)),
+            ScreenerNumberKind::Signed(value) => Value::Number(serde_json::Number::from(value)),
+        }
+    }
+}
+
+impl fmt::Debug for ScreenerNumber {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.0 {
+            ScreenerNumberKind::Float(value) => f.debug_tuple("Float").field(&value.0).finish(),
+            ScreenerNumberKind::Unsigned(value) => f.debug_tuple("Unsigned").field(&value).finish(),
+            ScreenerNumberKind::Signed(value) => f.debug_tuple("Signed").field(&value).finish(),
         }
     }
 }
 
 impl From<u32> for ScreenerNumber {
     fn from(value: u32) -> Self {
-        Self::Unsigned(u64::from(value))
+        Self(ScreenerNumberKind::Unsigned(u64::from(value)))
     }
 }
 
 impl From<i32> for ScreenerNumber {
     fn from(value: i32) -> Self {
-        Self::Signed(i64::from(value))
+        Self(ScreenerNumberKind::Signed(i64::from(value)))
     }
 }
 
 impl From<u64> for ScreenerNumber {
     fn from(value: u64) -> Self {
-        Self::Unsigned(value)
+        Self(ScreenerNumberKind::Unsigned(value))
     }
 }
 
 impl From<i64> for ScreenerNumber {
     fn from(value: i64) -> Self {
-        Self::Signed(value)
+        Self(ScreenerNumberKind::Signed(value))
     }
 }
 
@@ -892,6 +917,19 @@ mod tests {
     fn and_rejects_empty_or_single_operand() {
         assert!(EquityQuery::and(Vec::<EquityQuery>::new()).is_err());
         assert!(EquityQuery::and([equity_fields::INTRADAY_PRICE.gt(1)]).is_err());
+    }
+
+    #[test]
+    fn screener_number_serializes_validated_float() {
+        let query = equity_fields::INTRADAY_PRICE.gt(ScreenerNumber::new(12.5).unwrap());
+
+        assert_eq!(
+            query.into_wire_value(),
+            json!({
+                "operator": "GT",
+                "operands": ["intradayprice", 12.5]
+            })
+        );
     }
 
     #[test]

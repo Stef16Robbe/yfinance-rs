@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Public builder constructors now consistently borrow `&YfClient`, including
   `QuotesBuilder::new`, and builder execution methods borrow the configured
   builder instead of consuming it.
+- `ScreenerNumber` is now an opaque validated value. Floating-point values must
+  be constructed with `ScreenerNumber::new`, while integer values still use the
+  existing `From` conversions.
 - `ProjectionIssue::MissingRequiredFields` now owns `Vec<&'static str>` instead
   of requiring a static field slice.
 - `StreamBuilder::start()` is now async. In `StreamMethod::Websocket` mode it waits for the
@@ -37,6 +40,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - `DownloadBuilder` best-effort batches now drop only the symbol whose chart metadata lacks
   a usable instrument kind and report a diagnostic, instead of failing the whole batch.
+- `ScreenerNumber` no longer exposes public enum variants that can bypass
+  finite-float validation and panic during screener query serialization.
 - Text redaction now masks crumb and auth-like query parameters after comma-separated
   Yahoo query values such as quoteSummary modules.
 - `Ticker::info()` now batches its quoteSummary modules into one request, avoids duplicate `financialData` fetches, and no longer exposes an always-empty ESG field for Yahoo's dead `esgScores` module; use `Ticker::sustainability()` for explicit best-effort ESG requests.
