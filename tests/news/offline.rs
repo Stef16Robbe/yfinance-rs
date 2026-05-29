@@ -2,7 +2,7 @@ use httpmock::{Method::POST, MockServer};
 use serde_json::json;
 use std::time::Duration;
 use url::Url;
-use yfinance_rs::{CacheMode, NewsTab, Ticker, YfClient};
+use yfinance_rs::{CacheMode, NewsTab, ProjectionIssue, Ticker, YfClient, YfError, YfWarning};
 
 fn fixture(endpoint: &str, symbol: &str) -> String {
     crate::common::fixture(endpoint, symbol, "json")
@@ -206,4 +206,103 @@ async fn explicit_news_cache_mode_uses_body_aware_response_cache() {
 
     latest.assert_calls(1);
     shorter.assert_calls(1);
+}
+
+#[tokio::test]
+async fn malformed_news_stream_items_are_dropped_with_diagnostics() {
+    let server = MockServer::start();
+    let sym = "AAPL";
+    let expected_payload = json!({
+        "serviceConfig": {
+            "snippetCount": 10,
+            "s": [sym]
+        }
+    });
+    let body = r#"{
+      "data": {
+        "tickerStream": {
+          "stream": [
+            {
+              "id": 42,
+              "content": {
+                "title": "Bad id",
+                "pubDate": "2025-01-01T00:00:00Z"
+              }
+            },
+            {
+              "content": {
+                "title": "Missing id",
+                "pubDate": "2025-01-01T00:00:00Z"
+              }
+            },
+            {
+              "id": "valid-news",
+              "content": {
+                "title": "Valid headline",
+                "pubDate": "2025-01-01T00:00:00Z",
+                "provider": {
+                  "displayName": "Reuters"
+                },
+                "canonicalUrl": {
+                  "url": "https://example.com/aapl"
+                }
+              }
+            }
+          ]
+        }
+      }
+    }"#;
+
+    let mock = server.mock(|when, then| {
+        when.method(POST)
+            .path("/xhr/ncp")
+            .query_param("queryRef", "latestNews")
+            .query_param("serviceKey", "ncp_fin")
+            .json_body(expected_payload);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let client = YfClient::builder()
+        .base_news(Url::parse(&server.base_url()).unwrap())
+        .build()
+        .unwrap();
+    let ticker = Ticker::new(&client, sym);
+
+    let response = ticker
+        .news_builder()
+        .fetch_with_diagnostics()
+        .await
+        .unwrap();
+
+    assert_eq!(response.data.len(), 1);
+    assert_eq!(response.data[0].uuid, "valid-news");
+    assert_eq!(response.data[0].title, "Valid headline");
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::DroppedItem {
+            endpoint: "news",
+            item: "news_article",
+            key: Some(key),
+            reason: ProjectionIssue::InvalidField {
+                field: "article",
+                ..
+            },
+        } if key == "stream[0]"
+    )));
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::DroppedItem {
+            endpoint: "news",
+            item: "news_article",
+            key: Some(key),
+            reason: ProjectionIssue::MissingRequiredField { field: "id" },
+        } if key == "stream[1]"
+    )));
+
+    let err = ticker.news_builder().strict().fetch().await.unwrap_err();
+
+    mock.assert_calls(2);
+    assert!(matches!(err, YfError::DataQuality(_)));
 }

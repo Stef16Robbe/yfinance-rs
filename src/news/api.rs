@@ -1,4 +1,5 @@
 use serde::Serialize;
+use serde_json::Value;
 
 use crate::{
     core::{
@@ -72,16 +73,44 @@ pub(super) async fn fetch_news(
         .unwrap_or_default();
 
     let mut results = Vec::new();
-    for raw_item in articles {
-        let key = Some(raw_item.id.clone());
+    for (idx, raw_item) in articles.into_iter().enumerate() {
+        let raw_key = Some(news_stream_item_diag_key(&raw_item, idx));
+        let raw_item = match serde_json::from_value::<wire::StreamItem>(raw_item) {
+            Ok(raw_item) => raw_item,
+            Err(err) => {
+                ctx.dropped_item(
+                    "news_article",
+                    raw_key.clone(),
+                    ProjectionIssue::InvalidField {
+                        field: "article",
+                        details: err.to_string(),
+                    },
+                )?;
+                continue;
+            }
+        };
         if raw_item.ad.is_some() {
             ctx.dropped_item(
                 "news_article",
-                key.clone(),
+                raw_key.clone(),
                 ProjectionIssue::ProviderUnavailable { feature: "article" },
             )?;
             continue;
         }
+
+        let Some(id) = raw_item
+            .id
+            .map(|id| id.trim().to_string())
+            .filter(|id| !id.is_empty())
+        else {
+            ctx.dropped_item(
+                "news_article",
+                raw_key,
+                ProjectionIssue::MissingRequiredField { field: "id" },
+            )?;
+            continue;
+        };
+        let key = Some(id.clone());
 
         let Some(content) = raw_item.content else {
             ctx.dropped_item(
@@ -138,7 +167,7 @@ pub(super) async fn fetch_news(
         };
 
         results.push(NewsArticle {
-            uuid: raw_item.id,
+            uuid: id,
             title,
             publisher: content.provider.and_then(|p| p.display_name),
             link: content.canonical_url.and_then(|u| u.url),
@@ -148,4 +177,13 @@ pub(super) async fn fetch_news(
     }
 
     Ok(ctx.finish(results))
+}
+
+fn news_stream_item_diag_key(value: &Value, idx: usize) -> String {
+    value
+        .get("id")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|id| !id.is_empty())
+        .map_or_else(|| format!("stream[{idx}]"), ToString::to_string)
 }

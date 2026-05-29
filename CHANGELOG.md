@@ -67,6 +67,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Holder list projections now parse rows item-by-item, so one structurally malformed ownership, insider transaction, or insider roster row no longer aborts valid siblings in best-effort mode.
 - Search projection now parses quote results item-by-item, so one structurally malformed search quote no longer aborts valid sibling results in best-effort mode.
 - Screener projection now parses quote results item-by-item, so one structurally malformed screener quote no longer aborts valid sibling results in best-effort mode.
+- News projection now parses stream entries item-by-item, so one structurally malformed article no longer aborts valid sibling articles in best-effort mode.
 - Fundamentals timeseries projections now diagnose malformed values item-by-item instead of dropping every period for the affected field.
 - Missing or invalid Yahoo timestamps no longer become Unix epoch/default datetimes in quote, history, news, holder, analyst, calendar, and fundamentals mappings.
 - Missing quote/search/screener/download instrument kinds no longer default to equity; provider asset-kind metadata is required where the public model needs an instrument.
