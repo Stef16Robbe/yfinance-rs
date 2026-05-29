@@ -5,7 +5,7 @@ use crate::{
     DataQuality, ProjectionIssue, YfClient, YfError, YfResponse,
     core::{
         ProjectionContext,
-        client::{CacheEndpoint, CacheMode, RetryConfig, SymbolEndpoint},
+        client::{CacheEndpoint, CacheMode, RetryConfig, SymbolEndpoint, normalize_symbol},
         conversions::{string_to_asset_kind, string_to_exchange},
         currency_resolver::{
             CurrencyHints, CurrencyKind, ResolvedCurrencyUnit, TradingCurrencyEvidence,
@@ -29,8 +29,9 @@ pub async fn expiration_dates(
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
 ) -> Result<Vec<i64>, YfError> {
+    let symbol = normalize_symbol(symbol)?;
     let (body, _used_url) =
-        fetch_options_raw(client, symbol, None, cache_mode, retry_override).await?;
+        fetch_options_raw(client, &symbol, None, cache_mode, retry_override).await?;
     let env: OptEnvelope = serde_json::from_str(&body).map_err(YfError::Json)?;
 
     let first = env
@@ -71,9 +72,10 @@ pub async fn option_chain_with_diagnostics(
     retry_override: Option<&RetryConfig>,
     data_quality: DataQuality,
 ) -> Result<YfResponse<OptionChain>, YfError> {
+    let symbol = normalize_symbol(symbol)?;
     let mut ctx = ProjectionContext::new("options", data_quality);
     let (body, used_url) =
-        fetch_options_raw(client, symbol, date, cache_mode, retry_override).await?;
+        fetch_options_raw(client, &symbol, date, cache_mode, retry_override).await?;
     let env: OptEnvelope = serde_json::from_str(&body).map_err(YfError::Json)?;
 
     let first = env
@@ -85,7 +87,7 @@ pub async fn option_chain_with_diagnostics(
     if let Some(quote) = first.quote.as_ref() {
         client
             .store_currency_hints(
-                symbol,
+                &symbol,
                 CurrencyHints::from_options_quote(
                     quote.currency.as_deref(),
                     quote.exchange.as_deref(),
@@ -115,7 +117,7 @@ pub async fn option_chain_with_diagnostics(
 
     let currency = match client
         .resolve_trading_currency_unit(
-            symbol,
+            &symbol,
             None,
             TradingCurrencyEvidence::OptionsQuote(currency_from_response.as_deref()),
             cache_mode,
@@ -124,13 +126,13 @@ pub async fn option_chain_with_diagnostics(
         .await
     {
         Ok(currency) => {
-            ctx.currency_resolution(client, symbol, CurrencyKind::Trading)
+            ctx.currency_resolution(client, &symbol, CurrencyKind::Trading)
                 .await?;
             Some(currency)
         }
         Err(err) => {
             crate::core::logging::trace_debug!(
-                symbol,
+                symbol = %symbol,
                 error = %err,
                 "failed to resolve option-chain trading currency"
             );
@@ -142,7 +144,7 @@ pub async fn option_chain_with_diagnostics(
     let currency_issue = currency
         .is_none()
         .then(|| currency_projection_issue(currency_from_response.as_deref()));
-    let underlying = underlying_instrument(client, symbol, underlying_from_response).await?;
+    let underlying = underlying_instrument(client, &symbol, underlying_from_response).await?;
 
     let mut contracts = Vec::new();
     project_option_side(
@@ -473,7 +475,8 @@ async fn fetch_options_raw(
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
 ) -> Result<(String, Url), YfError> {
-    let mut url = client.symbol_url(SymbolEndpoint::OptionsV7, symbol)?;
+    let symbol = normalize_symbol(symbol)?;
+    let mut url = client.symbol_url(SymbolEndpoint::OptionsV7, &symbol)?;
     {
         let mut qp = url.query_pairs_mut();
         if let Some(d) = date {
@@ -481,7 +484,7 @@ async fn fetch_options_raw(
         }
     }
 
-    let fixture_key = date.map_or_else(|| symbol.to_string(), |d| format!("{symbol}_{d}"));
+    let fixture_key = date.map_or_else(|| symbol.clone(), |d| format!("{symbol}_{d}"));
     net::fetch_text_with_auth_retry(
         client,
         url,

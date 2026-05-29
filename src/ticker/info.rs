@@ -1,7 +1,7 @@
 use crate::{
     DataQuality, YfClient, YfError, YfResponse, analysis,
     core::ProjectionContext,
-    core::client::{CacheMode, RetryConfig},
+    core::client::{CacheMode, RetryConfig, normalize_symbol},
     esg, fundamentals,
     profile::Profile,
     ticker::Info,
@@ -69,6 +69,7 @@ pub(super) async fn fetch_info_with_diagnostics(
     retry_override: Option<&RetryConfig>,
     data_quality: DataQuality,
 ) -> Result<YfResponse<Info>, YfError> {
+    let symbol = normalize_symbol(symbol)?;
     let mut ctx = ProjectionContext::new("info", data_quality);
     let (
         quote,
@@ -80,7 +81,7 @@ pub(super) async fn fetch_info_with_diagnostics(
         calendar,
     ) = Box::pin(fetch_info_parts(
         client,
-        symbol,
+        &symbol,
         cache_mode,
         retry_override,
         data_quality,
@@ -90,13 +91,14 @@ pub(super) async fn fetch_info_with_diagnostics(
         &mut ctx,
         quote_summary_key_statistics,
         "key_statistics",
-        symbol,
+        &symbol,
     )?;
-    let profile = log_err_async(&mut ctx, profile, "profile", symbol)?;
-    let price_target = log_response_async(&mut ctx, price_target, "price_target", symbol)?;
-    let rec_summary = log_response_async(&mut ctx, rec_summary, "recommendations_summary", symbol)?;
-    let esg_summary = log_response_async(&mut ctx, esg_summary, "esg_scores", symbol)?;
-    let calendar = log_response_async(&mut ctx, calendar, "calendar", symbol)?;
+    let profile = log_err_async(&mut ctx, profile, "profile", &symbol)?;
+    let price_target = log_response_async(&mut ctx, price_target, "price_target", &symbol)?;
+    let rec_summary =
+        log_response_async(&mut ctx, rec_summary, "recommendations_summary", &symbol)?;
+    let esg_summary = log_response_async(&mut ctx, esg_summary, "esg_scores", &symbol)?;
+    let calendar = log_response_async(&mut ctx, calendar, "calendar", &symbol)?;
 
     let key_statistics = quote.to_key_statistics_with_context(&mut ctx)?;
     let key_statistics = match quote_summary_key_statistics {

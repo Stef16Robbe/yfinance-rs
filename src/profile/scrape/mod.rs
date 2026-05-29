@@ -3,7 +3,7 @@
 use crate::{
     YfClient, YfError,
     core::{
-        client::{CacheEndpoint, CacheMode, RetryConfig, SymbolEndpoint},
+        client::{CacheEndpoint, CacheMode, RetryConfig, SymbolEndpoint, normalize_symbol},
         currency_resolver::CurrencyHints,
     },
 };
@@ -26,10 +26,11 @@ pub async fn load_from_scrape(
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
 ) -> Result<Profile, YfError> {
-    let mut url = client.symbol_url(SymbolEndpoint::Quote, symbol)?;
+    let symbol = normalize_symbol(symbol)?;
+    let mut url = client.symbol_url(SymbolEndpoint::Quote, &symbol)?;
     {
         let mut qp = url.query_pairs_mut();
-        qp.append_pair("p", symbol);
+        qp.append_pair("p", &symbol);
     }
 
     let body = crate::core::net::fetch_text_cached(
@@ -40,7 +41,7 @@ pub async fn load_from_scrape(
             cache_mode,
             retry_override,
             endpoint: "profile_html",
-            fixture_key: symbol,
+            fixture_key: &symbol,
             ext: "html",
         },
     )
@@ -48,13 +49,13 @@ pub async fn load_from_scrape(
 
     #[cfg(feature = "debug-dumps")]
     {
-        let _ = debug_dump_html(symbol, &body);
+        let _ = debug_dump_html(&symbol, &body);
     }
 
     let json_str = extract_bootstrap_json(&body)?;
     #[cfg(feature = "debug-dumps")]
     {
-        let _ = debug_dump_extracted_json(symbol, &json_str);
+        let _ = debug_dump_extracted_json(&symbol, &json_str);
     }
 
     let boot: Bootstrap = serde_json::from_str(&json_str).map_err(YfError::Json)?;
@@ -71,7 +72,7 @@ pub async fn load_from_scrape(
                 .as_ref()
                 .and_then(|p| p.long_name.clone().or_else(|| p.short_name.clone()))
         })
-        .unwrap_or_else(|| symbol.to_string());
+        .unwrap_or_else(|| symbol.clone());
 
     let inferred_kind = if let Some(fp) = store.fund_profile.as_ref() {
         if fp.legal_type.as_deref() == Some("Mutual Fund") {
@@ -113,7 +114,7 @@ pub async fn load_from_scrape(
             let country = sp.country.clone();
             client
                 .store_currency_hints(
-                    symbol,
+                    &symbol,
                     CurrencyHints::from_profile(
                         country.as_deref(),
                         exchange,
@@ -152,7 +153,7 @@ pub async fn load_from_scrape(
                 .and_then(|q| q.exchange.as_deref());
             client
                 .store_currency_hints(
-                    symbol,
+                    &symbol,
                     CurrencyHints::from_profile(None, exchange, Some(fund_quote_kind.quote_type())),
                 )
                 .await;

@@ -1,6 +1,9 @@
 use crate::{
     YfClient, YfError,
-    core::{client::RetryConfig, net},
+    core::{
+        client::{RetryConfig, normalize_symbol},
+        net,
+    },
 };
 use serde::Deserialize;
 
@@ -19,11 +22,12 @@ pub(super) async fn fetch_isin(
     symbol: &str,
     retry_override: Option<&RetryConfig>,
 ) -> Result<Option<String>, YfError> {
-    let Some(body) = fetch_isin_body(client, symbol, retry_override).await? else {
+    let symbol = normalize_symbol(symbol)?;
+    let Some(body) = fetch_isin_body(client, &symbol, retry_override).await? else {
         return Ok(None);
     };
 
-    let input_norm = normalize_sym(symbol);
+    let input_norm = normalize_sym(&symbol);
 
     if let Some(isin) = parse_as_json_value(&body, &input_norm) {
         return Ok(Some(isin));
@@ -46,10 +50,11 @@ async fn fetch_isin_body(
     symbol: &str,
     retry_override: Option<&RetryConfig>,
 ) -> Result<Option<String>, YfError> {
+    let symbol = normalize_symbol(symbol)?;
     let mut url = client.base_insider_search().clone();
     url.query_pairs_mut()
         .append_pair("max_results", "5")
-        .append_pair("query", symbol);
+        .append_pair("query", &symbol);
 
     let req = client.http().get(url.clone());
     let resp = client.send_with_retry(req, retry_override).await?;
@@ -59,7 +64,7 @@ async fn fetch_isin_body(
     }
 
     Ok(Some(
-        net::get_text(resp, "isin_search", symbol, "json").await?,
+        net::get_text(resp, "isin_search", &symbol, "json").await?,
     ))
 }
 

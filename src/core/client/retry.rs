@@ -1,3 +1,7 @@
+use crate::core::error::YfError;
+
+const MAX_RETRIES: u32 = 100;
+
 /// Specifies the backoff strategy for retrying failed requests.
 #[derive(Clone, Debug)]
 pub enum Backoff {
@@ -17,6 +21,25 @@ pub enum Backoff {
     },
 }
 
+impl Backoff {
+    /// Validates that this backoff strategy can be used without panicking during retry scheduling.
+    ///
+    /// # Errors
+    ///
+    /// Returns `YfError::InvalidParams` when exponential backoff has a non-finite or
+    /// non-positive factor.
+    pub fn validate(&self) -> Result<(), YfError> {
+        match self {
+            Self::Exponential { factor, .. } if !factor.is_finite() || *factor <= 0.0 => {
+                Err(YfError::InvalidParams(
+                    "retry exponential backoff factor must be finite and greater than zero".into(),
+                ))
+            }
+            Self::Fixed(_) | Self::Exponential { .. } => Ok(()),
+        }
+    }
+}
+
 /// Configuration for the automatic retry mechanism.
 #[derive(Clone, Debug)]
 pub struct RetryConfig {
@@ -32,6 +55,35 @@ pub struct RetryConfig {
     pub retry_on_timeout: bool,
     /// Whether to retry on connection errors.
     pub retry_on_connect: bool,
+}
+
+impl RetryConfig {
+    /// Highest accepted retry count for enabled retry policies.
+    pub const MAX_RETRIES: u32 = MAX_RETRIES;
+
+    /// Validates that this retry policy can be used safely.
+    ///
+    /// Disabled retry policies skip retry-specific validation because the retry
+    /// fields are not observed while sending requests.
+    ///
+    /// # Errors
+    ///
+    /// Returns `YfError::InvalidParams` when an enabled policy has too many
+    /// retries or an invalid backoff strategy.
+    pub fn validate(&self) -> Result<(), YfError> {
+        if !self.enabled {
+            return Ok(());
+        }
+
+        if self.max_retries > Self::MAX_RETRIES {
+            return Err(YfError::InvalidParams(format!(
+                "retry max_retries cannot exceed {}",
+                Self::MAX_RETRIES
+            )));
+        }
+
+        self.backoff.validate()
+    }
 }
 
 impl Default for RetryConfig {

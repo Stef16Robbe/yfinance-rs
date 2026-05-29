@@ -40,6 +40,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   client instrument cache.
 - Exponential retry backoff now uses real random jitter instead of a deterministic
   attempt-number formula, avoiding synchronized retries across clients.
+- Public retry policies, stream intervals, and user-provided symbols are now validated before
+  use, returning `YfError::InvalidParams` for invalid values instead of panicking or issuing
+  malformed Yahoo requests.
 - Convert malformed Yahoo/user-provided symbols, missing quote symbols, missing currency metadata, and uncloneable retry requests into `Result` errors instead of panicking.
 - Surface unavailable Yahoo ESG modules through `ProviderFeatureUnavailable` diagnostics and strict-mode data-quality errors, so missing provider data is not indistinguishable from a valid zero-involvement result for callers that audit projection quality.
 - Missing optional quoteSummary feature modules, including earnings, analyst recommendations, price targets, upgrades/downgrades, and holder ownership modules, now return empty data plus `ProviderFeatureUnavailable` diagnostics in best-effort mode and data-quality errors in strict mode.

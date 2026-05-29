@@ -5,7 +5,7 @@ use crate::{
     YfClient, YfError,
     core::{
         DataQuality, ProjectionContext, ProjectionIssue,
-        client::{CacheEndpoint, CacheMode, RetryConfig},
+        client::{CacheEndpoint, CacheMode, RetryConfig, normalize_symbols},
         conversions::{decimal_from_f64, i64_to_datetime, string_to_asset_kind},
         currency_resolver::{CurrencyHints, ResolvedCurrencyUnit},
         diagnostics::optional_decimal_f64,
@@ -543,10 +543,17 @@ pub async fn fetch_v7_quotes(
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
 ) -> Result<Vec<V7QuoteNode>, YfError> {
+    if symbols.is_empty() {
+        return Err(YfError::InvalidParams(
+            "symbols list cannot be empty".into(),
+        ));
+    }
+
+    let normalized_symbols = normalize_symbols(symbols.iter().copied())?;
     let mut url = client.base_quote_v7().clone();
     url.query_pairs_mut()
-        .append_pair("symbols", &symbols.join(","));
-    let fixture_key = symbols.join("-");
+        .append_pair("symbols", &normalized_symbols.join(","));
+    let fixture_key = normalized_symbols.join("-");
 
     let (body_to_parse, _) = net::fetch_text_with_auth_retry(
         client,

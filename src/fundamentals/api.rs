@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, btree_map::Entry};
 use crate::{
     core::{
         DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfError, YfResponse,
-        client::{CacheEndpoint, CacheMode, RetryConfig, SymbolEndpoint},
+        client::{CacheEndpoint, CacheMode, RetryConfig, SymbolEndpoint, normalize_symbol},
         conversions::{i64_to_datetime, string_to_period},
         currency_resolver::{
             CurrencyHints, CurrencyKind, ReportingCurrencyEvidence, ResolvedCurrencyUnit,
@@ -83,10 +83,11 @@ where
         monetary_keys,
         endpoint_name,
     } = request;
+    let symbol = normalize_symbol(symbol)?;
 
     let mut ctx = ProjectionContext::new(endpoint_name, data_quality);
     let prefix = if quarterly { "quarterly" } else { "annual" };
-    let url = timeseries_url(client, symbol, prefix, keys)?;
+    let url = timeseries_url(client, &symbol, prefix, keys)?;
     let endpoint = format!("timeseries_{endpoint_name}_{prefix}");
     let (body, _) = crate::core::net::fetch_text_with_auth_retry(
         client,
@@ -98,7 +99,7 @@ where
             cache_body: None,
             retry_override,
             endpoint: &endpoint,
-            fixture_key: symbol,
+            fixture_key: &symbol,
             ext: "json",
             retry_on_invalid_crumb_body: true,
         },
@@ -122,7 +123,7 @@ where
     let currency = if needs_currency {
         match client
             .resolve_reporting_currency_unit(
-                symbol,
+                &symbol,
                 override_currency,
                 ReportingCurrencyEvidence::TimeseriesCurrencyCode(direct_currency.as_deref()),
                 cache_mode,
@@ -131,7 +132,7 @@ where
             .await
         {
             Ok(currency) => {
-                ctx.currency_resolution(client, symbol, CurrencyKind::Reporting)
+                ctx.currency_resolution(client, &symbol, CurrencyKind::Reporting)
                     .await?;
                 Some(currency)
             }
@@ -190,9 +191,10 @@ fn timeseries_url(
         .join(",");
     let (start_ts, end_ts) = timeseries_window();
 
-    let mut url = client.symbol_url(SymbolEndpoint::Timeseries, symbol)?;
+    let symbol = normalize_symbol(symbol)?;
+    let mut url = client.symbol_url(SymbolEndpoint::Timeseries, &symbol)?;
     url.query_pairs_mut()
-        .append_pair("symbol", symbol)
+        .append_pair("symbol", &symbol)
         .append_pair("type", &type_str)
         .append_pair("period1", &start_ts.to_string())
         .append_pair("period2", &end_ts.to_string());
@@ -1059,6 +1061,7 @@ pub(super) async fn shares(
     retry_override: Option<&RetryConfig>,
     data_quality: DataQuality,
 ) -> Result<YfResponse<Vec<ShareCount>>, YfError> {
+    let symbol = normalize_symbol(symbol)?;
     let mut ctx = ProjectionContext::new("shares", data_quality);
     let (start_ts, end_ts) = shares_window(start, end);
 
@@ -1068,9 +1071,9 @@ pub(super) async fn shares(
         "annualBasicAverageShares"
     };
 
-    let mut url = client.symbol_url(SymbolEndpoint::Timeseries, symbol)?;
+    let mut url = client.symbol_url(SymbolEndpoint::Timeseries, &symbol)?;
     url.query_pairs_mut()
-        .append_pair("symbol", symbol)
+        .append_pair("symbol", &symbol)
         .append_pair("type", type_key)
         .append_pair("period1", &start_ts.to_string())
         .append_pair("period2", &end_ts.to_string());
@@ -1086,7 +1089,7 @@ pub(super) async fn shares(
             cache_body: None,
             retry_override,
             endpoint: &endpoint,
-            fixture_key: symbol,
+            fixture_key: &symbol,
             ext: "json",
             retry_on_invalid_crumb_body: true,
         },

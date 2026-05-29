@@ -1,6 +1,6 @@
 use crate::core::{
     YfClient, YfError,
-    client::{CacheEndpoint, CacheMode, RetryConfig, SymbolEndpoint},
+    client::{CacheEndpoint, CacheMode, RetryConfig, SymbolEndpoint, normalize_symbol},
     net,
 };
 use serde::Deserialize;
@@ -41,6 +41,8 @@ pub async fn fetch(
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
 ) -> Result<V10Envelope, YfError> {
+    let symbol = normalize_symbol(symbol)?;
+
     async fn attempt_fetch(
         client: &YfClient,
         symbol: &str,
@@ -81,7 +83,7 @@ pub async fn fetch(
         serde_json::from_str(&text).map_err(YfError::Json)
     }
 
-    let env = attempt_fetch(client, symbol, modules, caller, cache_mode, retry_override).await?;
+    let env = attempt_fetch(client, &symbol, modules, caller, cache_mode, retry_override).await?;
 
     if let Some(error) = env.quote_summary.as_ref().and_then(|qs| qs.error.as_ref()) {
         crate::core::logging::trace_error!(

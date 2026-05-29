@@ -4,13 +4,13 @@
 mod auth;
 mod constants;
 mod retry;
-mod urls;
+pub(crate) mod urls;
 
 use crate::core::YfError;
 use crate::core::client::constants::DEFAULT_BASE_INSIDER_SEARCH;
 use crate::core::currency_resolver::{CurrencyCacheKey, CurrencyHints, ResolvedCurrency};
 pub use retry::{Backoff, CacheEndpoint, CacheMode, RetryConfig};
-pub(crate) use urls::SymbolEndpoint;
+pub(crate) use urls::{SymbolEndpoint, normalize_symbol, normalize_symbols};
 
 use constants::{
     DEFAULT_BASE_CHART, DEFAULT_BASE_QUOTE, DEFAULT_BASE_QUOTE_API, DEFAULT_COOKIE_URL,
@@ -344,6 +344,7 @@ impl YfClient {
         req = req.header("User-Agent", &self.user_agent);
 
         let cfg = override_retry.unwrap_or(&self.retry);
+        cfg.validate()?;
         if !cfg.enabled {
             return Ok(req.send().await?);
         }
@@ -905,6 +906,9 @@ impl YfClientBuilder {
             },
         };
 
+        let retry = self.retry.unwrap_or_default();
+        retry.validate()?;
+
         Ok(YfClient {
             http,
             base_chart,
@@ -923,7 +927,7 @@ impl YfClientBuilder {
             credential_fetch_lock: Arc::new(tokio::sync::Mutex::new(())),
             #[cfg(feature = "test-mode")]
             api_preference: self.api_preference.unwrap_or(ApiPreference::ApiThenScrape),
-            retry: self.retry.unwrap_or_default(),
+            retry,
             currency_cache: Arc::new(RwLock::new(HashMap::new())),
             currency_hints: Arc::new(RwLock::new(HashMap::new())),
             instrument_cache: Arc::new(RwLock::new(HashMap::new())),
@@ -966,8 +970,14 @@ fn compute_backoff_duration_with_random(
             max,
             jitter,
         } => {
-            let pow = factor.powi(i32::try_from(attempt).unwrap());
-            let mut d = Duration::from_secs_f64(base.as_secs_f64() * pow);
+            let exponent = i32::try_from(attempt).unwrap_or(i32::MAX);
+            let raw_secs = base.as_secs_f64() * factor.powi(exponent);
+            let secs = if raw_secs.is_finite() {
+                raw_secs.min(max.as_secs_f64())
+            } else {
+                max.as_secs_f64()
+            };
+            let mut d = Duration::try_from_secs_f64(secs).unwrap_or(max);
             if d > max {
                 d = max;
             }
@@ -1205,5 +1215,19 @@ mod tests {
         let delay = compute_backoff_duration_with_random(&backoff, 3, || Some(500_000_000));
 
         assert_eq!(delay, Duration::from_secs(1));
+    }
+
+    #[test]
+    fn exponential_backoff_saturates_huge_attempts_at_max_delay() {
+        let backoff = Backoff::Exponential {
+            base: Duration::from_millis(100),
+            factor: 2.0,
+            max: Duration::from_secs(3),
+            jitter: false,
+        };
+
+        let delay = compute_backoff_duration_with_random(&backoff, u32::MAX, || None);
+
+        assert_eq!(delay, Duration::from_secs(3));
     }
 }

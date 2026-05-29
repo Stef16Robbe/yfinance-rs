@@ -3,7 +3,7 @@ use serde::Serialize;
 use crate::{
     core::{
         DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfError,
-        client::{CacheEndpoint, CacheMode, RetryConfig},
+        client::{CacheEndpoint, CacheMode, RetryConfig, normalize_symbol},
         conversions::i64_to_datetime,
         net,
     },
@@ -33,16 +33,18 @@ pub(super) async fn fetch_news(
     retry_override: Option<&RetryConfig>,
     data_quality: DataQuality,
 ) -> Result<crate::YfResponse<Vec<NewsArticle>>, YfError> {
+    let symbol = normalize_symbol(symbol)?;
     let mut ctx = ProjectionContext::new("news", data_quality);
     let mut url = client.base_news().join("xhr/ncp")?;
     url.query_pairs_mut()
         .append_pair("queryRef", tab_as_str(tab))
         .append_pair("serviceKey", "ncp_fin");
 
+    let symbols = [symbol.as_str()];
     let payload = NewsPayload {
         service_config: ServiceConfig {
             snippet_count: count,
-            s: &[symbol],
+            s: &symbols,
         },
     };
 
@@ -57,7 +59,7 @@ pub(super) async fn fetch_news(
             cache_mode,
             retry_override,
             endpoint: &endpoint,
-            fixture_key: symbol,
+            fixture_key: &symbol,
             ext: "json",
         },
     )

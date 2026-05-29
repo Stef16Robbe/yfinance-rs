@@ -470,7 +470,7 @@ async fn successful_normalized_quote_response_caches_requested_symbol_key() {
     let quote_mock = server.mock(|when, then| {
         when.method(GET)
             .path("/v7/finance/quote")
-            .query_param("symbols", "miss");
+            .query_param("symbols", "MISS");
         then.status(200)
             .header("content-type", "application/json")
             .body(

@@ -413,11 +413,12 @@ impl Ticker {
     ///
     /// This method will return an error if the request fails or the response cannot be parsed.
     pub async fn isin(&self) -> Result<Option<String>, YfError> {
-        if self.symbol.contains('^') {
+        let symbol = crate::core::client::normalize_symbol(&self.symbol)?;
+        if symbol.contains('^') {
             return Ok(None);
         }
 
-        isin::fetch_isin(&self.client, &self.symbol, self.retry_override.as_ref()).await
+        isin::fetch_isin(&self.client, &symbol, self.retry_override.as_ref()).await
     }
 
     /// Retrieves historical capital gain events for the ticker (typically for mutual funds).

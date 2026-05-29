@@ -1,7 +1,7 @@
 use futures::{StreamExt, TryStreamExt, stream};
 
 use crate::{
-    core::client::{CacheMode, RetryConfig},
+    core::client::{CacheMode, RetryConfig, normalize_symbols},
     core::conversions::f64_from_currency_value,
     core::{
         Candle, DataQuality, HistoryResponse, Interval, ProjectionContext, Range, YfClient,
@@ -368,13 +368,14 @@ impl DownloadBuilder {
         if self.symbols.is_empty() {
             return Err(YfError::InvalidParams("no symbols specified".into()));
         }
+        let symbols = normalize_symbols(self.symbols.iter().map(String::as_str))?;
         let mut ctx = ProjectionContext::new("download", self.data_quality);
 
         let need_adjust_in_fetch = self.auto_adjust || self.back_adjust;
         let period_dt = self.precompute_period_dt()?;
 
         let mut joined: Vec<(usize, String, YfResponse<HistoryResponse>)> =
-            stream::iter(self.symbols.iter().cloned().enumerate())
+            stream::iter(symbols.into_iter().enumerate())
                 .map(|(index, sym)| {
                     let hb = self.build_history_for_symbol(&sym, period_dt, need_adjust_in_fetch);
 

@@ -160,36 +160,18 @@ fn download_concurrency_rejects_zero() {
 }
 
 #[tokio::test]
-async fn download_without_usable_instrument_metadata_returns_error() {
-    let server = common::setup_server();
+async fn download_rejects_invalid_symbol_before_request() {
     let symbol = "A".repeat(65);
-
-    let mock = server.mock(|when, then| {
-        when.method(GET)
-            .path(format!("/v8/finance/chart/{symbol}"))
-            .query_param("range", "6mo")
-            .query_param("interval", "1d")
-            .query_param("includePrePost", "false")
-            .query_param("events", "div|split|capitalGains");
-        then.status(200)
-            .header("content-type", "application/json")
-            .body(common::fixture("history_chart", "AAPL", "json"));
-    });
-
-    let client = YfClient::builder()
-        .base_chart(Url::parse(&format!("{}/v8/finance/chart/", server.base_url())).unwrap())
-        .build()
-        .unwrap();
+    let client = YfClient::default();
 
     let result = DownloadBuilder::new(&client).symbols([symbol]).run().await;
 
-    mock.assert();
     match result {
-        Err(YfError::MissingData(message)) => {
-            assert!(message.contains("download instrument metadata missing"));
+        Err(YfError::InvalidParams(message)) => {
+            assert!(message.contains("invalid symbol"));
         }
-        Err(other) => panic!("expected missing instrument metadata error, got {other:?}"),
-        Ok(_) => panic!("expected missing instrument metadata error"),
+        Err(other) => panic!("expected invalid symbol error, got {other:?}"),
+        Ok(_) => panic!("expected invalid symbol error"),
     }
 }
 

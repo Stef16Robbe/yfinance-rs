@@ -6,7 +6,7 @@ mod fetch;
 use crate::core::conversions::{string_to_asset_kind, string_to_exchange};
 use crate::core::{DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfError, YfResponse};
 use crate::core::{
-    client::{CacheMode, RetryConfig},
+    client::{CacheMode, RetryConfig, normalize_symbol},
     currency_resolver::{
         CorporateActionCurrencyEvidence, CurrencyHints, CurrencyKind, ResolvedCurrencyUnit,
         TradingCurrencyEvidence,
@@ -207,11 +207,12 @@ impl HistoryBuilder {
         &self,
     ) -> Result<YfResponse<HistoryResponse>, YfError> {
         let mut ctx = ProjectionContext::new("history_chart", self.data_quality);
+        let symbol = normalize_symbol(&self.symbol)?;
 
         // 1) Fetch and parse the /chart payload into owned blocks
         let fetched = fetch_chart(
             &self.client,
-            &self.symbol,
+            &symbol,
             self.range,
             self.period,
             self.interval,
@@ -222,11 +223,11 @@ impl HistoryBuilder {
         )
         .await?;
 
-        cache_history_instrument(&self.client, &self.symbol, fetched.meta.as_ref()).await?;
+        cache_history_instrument(&self.client, &symbol, fetched.meta.as_ref()).await?;
         if let Some(meta) = fetched.meta.as_ref() {
             self.client
                 .store_currency_hints(
-                    &self.symbol,
+                    &symbol,
                     CurrencyHints::from_chart(
                         meta.currency.as_deref(),
                         meta.exchange_name.as_deref(),
@@ -243,7 +244,7 @@ impl HistoryBuilder {
         let currency = if has_complete_candle {
             history_trading_currency(
                 &self.client,
-                &self.symbol,
+                &symbol,
                 chart_currency,
                 self.cache_mode,
                 self.retry_override.as_ref(),
@@ -255,7 +256,7 @@ impl HistoryBuilder {
         };
         let action_currency = action_default_currency(
             &self.client,
-            &self.symbol,
+            &symbol,
             fetched.events.as_ref(),
             chart_currency,
             currency.as_ref(),

@@ -19,7 +19,7 @@ use tokio_tungstenite::{
 
 use crate::{
     YfClient, YfError,
-    core::client::{CacheMode, RetryConfig},
+    core::client::{CacheMode, RetryConfig, normalize_symbols},
     core::conversions::{price_from_f64_with_currency_str, string_to_asset_kind},
 };
 use paft::domain::{AssetKind, Canonical, Instrument};
@@ -190,6 +190,21 @@ impl StreamBuilder {
         self
     }
 
+    fn validated_symbols(&self) -> Result<Vec<String>, crate::core::YfError> {
+        if self.symbols.is_empty() {
+            return Err(crate::core::YfError::InvalidParams(
+                "symbols list cannot be empty".into(),
+            ));
+        }
+        if self.cfg.interval.is_zero() {
+            return Err(crate::core::YfError::InvalidParams(
+                "stream interval must be greater than zero".into(),
+            ));
+        }
+
+        normalize_symbols(self.symbols.iter().map(String::as_str))
+    }
+
     /// Starts the stream, returning a handle to control it and a channel receiver for quote updates.
     ///
     /// # Errors
@@ -206,11 +221,7 @@ impl StreamBuilder {
         &self,
     ) -> Result<(StreamHandle, tokio::sync::mpsc::Receiver<QuoteUpdate>), crate::core::YfError>
     {
-        if self.symbols.is_empty() {
-            return Err(crate::core::YfError::InvalidParams(
-                "symbols list cannot be empty".into(),
-            ));
-        }
+        let symbols = self.validated_symbols()?;
 
         let (tx, rx) = tokio::sync::mpsc::channel::<QuoteUpdate>(1024);
         let (stop_tx, stop_rx) = tokio::sync::oneshot::channel::<()>();
@@ -224,7 +235,7 @@ impl StreamBuilder {
 
         let join = tokio::spawn({
             let client = self.client.clone();
-            let symbols = self.symbols.clone();
+            let symbols = symbols.clone();
             let cfg = self.cfg.clone();
             let method = self.method;
 
