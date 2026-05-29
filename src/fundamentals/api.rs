@@ -154,24 +154,26 @@ where
             )?;
             continue;
         };
-        let Some((key, values_json)) = item.values.into_iter().next() else {
+        if item.values.is_empty() {
             ctx.dropped_item(
                 "timeseries_item",
                 None,
                 ProjectionIssue::MissingRequiredField { field: "values" },
             )?;
             continue;
-        };
+        }
 
-        process_item(TimeseriesItem {
-            key: &key,
-            values_json: &values_json,
-            rows_map: &mut rows_map,
-            timestamps: &timestamps,
-            prefix,
-            currency: currency.as_ref(),
-            ctx: &mut ctx,
-        })?;
+        for (key, values_json) in item.values {
+            process_item(TimeseriesItem {
+                key: &key,
+                values_json: &values_json,
+                rows_map: &mut rows_map,
+                timestamps: &timestamps,
+                prefix,
+                currency: currency.as_ref(),
+                ctx: &mut ctx,
+            })?;
+        }
     }
 
     Ok(ctx.finish(rows_map.into_values().rev().collect()))

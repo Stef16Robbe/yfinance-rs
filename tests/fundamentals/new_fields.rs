@@ -153,6 +153,47 @@ async fn income_statement_preserves_large_integer_statement_values() {
 }
 
 #[tokio::test]
+async fn income_statement_processes_all_fields_in_grouped_timeseries_item() {
+    let server = MockServer::start();
+    let symbol = "GROUPED";
+    let body = r#"{
+      "timeseries": {
+        "result": [
+          {
+            "meta": {},
+            "timestamp": [1727654400],
+            "annualTotalRevenue": [{"reportedValue": {"raw": 1000}}],
+            "annualNetIncome": [{"reportedValue": {"raw": 250}}]
+          }
+        ],
+        "error": null
+      }
+    }"#;
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!(
+                "/ws/fundamentals-timeseries/v1/finance/timeseries/{symbol}"
+            ))
+            .query_param_exists("type");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let ticker = make_ticker(&server, symbol);
+    let rows = ticker
+        .income_stmt(Some(Currency::Iso(IsoCurrency::USD)))
+        .await
+        .unwrap();
+
+    mock.assert();
+    let row = rows.first().expect("statement row should be present");
+    assert_eq!(row.total_revenue, Some(usd_i64(1000)));
+    assert_eq!(row.net_income, Some(usd_i64(250)));
+}
+
+#[tokio::test]
 async fn balance_sheet_new_fields_are_mapped_to_paft_names() {
     let server = MockServer::start();
     let symbol = "MSFT";
