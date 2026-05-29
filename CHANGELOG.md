@@ -34,6 +34,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Text redaction now masks crumb and auth-like query parameters after comma-separated
+  Yahoo query values such as quoteSummary modules.
 - `Ticker::info()` now batches its quoteSummary modules into one request, avoids duplicate `financialData` fetches, and skips Yahoo's dead ESG module; use `Ticker::sustainability()` for an explicit ESG request.
 - `Ticker::isin()` now validates ISIN check digits and avoids raw fallback matches that are not tied to the requested symbol.
 - Holder convenience methods now request only the quoteSummary module they project instead of fetching every holder/insider module for each call.

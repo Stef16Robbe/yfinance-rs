@@ -124,7 +124,7 @@ fn url_end(text: &str, start: usize) -> usize {
 }
 
 const fn is_url_terminator(ch: char) -> bool {
-    ch.is_whitespace() || matches!(ch, '"' | '\'' | '<' | '>' | ')' | ']' | '}' | ',')
+    ch.is_whitespace() || matches!(ch, '"' | '\'' | '<' | '>' | ')' | ']' | '}')
 }
 
 fn is_sensitive_query_param(name: &str) -> bool {
@@ -196,6 +196,16 @@ mod tests {
             redacted,
             "request failed for url (https://example.test/path?crumb=REDACTED&symbols=AAPL)"
         );
+    }
+
+    #[test]
+    fn redacted_text_masks_crumb_after_comma_separated_query_param() {
+        let text = "failed for https://query1.finance.yahoo.com/v10/finance/quoteSummary/AAPL?modules=a,b&crumb=s3cr3t";
+
+        let redacted = redact_auth_query_params_in_text(text);
+
+        assert!(!redacted.contains("s3cr3t"));
+        assert!(redacted.contains("crumb=REDACTED"));
     }
 
     #[test]
