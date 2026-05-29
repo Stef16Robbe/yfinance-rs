@@ -66,7 +66,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("--- Ticker Actions (Convenience, YTD) ---");
     let actions = ticker.actions(Some(Range::Ytd)).await?;
-    println!("  Found {} actions (dividends/splits) YTD.", actions.len());
+    println!(
+        "  Found {} actions (dividends/splits/capital gains) YTD.",
+        actions.len()
+    );
     if let Some(action) = actions.last() {
         println!("  Most recent action: {}", display_action(action));
     }

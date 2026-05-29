@@ -22,10 +22,7 @@ An ergonomic, async-first Rust client for the unofficial Yahoo Finance API. It p
 
 ### Corporate Actions & Dividends
 
-* **Dividend History**: Fetch complete dividend payment history with amounts and dates.
-* **Stock Splits**: Get stock split history with split ratios.
-* **Capital Gains**: Retrieve capital gains distributions (especially for mutual funds).
-* **All Corporate Actions**: Comprehensive access to dividends, splits, and capital gains in one call.
+* **Typed Corporate Actions**: Fetch dividends, splits, and capital gains through one currency-aware action stream.
 
 ### Financial Statements & Fundamentals
 
@@ -115,7 +112,7 @@ polars = "0.53"
 Then, create a `YfClient` and use a `Ticker` to fetch data.
 
 ```rust
-use yfinance_rs::{Interval, Range, Ticker, YfClient};
+use yfinance_rs::{Action, Interval, Range, Ticker, YfClient};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -144,8 +141,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Dividends in the last year
-    let dividends = ticker.dividends(Some(Range::Y1)).await?;
-    println!("Found {} dividend payments in the last year", dividends.len());
+    let actions = ticker.actions(Some(Range::Y1)).await?;
+    let dividends = actions
+        .iter()
+        .filter(|action| matches!(action, Action::Dividend { .. }))
+        .count();
+    println!("Found {dividends} dividend payments in the last year");
 
     // Earnings trend
     let trends = ticker.earnings_trend(None).await?;

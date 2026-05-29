@@ -16,10 +16,7 @@
 //! * **Batch Quotes**: Fetch quotes for multiple symbols efficiently.
 //!
 //! ### Corporate Actions & Dividends
-//! * **Dividend History**: Fetch complete dividend payment history with amounts and dates.
-//! * **Stock Splits**: Get stock split history with split ratios.
-//! * **Capital Gains**: Retrieve capital gains distributions (especially for mutual funds).
-//! * **All Corporate Actions**: Comprehensive access to dividends, splits, and capital gains in one call.
+//! * **Typed Corporate Actions**: Fetch dividends, splits, and capital gains through one currency-aware action stream.
 //!
 //! ### Financial Statements & Fundamentals
 //! * **Income Statements**: Access annual and quarterly income statements.

@@ -1,6 +1,6 @@
 use httpmock::{Method::GET, MockServer};
 use url::Url;
-use yfinance_rs::core::Range;
+use yfinance_rs::core::{Action, Range, conversions::money_to_f64};
 use yfinance_rs::{Ticker, YfClient};
 
 #[tokio::test]
@@ -25,11 +25,13 @@ async fn offline_capital_gains_from_history() {
         .unwrap();
 
     let t = Ticker::new(&client, sym);
-    let gains = t.capital_gains(Some(Range::Max)).await.unwrap();
-
+    let actions = t.actions(Some(Range::Max)).await.unwrap();
     mock.assert();
     assert!(
-        gains.iter().all(|(_, amount)| *amount > 0.0),
+        actions.iter().all(|action| match action {
+            Action::CapitalGain { gain, .. } => money_to_f64(gain) > 0.0,
+            _ => true,
+        }),
         "capital gain amounts should be positive when Yahoo includes them"
     );
 }

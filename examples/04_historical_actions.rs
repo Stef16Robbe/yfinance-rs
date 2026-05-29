@@ -1,13 +1,6 @@
 use chrono::{Duration, Utc};
-use yfinance_rs::core::{Interval, Range};
+use yfinance_rs::core::{Action, Interval, Range};
 use yfinance_rs::{DownloadBuilder, Ticker, YfClient};
-
-fn display_epoch_date(timestamp: i64) -> String {
-    chrono::DateTime::from_timestamp(timestamp, 0).map_or_else(
-        || timestamp.to_string(),
-        |date| date.date_naive().to_string(),
-    )
-}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -17,19 +10,37 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let aapl_ticker = Ticker::new(&client, "AAPL");
 
     println!("--- Fetching Historical Actions for AAPL (last 5 years) ---");
-    let dividends = aapl_ticker.dividends(Some(Range::Y5)).await?;
-    println!("Found {} dividends in the last 5 years.", dividends.len());
-    if let Some((ts, amount)) = dividends.last() {
-        println!(
-            "  Latest dividend: ${amount:.2} on {}",
-            display_epoch_date(*ts)
-        );
+    let actions = aapl_ticker.actions(Some(Range::Y5)).await?;
+    let dividends = actions
+        .iter()
+        .filter(|action| matches!(action, Action::Dividend { .. }))
+        .count();
+    println!("Found {dividends} dividends in the last 5 years.");
+    if let Some(Action::Dividend { ts, amount }) = actions
+        .iter()
+        .rev()
+        .find(|action| matches!(action, Action::Dividend { .. }))
+    {
+        println!("  Latest dividend: {amount} on {}", ts.date_naive());
     }
 
-    let splits = aapl_ticker.splits(Some(Range::Y5)).await?;
-    println!("\nFound {} splits in the last 5 years.", splits.len());
-    for (ts, num, den) in splits {
-        println!("  - Split of {num}:{den} on {}", display_epoch_date(ts));
+    let splits = actions
+        .iter()
+        .filter(|action| matches!(action, Action::Split { .. }))
+        .count();
+    println!("\nFound {splits} splits in the last 5 years.");
+    for action in &actions {
+        if let Action::Split {
+            ts,
+            numerator,
+            denominator,
+        } = action
+        {
+            println!(
+                "  - Split of {numerator}:{denominator} on {}",
+                ts.date_naive()
+            );
+        }
     }
     println!("--------------------------------------\n");
 

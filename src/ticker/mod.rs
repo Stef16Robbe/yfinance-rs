@@ -17,7 +17,6 @@ use crate::news::NewsArticle;
 use crate::{
     EsgBuilder,
     core::client::RetryConfig,
-    core::conversions::{datetime_to_i64, f64_from_currency_value},
     core::{CacheMode, DataQuality, YfClient, YfError, YfResponse},
     holders::HoldersBuilder,
     news::NewsBuilder,
@@ -318,7 +317,7 @@ impl Ticker {
         hb.fetch().await
     }
 
-    /// Fetches all corporate actions (dividends and splits) for the given range.
+    /// Fetches all corporate actions (dividends, splits, and capital gains) for the given range.
     ///
     /// Defaults to the maximum available range if `None`.
     ///
@@ -338,52 +337,6 @@ impl Ticker {
             _ => i64::MAX,
         });
         Ok(actions)
-    }
-
-    /// Fetches all dividend payments for the given range.
-    ///
-    /// Returns a `Vec` of tuples containing `(timestamp, amount)`.
-    /// Defaults to the maximum available range if `None`.
-    ///
-    /// # Errors
-    ///
-    /// This method will return an error if the request fails or the response cannot be parsed.
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), err, fields(symbol = %self.symbol)))]
-    pub async fn dividends(&self, range: Option<Range>) -> Result<Vec<(i64, f64)>, YfError> {
-        let acts = self.actions(range).await?;
-        Ok(acts
-            .into_iter()
-            .filter_map(|a| match a {
-                Action::Dividend { ts, amount } => {
-                    f64_from_currency_value(&amount).map(|amount| (datetime_to_i64(ts), amount))
-                }
-                _ => None,
-            })
-            .collect())
-    }
-
-    /// Fetches all stock splits for the given range.
-    ///
-    /// Returns a `Vec` of tuples containing `(timestamp, numerator, denominator)`.
-    /// Defaults to the maximum available range if `None`.
-    ///
-    /// # Errors
-    ///
-    /// This method will return an error if the request fails or the response cannot be parsed.
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), err, fields(symbol = %self.symbol)))]
-    pub async fn splits(&self, range: Option<Range>) -> Result<Vec<(i64, u32, u32)>, YfError> {
-        let acts = self.actions(range).await?;
-        Ok(acts
-            .into_iter()
-            .filter_map(|a| match a {
-                Action::Split {
-                    ts,
-                    numerator,
-                    denominator,
-                } => Some((datetime_to_i64(ts), numerator.get(), denominator.get())),
-                _ => None,
-            })
-            .collect())
     }
 
     /// Fetches the metadata associated with the ticker's historical data, such as timezone.
@@ -419,26 +372,6 @@ impl Ticker {
         }
 
         isin::fetch_isin(&self.client, &symbol, self.retry_override.as_ref()).await
-    }
-
-    /// Retrieves historical capital gain events for the ticker (typically for mutual funds).
-    ///
-    /// A time `range` can be optionally specified. Defaults to the maximum available range.
-    ///
-    /// # Errors
-    ///
-    /// This method will return an error if the request fails or the response cannot be parsed.
-    pub async fn capital_gains(&self, range: Option<Range>) -> Result<Vec<(i64, f64)>, YfError> {
-        let acts = self.actions(range).await?;
-        Ok(acts
-            .into_iter()
-            .filter_map(|a| match a {
-                Action::CapitalGain { ts, gain } => {
-                    f64_from_currency_value(&gain).map(|gain| (datetime_to_i64(ts), gain))
-                }
-                _ => None,
-            })
-            .collect())
     }
 
     /* ---------------- Options ---------------- */

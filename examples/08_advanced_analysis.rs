@@ -1,15 +1,8 @@
 use std::fmt::Display;
-use yfinance_rs::{Ticker, YfClient, YfError};
+use yfinance_rs::{Action, Ticker, YfClient, YfError};
 
 fn display_opt<T: Display>(value: Option<&T>) -> String {
     value.map_or_else(|| "N/A".to_string(), ToString::to_string)
-}
-
-fn display_epoch_date(timestamp: i64) -> String {
-    chrono::DateTime::from_timestamp(timestamp, 0).map_or_else(
-        || timestamp.to_string(),
-        |date| date.date_naive().to_string(),
-    )
 }
 
 #[tokio::main]
@@ -57,16 +50,18 @@ async fn section_capital_gains() -> Result<(), YfError> {
     println!("--- Fetching Capital Gains for VFINX (Vanguard 500 Index Fund) ---");
     let client = YfClient::default();
     let ticker_vfinx = Ticker::new(&client, "VFINX");
-    let capital_gains = ticker_vfinx.capital_gains(None).await?;
-    println!(
-        "Capital Gains Distributions ({} periods):",
-        capital_gains.len()
-    );
-    if let Some((date, gain)) = capital_gains.last() {
-        println!(
-            "  Most Recent Gain: ${gain:.2} on {}",
-            display_epoch_date(*date)
-        );
+    let actions = ticker_vfinx.actions(None).await?;
+    let capital_gains = actions
+        .iter()
+        .filter(|action| matches!(action, Action::CapitalGain { .. }))
+        .count();
+    println!("Capital Gains Distributions ({capital_gains} periods):");
+    if let Some(Action::CapitalGain { ts, gain }) = actions
+        .iter()
+        .rev()
+        .find(|action| matches!(action, Action::CapitalGain { .. }))
+    {
+        println!("  Most Recent Gain: {gain} on {}", ts.date_naive());
     }
     Ok(())
 }

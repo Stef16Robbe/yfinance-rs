@@ -71,7 +71,7 @@ fn body_with_actions_and_currency() -> String {
 }
 
 #[tokio::test]
-async fn ticker_actions_dividends_splits() {
+async fn ticker_actions_include_dividends_and_splits() {
     let server = MockServer::start();
 
     let mock = server.mock(|when, then| {
@@ -96,10 +96,23 @@ async fn ticker_actions_dividends_splits() {
     mock.assert();
 
     assert_eq!(acts.len(), 2);
-    let divs = t.dividends(Some(Range::Max)).await.unwrap();
-    assert_eq!(divs, vec![(3000, 1.0)]);
-    let splits = t.splits(Some(Range::Max)).await.unwrap();
-    assert_eq!(splits, vec![(2000, 2, 1)]);
+    assert!(acts.iter().any(|action| {
+        matches!(
+            action,
+            Action::Dividend { ts, amount }
+                if ts.timestamp() == 3000 && (money_to_f64(amount) - 1.0).abs() < 1e-9
+        )
+    }));
+    assert!(acts.iter().any(|action| {
+        matches!(
+            action,
+            Action::Split {
+                ts,
+                numerator,
+                denominator,
+            } if ts.timestamp() == 2000 && numerator.get() == 2 && denominator.get() == 1
+        )
+    }));
 }
 
 #[tokio::test]

@@ -171,5 +171,5 @@ async fn live_ticker_capital_gains_for_record() {
 
     let client = yfinance_rs::YfClient::builder().build().unwrap();
     let t = yfinance_rs::Ticker::new(&client, "VFINX");
-    let _ = t.capital_gains(None).await.unwrap();
+    let _ = t.actions(None).await.unwrap();
 }
