@@ -24,9 +24,7 @@ pub(super) async fn fetch_isin(
     retry_override: Option<&RetryConfig>,
 ) -> Result<Option<String>, YfError> {
     let symbol = normalize_symbol(symbol)?;
-    let Some(body) = fetch_isin_body(client, &symbol, retry_override).await? else {
-        return Ok(None);
-    };
+    let body = fetch_isin_body(client, &symbol, retry_override).await?;
 
     let input_norm = normalize_sym(&symbol);
 
@@ -50,7 +48,7 @@ async fn fetch_isin_body(
     client: &YfClient,
     symbol: &str,
     retry_override: Option<&RetryConfig>,
-) -> Result<Option<String>, YfError> {
+) -> Result<String, YfError> {
     let symbol = normalize_symbol(symbol)?;
     let mut url = client.base_insider_search().clone();
     url.query_pairs_mut()
@@ -61,12 +59,12 @@ async fn fetch_isin_body(
     let resp = client.send_with_retry(req, retry_override).await?;
 
     if !resp.status().is_success() {
-        return Ok(None);
+        return Err(net::status_error(resp.status(), &url));
     }
 
-    Ok(Some(
-        net::get_text(resp, "isin_search", &symbol, "json").await?,
-    ))
+    net::get_text(resp, "isin_search", &symbol, "json")
+        .await
+        .map_err(YfError::from)
 }
 
 fn parse_as_json_value(body: &str, input_norm: &str) -> Option<String> {
@@ -200,14 +198,14 @@ fn extract_from_json_value(v: &serde_json::Value, target_norm: &str) -> Option<S
 }
 
 fn normalize_sym(s: &str) -> String {
-    let mut t = s.trim().replace('-', ".");
-    for sep in ['.', ':', ' ', '\t', '\n', '\r'] {
-        if let Some(idx) = t.find(sep) {
-            t.truncate(idx);
-            break;
-        }
-    }
-    t.to_ascii_lowercase()
+    s.trim()
+        .chars()
+        .map(|ch| match ch {
+            '-' | ':' => '.',
+            ch if ch.is_ascii_whitespace() => '.',
+            ch => ch.to_ascii_lowercase(),
+        })
+        .collect()
 }
 
 fn symbol_scope_matches(symbol: Option<&str>, target_norm: &str, allow_unscoped: bool) -> bool {
