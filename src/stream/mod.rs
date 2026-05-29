@@ -12,6 +12,7 @@ use tokio::{
 use tokio_tungstenite::{
     connect_async,
     tungstenite::{
+        Error as WsError,
         handshake::client::{Request, generate_key},
         protocol::Message as WsMessage,
     },
@@ -345,6 +346,14 @@ fn report_websocket_startup_error(
     Err(err)
 }
 
+fn websocket_remote_closed_error() -> YfError {
+    WsError::ConnectionClosed.into()
+}
+
+fn websocket_stop_requested(stop_rx: &mut oneshot::Receiver<()>) -> bool {
+    !matches!(stop_rx.try_recv(), Err(oneshot::error::TryRecvError::Empty))
+}
+
 #[allow(clippy::too_many_lines)]
 async fn run_websocket_stream(
     client: &YfClient,
@@ -386,7 +395,7 @@ async fn run_websocket_stream(
     }
     .await;
 
-    let (_write, mut read) = match startup_result {
+    let (mut write, mut read) = match startup_result {
         Ok(parts) => parts,
         Err(err) => return report_websocket_startup_error(startup_tx, err),
     };
@@ -426,7 +435,7 @@ async fn run_websocket_stream(
                         match decode_ws_pricing(&text) {
                             Ok(ticker) => {
                                 if let Some(update) = map_ws_pricing_to_update_with_delta(client, &ticker, &mut last_day_volume, &mut last_ts).await
-                                    && tx.send(update).await.is_err() { break; }
+                                    && tx.send(update).await.is_err() { return Ok(()); }
                             },
                             Err(e) => {
                                 crate::core::logging::trace_debug!(
@@ -444,7 +453,7 @@ async fn run_websocket_stream(
                         let handled = if let Ok(as_text) = std::str::from_utf8(&bin) {
                             if let Ok(ticker) = decode_ws_pricing(as_text) {
                                 if let Some(update) = map_ws_pricing_to_update_with_delta(client, &ticker, &mut last_day_volume, &mut last_ts).await
-                                    && tx.send(update).await.is_err() { break; }
+                                    && tx.send(update).await.is_err() { return Ok(()); }
                                 true
                             } else { false }
                         } else { false };
@@ -453,7 +462,7 @@ async fn run_websocket_stream(
                             match wire_ws::PricingData::decode(&*bin) {
                                 Ok(ticker) => {
                                     if let Some(update) = map_ws_pricing_to_update_with_delta(client, &ticker, &mut last_day_volume, &mut last_ts).await
-                                        && tx.send(update).await.is_err() { break; }
+                                        && tx.send(update).await.is_err() { return Ok(()); }
                                 }
                                 Err(e) => {
                                     crate::core::logging::trace_debug!(
@@ -466,9 +475,24 @@ async fn run_websocket_stream(
                             }
                         }
                     }
-                    Some(Ok(WsMessage::Ping(_) | WsMessage::Pong(_) | _)) => { /* catch-all for variants like Frame(_) */ }
+                    Some(Ok(WsMessage::Ping(payload))) => {
+                        write.send(WsMessage::Pong(payload)).await?;
+                    }
+                    Some(Ok(WsMessage::Pong(_) | WsMessage::Frame(_))) => {}
+                    Some(Ok(WsMessage::Close(_))) => {
+                        write.flush().await?;
+                        if websocket_stop_requested(stop_rx) {
+                            break;
+                        }
+                        return Err(websocket_remote_closed_error());
+                    }
                     Some(Err(e)) => return Err(e.into()),
-                    None => break,
+                    None => {
+                        if websocket_stop_requested(stop_rx) {
+                            break;
+                        }
+                        return Err(websocket_remote_closed_error());
+                    }
                 }
             },
             _ = &mut *stop_rx => {

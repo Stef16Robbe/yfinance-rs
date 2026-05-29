@@ -44,6 +44,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Holder convenience methods now request only the quoteSummary module they project instead of fetching every holder/insider module for each call.
 - `StreamMethod::Websocket` startup failures are now returned from `StreamBuilder::start().await`
   instead of being logged in the spawned task while the caller receives `Ok`.
+- WebSocket streams now flush pong replies for ping frames and treat remote close/EOF as stream
+  failures, allowing `WebsocketWithFallback` to fall back to polling unless the caller stopped it.
 - Streaming quote volume deltas now use one shared cumulative-volume state transition across
   WebSocket and polling streams, and untyped stream instrument fallbacks no longer poison the
   client instrument cache.

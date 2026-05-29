@@ -1,7 +1,70 @@
+use std::{
+    io::ErrorKind,
+    net::{TcpListener, TcpStream},
+    thread::{self, JoinHandle},
+    time::Instant,
+};
 use tokio::time::{Duration, timeout};
+use tokio_tungstenite::tungstenite::{Message as TestWsMessage, WebSocket, accept};
 use url::Url;
 use yfinance_rs::core::client::CacheMode;
 use yfinance_rs::{AssetKind, StreamMethod};
+
+fn spawn_websocket_server(
+    handler: impl FnOnce(&mut WebSocket<TcpStream>) + Send + 'static,
+) -> (Url, JoinHandle<()>) {
+    let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+    let addr = listener.local_addr().unwrap();
+    let url = Url::parse(&format!("ws://{addr}/")).unwrap();
+
+    let handle = thread::spawn(move || {
+        let stream = accept_websocket_connection(&listener);
+        stream
+            .set_read_timeout(Some(Duration::from_secs(3)))
+            .unwrap();
+        stream
+            .set_write_timeout(Some(Duration::from_secs(3)))
+            .unwrap();
+
+        let mut websocket = accept(stream).expect("server should accept websocket handshake");
+        handler(&mut websocket);
+    });
+
+    (url, handle)
+}
+
+fn accept_websocket_connection(listener: &TcpListener) -> TcpStream {
+    listener.set_nonblocking(true).unwrap();
+    let deadline = Instant::now() + Duration::from_secs(3);
+
+    loop {
+        match listener.accept() {
+            Ok((stream, _)) => {
+                stream.set_nonblocking(false).unwrap();
+                return stream;
+            }
+            Err(err) if err.kind() == ErrorKind::WouldBlock && Instant::now() < deadline => {
+                thread::sleep(Duration::from_millis(10));
+            }
+            Err(err) => panic!("failed to accept websocket client connection: {err}"),
+        }
+
+        assert!(
+            Instant::now() < deadline,
+            "timed out waiting for websocket client connection"
+        );
+    }
+}
+
+fn assert_subscription(message: TestWsMessage, symbols: &[&str]) {
+    let TestWsMessage::Text(text) = message else {
+        panic!("expected websocket subscription text frame, got {message:?}");
+    };
+
+    let subscription: serde_json::Value =
+        serde_json::from_str(text.as_str()).expect("subscription should be valid JSON");
+    assert_eq!(subscription["subscribe"], serde_json::json!(symbols));
+}
 
 #[tokio::test]
 async fn stream_websocket_reports_initial_connection_failure() {
@@ -22,6 +85,43 @@ async fn stream_websocket_reports_initial_connection_failure() {
         matches!(err, yfinance_rs::YfError::Websocket(_)),
         "expected websocket error, got: {err}"
     );
+}
+
+#[tokio::test]
+async fn stream_websocket_replies_to_ping() {
+    let (stream_url, websocket_thread) = spawn_websocket_server(|websocket| {
+        let subscription = websocket
+            .read()
+            .expect("server should receive websocket subscription");
+        assert_subscription(subscription, &["AAPL"]);
+
+        let payload = b"heartbeat".to_vec();
+        websocket
+            .send(TestWsMessage::Ping(payload.clone().into()))
+            .expect("server should send ping");
+
+        let reply = websocket
+            .read()
+            .expect("server should receive websocket pong");
+        assert_eq!(reply, TestWsMessage::Pong(payload.into()));
+    });
+
+    let client = yfinance_rs::YfClient::builder()
+        .base_stream(stream_url)
+        .build()
+        .unwrap();
+
+    let builder = yfinance_rs::StreamBuilder::new(&client)
+        .symbols(["AAPL"])
+        .method(StreamMethod::Websocket);
+
+    let (handle, _rx) = builder.start().await.unwrap();
+    let server_result = tokio::task::spawn_blocking(move || websocket_thread.join())
+        .await
+        .expect("websocket server join task panicked");
+    handle.stop().await;
+
+    server_result.expect("websocket server thread panicked");
 }
 
 #[tokio::test]
@@ -68,6 +168,58 @@ async fn stream_websocket_fallback_to_polling_offline() {
             > 0.0,
         "cached price should be > 0"
     );
+}
+
+#[tokio::test]
+async fn stream_websocket_fallback_to_polling_after_remote_close() {
+    let server = crate::common::setup_server();
+
+    let mock = server.mock(|when, then| {
+        when.method(httpmock::Method::GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "AAPL");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(crate::common::fixture("quote_v7", "AAPL", "json"));
+    });
+
+    let (stream_url, websocket_thread) = spawn_websocket_server(|websocket| {
+        let subscription = websocket
+            .read()
+            .expect("server should receive websocket subscription");
+        assert_subscription(subscription, &["AAPL"]);
+
+        websocket
+            .send(TestWsMessage::Close(None))
+            .expect("server should send close frame");
+    });
+
+    let client = yfinance_rs::YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .base_stream(stream_url)
+        .build()
+        .unwrap();
+
+    let builder = yfinance_rs::StreamBuilder::new(&client)
+        .symbols(["AAPL"])
+        .method(StreamMethod::WebsocketWithFallback)
+        .interval(Duration::from_millis(40));
+
+    let (handle, mut rx) = builder.start().await.unwrap();
+
+    let got = timeout(Duration::from_secs(3), rx.recv()).await;
+    handle.abort();
+    websocket_thread
+        .join()
+        .expect("websocket server thread panicked");
+
+    mock.assert();
+
+    let update = got
+        .expect("timed out waiting for fallback stream update")
+        .expect("stream closed without falling back to polling");
+
+    assert_eq!(update.instrument.symbol.as_str(), "AAPL");
 }
 
 #[tokio::test]
