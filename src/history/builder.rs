@@ -3,7 +3,7 @@ mod adjust;
 mod assemble;
 mod fetch;
 
-use crate::core::conversions::{string_to_asset_kind, string_to_exchange};
+use crate::core::yahoo_vocab::{first_parsed_yahoo_exchange, parse_yahoo_quote_type};
 use crate::core::{DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfError, YfResponse};
 use crate::core::{
     client::{CacheMode, RetryConfig, normalize_symbol},
@@ -497,17 +497,16 @@ async fn cache_history_instrument(
         .as_deref()
         .map(str::trim)
         .filter(|value| !value.is_empty())
-        .map(string_to_asset_kind)
+        .map(parse_yahoo_quote_type)
         .transpose()?
     else {
         return Ok(());
     };
 
-    let exchange = meta
-        .full_exchange_name
-        .as_deref()
-        .or(meta.exchange_name.as_deref())
-        .and_then(|exchange| string_to_exchange(Some(exchange.to_string())));
+    let exchange = first_parsed_yahoo_exchange([
+        meta.full_exchange_name.as_deref(),
+        meta.exchange_name.as_deref(),
+    ]);
 
     let instrument = match exchange {
         Some(exchange) => {

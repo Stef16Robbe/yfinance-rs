@@ -1,4 +1,4 @@
-use paft::domain::{Exchange, Instrument};
+use paft::domain::Instrument;
 use paft::market::responses::search::{SearchResponse, SearchResult};
 use serde::Deserialize;
 use serde_json::Value;
@@ -6,7 +6,7 @@ use url::Url;
 
 use crate::core::ProjectionContext;
 use crate::core::client::{CacheEndpoint, CacheMode, RetryConfig};
-use crate::core::conversions::string_to_asset_kind;
+use crate::core::yahoo_vocab::{parse_yahoo_exchange, parse_yahoo_quote_type};
 use crate::{DataQuality, ProjectionIssue, YfClient, YfError, YfResponse};
 
 #[allow(clippy::too_many_lines)]
@@ -56,7 +56,7 @@ fn parse_search_body(body: &str, ctx: &mut ProjectionContext) -> Result<SearchRe
             .map(str::trim)
             .filter(|exchange| !exchange.is_empty())
         {
-            Some(exchange) => match exchange.parse::<Exchange>() {
+            Some(exchange) => match parse_yahoo_exchange(exchange) {
                 Ok(exchange) => Some(exchange),
                 Err(err) => {
                     ctx.omitted_present_field(
@@ -75,7 +75,7 @@ fn parse_search_body(body: &str, ctx: &mut ProjectionContext) -> Result<SearchRe
         let kind = match q
             .quote_type
             .as_deref()
-            .map(string_to_asset_kind)
+            .map(parse_yahoo_quote_type)
             .transpose()
         {
             Ok(Some(kind)) => kind,

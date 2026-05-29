@@ -9,9 +9,11 @@ use super::query::{YahooExchangeCode, YahooQuoteType};
 use crate::{
     DataQuality, ProjectionIssue, YfError, YfResponse,
     core::{
-        ProjectionContext, conversions::string_to_asset_kind,
-        currency_resolver::ResolvedCurrencyUnit, diagnostics::optional_u32_from_i64,
+        ProjectionContext,
+        currency_resolver::ResolvedCurrencyUnit,
+        diagnostics::optional_u32_from_i64,
         wire::JsonDecimal,
+        yahoo_vocab::{parse_yahoo_exchange, parse_yahoo_quote_type},
     },
 };
 
@@ -182,10 +184,10 @@ impl WireQuote {
             .and_then(|value| {
                 quote_type
                     .map(YahooQuoteType::asset_kind)
-                    .or_else(|| string_to_asset_kind(value).ok())
+                    .or_else(|| parse_yahoo_quote_type(value).ok())
             });
         let exchange = match wire.exchange.as_deref().and_then(nonempty) {
-            Some(exchange) => match exchange.parse::<Exchange>() {
+            Some(exchange) => match parse_yahoo_exchange(exchange) {
                 Ok(exchange) => Some(exchange),
                 Err(err) => {
                     ctx.omitted_present_field(

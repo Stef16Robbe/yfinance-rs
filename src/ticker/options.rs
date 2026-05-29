@@ -7,14 +7,13 @@ use crate::{
     core::{
         ProjectionContext,
         client::{CacheEndpoint, CacheMode, RetryConfig, SymbolEndpoint, normalize_symbol},
-        conversions::{string_to_asset_kind, string_to_exchange},
         currency_resolver::{
             CurrencyHints, CurrencyKind, ResolvedCurrencyUnit, TradingCurrencyEvidence,
         },
         diagnostics::optional_decimal_f64,
         net,
+        yahoo_vocab::{first_parsed_yahoo_exchange, parse_yahoo_quote_type},
     },
-    screener::YahooQuoteType,
 };
 
 use super::model::{OptionChain, OptionContract};
@@ -505,9 +504,7 @@ fn underlying_instrument_from_result(node: &OptResultNode) -> Option<Instrument>
 }
 
 fn quote_type_to_asset_kind(value: &str) -> Result<AssetKind, YfError> {
-    YahooQuoteType::parse(value)
-        .map(YahooQuoteType::asset_kind)
-        .map_or_else(|| string_to_asset_kind(value), Ok)
+    parse_yahoo_quote_type(value)
 }
 
 /* ---------------- Internal: raw fetch with auth fallback ---------------- */
@@ -589,13 +586,12 @@ struct OptQuoteNode {
 
 impl OptQuoteNode {
     fn exchange(&self) -> Option<paft::domain::Exchange> {
-        string_to_exchange(
-            self.full_exchange_name
-                .clone()
-                .or_else(|| self.exchange.clone())
-                .or_else(|| self.market.clone())
-                .or_else(|| self.market_cap_figure_exchange.clone()),
-        )
+        first_parsed_yahoo_exchange([
+            self.full_exchange_name.as_deref(),
+            self.exchange.as_deref(),
+            self.market.as_deref(),
+            self.market_cap_figure_exchange.as_deref(),
+        ])
     }
 }
 

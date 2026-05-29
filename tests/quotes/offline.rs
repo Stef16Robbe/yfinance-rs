@@ -203,6 +203,133 @@ async fn batch_quotes_with_diagnostics_reports_unresolved_currency_for_present_p
 }
 
 #[tokio::test]
+async fn lower_priority_exchange_failures_after_valid_candidate_are_ignored() {
+    let server = setup_server();
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "AAPL");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{"quoteResponse":{"result":[{
+                  "symbol":"AAPL",
+                  "quoteType":"EQUITY",
+                  "regularMarketPrice":190.0,
+                  "currency":"USD",
+                  "fullExchangeName":"NasdaqGS",
+                  "exchange":"!!!",
+                  "market":"us_market"
+                }]}}"#,
+            );
+    });
+
+    let base = Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap();
+    let client = yfinance_rs::YfClient::builder()
+        .base_quote_v7(base)
+        .build()
+        .unwrap();
+
+    let response = yfinance_rs::QuotesBuilder::new(&client)
+        .symbols(["AAPL"])
+        .fetch_with_diagnostics()
+        .await
+        .unwrap();
+
+    assert_eq!(
+        response.data[0]
+            .instrument
+            .exchange
+            .as_ref()
+            .map(std::string::ToString::to_string)
+            .as_deref(),
+        Some("NASDAQ")
+    );
+    assert!(
+        !response
+            .diagnostics
+            .warnings
+            .iter()
+            .any(is_exchange_candidate_warning)
+    );
+
+    yfinance_rs::QuotesBuilder::new(&client)
+        .symbols(["AAPL"])
+        .strict()
+        .fetch()
+        .await
+        .unwrap();
+
+    mock.assert_calls(2);
+}
+
+#[tokio::test]
+async fn invalid_exchange_candidates_emit_one_aggregated_warning() {
+    let server = setup_server();
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "AAPL");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{"quoteResponse":{"result":[{
+                  "symbol":"AAPL",
+                  "quoteType":"EQUITY",
+                  "regularMarketPrice":190.0,
+                  "currency":"USD",
+                  "fullExchangeName":"!!!",
+                  "exchange":"???",
+                  "market":"us_market"
+                }]}}"#,
+            );
+    });
+
+    let base = Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap();
+    let client = yfinance_rs::YfClient::builder()
+        .base_quote_v7(base)
+        .build()
+        .unwrap();
+
+    let response = yfinance_rs::QuotesBuilder::new(&client)
+        .symbols(["AAPL"])
+        .fetch_with_diagnostics()
+        .await
+        .unwrap();
+
+    assert!(response.data[0].instrument.exchange.is_none());
+    let warnings = response
+        .diagnostics
+        .warnings
+        .iter()
+        .filter(|warning| is_exchange_candidate_warning(warning))
+        .collect::<Vec<_>>();
+    assert_eq!(warnings.len(), 1);
+    assert!(matches!(
+        warnings[0],
+        YfWarning::OmittedPresentField {
+            path: "fullExchangeName",
+            key: Some(key),
+            reason: ProjectionIssue::InvalidField { details, .. },
+            ..
+        } if key == "AAPL"
+            && details.contains("fullExchangeName")
+            && details.contains("exchange")
+            && details.contains("market")
+    ));
+
+    let err = yfinance_rs::QuotesBuilder::new(&client)
+        .symbols(["AAPL"])
+        .strict()
+        .fetch()
+        .await
+        .unwrap_err();
+
+    mock.assert_calls(2);
+    assert!(matches!(err, YfError::DataQuality(_)));
+}
+
+#[tokio::test]
 async fn malformed_quote_node_invalid_symbol_is_dropped_from_batch() {
     let server = setup_server();
     let mock = server.mock(|when, then| {
@@ -251,6 +378,17 @@ async fn malformed_quote_node_invalid_symbol_is_dropped_from_batch() {
 
     mock.assert_calls(2);
     assert!(matches!(err, YfError::DataQuality(_)));
+}
+
+fn is_exchange_candidate_warning(warning: &YfWarning) -> bool {
+    matches!(
+        warning,
+        YfWarning::OmittedPresentField {
+            path: "fullExchangeName" | "exchange" | "market" | "marketCapFigureExchange",
+            reason: ProjectionIssue::InvalidField { .. },
+            ..
+        }
+    )
 }
 
 #[tokio::test]

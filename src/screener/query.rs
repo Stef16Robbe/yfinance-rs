@@ -4,7 +4,7 @@ use paft::domain::AssetKind;
 use serde::Serialize;
 use serde_json::{Value, json};
 
-use crate::YfError;
+use crate::{YfError, core::yahoo_vocab::parse_yahoo_quote_type};
 
 /// Marker type for predefined screen requests.
 #[derive(Debug, Clone, Copy)]
@@ -54,11 +54,8 @@ impl YahooQuoteType {
         }
     }
 
-    pub(crate) const fn asset_kind(self) -> AssetKind {
-        match self {
-            Self::Equity => AssetKind::Equity,
-            Self::MutualFund | Self::Etf => AssetKind::Fund,
-        }
+    pub(crate) fn asset_kind(self) -> AssetKind {
+        parse_yahoo_quote_type(self.as_str()).expect("typed screener quote type is valid")
     }
 
     pub(crate) fn parse(value: &str) -> Option<Self> {
@@ -249,6 +246,12 @@ pub enum YahooExchangeCode {
     /// NASDAQ Global Select.
     #[serde(rename = "NMS")]
     Nms,
+    /// NASDAQ Global Market.
+    #[serde(rename = "NGM")]
+    Ngm,
+    /// NASDAQ Capital Market.
+    #[serde(rename = "NCM")]
+    Ncm,
     /// NYSE.
     #[serde(rename = "NYQ")]
     Nyq,
@@ -267,6 +270,30 @@ pub enum YahooExchangeCode {
     /// OTC Pink.
     #[serde(rename = "PNK")]
     Pnk,
+    /// OTCQB.
+    #[serde(rename = "OQB")]
+    Oqb,
+    /// OTCQX.
+    #[serde(rename = "OQX")]
+    Oqx,
+    /// Other OTC market.
+    #[serde(rename = "OEM")]
+    Oem,
+    /// Yahoo YHD venue code.
+    #[serde(rename = "YHD")]
+    Yhd,
+    /// Yahoo CXI venue code.
+    #[serde(rename = "CXI")]
+    Cxi,
+    /// Yahoo NAE venue code.
+    #[serde(rename = "NAE")]
+    Nae,
+    /// OTC Global Market.
+    #[serde(rename = "OGM")]
+    Ogm,
+    /// WCB venue code.
+    #[serde(rename = "WCB")]
+    Wcb,
 }
 
 impl YahooExchangeCode {
@@ -275,24 +302,44 @@ impl YahooExchangeCode {
     pub const fn code(self) -> &'static str {
         match self {
             Self::Nms => "NMS",
+            Self::Ngm => "NGM",
+            Self::Ncm => "NCM",
             Self::Nyq => "NYQ",
             Self::Nas => "NAS",
             Self::Ase => "ASE",
             Self::Bts => "BTS",
             Self::Pcx => "PCX",
             Self::Pnk => "PNK",
+            Self::Oqb => "OQB",
+            Self::Oqx => "OQX",
+            Self::Oem => "OEM",
+            Self::Yhd => "YHD",
+            Self::Cxi => "CXI",
+            Self::Nae => "NAE",
+            Self::Ogm => "OGM",
+            Self::Wcb => "WCB",
         }
     }
 
     pub(crate) fn parse(value: &str) -> Option<Self> {
         match value {
             "NMS" => Some(Self::Nms),
+            "NGM" => Some(Self::Ngm),
+            "NCM" => Some(Self::Ncm),
             "NYQ" => Some(Self::Nyq),
             "NAS" => Some(Self::Nas),
             "ASE" => Some(Self::Ase),
             "BTS" => Some(Self::Bts),
             "PCX" => Some(Self::Pcx),
             "PNK" => Some(Self::Pnk),
+            "OQB" => Some(Self::Oqb),
+            "OQX" => Some(Self::Oqx),
+            "OEM" => Some(Self::Oem),
+            "YHD" => Some(Self::Yhd),
+            "CXI" => Some(Self::Cxi),
+            "NAE" => Some(Self::Nae),
+            "OGM" => Some(Self::Ogm),
+            "WCB" => Some(Self::Wcb),
             _ => None,
         }
     }

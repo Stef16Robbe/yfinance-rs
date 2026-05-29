@@ -4,8 +4,8 @@ use serde_json::json;
 use std::time::Duration;
 use url::Url;
 use yfinance_rs::{
-    CacheMode, EquityQuery, PredefinedScreener, ProjectionIssue, Region, ScreenerBuilder, YfClient,
-    YfError, YfWarning, equity_fields,
+    CacheMode, EquityQuery, PredefinedScreener, ProjectionIssue, Region, ScreenerBuilder,
+    YahooExchangeCode, YfClient, YfError, YfWarning, equity_fields,
 };
 
 fn fixture(endpoint: &str, key: &str) -> String {
@@ -163,6 +163,76 @@ async fn predefined_screener_with_diagnostics_reports_invalid_currency_for_prese
             } if key == "BADCUR" && code == "!!!"
         )
     }));
+}
+
+#[tokio::test]
+async fn screener_yahoo_exchange_codes_normalize_without_diagnostics() {
+    let server = MockServer::start();
+    let body = r#"{
+      "finance": {
+        "error": null,
+        "result": [{
+          "count": 1,
+          "quotes": [{
+            "symbol": "SMH",
+            "quoteType": "ETF",
+            "shortName": "Semiconductor ETF",
+            "exchange": "NGM",
+            "currency": "USD",
+            "regularMarketPrice": 10.0
+          }]
+        }]
+      }
+    }"#;
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v1/finance/screener/predefined/saved")
+            .query_param("scrIds", "day_gainers")
+            .query_param("corsDomain", "finance.yahoo.com")
+            .query_param("formatted", "false")
+            .query_param("lang", "en-US")
+            .query_param("region", "US");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let client = YfClient::default();
+    let base = Url::parse(&format!(
+        "{}/v1/finance/screener/predefined/saved",
+        server.base_url()
+    ))
+    .unwrap();
+    let response = ScreenerBuilder::predefined(&client, PredefinedScreener::DayGainers)
+        .predefined_screener_base(base.clone())
+        .cache_mode(CacheMode::Bypass)
+        .fetch_with_diagnostics()
+        .await
+        .unwrap();
+
+    assert_eq!(
+        response.data.results[0]
+            .exchange
+            .as_ref()
+            .map(std::string::ToString::to_string)
+            .as_deref(),
+        Some("NASDAQ")
+    );
+    assert_eq!(
+        response.data.results[0].yahoo_exchange,
+        Some(YahooExchangeCode::Ngm)
+    );
+    assert!(response.diagnostics.warnings.is_empty());
+
+    ScreenerBuilder::predefined(&client, PredefinedScreener::DayGainers)
+        .predefined_screener_base(base)
+        .cache_mode(CacheMode::Bypass)
+        .strict()
+        .fetch()
+        .await
+        .unwrap();
+
+    mock.assert_calls(2);
 }
 
 #[tokio::test]

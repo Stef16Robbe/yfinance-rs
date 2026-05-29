@@ -23,6 +23,8 @@ mod redaction;
 /// Service traits for abstracting functionality like history fetching.
 pub mod services;
 pub(crate) mod wire;
+#[doc(hidden)]
+pub mod yahoo_vocab;
 
 #[cfg(feature = "test-mode")]
 pub(crate) mod fixtures;

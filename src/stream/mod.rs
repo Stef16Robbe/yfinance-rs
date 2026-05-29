@@ -20,7 +20,8 @@ use tokio_tungstenite::{
 use crate::{
     YfClient, YfError,
     core::client::{CacheMode, RetryConfig, normalize_symbols},
-    core::conversions::{price_from_f64_with_currency_str, string_to_asset_kind},
+    core::conversions::price_from_f64_with_currency_str,
+    core::yahoo_vocab::parse_yahoo_quote_type,
 };
 use paft::domain::{AssetKind, Canonical, Instrument};
 use paft::market::quote::QuoteUpdate;
@@ -707,7 +708,7 @@ async fn run_polling_stream(
                             let kind = q
                                 .quote_type
                                 .as_deref()
-                                .and_then(|value| string_to_asset_kind(value).ok());
+                                .and_then(|value| parse_yahoo_quote_type(value).ok());
                             let Some(instrument) =
                                 resolve_stream_instrument(&client, &sym_s, kind).await
                             else {

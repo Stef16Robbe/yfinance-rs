@@ -170,6 +170,60 @@ async fn invalid_search_exchange_is_reported_as_projection_loss() {
 }
 
 #[tokio::test]
+async fn yahoo_search_exchange_codes_normalize_without_diagnostics() {
+    let query = "nasdaq code";
+    let server = MockServer::start();
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v1/finance/search")
+            .query_param("q", query)
+            .query_param("quotesCount", "10")
+            .query_param("newsCount", "0")
+            .query_param("listsCount", "0");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "quotes": [{
+                    "symbol": "AAPL",
+                    "quoteType": "EQUITY",
+                    "exchange": "NMS"
+                  }]
+                }"#,
+            );
+    });
+
+    let client = YfClient::builder().build().unwrap();
+    let base = Url::parse(&format!("{}/v1/finance/search", server.base_url())).unwrap();
+
+    let response = SearchBuilder::new(&client, query)
+        .search_base(base.clone())
+        .fetch_with_diagnostics()
+        .await
+        .unwrap();
+
+    mock.assert();
+    assert_eq!(
+        response.data.results[0]
+            .instrument
+            .exchange
+            .as_ref()
+            .map(std::string::ToString::to_string)
+            .as_deref(),
+        Some("NASDAQ")
+    );
+    assert!(response.diagnostics.warnings.is_empty());
+
+    SearchBuilder::new(&client, query)
+        .search_base(base)
+        .strict()
+        .fetch()
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
 async fn malformed_search_quote_is_dropped_without_losing_valid_siblings() {
     let query = "malformed row";
     let server = MockServer::start();

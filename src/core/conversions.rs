@@ -13,7 +13,13 @@ use paft::money::{Currency, MonetaryAmount, Money, Price};
 use rust_decimal::prelude::ToPrimitive;
 use std::{fmt::Display, str::FromStr};
 
-use crate::{YfError, core::currency_resolver::ResolvedCurrencyUnit};
+use crate::{
+    YfError,
+    core::{
+        currency_resolver::ResolvedCurrencyUnit,
+        yahoo_vocab::{first_parsed_yahoo_exchange, parse_yahoo_exchange, parse_yahoo_quote_type},
+    },
+};
 
 /// Converts a finite `f64` value to `Decimal`.
 ///
@@ -167,51 +173,15 @@ pub const fn datetime_to_i64(dt: DateTime<Utc>) -> i64 {
 /// # Errors
 /// Returns `YfError::InvalidData` if the token cannot be represented by `paft`.
 pub fn parse_exchange_str(s: &str) -> Result<Exchange, YfError> {
-    // Map Yahoo Finance exchange names to paft Exchange values.
-    match s.trim() {
-        "NasdaqGS" | "NasdaqCM" | "NasdaqGM" => Ok(Exchange::NASDAQ),
-        "NYSE" => Ok(Exchange::NYSE),
-        "AMEX" => Ok(Exchange::AMEX),
-        "BATS" => Ok(Exchange::BATS),
-        "OTC" => Ok(Exchange::OTC),
-        "LSE" => Ok(Exchange::LSE),
-        "TSE" => Ok(Exchange::TSE),
-        "HKEX" => Ok(Exchange::HKEX),
-        "SSE" => Ok(Exchange::SSE),
-        "SZSE" => Ok(Exchange::SZSE),
-        "TSX" => Ok(Exchange::TSX),
-        "ASX" => Ok(Exchange::ASX),
-        "Euronext" => Ok(Exchange::Euronext),
-        "XETRA" => Ok(Exchange::XETRA),
-        "SIX" => Ok(Exchange::SIX),
-        "BIT" => Ok(Exchange::BIT),
-        "BME" => Ok(Exchange::BME),
-        "AEX" => Ok(Exchange::AEX),
-        "BRU" => Ok(Exchange::BRU),
-        "LIS" => Ok(Exchange::LIS),
-        "EPA" => Ok(Exchange::EPA),
-        "OSL" => Ok(Exchange::OSL),
-        "STO" => Ok(Exchange::STO),
-        "CPH" => Ok(Exchange::CPH),
-        "WSE" => Ok(Exchange::WSE),
-        "PSE" => Ok(Exchange::PSE),
-        "BSE" => Ok(Exchange::BSE),
-        "MOEX" => Ok(Exchange::MOEX),
-        "BIST" => Ok(Exchange::BIST),
-        "JSE" => Ok(Exchange::JSE),
-        "TASE" => Ok(Exchange::TASE),
-        "BSE_HU" => Ok(Exchange::BSE_HU),
-        "NSE" => Ok(Exchange::NSE),
-        "KRX" => Ok(Exchange::KRX),
-        "SGX" => Ok(Exchange::SGX),
-        "SET" => Ok(Exchange::SET),
-        "KLSE" => Ok(Exchange::KLSE),
-        "PSE_CZ" => Ok(Exchange::PSE_CZ),
-        "IDX" => Ok(Exchange::IDX),
-        "HOSE" => Ok(Exchange::HOSE),
-        token => Exchange::try_from_str(token)
-            .map_err(|err| YfError::InvalidData(format!("invalid exchange {s:?}: {err}"))),
-    }
+    parse_yahoo_exchange(s)
+}
+
+/// Returns the first present exchange candidate that can be normalized.
+#[must_use]
+pub fn first_parsed_exchange<'a>(
+    candidates: impl IntoIterator<Item = Option<&'a str>>,
+) -> Option<Exchange> {
+    first_parsed_yahoo_exchange(candidates)
 }
 
 /// Convert String to Exchange enum
@@ -291,13 +261,7 @@ pub fn string_to_recommendation_action(s: &str) -> Result<RecommendationAction, 
 
 /// Convert a Yahoo quote type / asset kind string to `AssetKind`.
 pub fn string_to_asset_kind(s: &str) -> Result<AssetKind, YfError> {
-    match s.trim() {
-        "ETF" | "MUTUALFUND" | "MUTUAL_FUND" => Ok(AssetKind::Fund),
-        "INDEX" => Ok(AssetKind::Index),
-        "CRYPTOCURRENCY" => Ok(AssetKind::Crypto),
-        "CURRENCY" => Ok(AssetKind::Forex),
-        token => parse_required_token(token, "asset kind"),
-    }
+    parse_yahoo_quote_type(s)
 }
 
 fn parse_required_token<T>(s: &str, name: &str) -> Result<T, YfError>

@@ -1,4 +1,6 @@
 // src/core/quotes.rs
+use std::fmt::Write as _;
+
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -7,13 +9,12 @@ use crate::{
     core::{
         DataQuality, ProjectionContext, ProjectionIssue,
         client::{CacheEndpoint, CacheMode, RetryConfig, normalize_symbols},
-        conversions::{
-            decimal_from_f64, i64_to_datetime, parse_exchange_str, string_to_asset_kind,
-        },
+        conversions::{decimal_from_f64, i64_to_datetime},
         currency_resolver::{CurrencyHints, ResolvedCurrencyUnit},
         diagnostics::optional_decimal_f64,
         net, quotesummary,
         wire::{JsonDecimal, RawNum, from_raw},
+        yahoo_vocab::{first_parsed_yahoo_exchange, parse_yahoo_exchange, parse_yahoo_quote_type},
     },
 };
 use paft::Decimal;
@@ -132,13 +133,11 @@ impl V7QuoteNode {
     }
 
     fn exchange(&self) -> Option<Exchange> {
-        self.exchange_candidates()
-            .into_iter()
-            .find_map(|(_, value)| {
-                value
-                    .and_then(nonempty)
-                    .and_then(|value| parse_exchange_str(value).ok())
-            })
+        first_parsed_yahoo_exchange(
+            self.exchange_candidates()
+                .into_iter()
+                .map(|(_, value)| value),
+        )
     }
 
     fn exchange_with_context(
@@ -146,27 +145,32 @@ impl V7QuoteNode {
         ctx: &mut ProjectionContext,
         key: Option<&str>,
     ) -> Result<Option<Exchange>, YfError> {
-        let mut exchange = None;
+        let mut failures = Vec::new();
         for (path, value) in self.exchange_candidates() {
             let Some(value) = value.and_then(nonempty) else {
                 continue;
             };
-            match parse_exchange_str(value) {
-                Ok(parsed) if exchange.is_none() => exchange = Some(parsed),
-                Ok(_) => {}
-                Err(err) => {
-                    ctx.omitted_present_field(
-                        path,
-                        key.map(str::to_owned),
-                        ProjectionIssue::InvalidField {
-                            field: path,
-                            details: err.to_string(),
-                        },
-                    )?;
-                }
+            match parse_yahoo_exchange(value) {
+                Ok(parsed) => return Ok(Some(parsed)),
+                Err(err) => failures.push(ExchangeCandidateFailure {
+                    path,
+                    value: value.to_string(),
+                    reason: err.to_string(),
+                }),
             }
         }
-        Ok(exchange)
+
+        if let Some(first) = failures.first() {
+            ctx.omitted_present_field(
+                first.path,
+                key.map(str::to_owned),
+                ProjectionIssue::InvalidField {
+                    field: first.path,
+                    details: exchange_candidate_failure_details(&failures),
+                },
+            )?;
+        }
+        Ok(None)
     }
 
     fn instrument_projection(
@@ -183,7 +187,7 @@ impl V7QuoteNode {
             .as_deref()
             .ok_or(ProjectionIssue::MissingRequiredField { field: "quoteType" })
             .and_then(|quote_type| {
-                string_to_asset_kind(quote_type).map_err(|err| ProjectionIssue::InvalidField {
+                parse_yahoo_quote_type(quote_type).map_err(|err| ProjectionIssue::InvalidField {
                     field: "quoteType",
                     details: err.to_string(),
                 })
@@ -445,6 +449,24 @@ impl V7QuoteNode {
             }
         }
     }
+}
+
+struct ExchangeCandidateFailure {
+    path: &'static str,
+    value: String,
+    reason: String,
+}
+
+fn exchange_candidate_failure_details(failures: &[ExchangeCandidateFailure]) -> String {
+    let mut details = String::from("no exchange candidate parsed");
+    for failure in failures {
+        let _ = write!(
+            details,
+            "; {}={:?}: {}",
+            failure.path, failure.value, failure.reason
+        );
+    }
+    details
 }
 
 #[derive(Clone)]
@@ -860,7 +882,7 @@ async fn store_quote_node_instrument(client: &YfClient, symbol: &str, node: &V7Q
     let Some(kind) = node
         .quote_type
         .as_deref()
-        .and_then(|s| string_to_asset_kind(s).ok())
+        .and_then(|s| parse_yahoo_quote_type(s).ok())
     else {
         return;
     };

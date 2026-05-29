@@ -1,4 +1,4 @@
-use paft::domain::{AssetKind, Period};
+use paft::domain::{AssetKind, Exchange, Period};
 use paft::fundamentals::{
     analysis::{RecommendationAction, RecommendationGrade},
     holders::{InsiderPosition, TransactionType},
@@ -14,6 +14,7 @@ use yfinance_rs::core::conversions::{
     string_to_recommendation_action, string_to_recommendation_grade, string_to_transaction_type,
     u64_to_money_with_currency,
 };
+use yfinance_rs::core::yahoo_vocab::{parse_yahoo_exchange, yahoo_exchange_to_listing_currency};
 
 const fn usd() -> Currency {
     Currency::Iso(IsoCurrency::USD)
@@ -62,6 +63,37 @@ fn yahoo_unit_currencies_do_not_scale_major_money_amounts() {
     let gbp = money_from_f64_with_currency_str(123.0, Some("GBp")).unwrap();
     assert_eq!(gbp.currency(), &Currency::Iso(IsoCurrency::GBP));
     assert_eq!(gbp.amount(), paft::Decimal::from(123));
+}
+
+#[test]
+fn yahoo_exchange_codes_normalize_to_provider_agnostic_exchanges() {
+    for code in ["NMS", "NGM", "NCM", "NAS", "NasdaqGS"] {
+        assert_eq!(parse_yahoo_exchange(code).unwrap(), Exchange::NASDAQ);
+    }
+
+    assert_eq!(parse_yahoo_exchange("NYQ").unwrap(), Exchange::NYSE);
+    assert_eq!(parse_yahoo_exchange("ASE").unwrap(), Exchange::AMEX);
+    assert_eq!(parse_yahoo_exchange("BTS").unwrap(), Exchange::BATS);
+    assert_eq!(parse_yahoo_exchange("PNK").unwrap(), Exchange::OTC);
+    assert_eq!(
+        parse_yahoo_exchange("London Stock Exchange").unwrap(),
+        Exchange::LSE
+    );
+    assert_eq!(parse_yahoo_exchange("JPX").unwrap(), Exchange::TSE);
+    assert_eq!(parse_yahoo_exchange("GER").unwrap(), Exchange::XETRA);
+    assert_eq!(
+        parse_yahoo_exchange("PCX").unwrap().to_string(),
+        "NYSE_ARCA"
+    );
+    assert_eq!(yahoo_exchange_to_listing_currency("PCX"), Some("USD"));
+    assert_eq!(
+        yahoo_exchange_to_listing_currency("London Stock Exchange"),
+        Some("GBp")
+    );
+    assert!(matches!(
+        parse_yahoo_exchange("us_market"),
+        Err(YfError::InvalidData(_))
+    ));
 }
 
 #[test]

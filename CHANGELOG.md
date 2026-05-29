@@ -78,6 +78,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Heuristic currency cache entries are now provisional until stronger Yahoo currency fields are confirmed missing, so later direct/enriched evidence can replace stale profile or listing inference.
 - Currency listing fallback now infers Yahoo quote units for minor-unit exchanges such as London (`GBp`) instead of assuming major ISO units.
 - Fundamentals timeseries statements now use same-payload `currencyCode` values before issuing quote/profile enrichment requests, and invalid provider currency codes surface as data errors instead of falling through to heuristics.
+- Yahoo exchange and quote-type vocabulary is now normalized through one shared adapter across quote, fast info, info, search, screener, history, options, stream, and currency-inference paths; valid higher-priority quote exchange metadata no longer produces lower-priority exchange diagnostics or strict-mode failures.
 - Fundamentals statement money values and aggregate market caps now parse Yahoo wire numbers directly into decimals, avoiding `f64` precision loss for large integers such as revenues, assets, cash flows, and market capitalizations.
 - Fundamentals timeseries statements now process every flattened field in each Yahoo result object instead of silently keeping only one field when Yahoo groups multiple requested fields together.
 - Analyst estimate row-level currency fields no longer poison symbol-level inferred caches, and optional holder monetary values are omitted when currency cannot be resolved.
