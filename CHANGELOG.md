@@ -74,6 +74,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Malformed raw OHLC rows are validated before auto-adjustment, so adjustment math cannot turn invalid Yahoo prices into emitted candles.
 - Download rounding and repair now leave values unchanged when conversion fails instead of falling back to zero.
 - Download repair now scales OHLC rows atomically, leaving the whole row unchanged if any repaired price cannot be represented.
+- Download repair now scales `Candle::close_unadj` alongside OHLC when repairing a row.
 - History now uses `chart.meta.currency` for candles and default dividend/capital-gain currency before attempting any inferred fallback, while event-level action currencies override the chart default.
 - History best-effort responses now report unresolved candle currency as a dropped-candle diagnostic instead of aborting the whole response.
 - Yahoo unit currency codes such as `GBp`, `GBX`, `ZAc`, and `ILA` are normalized to their major ISO currencies; per-share `Price` values are scaled from quote units, while aggregate `Money` values stay in major units.

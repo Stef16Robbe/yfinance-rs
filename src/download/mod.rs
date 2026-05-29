@@ -432,6 +432,9 @@ fn repair_scale_outliers(rows: &mut [Candle]) -> Vec<String> {
     }
 
     for i in 1..rows.len() - 1 {
+        // This is intentionally a single forward pass: once a bar is repaired,
+        // its corrected close becomes the previous-neighbor baseline for the
+        // next bar.
         // Split rows at i, so left[..i] and right[i..] don't overlap.
         let (left, right) = rows.split_at_mut(i);
 
@@ -511,11 +514,21 @@ fn scale_row_prices(c: &mut Candle, scale: f64) -> bool {
     let Some(close) = scaled_price(&c.close, scale) else {
         return false;
     };
+    let close_unadj = match c.close_unadj.as_ref() {
+        Some(close_unadj) => {
+            let Some(close_unadj) = scaled_price(close_unadj, scale) else {
+                return false;
+            };
+            Some(close_unadj)
+        }
+        None => None,
+    };
 
     c.open = open;
     c.high = high;
     c.low = low;
     c.close = close;
+    c.close_unadj = close_unadj;
     true
 }
 
