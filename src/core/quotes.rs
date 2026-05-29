@@ -4,9 +4,11 @@ use serde::Deserialize;
 use crate::{
     YfClient, YfError,
     core::{
+        DataQuality, ProjectionContext, ProjectionIssue,
         client::{CacheEndpoint, CacheMode, RetryConfig},
         conversions::{decimal_from_f64, i64_to_datetime, string_to_asset_kind},
         currency_resolver::{CurrencyHints, ResolvedCurrencyUnit},
+        diagnostics::optional_decimal_f64,
         net, quotesummary,
         wire::{JsonDecimal, RawNum, from_raw},
     },
@@ -145,18 +147,25 @@ impl V7QuoteNode {
             .map_err(|err| YfError::InvalidData(format!("invalid v7 quote symbol {sym:?}: {err}")))
     }
 
-    fn positive_book_level(&self, price: Option<f64>, size: Option<u64>) -> Option<BookLevel> {
-        let price = price.filter(|p| p.is_finite() && *p > 0.0)?;
-        let price = self.currency_units().quote_price(price)?;
-        Some(BookLevel::new(price, size.map(Decimal::from)))
-    }
-
-    fn decimal(value: Option<f64>) -> Option<Decimal> {
-        finite_decimal(value)
-    }
-
-    fn percent_to_fraction(value: Option<f64>) -> Option<Decimal> {
-        Self::decimal(value).map(|v| v / Decimal::from(100))
+    fn positive_book_level(
+        &self,
+        ctx: &mut ProjectionContext,
+        path: &'static str,
+        key: Option<String>,
+        price: Option<f64>,
+        size: Option<u64>,
+    ) -> Result<Option<BookLevel>, YfError> {
+        let Some(price) = price.filter(|p| p.is_finite() && *p > 0.0) else {
+            return Ok(None);
+        };
+        let price = self.currency_units().quote_price(
+            ctx,
+            path,
+            key,
+            Some(price),
+            "quote book level price",
+        )?;
+        Ok(price.map(|price| BookLevel::new(price, size.map(Decimal::from))))
     }
 
     fn as_of(&self) -> Option<chrono::DateTime<chrono::Utc>> {
@@ -164,53 +173,130 @@ impl V7QuoteNode {
             .and_then(|timestamp| i64_to_datetime(timestamp).ok())
     }
 
-    pub(crate) fn to_snapshot(&self) -> Result<Snapshot, YfError> {
+    pub(crate) fn to_snapshot_with_context(
+        &self,
+        ctx: &mut ProjectionContext,
+    ) -> Result<Snapshot, YfError> {
         let exchange = self.exchange();
         let currencies = self.currency_units();
-        let price = |value: Option<f64>| value.and_then(|value| currencies.quote_price(value));
+        let key = self.symbol.clone();
 
         Ok(Snapshot {
             instrument: self.instrument(exchange)?,
             name: self.long_name.clone().or_else(|| self.short_name.clone()),
             market_state: self.market_state.as_deref().and_then(|s| s.parse().ok()),
             as_of: self.as_of(),
-            last: price(self.regular_market_price),
-            previous_close: price(self.regular_market_previous_close),
-            open: price(self.regular_market_open),
-            day_high: price(self.regular_market_day_high),
-            day_low: price(self.regular_market_day_low),
+            last: currencies.quote_price(
+                ctx,
+                "regularMarketPrice",
+                key.clone(),
+                self.regular_market_price,
+                "snapshot last price",
+            )?,
+            previous_close: currencies.quote_price(
+                ctx,
+                "regularMarketPreviousClose",
+                key.clone(),
+                self.regular_market_previous_close,
+                "snapshot previous close",
+            )?,
+            open: currencies.quote_price(
+                ctx,
+                "regularMarketOpen",
+                key.clone(),
+                self.regular_market_open,
+                "snapshot open",
+            )?,
+            day_high: currencies.quote_price(
+                ctx,
+                "regularMarketDayHigh",
+                key.clone(),
+                self.regular_market_day_high,
+                "snapshot day high",
+            )?,
+            day_low: currencies.quote_price(
+                ctx,
+                "regularMarketDayLow",
+                key,
+                self.regular_market_day_low,
+                "snapshot day low",
+            )?,
             volume: self.regular_market_volume,
             provider: (),
         })
     }
 
-    pub(crate) fn to_key_statistics(&self) -> KeyStatistics {
+    pub(crate) fn to_key_statistics_with_context(
+        &self,
+        ctx: &mut ProjectionContext,
+    ) -> Result<KeyStatistics, YfError> {
         let currencies = self.currency_units();
-        let quote_price =
-            |value: Option<f64>| value.and_then(|value| currencies.quote_price(value));
-        let quote_money = |value: Option<JsonDecimal>| {
-            value
-                .map(JsonDecimal::into_decimal)
-                .and_then(|value| currencies.quote_money(value))
-        };
-        let financial_price =
-            |value: Option<f64>| value.and_then(|value| currencies.financial_price(value));
+        let key = self.symbol.clone();
 
-        KeyStatistics {
+        Ok(KeyStatistics {
             as_of: self.as_of(),
-            market_cap: quote_money(self.market_cap),
+            market_cap: currencies.quote_money(
+                ctx,
+                "marketCap",
+                key.clone(),
+                self.market_cap.map(JsonDecimal::into_decimal),
+                "market cap",
+            )?,
             shares_outstanding: self.shares_outstanding,
-            eps_trailing_twelve_months: financial_price(self.eps_trailing_twelve_months),
-            pe_trailing_twelve_months: Self::decimal(self.trailing_pe),
-            dividend_per_share_forward: financial_price(self.dividend_rate),
-            dividend_yield_trailing: Self::decimal(self.trailing_annual_dividend_yield),
-            dividend_yield_forward: Self::percent_to_fraction(self.dividend_yield),
+            eps_trailing_twelve_months: currencies.financial_price(
+                ctx,
+                "epsTrailingTwelveMonths",
+                key.clone(),
+                self.eps_trailing_twelve_months,
+                "trailing EPS",
+            )?,
+            pe_trailing_twelve_months: optional_decimal_f64(
+                ctx,
+                "trailingPE",
+                key.clone(),
+                self.trailing_pe,
+                "trailing PE",
+            )?,
+            dividend_per_share_forward: currencies.financial_price(
+                ctx,
+                "dividendRate",
+                key.clone(),
+                self.dividend_rate,
+                "forward dividend per share",
+            )?,
+            dividend_yield_trailing: optional_decimal_f64(
+                ctx,
+                "trailingAnnualDividendYield",
+                key.clone(),
+                self.trailing_annual_dividend_yield,
+                "trailing dividend yield",
+            )?,
+            dividend_yield_forward: optional_decimal_f64(
+                ctx,
+                "dividendYield",
+                key.clone(),
+                self.dividend_yield,
+                "forward dividend yield",
+            )?
+            .map(|value| value / Decimal::from(100)),
             ex_dividend_date: None,
-            fifty_two_week_high: quote_price(self.fifty_two_week_high),
-            fifty_two_week_low: quote_price(self.fifty_two_week_low),
+            fifty_two_week_high: currencies.quote_price(
+                ctx,
+                "fiftyTwoWeekHigh",
+                key.clone(),
+                self.fifty_two_week_high,
+                "52-week high",
+            )?,
+            fifty_two_week_low: currencies.quote_price(
+                ctx,
+                "fiftyTwoWeekLow",
+                key.clone(),
+                self.fifty_two_week_low,
+                "52-week low",
+            )?,
             average_daily_volume_3m: self.average_daily_volume_3_month,
-            beta: Self::decimal(self.beta),
-        }
+            beta: optional_decimal_f64(ctx, "beta", key, self.beta, "beta")?,
+        })
     }
 
     pub(crate) fn calendar_fallback(&self) -> Option<Calendar> {
@@ -224,57 +310,166 @@ impl V7QuoteNode {
     }
 }
 
+#[derive(Clone)]
 struct QuoteCurrencyUnits {
     quote: Option<ResolvedCurrencyUnit>,
+    quote_invalid: Option<String>,
     quote_major: Option<ResolvedCurrencyUnit>,
     financial: Option<ResolvedCurrencyUnit>,
+    financial_invalid: Option<String>,
 }
 
 impl QuoteCurrencyUnits {
     fn from_quote_node(node: &V7QuoteNode) -> Self {
-        let quote = node
-            .currency
-            .as_deref()
-            .and_then(ResolvedCurrencyUnit::from_code);
+        let (quote, quote_invalid) = parse_currency_unit(node.currency.as_deref(), false);
         let quote_major = quote.as_ref().map(ResolvedCurrencyUnit::major_unit);
-        let financial = node
+        let (financial, financial_invalid) = node
             .financial_currency
             .as_deref()
             .and_then(nonempty)
             .map_or_else(
-                || quote_major.clone(),
-                ResolvedCurrencyUnit::major_from_code,
+                || (quote_major.clone(), None),
+                |code| parse_currency_unit(Some(code), true),
             );
 
         Self {
             quote,
+            quote_invalid,
             quote_major,
             financial,
+            financial_invalid,
         }
     }
 
-    fn quote_price(&self, value: f64) -> Option<paft::money::Price> {
-        self.quote
-            .as_ref()
-            .and_then(|currency| currency.price_from_f64(value))
+    fn quote_price(
+        &self,
+        ctx: &mut ProjectionContext,
+        path: &'static str,
+        key: Option<String>,
+        value: Option<f64>,
+        target: &'static str,
+    ) -> Result<Option<paft::money::Price>, YfError> {
+        optional_with_unit(
+            ctx,
+            path,
+            key,
+            self.quote_unit(),
+            value,
+            target,
+            ResolvedCurrencyUnit::price_from_f64,
+        )
     }
 
-    fn quote_money(&self, value: Decimal) -> Option<paft::money::Money> {
-        self.quote_major
-            .as_ref()
-            .and_then(|currency| currency.money_from_decimal(value).ok())
+    fn quote_money(
+        &self,
+        ctx: &mut ProjectionContext,
+        path: &'static str,
+        key: Option<String>,
+        value: Option<Decimal>,
+        target: &'static str,
+    ) -> Result<Option<paft::money::Money>, YfError> {
+        optional_with_unit(
+            ctx,
+            path,
+            key,
+            self.quote_major_unit(),
+            value,
+            target,
+            |unit, value| unit.money_from_decimal(value).ok(),
+        )
     }
 
-    fn financial_price(&self, value: f64) -> Option<paft::money::Price> {
-        self.financial
+    fn financial_price(
+        &self,
+        ctx: &mut ProjectionContext,
+        path: &'static str,
+        key: Option<String>,
+        value: Option<f64>,
+        target: &'static str,
+    ) -> Result<Option<paft::money::Price>, YfError> {
+        optional_with_unit(
+            ctx,
+            path,
+            key,
+            self.financial_unit(),
+            value,
+            target,
+            ResolvedCurrencyUnit::price_from_f64,
+        )
+    }
+
+    fn quote_unit(&self) -> Result<&ResolvedCurrencyUnit, ProjectionIssue> {
+        self.quote.as_ref().ok_or_else(|| self.quote_issue())
+    }
+
+    fn quote_major_unit(&self) -> Result<&ResolvedCurrencyUnit, ProjectionIssue> {
+        self.quote_major.as_ref().ok_or_else(|| self.quote_issue())
+    }
+
+    fn financial_unit(&self) -> Result<&ResolvedCurrencyUnit, ProjectionIssue> {
+        self.financial.as_ref().ok_or_else(|| {
+            self.financial_invalid
+                .as_ref()
+                .or(self.quote_invalid.as_ref())
+                .map_or(ProjectionIssue::CurrencyUnresolved, |code| {
+                    ProjectionIssue::InvalidCurrency { code: code.clone() }
+                })
+        })
+    }
+
+    fn quote_issue(&self) -> ProjectionIssue {
+        self.quote_invalid
             .as_ref()
-            .and_then(|currency| currency.price_from_f64(value))
+            .map_or(ProjectionIssue::CurrencyUnresolved, |code| {
+                ProjectionIssue::InvalidCurrency { code: code.clone() }
+            })
     }
 }
 
 fn nonempty(value: &str) -> Option<&str> {
     let value = value.trim();
     (!value.is_empty()).then_some(value)
+}
+
+fn parse_currency_unit(
+    code: Option<&str>,
+    major: bool,
+) -> (Option<ResolvedCurrencyUnit>, Option<String>) {
+    let Some(code) = code.and_then(nonempty) else {
+        return (None, None);
+    };
+    let unit = if major {
+        ResolvedCurrencyUnit::major_from_code(code)
+    } else {
+        ResolvedCurrencyUnit::from_code(code)
+    };
+    unit.map_or_else(|| (None, Some(code.to_string())), |unit| (Some(unit), None))
+}
+
+fn optional_with_unit<T, U>(
+    ctx: &mut ProjectionContext,
+    path: &'static str,
+    key: Option<String>,
+    unit: Result<&ResolvedCurrencyUnit, ProjectionIssue>,
+    value: Option<T>,
+    target: &'static str,
+    convert: impl FnOnce(&ResolvedCurrencyUnit, T) -> Option<U>,
+) -> Result<Option<U>, YfError> {
+    let Some(value) = value else {
+        return Ok(None);
+    };
+    let unit = match unit {
+        Ok(unit) => unit,
+        Err(issue) => {
+            ctx.omitted_present_field(path, key, issue)?;
+            return Ok(None);
+        }
+    };
+    let Some(converted) = convert(unit, value) else {
+        ctx.omitted_present_field(path, key, ProjectionIssue::ConversionFailed { target })?;
+        return Ok(None);
+    };
+    Ok(Some(converted))
 }
 
 #[derive(Deserialize)]
@@ -508,24 +703,43 @@ impl TryFrom<V7QuoteNode> for Quote {
     type Error = YfError;
 
     fn try_from(n: V7QuoteNode) -> Result<Self, Self::Error> {
-        let exchange = n.exchange();
-        let instrument = n.instrument(exchange)?;
-        let currencies = n.currency_units();
+        let mut ctx = ProjectionContext::new("quote_v7", DataQuality::BestEffort);
+        n.to_quote_with_context(&mut ctx)
+    }
+}
 
-        Ok(Self {
+impl V7QuoteNode {
+    pub(crate) fn to_quote_with_context(
+        &self,
+        ctx: &mut ProjectionContext,
+    ) -> Result<Quote, YfError> {
+        let exchange = self.exchange();
+        let instrument = self.instrument(exchange)?;
+        let currencies = self.currency_units();
+        let key = self.symbol.clone();
+
+        Ok(Quote {
             instrument,
-            name: n.long_name.clone().or_else(|| n.short_name.clone()),
-            price: n
-                .regular_market_price
-                .and_then(|price| currencies.quote_price(price)),
-            bid: n.positive_book_level(n.bid, n.bid_size),
-            ask: n.positive_book_level(n.ask, n.ask_size),
-            previous_close: n
-                .regular_market_previous_close
-                .and_then(|price| currencies.quote_price(price)),
-            day_volume: n.regular_market_volume,
-            market_state: n.market_state.as_deref().and_then(|s| s.parse().ok()),
-            as_of: n.as_of(),
+            name: self.long_name.clone().or_else(|| self.short_name.clone()),
+            price: currencies.quote_price(
+                ctx,
+                "regularMarketPrice",
+                key.clone(),
+                self.regular_market_price,
+                "quote price",
+            )?,
+            bid: self.positive_book_level(ctx, "bid", key.clone(), self.bid, self.bid_size)?,
+            ask: self.positive_book_level(ctx, "ask", key.clone(), self.ask, self.ask_size)?,
+            previous_close: currencies.quote_price(
+                ctx,
+                "regularMarketPreviousClose",
+                key,
+                self.regular_market_previous_close,
+                "quote previous close",
+            )?,
+            day_volume: self.regular_market_volume,
+            market_state: self.market_state.as_deref().and_then(|s| s.parse().ok()),
+            as_of: self.as_of(),
             provider: (),
         })
     }

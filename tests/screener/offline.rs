@@ -4,7 +4,8 @@ use serde_json::json;
 use std::time::Duration;
 use url::Url;
 use yfinance_rs::{
-    CacheMode, EquityQuery, PredefinedScreener, Region, ScreenerBuilder, YfClient, equity_fields,
+    CacheMode, EquityQuery, PredefinedScreener, ProjectionIssue, Region, ScreenerBuilder, YfClient,
+    YfWarning, equity_fields,
 };
 
 fn fixture(endpoint: &str, key: &str) -> String {
@@ -101,6 +102,67 @@ async fn predefined_screener_market_cap_preserves_large_integer_precision() {
         .as_ref()
         .expect("market cap should map");
     assert_eq!(market_cap.amount(), paft::Decimal::from(exact));
+}
+
+#[tokio::test]
+async fn predefined_screener_with_diagnostics_reports_invalid_currency_for_present_price() {
+    let server = MockServer::start();
+    let body = r#"{
+      "finance": {
+        "error": null,
+        "result": [{
+          "count": 1,
+          "quotes": [{
+            "symbol": "BADCUR",
+            "quoteType": "EQUITY",
+            "shortName": "Bad Currency Inc.",
+            "regularMarketPrice": 10.0,
+            "marketCap": 1000000,
+            "currency": "!!!"
+          }]
+        }]
+      }
+    }"#;
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v1/finance/screener/predefined/saved")
+            .query_param("scrIds", "day_gainers")
+            .query_param("corsDomain", "finance.yahoo.com")
+            .query_param("formatted", "false")
+            .query_param("lang", "en-US")
+            .query_param("region", "US");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let client = YfClient::default();
+    let base = Url::parse(&format!(
+        "{}/v1/finance/screener/predefined/saved",
+        server.base_url()
+    ))
+    .unwrap();
+    let response = ScreenerBuilder::predefined(&client, PredefinedScreener::DayGainers)
+        .predefined_screener_base(base)
+        .cache_mode(CacheMode::Bypass)
+        .fetch_with_diagnostics()
+        .await
+        .unwrap();
+
+    mock.assert();
+    assert!(response.data.results[0].price.is_none());
+    assert!(response.data.results[0].market_cap.is_none());
+    assert!(response.diagnostics.warnings.iter().any(|warning| {
+        matches!(
+            warning,
+            YfWarning::OmittedPresentField {
+                endpoint: "screener",
+                path: "regularMarketPrice",
+                key: Some(key),
+                reason: ProjectionIssue::InvalidCurrency { code },
+            } if key == "BADCUR" && code == "!!!"
+        )
+    }));
 }
 
 #[tokio::test]

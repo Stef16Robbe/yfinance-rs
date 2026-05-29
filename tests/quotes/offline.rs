@@ -2,7 +2,7 @@ use crate::common::{mock_quote_v7_multi, setup_server};
 use httpmock::Method::GET;
 use std::{path::Path, time::Duration};
 use url::Url;
-use yfinance_rs::{CacheMode, YfError};
+use yfinance_rs::{CacheMode, ProjectionIssue, YfError, YfWarning};
 
 #[tokio::test]
 async fn offline_multi_quotes_uses_recorded_fixture() {
@@ -70,6 +70,47 @@ async fn malformed_quote_node_missing_symbol_returns_error() {
         Err(other) => panic!("expected missing symbol error, got {other:?}"),
         Ok(_) => panic!("expected missing symbol error"),
     }
+}
+
+#[tokio::test]
+async fn batch_quotes_with_diagnostics_reports_unresolved_currency_for_present_price() {
+    let server = setup_server();
+    let _mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "AAPL");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{"quoteResponse":{"result":[{"symbol":"AAPL","quoteType":"EQUITY","regularMarketPrice":190.0}]}}"#,
+            );
+    });
+
+    let base = Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap();
+    let client = yfinance_rs::YfClient::builder()
+        .base_quote_v7(base)
+        .build()
+        .unwrap();
+
+    let response = yfinance_rs::QuotesBuilder::new(&client)
+        .symbols(["AAPL"])
+        .fetch_with_diagnostics()
+        .await
+        .unwrap();
+
+    assert_eq!(response.data.len(), 1);
+    assert!(response.data[0].price.is_none());
+    assert!(response.diagnostics.warnings.iter().any(|warning| {
+        matches!(
+            warning,
+            YfWarning::OmittedPresentField {
+                endpoint: "quotes",
+                path: "regularMarketPrice",
+                key: Some(key),
+                reason: ProjectionIssue::CurrencyUnresolved,
+            } if key == "AAPL"
+        )
+    }));
 }
 
 #[tokio::test]

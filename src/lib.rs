@@ -169,12 +169,12 @@ pub use holders::HoldersBuilder;
 pub use news::{NewsBuilder, NewsTab};
 pub use paft::fundamentals::statistics::KeyStatistics;
 pub use paft::market::responses::download::{DownloadEntry, DownloadResponse};
-pub use quote::{QuotesBuilder, quotes};
+pub use quote::{QuotesBuilder, quotes, quotes_with_diagnostics};
 pub use screener::{
     EquityQuery, EquitySector, EtfCategory, EtfQuery, FundCategory, FundQuery, PercentPoints,
     PredefinedScreener, Rating, Region, ResultOffset, ScreenerBuilder, ScreenerCount,
     ScreenerNumber, ScreenerResponse, ScreenerResult, SortDirection, YahooExchangeCode,
-    equity_fields, etf_fields, fund_fields, screen,
+    equity_fields, etf_fields, fund_fields, screen, screen_with_diagnostics,
 };
 pub use search::{SearchBuilder, search};
 pub use stream::{StreamBuilder, StreamConfig, StreamHandle, StreamMethod};

@@ -177,6 +177,22 @@ impl Ticker {
         .await
     }
 
+    /// Fetches a detailed quote with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or the response cannot be parsed.
+    pub async fn quote_with_diagnostics(&self) -> Result<YfResponse<Quote>, YfError> {
+        quote::fetch_quote_with_diagnostics(
+            &self.client,
+            &self.symbol,
+            self.cache_mode,
+            self.retry_override.as_ref(),
+            DataQuality::BestEffort,
+        )
+        .await
+    }
+
     /// Fetches a "fast" info quote, containing the most essential price and market data.
     ///
     /// # Errors
@@ -188,6 +204,22 @@ impl Ticker {
             &self.symbol,
             self.cache_mode,
             self.retry_override.as_ref(),
+        )
+        .await
+    }
+
+    /// Fetches a "fast" info quote with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or the response cannot be parsed.
+    pub async fn fast_info_with_diagnostics(&self) -> Result<YfResponse<FastInfo>, YfError> {
+        quote::fetch_fast_info_with_diagnostics(
+            &self.client,
+            &self.symbol,
+            self.cache_mode,
+            self.retry_override.as_ref(),
+            DataQuality::BestEffort,
         )
         .await
     }
@@ -205,6 +237,24 @@ impl Ticker {
             &self.symbol,
             self.cache_mode,
             self.retry_override.as_ref(),
+        )
+        .await
+    }
+
+    /// Fetches valuation, dividend, volume, and risk statistics with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or the response cannot be parsed.
+    pub async fn key_statistics_with_diagnostics(
+        &self,
+    ) -> Result<YfResponse<KeyStatistics>, YfError> {
+        quote::fetch_key_statistics_with_diagnostics(
+            &self.client,
+            &self.symbol,
+            self.cache_mode,
+            self.retry_override.as_ref(),
+            DataQuality::BestEffort,
         )
         .await
     }
@@ -421,6 +471,28 @@ impl Ticker {
             date,
             self.cache_mode,
             self.retry_override.as_ref(),
+        )
+        .await
+    }
+
+    /// Fetches the full option chain with projection diagnostics.
+    ///
+    /// If `date` is `None`, fetches the chain for the nearest expiration date.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or the response cannot be parsed.
+    pub async fn option_chain_with_diagnostics(
+        &self,
+        date: Option<i64>,
+    ) -> Result<YfResponse<OptionChain>, YfError> {
+        options::option_chain_with_diagnostics(
+            &self.client,
+            &self.symbol,
+            date,
+            self.cache_mode,
+            self.retry_override.as_ref(),
+            DataQuality::BestEffort,
         )
         .await
     }

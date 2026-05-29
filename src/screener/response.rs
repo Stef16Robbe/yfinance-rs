@@ -7,12 +7,12 @@ use serde_json::Value;
 
 use super::query::{YahooExchangeCode, YahooQuoteType};
 use crate::{
-    YfError,
-    core::conversions::{
-        money_from_decimal_with_currency_str, price_from_f64_with_currency_str,
-        string_to_asset_kind,
+    DataQuality, ProjectionIssue, YfError, YfResponse,
+    core::{
+        ProjectionContext, conversions::string_to_asset_kind,
+        currency_resolver::ResolvedCurrencyUnit, diagnostics::optional_u32_from_i64,
+        wire::JsonDecimal,
     },
-    core::wire::JsonDecimal,
 };
 
 /// Response from a Yahoo screener request.
@@ -57,7 +57,11 @@ pub struct ScreenerResult {
     pub fields: BTreeMap<String, Value>,
 }
 
-pub(super) fn parse_screener_body(body: &str) -> Result<ScreenerResponse, YfError> {
+pub(super) fn parse_screener_body_with_diagnostics(
+    body: &str,
+    data_quality: DataQuality,
+) -> Result<YfResponse<ScreenerResponse>, YfError> {
+    let mut ctx = ProjectionContext::new("screener", data_quality);
     let env: WireEnvelope = serde_json::from_str(body)?;
     if let Some(error) = env.finance.error {
         return Err(YfError::Api(error.to_string()));
@@ -69,15 +73,16 @@ pub(super) fn parse_screener_body(body: &str) -> Result<ScreenerResponse, YfErro
         .and_then(|result| result.into_iter().next())
         .ok_or_else(|| YfError::MissingData("screener result missing".into()))?;
 
-    let count = result.count.and_then(|c| u32::try_from(c).ok());
-    let results = result
+    let count = optional_u32_from_i64(&mut ctx, "count", None, "count", result.count)?;
+    let mut results = Vec::new();
+    for quote in result
         .quotes
         .ok_or_else(|| YfError::MissingData("screener quotes missing".into()))?
-        .into_iter()
-        .map(ScreenerResult::from)
-        .collect();
+    {
+        results.push(quote.project(&mut ctx)?);
+    }
 
-    Ok(ScreenerResponse { count, results })
+    Ok(ctx.finish(ScreenerResponse { count, results }))
 }
 
 #[derive(Debug, Deserialize)]
@@ -136,41 +141,81 @@ struct WireQuote {
     extra: BTreeMap<String, Value>,
 }
 
-impl From<WireQuote> for ScreenerResult {
-    fn from(wire: WireQuote) -> Self {
+impl WireQuote {
+    fn project(self, ctx: &mut ProjectionContext) -> Result<ScreenerResult, YfError> {
+        let wire = self;
+        let key = wire.symbol.clone();
         let quote_type = wire.quote_type.as_deref().and_then(YahooQuoteType::parse);
-        let asset_kind = quote_type.map(YahooQuoteType::asset_kind).or_else(|| {
-            wire.quote_type
-                .as_deref()
-                .and_then(|value| string_to_asset_kind(value).ok())
-        });
-        let exchange = wire
-            .exchange
+        if quote_type.is_none()
+            && let Some(value) = wire.quote_type.as_deref().and_then(nonempty)
+        {
+            ctx.omitted_present_field(
+                "quoteType",
+                key.clone(),
+                ProjectionIssue::InvalidField {
+                    field: "quoteType",
+                    details: format!("unsupported Yahoo quote type {value:?}"),
+                },
+            )?;
+        }
+        let asset_kind = wire
+            .quote_type
             .as_deref()
-            .and_then(|exchange| exchange.parse::<Exchange>().ok());
-        let yahoo_exchange = wire.exchange.as_deref().and_then(YahooExchangeCode::parse);
-        let instrument = wire.symbol.as_deref().and_then(|symbol| {
-            let asset_kind = asset_kind.clone()?;
-            match exchange.clone() {
-                Some(exchange) => {
-                    Instrument::from_symbol_and_exchange(symbol, exchange, asset_kind)
-                }
-                None => Instrument::from_symbol(symbol, asset_kind),
-            }
-            .ok()
-        });
-
-        let price = wire
-            .regular_market_price
-            .and_then(|price| price_from_f64_with_currency_str(price, wire.currency.as_deref()));
-        let market_cap = wire
-            .market_cap
-            .map(JsonDecimal::into_decimal)
-            .and_then(|market_cap| {
-                money_from_decimal_with_currency_str(market_cap, wire.currency.as_deref())
+            .and_then(nonempty)
+            .and_then(|value| {
+                quote_type
+                    .map(YahooQuoteType::asset_kind)
+                    .or_else(|| string_to_asset_kind(value).ok())
             });
+        let exchange = match wire.exchange.as_deref().and_then(nonempty) {
+            Some(exchange) => match exchange.parse::<Exchange>() {
+                Ok(exchange) => Some(exchange),
+                Err(err) => {
+                    ctx.omitted_present_field(
+                        "exchange",
+                        key.clone(),
+                        ProjectionIssue::InvalidField {
+                            field: "exchange",
+                            details: err.to_string(),
+                        },
+                    )?;
+                    None
+                }
+            },
+            None => None,
+        };
+        let yahoo_exchange = wire.exchange.as_deref().and_then(YahooExchangeCode::parse);
+        let instrument = project_instrument(
+            ctx,
+            key.clone(),
+            wire.symbol.as_deref(),
+            asset_kind,
+            exchange.clone(),
+        )?;
 
-        Self {
+        let (currency, invalid_currency) = parse_screener_currency(wire.currency.as_deref());
+        let currency = ScreenerCurrencyRef {
+            unit: currency.as_ref(),
+            invalid: invalid_currency.as_deref(),
+        };
+        let price = optional_screener_price(
+            ctx,
+            "regularMarketPrice",
+            key.clone(),
+            currency,
+            wire.regular_market_price,
+            "screener price",
+        )?;
+        let market_cap = optional_screener_money(
+            ctx,
+            "marketCap",
+            key,
+            currency,
+            wire.market_cap.map(JsonDecimal::into_decimal),
+            "screener market cap",
+        )?;
+
+        Ok(ScreenerResult {
             symbol: wire.symbol,
             instrument,
             name: wire.short_name.or(wire.long_name),
@@ -185,6 +230,131 @@ impl From<WireQuote> for ScreenerResult {
             regular_market_volume: wire.regular_market_volume,
             market_cap,
             fields: wire.extra,
+        })
+    }
+}
+
+fn project_instrument(
+    ctx: &mut ProjectionContext,
+    key: Option<String>,
+    symbol: Option<&str>,
+    asset_kind: Option<paft::domain::AssetKind>,
+    exchange: Option<Exchange>,
+) -> Result<Option<Instrument>, YfError> {
+    let Some(symbol) = symbol.and_then(nonempty) else {
+        return Ok(None);
+    };
+    let Some(asset_kind) = asset_kind else {
+        ctx.omitted_present_field(
+            "instrument",
+            key,
+            ProjectionIssue::MissingRequiredField { field: "quoteType" },
+        )?;
+        return Ok(None);
+    };
+
+    let instrument = match exchange {
+        Some(exchange) => Instrument::from_symbol_and_exchange(symbol, exchange, asset_kind),
+        None => Instrument::from_symbol(symbol, asset_kind),
+    };
+    match instrument {
+        Ok(instrument) => Ok(Some(instrument)),
+        Err(err) => {
+            ctx.omitted_present_field(
+                "instrument",
+                key,
+                ProjectionIssue::InvalidField {
+                    field: "symbol",
+                    details: err.to_string(),
+                },
+            )?;
+            Ok(None)
         }
     }
+}
+
+fn parse_screener_currency(code: Option<&str>) -> (Option<ResolvedCurrencyUnit>, Option<String>) {
+    let Some(code) = code.and_then(nonempty) else {
+        return (None, None);
+    };
+    ResolvedCurrencyUnit::from_code(code)
+        .map_or_else(|| (None, Some(code.to_string())), |unit| (Some(unit), None))
+}
+
+#[derive(Clone, Copy)]
+struct ScreenerCurrencyRef<'a> {
+    unit: Option<&'a ResolvedCurrencyUnit>,
+    invalid: Option<&'a str>,
+}
+
+fn optional_screener_price(
+    ctx: &mut ProjectionContext,
+    path: &'static str,
+    key: Option<String>,
+    currency: ScreenerCurrencyRef<'_>,
+    value: Option<f64>,
+    target: &'static str,
+) -> Result<Option<Price>, YfError> {
+    optional_screener_currency_value(
+        ctx,
+        path,
+        key,
+        currency,
+        value,
+        target,
+        ResolvedCurrencyUnit::price_from_f64,
+    )
+}
+
+fn optional_screener_money(
+    ctx: &mut ProjectionContext,
+    path: &'static str,
+    key: Option<String>,
+    currency: ScreenerCurrencyRef<'_>,
+    value: Option<paft::Decimal>,
+    target: &'static str,
+) -> Result<Option<Money>, YfError> {
+    let major = currency.unit.map(ResolvedCurrencyUnit::major_unit);
+    let currency = ScreenerCurrencyRef {
+        unit: major.as_ref(),
+        invalid: currency.invalid,
+    };
+    optional_screener_currency_value(ctx, path, key, currency, value, target, |unit, value| {
+        unit.money_from_decimal(value).ok()
+    })
+}
+
+fn optional_screener_currency_value<T, U>(
+    ctx: &mut ProjectionContext,
+    path: &'static str,
+    key: Option<String>,
+    currency: ScreenerCurrencyRef<'_>,
+    value: Option<T>,
+    target: &'static str,
+    convert: impl FnOnce(&ResolvedCurrencyUnit, T) -> Option<U>,
+) -> Result<Option<U>, YfError> {
+    let Some(value) = value else {
+        return Ok(None);
+    };
+    let Some(currency_unit) = currency.unit else {
+        let reason = currency
+            .invalid
+            .map_or(ProjectionIssue::CurrencyUnresolved, |code| {
+                ProjectionIssue::InvalidCurrency {
+                    code: code.to_string(),
+                }
+            });
+        ctx.omitted_present_field(path, key, reason)?;
+        return Ok(None);
+    };
+    let Some(value) = convert(currency_unit, value) else {
+        ctx.omitted_present_field(path, key, ProjectionIssue::ConversionFailed { target })?;
+        return Ok(None);
+    };
+    Ok(Some(value))
+}
+
+fn nonempty(value: &str) -> Option<&str> {
+    let value = value.trim();
+    (!value.is_empty()).then_some(value)
 }

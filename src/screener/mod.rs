@@ -22,7 +22,7 @@ pub use query::{
 };
 pub use response::{ScreenerResponse, ScreenerResult};
 
-use crate::{YfClient, YfError};
+use crate::{YfClient, YfError, YfResponse};
 
 /// Runs a predefined Yahoo screener.
 ///
@@ -34,4 +34,18 @@ pub async fn screen(
     screener: PredefinedScreener,
 ) -> Result<ScreenerResponse, YfError> {
     ScreenerBuilder::predefined(client, screener).fetch().await
+}
+
+/// Runs a predefined Yahoo screener with projection diagnostics.
+///
+/// # Errors
+///
+/// Returns `YfError` if the request fails or the response cannot be parsed.
+pub async fn screen_with_diagnostics(
+    client: &YfClient,
+    screener: PredefinedScreener,
+) -> Result<YfResponse<ScreenerResponse>, YfError> {
+    ScreenerBuilder::predefined(client, screener)
+        .fetch_with_diagnostics()
+        .await
 }

@@ -98,13 +98,14 @@ pub(super) async fn fetch_info_with_diagnostics(
     let esg_summary = log_response_async(&mut ctx, esg_summary, "esg_scores", symbol)?;
     let calendar = log_response_async(&mut ctx, calendar, "calendar", symbol)?;
 
-    let key_statistics = quote_summary_key_statistics.map_or_else(
-        || quote.to_key_statistics(),
-        |quote_summary| {
-            crate::core::quotes::merge_key_statistics(quote.to_key_statistics(), &quote_summary)
-        },
-    );
-    let snapshot = quote.to_snapshot()?;
+    let key_statistics = quote.to_key_statistics_with_context(&mut ctx)?;
+    let key_statistics = match quote_summary_key_statistics {
+        Some(quote_summary) => {
+            crate::core::quotes::merge_key_statistics(key_statistics, &quote_summary)
+        }
+        None => key_statistics,
+    };
+    let snapshot = quote.to_snapshot_with_context(&mut ctx)?;
 
     Ok(ctx.finish(Info {
         snapshot,

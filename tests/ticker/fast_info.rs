@@ -2,7 +2,7 @@ use httpmock::Method::GET;
 use httpmock::MockServer;
 use url::Url;
 use yfinance_rs::core::conversions::money_to_f64;
-use yfinance_rs::{Ticker, YfClient};
+use yfinance_rs::{ProjectionIssue, Ticker, YfClient, YfWarning};
 
 #[tokio::test]
 async fn fast_info_uses_previous_close_when_price_missing() {
@@ -49,6 +49,56 @@ async fn fast_info_uses_previous_close_when_price_missing() {
         fi.instrument.exchange.map(|e| e.to_string()).as_deref(),
         Some("NASDAQ")
     );
+}
+
+#[tokio::test]
+async fn fast_info_with_diagnostics_reports_unresolved_currency_for_present_price() {
+    let server = MockServer::start();
+
+    let body = r#"{
+      "quoteResponse": {
+        "result": [{
+          "symbol": "AAPL",
+          "quoteType": "EQUITY",
+          "regularMarketPrice": 199.5,
+          "regularMarketPreviousClose": 198.0,
+          "fullExchangeName": "NasdaqGS"
+        }],
+        "error": null
+      }
+    }"#;
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "AAPL");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+    let ticker = Ticker::new(&client, "AAPL");
+
+    let response = ticker.fast_info_with_diagnostics().await.unwrap();
+    mock.assert();
+
+    assert!(response.data.last.is_none());
+    assert!(response.data.previous_close.is_none());
+    assert!(response.diagnostics.warnings.iter().any(|warning| {
+        matches!(
+            warning,
+            YfWarning::OmittedPresentField {
+                endpoint: "fast_info",
+                path: "regularMarketPrice",
+                key: Some(key),
+                reason: ProjectionIssue::CurrencyUnresolved,
+            } if key == "AAPL"
+        )
+    }));
 }
 
 #[tokio::test]

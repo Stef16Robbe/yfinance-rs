@@ -9,8 +9,9 @@ use super::query::{
     Equity, EquityQuery, Etf, EtfQuery, Fund, FundQuery, Predefined, ResultOffset, ScreenerCount,
     ScreenerQuery, SortDirection, SortField, YahooQuoteType,
 };
-use super::response::{ScreenerResponse, parse_screener_body};
+use super::response::{ScreenerResponse, parse_screener_body_with_diagnostics};
 use crate::core::client::{CacheEndpoint, CacheMode, RetryConfig};
+use crate::{DataQuality, YfResponse};
 use crate::{YfClient, YfError};
 
 const DEFAULT_SCREENER_BASE: &str = "https://query1.finance.yahoo.com/v1/finance/screener";
@@ -88,6 +89,7 @@ pub struct ScreenerBuilder<U = Predefined> {
     offset: Option<ResultOffset>,
     cache_mode: CacheMode,
     retry_override: Option<RetryConfig>,
+    data_quality: DataQuality,
     marker: PhantomData<U>,
 }
 
@@ -109,6 +111,7 @@ impl ScreenerBuilder<Predefined> {
             offset: None,
             cache_mode: CacheMode::Default,
             retry_override: None,
+            data_quality: DataQuality::BestEffort,
             marker: PhantomData,
         }
     }
@@ -209,6 +212,7 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
             offset: Some(ResultOffset::ZERO),
             cache_mode: CacheMode::Default,
             retry_override: None,
+            data_quality: DataQuality::BestEffort,
             marker: PhantomData,
         }
     }
@@ -239,6 +243,19 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
     pub fn retry_policy(mut self, cfg: Option<RetryConfig>) -> Self {
         self.retry_override = cfg;
         self
+    }
+
+    /// Sets how provider projection issues are handled.
+    #[must_use]
+    pub const fn data_quality(mut self, policy: DataQuality) -> Self {
+        self.data_quality = policy;
+        self
+    }
+
+    /// Fails when Yahoo screener data cannot be projected losslessly.
+    #[must_use]
+    pub const fn strict(self) -> Self {
+        self.data_quality(DataQuality::Strict)
     }
 
     /// Sets the requested row count.
@@ -274,6 +291,16 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
     /// Returns `YfError` if the network request fails, Yahoo returns an error
     /// status, or the response cannot be parsed.
     pub async fn fetch(&self) -> Result<ScreenerResponse, YfError> {
+        Ok(self.fetch_with_diagnostics().await?.into_data())
+    }
+
+    /// Executes the screener request with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// Returns `YfError` if the network request fails, Yahoo returns an error
+    /// status, the response cannot be parsed, or strict data-quality mode rejects a projection issue.
+    pub async fn fetch_with_diagnostics(&self) -> Result<YfResponse<ScreenerResponse>, YfError> {
         match self.kind.clone() {
             RequestKind::Predefined(screener) if self.offset.is_none() => {
                 self.fetch_predefined_get(screener).await
@@ -302,7 +329,7 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
     async fn fetch_predefined_get(
         &self,
         screener: PredefinedScreener,
-    ) -> Result<ScreenerResponse, YfError> {
+    ) -> Result<YfResponse<ScreenerResponse>, YfError> {
         let mut url = self.predefined_base.clone();
         append_common_params(&mut url);
         {
@@ -316,7 +343,7 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
         if self.cache_mode.reads(CacheEndpoint::Screener)
             && let Some(body) = self.client.cache_get(&url).await
         {
-            return parse_screener_body(&body);
+            return parse_screener_body_with_diagnostics(&body, self.data_quality);
         }
 
         let cache_url = url.clone();
@@ -326,10 +353,13 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
                 .cache_put(CacheEndpoint::Screener, &cache_url, &body, None)
                 .await;
         }
-        parse_screener_body(&body)
+        parse_screener_body_with_diagnostics(&body, self.data_quality)
     }
 
-    async fn fetch_custom_post(&self, parts: CustomParts) -> Result<ScreenerResponse, YfError> {
+    async fn fetch_custom_post(
+        &self,
+        parts: CustomParts,
+    ) -> Result<YfResponse<ScreenerResponse>, YfError> {
         let mut url = self.screener_base.clone();
         append_common_params(&mut url);
 
@@ -339,7 +369,7 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
         let response = self
             .post_with_auth_retry(url, &body, &body_json, &fixture_key)
             .await?;
-        parse_screener_body(&response)
+        parse_screener_body_with_diagnostics(&response, self.data_quality)
     }
 
     fn custom_body(&self, parts: CustomParts) -> Value {

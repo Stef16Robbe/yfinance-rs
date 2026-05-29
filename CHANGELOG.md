@@ -29,6 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Add adapter-level projection diagnostics through `YfResponse<T>`, `YfDiagnostics`, `YfWarning`, `ProjectionIssue`, and `DataQuality`, plus `strict()` and `*_with_diagnostics()` entry points on history, download, holders, fundamentals, analysis, ESG, news, search, and `Ticker::info()`.
 - History, holders, fundamentals, analysis, ESG, news, search, download, and aggregate info calls can now distinguish absent optional provider data from present Yahoo data that was dropped or omitted while projecting into strict `paft` values.
 - Add `YfWarning::CoercedPresentField` for present provider fields that are represented only after a lossy coercion such as rounding.
+- Add projection diagnostics entry points for quotes, fast info, key statistics, option chains, and screeners, including `Ticker::*_with_diagnostics()` methods and `QuotesBuilder::fetch_with_diagnostics()`.
 
 ### Fixed
 
@@ -77,6 +78,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - POST endpoints with `cache_mode(CacheMode::Use)`, including news and custom screeners, now use body-aware response cache keys instead of effectively bypassing or colliding on URL-only keys.
 - Fundamentals timeseries and share-count default windows now round their implicit end to the next UTC midnight, keeping response-cache keys stable within a day.
 - Profile loading now maps Yahoo `MUTUALFUND` quote types into `FundProfile` instead of rejecting them despite fund support being documented.
+- Quote, fast-info, key-statistics, option-chain, and screener projections now report present prices, market caps, strikes, and related fields that cannot be represented because currency metadata is missing or invalid instead of silently returning `None` or dropping contracts.
 
 ### Changed
 

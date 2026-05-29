@@ -4,7 +4,7 @@ use paft::fundamentals::statistics::KeyStatistics;
 use paft::money::{Currency, IsoCurrency};
 use url::Url;
 use yfinance_rs::core::conversions::money_to_f64;
-use yfinance_rs::{Ticker, YfClient};
+use yfinance_rs::{ProjectionIssue, Ticker, YfClient, YfWarning};
 
 fn assert_v7_key_statistics(stats: &KeyStatistics, raw_quote: &serde_json::Value) {
     assert_eq!(
@@ -141,6 +141,76 @@ async fn key_statistics_market_cap_uses_major_units_for_minor_unit_quote_currenc
         .expect("52-week high should map");
     assert_eq!(high.currency(), &Currency::Iso(IsoCurrency::GBP));
     assert!((money_to_f64(high) - 4.55).abs() < 1e-9);
+}
+
+#[tokio::test]
+async fn key_statistics_with_diagnostics_reports_invalid_financial_currency() {
+    let server = MockServer::start();
+    let sym = "AAPL";
+    let crumb = "test-crumb";
+    let quote_body = r#"{
+      "quoteResponse": {
+        "result": [{
+          "symbol": "AAPL",
+          "quoteType": "EQUITY",
+          "currency": "USD",
+          "financialCurrency": "!!!",
+          "regularMarketPrice": 190.25,
+          "epsTrailingTwelveMonths": 6.43,
+          "dividendRate": 1.04,
+          "marketCap": 3000000000000
+        }],
+        "error": null
+      }
+    }"#;
+
+    let quote_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", sym);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(quote_body);
+    });
+    let key_statistics_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", crate::common::KEY_STATISTICS_MODULES)
+            .query_param("crumb", crumb);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(r#"{"quoteSummary":{"result":[{}],"error":null}}"#);
+    });
+
+    let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._preauth("cookie", crumb)
+        .build()
+        .unwrap();
+
+    let response = Ticker::new(&client, sym)
+        .key_statistics_with_diagnostics()
+        .await
+        .unwrap();
+
+    quote_mock.assert();
+    key_statistics_mock.assert();
+    assert!(response.data.market_cap.is_some());
+    assert!(response.data.eps_trailing_twelve_months.is_none());
+    assert!(response.diagnostics.warnings.iter().any(|warning| {
+        matches!(
+            warning,
+            YfWarning::OmittedPresentField {
+                endpoint: "key_statistics",
+                path: "epsTrailingTwelveMonths",
+                key: Some(key),
+                reason: ProjectionIssue::InvalidCurrency { code },
+            } if key == sym && code == "!!!"
+        )
+    }));
 }
 
 #[tokio::test]

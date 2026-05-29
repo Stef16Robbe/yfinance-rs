@@ -2,11 +2,15 @@ use serde::Deserialize;
 use url::Url;
 
 use crate::{
-    YfClient, YfError,
+    DataQuality, ProjectionIssue, YfClient, YfError, YfResponse,
     core::{
+        ProjectionContext,
         client::{CacheEndpoint, CacheMode, RetryConfig, SymbolEndpoint},
-        conversions::{decimal_from_f64, string_to_asset_kind, string_to_exchange},
-        currency_resolver::{CurrencyHints, ResolvedCurrencyUnit, TradingCurrencyEvidence},
+        conversions::{string_to_asset_kind, string_to_exchange},
+        currency_resolver::{
+            CurrencyHints, CurrencyKind, ResolvedCurrencyUnit, TradingCurrencyEvidence,
+        },
+        diagnostics::optional_decimal_f64,
         net,
     },
     screener::YahooQuoteType,
@@ -46,6 +50,28 @@ pub async fn option_chain(
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
 ) -> Result<OptionChain, YfError> {
+    Ok(option_chain_with_diagnostics(
+        client,
+        symbol,
+        date,
+        cache_mode,
+        retry_override,
+        DataQuality::BestEffort,
+    )
+    .await?
+    .into_data())
+}
+
+#[allow(clippy::too_many_lines)]
+pub async fn option_chain_with_diagnostics(
+    client: &YfClient,
+    symbol: &str,
+    date: Option<i64>,
+    cache_mode: CacheMode,
+    retry_override: Option<&RetryConfig>,
+    data_quality: DataQuality,
+) -> Result<YfResponse<OptionChain>, YfError> {
+    let mut ctx = ProjectionContext::new("options", data_quality);
     let (body, used_url) =
         fetch_options_raw(client, symbol, date, cache_mode, retry_override).await?;
     let env: OptEnvelope = serde_json::from_str(&body).map_err(YfError::Json)?;
@@ -74,10 +100,10 @@ pub async fn option_chain(
     let underlying_from_response = underlying_instrument_from_result(&first);
 
     let Some(od) = first.options.and_then(|mut v| v.pop()) else {
-        return Ok(OptionChain {
+        return Ok(ctx.finish(OptionChain {
             contracts: vec![],
             provider: (),
-        });
+        }));
     };
 
     let expiration = od.expiration_date.or_else(|| {
@@ -87,7 +113,7 @@ pub async fn option_chain(
         })
     });
 
-    let currency = client
+    let currency = match client
         .resolve_trading_currency_unit(
             symbol,
             None,
@@ -95,56 +121,55 @@ pub async fn option_chain(
             cache_mode,
             retry_override,
         )
-        .await?;
+        .await
+    {
+        Ok(currency) => {
+            ctx.currency_resolution(client, symbol, CurrencyKind::Trading)
+                .await?;
+            Some(currency)
+        }
+        Err(err) => {
+            crate::core::logging::trace_debug!(
+                symbol,
+                error = %err,
+                "failed to resolve option-chain trading currency"
+            );
+            #[cfg(not(feature = "tracing"))]
+            let _ = &err;
+            None
+        }
+    };
+    let currency_issue = currency
+        .is_none()
+        .then(|| currency_projection_issue(currency_from_response.as_deref()));
     let underlying = underlying_instrument(client, symbol, underlying_from_response).await?;
 
-    let map_side = |side: Option<Vec<OptContractNode>>,
-                    option_side: OptionSide,
-                    currency: &ResolvedCurrencyUnit|
-     -> Vec<OptionContract> {
-        side.unwrap_or_default()
-            .into_iter()
-            .filter_map(|c| {
-                let exp_ts = c.expiration.or(expiration)?;
-                let exp_dt = Utc.timestamp_opt(exp_ts, 0).single()?;
-                let exp_date: NaiveDate = exp_dt.date_naive();
-                let strike = c
-                    .strike
-                    .and_then(|strike| currency.price_from_f64(strike))?;
-                let key = OptionContractKey::new(underlying.clone(), option_side, strike, exp_date);
-                let contract_instrument = c
-                    .contract_symbol
-                    .as_deref()
-                    .and_then(|sym| Instrument::from_symbol(sym, AssetKind::Option).ok());
+    let mut contracts = Vec::new();
+    project_option_side(
+        &mut ctx,
+        od.calls,
+        OptionSide::Call,
+        expiration,
+        currency.as_ref(),
+        currency_issue.as_ref(),
+        &underlying,
+        &mut contracts,
+    )?;
+    project_option_side(
+        &mut ctx,
+        od.puts,
+        OptionSide::Put,
+        expiration,
+        currency.as_ref(),
+        currency_issue.as_ref(),
+        &underlying,
+        &mut contracts,
+    )?;
 
-                Some(OptionContract {
-                    key,
-                    contract_instrument,
-                    price: c.last_price.and_then(|v| currency.price_from_f64(v)),
-                    bid: c.bid.and_then(|v| currency.price_from_f64(v)),
-                    ask: c.ask.and_then(|v| currency.price_from_f64(v)),
-                    volume: c.volume,
-                    open_interest: c.open_interest,
-                    implied_volatility: c.implied_volatility.and_then(decimal_from_f64),
-                    in_the_money: c.in_the_money,
-                    expiration_at: Some(exp_dt),
-                    last_trade_at: c
-                        .last_trade_date
-                        .and_then(|ts| Utc.timestamp_opt(ts, 0).single()),
-                    greeks: None,
-                    provider: (),
-                })
-            })
-            .collect()
-    };
-
-    Ok(OptionChain {
-        contracts: map_side(od.calls, OptionSide::Call, &currency)
-            .into_iter()
-            .chain(map_side(od.puts, OptionSide::Put, &currency))
-            .collect(),
+    Ok(ctx.finish(OptionChain {
+        contracts,
         provider: (),
-    })
+    }))
 }
 
 async fn underlying_instrument(
@@ -169,6 +194,250 @@ async fn underlying_instrument(
     Err(YfError::MissingData(format!(
         "unable to determine option underlying instrument for {symbol}"
     )))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn project_option_side(
+    ctx: &mut ProjectionContext,
+    side: Option<Vec<OptContractNode>>,
+    option_side: OptionSide,
+    expiration: Option<i64>,
+    currency: Option<&ResolvedCurrencyUnit>,
+    currency_issue: Option<&ProjectionIssue>,
+    underlying: &Instrument,
+    out: &mut Vec<OptionContract>,
+) -> Result<(), YfError> {
+    for contract in side.unwrap_or_default() {
+        if let Some(contract) = project_option_contract(
+            ctx,
+            &contract,
+            option_side,
+            expiration,
+            currency,
+            currency_issue,
+            underlying,
+        )? {
+            out.push(contract);
+        }
+    }
+
+    Ok(())
+}
+
+#[allow(clippy::too_many_lines)]
+fn project_option_contract(
+    ctx: &mut ProjectionContext,
+    contract: &OptContractNode,
+    option_side: OptionSide,
+    expiration: Option<i64>,
+    currency: Option<&ResolvedCurrencyUnit>,
+    currency_issue: Option<&ProjectionIssue>,
+    underlying: &Instrument,
+) -> Result<Option<OptionContract>, YfError> {
+    let key_for_diag = option_contract_diag_key(contract, option_side, expiration);
+    let Some(exp_ts) = contract.expiration.or(expiration) else {
+        ctx.dropped_item(
+            "option_contract",
+            key_for_diag,
+            ProjectionIssue::MissingRequiredField {
+                field: "expiration",
+            },
+        )?;
+        return Ok(None);
+    };
+    let Some(exp_dt) = Utc.timestamp_opt(exp_ts, 0).single() else {
+        ctx.dropped_item(
+            "option_contract",
+            key_for_diag,
+            ProjectionIssue::InvalidField {
+                field: "expiration",
+                details: format!("invalid unix timestamp {exp_ts}"),
+            },
+        )?;
+        return Ok(None);
+    };
+    let Some(strike_raw) = contract.strike else {
+        ctx.dropped_item(
+            "option_contract",
+            key_for_diag,
+            ProjectionIssue::MissingRequiredField { field: "strike" },
+        )?;
+        return Ok(None);
+    };
+    let Some(currency) = currency else {
+        ctx.dropped_item(
+            "option_contract",
+            key_for_diag,
+            currency_issue
+                .cloned()
+                .unwrap_or(ProjectionIssue::CurrencyUnresolved),
+        )?;
+        return Ok(None);
+    };
+    let Some(strike) = currency.price_from_f64(strike_raw) else {
+        ctx.dropped_item(
+            "option_contract",
+            key_for_diag,
+            ProjectionIssue::ConversionFailed {
+                target: "option strike",
+            },
+        )?;
+        return Ok(None);
+    };
+
+    let exp_date: NaiveDate = exp_dt.date_naive();
+    let key = OptionContractKey::new(underlying.clone(), option_side, strike, exp_date);
+    let key_for_diag = option_contract_diag_key(contract, option_side, Some(exp_ts));
+    let contract_instrument = optional_contract_instrument(ctx, key_for_diag.clone(), contract)?;
+
+    Ok(Some(OptionContract {
+        key,
+        contract_instrument,
+        price: optional_option_price(
+            ctx,
+            "lastPrice",
+            key_for_diag.clone(),
+            currency,
+            contract.last_price,
+            "option last price",
+        )?,
+        bid: optional_option_price(
+            ctx,
+            "bid",
+            key_for_diag.clone(),
+            currency,
+            contract.bid,
+            "option bid",
+        )?,
+        ask: optional_option_price(
+            ctx,
+            "ask",
+            key_for_diag.clone(),
+            currency,
+            contract.ask,
+            "option ask",
+        )?,
+        volume: contract.volume,
+        open_interest: contract.open_interest,
+        implied_volatility: optional_decimal_f64(
+            ctx,
+            "impliedVolatility",
+            key_for_diag.clone(),
+            contract.implied_volatility,
+            "option implied volatility",
+        )?,
+        in_the_money: contract.in_the_money,
+        expiration_at: Some(exp_dt),
+        last_trade_at: optional_option_timestamp(
+            ctx,
+            "lastTradeDate",
+            key_for_diag,
+            contract.last_trade_date,
+        )?,
+        greeks: None,
+        provider: (),
+    }))
+}
+
+fn optional_contract_instrument(
+    ctx: &mut ProjectionContext,
+    key: Option<String>,
+    contract: &OptContractNode,
+) -> Result<Option<Instrument>, YfError> {
+    let Some(symbol) = contract.contract_symbol.as_deref() else {
+        return Ok(None);
+    };
+    match Instrument::from_symbol(symbol, AssetKind::Option) {
+        Ok(instrument) => Ok(Some(instrument)),
+        Err(err) => {
+            ctx.omitted_present_field(
+                "contractSymbol",
+                key,
+                ProjectionIssue::InvalidField {
+                    field: "contractSymbol",
+                    details: err.to_string(),
+                },
+            )?;
+            Ok(None)
+        }
+    }
+}
+
+fn optional_option_price(
+    ctx: &mut ProjectionContext,
+    path: &'static str,
+    key: Option<String>,
+    currency: &ResolvedCurrencyUnit,
+    value: Option<f64>,
+    target: &'static str,
+) -> Result<Option<paft::money::Price>, YfError> {
+    let Some(value) = value else {
+        return Ok(None);
+    };
+    let Some(price) = currency.price_from_f64(value) else {
+        ctx.omitted_present_field(path, key, ProjectionIssue::ConversionFailed { target })?;
+        return Ok(None);
+    };
+    Ok(Some(price))
+}
+
+fn optional_option_timestamp(
+    ctx: &mut ProjectionContext,
+    path: &'static str,
+    key: Option<String>,
+    value: Option<i64>,
+) -> Result<Option<chrono::DateTime<Utc>>, YfError> {
+    let Some(value) = value else {
+        return Ok(None);
+    };
+    let Some(timestamp) = Utc.timestamp_opt(value, 0).single() else {
+        ctx.omitted_present_field(
+            path,
+            key,
+            ProjectionIssue::InvalidField {
+                field: path,
+                details: format!("invalid unix timestamp {value}"),
+            },
+        )?;
+        return Ok(None);
+    };
+    Ok(Some(timestamp))
+}
+
+fn option_contract_diag_key(
+    contract: &OptContractNode,
+    option_side: OptionSide,
+    expiration: Option<i64>,
+) -> Option<String> {
+    contract.contract_symbol.clone().or_else(|| {
+        let side = match option_side {
+            OptionSide::Call => "call",
+            OptionSide::Put => "put",
+        };
+        Some(format!(
+            "{side}:{}@{}",
+            contract
+                .strike
+                .map_or_else(|| "?".to_string(), |strike| strike.to_string()),
+            contract
+                .expiration
+                .or(expiration)
+                .map_or_else(|| "?".to_string(), |expiration| expiration.to_string())
+        ))
+    })
+}
+
+fn currency_projection_issue(code: Option<&str>) -> ProjectionIssue {
+    let Some(code) = code.map(str::trim).filter(|code| !code.is_empty()) else {
+        return ProjectionIssue::CurrencyUnresolved;
+    };
+    if ResolvedCurrencyUnit::from_code(code).is_none() {
+        ProjectionIssue::InvalidCurrency {
+            code: code.to_string(),
+        }
+    } else {
+        ProjectionIssue::CurrencyUnresolved
+    }
 }
 
 fn underlying_instrument_from_result(node: &OptResultNode) -> Option<Instrument> {

@@ -2,7 +2,7 @@ use httpmock::Method::GET;
 use httpmock::MockServer;
 use url::Url;
 use yfinance_rs::core::conversions::*;
-use yfinance_rs::{Ticker, YfClient, YfError};
+use yfinance_rs::{ProjectionIssue, Ticker, YfClient, YfError, YfWarning};
 
 #[tokio::test]
 async fn quote_v7_happy_path() {
@@ -59,6 +59,58 @@ async fn quote_v7_happy_path() {
     );
     assert!((money_to_f64(&q.price.unwrap()) - 190.25).abs() < 1e-9);
     assert!((money_to_f64(&q.previous_close.unwrap()) - 189.50).abs() < 1e-9);
+}
+
+#[tokio::test]
+async fn quote_with_diagnostics_reports_invalid_currency_for_present_price() {
+    let server = MockServer::start();
+
+    let body = r#"{
+      "quoteResponse": {
+        "result": [
+          {
+            "symbol":"AAPL",
+            "quoteType": "EQUITY",
+            "regularMarketPrice": 190.25,
+            "regularMarketPreviousClose": 189.50,
+            "currency": "!!!"
+          }
+        ],
+        "error": null
+      }
+    }"#;
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "AAPL");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+    let ticker = Ticker::new(&client, "AAPL");
+
+    let response = ticker.quote_with_diagnostics().await.unwrap();
+    mock.assert();
+
+    assert!(response.data.price.is_none());
+    assert!(response.data.previous_close.is_none());
+    assert!(response.diagnostics.warnings.iter().any(|warning| {
+        matches!(
+            warning,
+            YfWarning::OmittedPresentField {
+                endpoint: "quote",
+                path: "regularMarketPrice",
+                key: Some(key),
+                reason: ProjectionIssue::InvalidCurrency { code },
+            } if key == "AAPL" && code == "!!!"
+        )
+    }));
 }
 
 #[tokio::test]

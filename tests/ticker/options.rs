@@ -2,7 +2,7 @@ use paft::domain::AssetKind;
 use serde_json::Value;
 use url::Url;
 use yfinance_rs::core::conversions::{money_to_currency_str, money_to_f64};
-use yfinance_rs::{Ticker, YfClient};
+use yfinance_rs::{ProjectionIssue, Ticker, YfClient, YfWarning};
 
 #[tokio::test]
 async fn options_expirations_happy() {
@@ -143,6 +143,69 @@ async fn option_chain_uses_response_underlying_identity() {
             .as_deref(),
         Some("NYSE")
     );
+}
+
+#[tokio::test]
+async fn option_chain_with_diagnostics_drops_contracts_when_currency_is_invalid() {
+    let server = crate::common::setup_server();
+    let date = 1_737_072_000_i64;
+
+    let body = r#"{
+      "optionChain": {
+        "result": [{
+          "underlyingSymbol":"AAPL",
+          "quote": {
+            "symbol":"AAPL",
+            "quoteType":"EQUITY",
+            "currency":"!!!"
+          },
+          "options": [{
+            "expirationDate": 1737072000,
+            "calls": [{
+              "contractSymbol":"AAPL250117C00180000",
+              "strike":180.0,
+              "expiration":1737072000
+            }],
+            "puts": []
+          }]
+        }],
+        "error": null
+      }
+    }"#;
+
+    let mock = server.mock(|when, then| {
+        when.method(httpmock::Method::GET)
+            .path("/v7/finance/options/AAPL")
+            .query_param("date", date.to_string());
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let client = YfClient::builder()
+        .base_options_v7(Url::parse(&format!("{}/v7/finance/options/", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+    let ticker = Ticker::new(&client, "AAPL");
+
+    let response = ticker
+        .option_chain_with_diagnostics(Some(date))
+        .await
+        .unwrap();
+    mock.assert();
+
+    assert!(response.data.contracts.is_empty());
+    assert!(response.diagnostics.warnings.iter().any(|warning| {
+        matches!(
+            warning,
+            YfWarning::DroppedItem {
+                endpoint: "options",
+                item: "option_contract",
+                key: Some(key),
+                reason: ProjectionIssue::InvalidCurrency { code },
+            } if key == "AAPL250117C00180000" && code == "!!!"
+        )
+    }));
 }
 
 #[tokio::test]

@@ -1,6 +1,8 @@
 use crate::core::client::CacheMode;
 use crate::core::client::RetryConfig;
-use crate::core::{Quote, YfClient, YfError, quotes as core_quotes};
+use crate::core::{
+    DataQuality, ProjectionContext, Quote, YfClient, YfError, YfResponse, quotes as core_quotes,
+};
 
 /// Fetches quotes for multiple symbols.
 ///
@@ -16,12 +18,33 @@ where
     QuotesBuilder::new(client).symbols(symbols).fetch().await
 }
 
+/// Fetches quotes for multiple symbols with projection diagnostics.
+///
+/// # Errors
+///
+/// Returns `YfError` if the network request fails, the response cannot be parsed,
+/// or strict data-quality mode rejects a projection issue.
+pub async fn quotes_with_diagnostics<I, S>(
+    client: &YfClient,
+    symbols: I,
+) -> Result<YfResponse<Vec<Quote>>, YfError>
+where
+    I: IntoIterator<Item = S>,
+    S: Into<String>,
+{
+    QuotesBuilder::new(client)
+        .symbols(symbols)
+        .fetch_with_diagnostics()
+        .await
+}
+
 /// A builder for fetching quotes for one or more symbols.
 pub struct QuotesBuilder {
     client: YfClient,
     symbols: Vec<String>,
     cache_mode: CacheMode,
     retry_override: Option<RetryConfig>,
+    data_quality: DataQuality,
 }
 
 impl QuotesBuilder {
@@ -33,6 +56,7 @@ impl QuotesBuilder {
             symbols: Vec::new(),
             cache_mode: CacheMode::Default,
             retry_override: None,
+            data_quality: DataQuality::BestEffort,
         }
     }
 
@@ -48,6 +72,19 @@ impl QuotesBuilder {
     pub fn retry_policy(mut self, cfg: Option<RetryConfig>) -> Self {
         self.retry_override = cfg;
         self
+    }
+
+    /// Sets how provider projection issues are handled.
+    #[must_use]
+    pub const fn data_quality(mut self, policy: DataQuality) -> Self {
+        self.data_quality = policy;
+        self
+    }
+
+    /// Fails when Yahoo quote data cannot be projected losslessly.
+    #[must_use]
+    pub const fn strict(self) -> Self {
+        self.data_quality(DataQuality::Strict)
     }
 
     /// Replaces the current list of symbols with a new list.
@@ -75,6 +112,18 @@ impl QuotesBuilder {
     /// Returns `YfError` if no symbols were provided, the network request fails,
     /// the response cannot be parsed, or data for the symbols is not available.
     pub async fn fetch(&self) -> Result<Vec<crate::core::Quote>, crate::core::YfError> {
+        Ok(self.fetch_with_diagnostics().await?.into_data())
+    }
+
+    /// Fetches the quotes for the configured symbols with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// Returns `YfError` if no symbols were provided, the network request fails,
+    /// the response cannot be parsed, or strict data-quality mode rejects a projection issue.
+    pub async fn fetch_with_diagnostics(
+        &self,
+    ) -> Result<YfResponse<Vec<crate::core::Quote>>, crate::core::YfError> {
         if self.symbols.is_empty() {
             return Err(crate::core::YfError::InvalidParams(
                 "symbols list cannot be empty".into(),
@@ -90,6 +139,12 @@ impl QuotesBuilder {
         )
         .await?;
 
-        results.into_iter().map(TryInto::try_into).collect()
+        let mut ctx = ProjectionContext::new("quotes", self.data_quality);
+        let mut quotes = Vec::with_capacity(results.len());
+        for result in results {
+            quotes.push(result.to_quote_with_context(&mut ctx)?);
+        }
+
+        Ok(ctx.finish(quotes))
     }
 }
