@@ -17,12 +17,12 @@ async fn offline_shares_uses_recorded_fixture() {
                 "/ws/fundamentals-timeseries/v1/finance/timeseries/{sym}"
             ))
             .query_param("symbol", sym)
-            .query_param("type", "annualBasicAverageShares")
+            .query_param("type", "annualOrdinarySharesNumber")
             .query_param_exists("period1")
             .query_param_exists("period2");
         then.status(200)
             .header("content-type", "application/json")
-            .body(fixture("timeseries_annualBasicAverageShares", sym));
+            .body(fixture("timeseries_annualOrdinarySharesNumber", sym));
     });
 
     let mock_quarterly = server.mock(|when, then| {
@@ -31,12 +31,12 @@ async fn offline_shares_uses_recorded_fixture() {
                 "/ws/fundamentals-timeseries/v1/finance/timeseries/{sym}"
             ))
             .query_param("symbol", sym)
-            .query_param("type", "quarterlyBasicAverageShares")
+            .query_param("type", "quarterlyOrdinarySharesNumber")
             .query_param_exists("period1")
             .query_param_exists("period2");
         then.status(200)
             .header("content-type", "application/json")
-            .body(fixture("timeseries_quarterlyBasicAverageShares", sym));
+            .body(fixture("timeseries_quarterlyOrdinarySharesNumber", sym));
     });
 
     let client = YfClient::builder()

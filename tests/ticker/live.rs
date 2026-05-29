@@ -158,8 +158,20 @@ async fn live_ticker_shares_for_record() {
     }
     let client = yfinance_rs::YfClient::builder().build().unwrap();
     let t = yfinance_rs::Ticker::new(&client, "MSFT");
-    let _ = t.shares().await;
-    let _ = t.quarterly_shares().await;
+    let annual = t.shares().await.unwrap();
+    let quarterly = t.quarterly_shares().await.unwrap();
+    assert!(!annual.is_empty());
+    assert!(!quarterly.is_empty());
+    assert!(crate::common::fixture_exists(
+        "timeseries_annualOrdinarySharesNumber",
+        "MSFT",
+        "json"
+    ));
+    assert!(crate::common::fixture_exists(
+        "timeseries_quarterlyOrdinarySharesNumber",
+        "MSFT",
+        "json"
+    ));
 }
 
 #[tokio::test]

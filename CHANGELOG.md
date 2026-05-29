@@ -44,6 +44,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   finite-float validation and panic during screener query serialization.
 - Text redaction now masks crumb and auth-like query parameters after comma-separated
   Yahoo query values such as quoteSummary modules.
+- Historical share-count helpers now request Yahoo's annual/quarterly
+  `OrdinarySharesNumber` timeseries instead of the semantically different
+  basic-average-shares fields.
 - `Ticker::info()` now batches its quoteSummary modules into one request, avoids duplicate `financialData` fetches, and no longer exposes an always-empty ESG field for Yahoo's dead `esgScores` module; use `Ticker::sustainability()` for explicit best-effort ESG requests.
 - `Ticker::isin()` now returns typed HTTP status errors for non-success Business Insider
   responses and keeps suffix-qualified symbols distinct while matching ISIN suggestions.

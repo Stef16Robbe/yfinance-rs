@@ -8,58 +8,58 @@
             "MSFT"
           ],
           "type": [
-            "quarterlyBasicAverageShares"
+            "quarterlyOrdinarySharesNumber"
           ]
         },
-        "quarterlyBasicAverageShares": [
+        "quarterlyOrdinarySharesNumber": [
           {
             "asOfDate": "2025-03-31",
             "currencyCode": "USD",
-            "dataId": 29010,
+            "dataId": 23393,
             "periodType": "3M",
             "reportedValue": {
               "fmt": "7.43B",
-              "raw": 7434000000.0
+              "raw": 7433982235.0
             }
           },
           {
             "asOfDate": "2025-06-30",
             "currencyCode": "USD",
-            "dataId": 29010,
+            "dataId": 23393,
             "periodType": "3M",
             "reportedValue": {
               "fmt": "7.43B",
-              "raw": 7432000000.0
+              "raw": 7434158655.0
             }
           },
           {
             "asOfDate": "2025-09-30",
             "currencyCode": "USD",
-            "dataId": 29010,
+            "dataId": 23393,
             "periodType": "3M",
             "reportedValue": {
               "fmt": "7.43B",
-              "raw": 7433000000.0
+              "raw": 7433087554.0
             }
           },
           {
             "asOfDate": "2025-12-31",
             "currencyCode": "USD",
-            "dataId": 29010,
+            "dataId": 23393,
             "periodType": "3M",
             "reportedValue": {
               "fmt": "7.43B",
-              "raw": 7431000000.0
+              "raw": 7428838066.0
             }
           },
           {
             "asOfDate": "2026-03-31",
             "currencyCode": "USD",
-            "dataId": 29010,
+            "dataId": 23393,
             "periodType": "3M",
             "reportedValue": {
               "fmt": "7.43B",
-              "raw": 7426000000.0
+              "raw": 7429000000.0
             }
           }
         ],

@@ -1128,9 +1128,9 @@ pub(super) async fn shares(
     let (start_ts, end_ts) = shares_window(start, end);
 
     let type_key = if quarterly {
-        "quarterlyBasicAverageShares"
+        "quarterlyOrdinarySharesNumber"
     } else {
-        "annualBasicAverageShares"
+        "annualOrdinarySharesNumber"
     };
 
     let mut url = client.symbol_url(SymbolEndpoint::Timeseries, &symbol)?;
@@ -1161,10 +1161,11 @@ pub(super) async fn shares(
 
     let envelope: TimeseriesEnvelope = serde_json::from_str(&body).map_err(YfError::Json)?;
 
-    let result_data: Option<TimeseriesData> = envelope
-        .timeseries
-        .and_then(|ts| ts.result)
-        .and_then(|mut v| v.pop());
+    let result_data: Option<TimeseriesData> =
+        envelope.timeseries.and_then(|ts| ts.result).and_then(|v| {
+            v.into_iter()
+                .find(|data| data.values.contains_key(type_key))
+        });
 
     let Some(TimeseriesData {
         timestamp: Some(timestamps),

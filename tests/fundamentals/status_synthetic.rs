@@ -144,7 +144,7 @@ async fn fundamentals_timeseries_http_error_maps_status_and_is_not_cached() {
                 "/ws/fundamentals-timeseries/v1/finance/timeseries/{sym}"
             ))
             .query_param("symbol", sym)
-            .query_param("type", "annualBasicAverageShares")
+            .query_param("type", "annualOrdinarySharesNumber")
             .query_param("crumb", "crumb")
             .query_param_exists("period1")
             .query_param_exists("period2");
@@ -187,7 +187,7 @@ async fn fundamentals_timeseries_http_error_maps_status_and_is_not_cached() {
                 "/ws/fundamentals-timeseries/v1/finance/timeseries/{sym}"
             ))
             .query_param("symbol", sym)
-            .query_param("type", "annualBasicAverageShares")
+            .query_param("type", "annualOrdinarySharesNumber")
             .query_param("crumb", "crumb")
             .query_param_exists("period1")
             .query_param_exists("period2");
@@ -428,7 +428,7 @@ async fn malformed_share_timestamps_are_reported_as_projection_loss() {
                 "/ws/fundamentals-timeseries/v1/finance/timeseries/{sym}"
             ))
             .query_param("symbol", sym)
-            .query_param("type", "annualBasicAverageShares")
+            .query_param("type", "annualOrdinarySharesNumber")
             .query_param("crumb", "crumb")
             .query_param_exists("period1")
             .query_param_exists("period2");
@@ -440,7 +440,7 @@ async fn malformed_share_timestamps_are_reported_as_projection_loss() {
                     "result": [{
                       "meta": {},
                       "timestamp": [9223372036854775807],
-                      "annualBasicAverageShares": [{
+                      "annualOrdinarySharesNumber": [{
                         "reportedValue": { "raw": 100 }
                       }]
                     }]
@@ -500,7 +500,7 @@ async fn malformed_share_values_do_not_drop_valid_siblings() {
                 "/ws/fundamentals-timeseries/v1/finance/timeseries/{sym}"
             ))
             .query_param("symbol", sym)
-            .query_param("type", "annualBasicAverageShares")
+            .query_param("type", "annualOrdinarySharesNumber")
             .query_param("crumb", "crumb")
             .query_param_exists("period1")
             .query_param_exists("period2");
@@ -512,7 +512,7 @@ async fn malformed_share_values_do_not_drop_valid_siblings() {
                     "result": [{
                       "meta": {},
                       "timestamp": [1704067200, 1735689600],
-                      "annualBasicAverageShares": [
+                      "annualOrdinarySharesNumber": [
                         { "reportedValue": { "raw": "not-a-number" } },
                         { "reportedValue": { "raw": 100 } }
                       ]
@@ -551,7 +551,7 @@ async fn malformed_share_values_do_not_drop_valid_siblings() {
                 field: "values",
                 ..
             },
-        } if key == "annualBasicAverageShares[0]"
+        } if key == "annualOrdinarySharesNumber[0]"
     )));
 
     let err = FundamentalsBuilder::new(&client, sym)

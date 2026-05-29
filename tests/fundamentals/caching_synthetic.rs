@@ -36,13 +36,13 @@ async fn default_timeseries_windows_hit_fundamentals_cache_across_seconds() {
                 "/ws/fundamentals-timeseries/v1/finance/timeseries/{sym}"
             ))
             .query_param("symbol", sym)
-            .query_param("type", "annualBasicAverageShares")
+            .query_param("type", "annualOrdinarySharesNumber")
             .query_param("crumb", "crumb")
             .query_param_exists("period1")
             .query_param_exists("period2");
         then.status(200)
             .header("content-type", "application/json")
-            .body(fixture("timeseries_annualBasicAverageShares", sym));
+            .body(fixture("timeseries_annualOrdinarySharesNumber", sym));
     });
 
     let client = YfClient::builder()

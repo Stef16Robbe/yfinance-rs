@@ -3,15 +3,15 @@
     "error": null,
     "result": [
       {
-        "annualBasicAverageShares": [
+        "annualOrdinarySharesNumber": [
           {
             "asOfDate": "2025-06-30",
             "currencyCode": "USD",
-            "dataId": 29010,
+            "dataId": 23393,
             "periodType": "12M",
             "reportedValue": {
               "fmt": "7.43B",
-              "raw": 7433000000.0
+              "raw": 7434158655.0
             }
           }
         ],
@@ -20,7 +20,7 @@
             "MSFT"
           ],
           "type": [
-            "annualBasicAverageShares"
+            "annualOrdinarySharesNumber"
           ]
         },
         "timestamp": [
