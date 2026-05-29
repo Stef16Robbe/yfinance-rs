@@ -74,8 +74,8 @@ impl ResolvedCurrency {
 }
 
 impl CurrencySource {
-    pub(crate) const fn is_direct_provider(self) -> bool {
-        matches!(self, Self::DirectProvider)
+    pub(crate) const fn is_explicit(self) -> bool {
+        matches!(self, Self::Override | Self::DirectProvider)
     }
 }
 

@@ -2,8 +2,7 @@ use httpmock::{Method::GET, MockServer};
 use paft::money::{Currency, IsoCurrency};
 use url::Url;
 use yfinance_rs::{
-    ApiPreference, ProjectionIssue, YfClient, YfCurrencyKind, YfCurrencySource, YfError,
-    YfEvidenceStrength, YfWarning, analysis::AnalysisBuilder,
+    ApiPreference, ProjectionIssue, YfClient, YfError, YfWarning, analysis::AnalysisBuilder,
 };
 
 #[tokio::test]
@@ -437,7 +436,7 @@ async fn price_target_reports_present_prices_when_currency_cannot_be_resolved() 
 }
 
 #[tokio::test]
-async fn price_target_reports_override_currency_resolution() {
+async fn price_target_accepts_override_currency_in_strict_mode() {
     let sym = "OVERRIDE";
     let server = MockServer::start();
 
@@ -472,22 +471,14 @@ async fn price_target_reports_override_currency_resolution() {
         .unwrap();
 
     let response = AnalysisBuilder::new(&client, sym)
+        .strict()
         .analyst_price_target_with_diagnostics(Some(Currency::Iso(IsoCurrency::USD)))
         .await
         .unwrap();
 
     mock.assert();
     assert!(response.data.mean.is_some());
-    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
-        warning,
-        YfWarning::CurrencyInferred {
-            symbol,
-            kind: YfCurrencyKind::Trading,
-            source: YfCurrencySource::Override,
-            strength: YfEvidenceStrength::Override,
-            ..
-        } if symbol == sym
-    )));
+    assert!(response.diagnostics.is_empty());
 }
 
 #[tokio::test]

@@ -124,7 +124,7 @@ impl ProjectionContext {
         kind: CurrencyKind,
         resolved: &ResolvedCurrency,
     ) -> Result<(), YfError> {
-        if resolved.source().is_direct_provider() {
+        if resolved.source().is_explicit() {
             return Ok(());
         }
         self.record(YfWarning::CurrencyInferred {
