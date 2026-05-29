@@ -203,9 +203,9 @@ async fn fundamentals_timeseries_http_error_maps_status_and_is_not_cached() {
 }
 
 #[tokio::test]
-async fn malformed_timeseries_values_are_reported_as_projection_loss() {
+async fn malformed_timeseries_value_is_reported_without_dropping_valid_periods() {
     let server = MockServer::start();
-    let sym = "NOCURRENCY";
+    let sym = "BADVALUE";
 
     let mock = server.mock(|when, then| {
         when.method(GET)
@@ -226,11 +226,18 @@ async fn malformed_timeseries_values_are_reported_as_projection_loss() {
                 r#"{
                   "timeseries": {
                     "result": [{
-                      "timestamp": [1704067200],
+                      "timestamp": [1704067200, 1735689600],
                       "meta": {},
-                      "annualTotalRevenue": [{
-                        "reportedValue": { "raw": "not-a-number" }
-                      }]
+                      "annualTotalRevenue": [
+                        {
+                          "currencyCode": "USD",
+                          "reportedValue": { "raw": "not-a-number" }
+                        },
+                        {
+                          "currencyCode": "USD",
+                          "reportedValue": { "raw": 42 }
+                        }
+                      ]
                     }]
                   }
                 }"#,
@@ -258,19 +265,36 @@ async fn malformed_timeseries_values_are_reported_as_projection_loss() {
         .await
         .unwrap();
 
-    mock.assert();
-    assert!(response.data.is_empty());
+    assert_eq!(response.data.len(), 1);
+    assert_eq!(response.data[0].period.to_string(), "2025-01-01");
+    assert_eq!(
+        response.data[0]
+            .total_revenue
+            .as_ref()
+            .map(paft::money::Money::currency),
+        Some(&Currency::Iso(IsoCurrency::USD))
+    );
     assert!(matches!(
         response.diagnostics.warnings.first(),
         Some(YfWarning::DroppedItem {
-            item: "timeseries_item",
+            item: "timeseries_value",
+            key: Some(key),
             reason: ProjectionIssue::InvalidField {
                 field: "values",
                 ..
             },
             ..
-        })
+        }) if key == "annualTotalRevenue[0]"
     ));
+
+    let err = FundamentalsBuilder::new(&client, sym)
+        .strict()
+        .income_statement(false, None)
+        .await
+        .unwrap_err();
+
+    mock.assert_calls(2);
+    assert!(matches!(err, YfError::DataQuality(_)));
 }
 
 #[tokio::test]
@@ -453,6 +477,81 @@ async fn malformed_share_timestamps_are_reported_as_projection_loss() {
             },
             ..
         }
+    )));
+
+    let err = FundamentalsBuilder::new(&client, sym)
+        .strict()
+        .shares(false)
+        .await
+        .unwrap_err();
+
+    mock.assert_calls(2);
+    assert!(matches!(err, YfError::DataQuality(_)));
+}
+
+#[tokio::test]
+async fn malformed_share_values_do_not_drop_valid_siblings() {
+    let server = MockServer::start();
+    let sym = "BADSHAREVALUE";
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!(
+                "/ws/fundamentals-timeseries/v1/finance/timeseries/{sym}"
+            ))
+            .query_param("symbol", sym)
+            .query_param("type", "annualBasicAverageShares")
+            .query_param("crumb", "crumb")
+            .query_param_exists("period1")
+            .query_param_exists("period2");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "timeseries": {
+                    "result": [{
+                      "meta": {},
+                      "timestamp": [1704067200, 1735689600],
+                      "annualBasicAverageShares": [
+                        { "reportedValue": { "raw": "not-a-number" } },
+                        { "reportedValue": { "raw": 100 } }
+                      ]
+                    }]
+                  }
+                }"#,
+            );
+    });
+
+    let client = YfClient::builder()
+        .base_timeseries(
+            Url::parse(&format!(
+                "{}/ws/fundamentals-timeseries/v1/finance/timeseries/",
+                server.base_url()
+            ))
+            .unwrap(),
+        )
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let response = FundamentalsBuilder::new(&client, sym)
+        .shares_with_diagnostics(false)
+        .await
+        .unwrap();
+
+    assert_eq!(response.data.len(), 1);
+    assert_eq!(response.data[0].shares, 100);
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::DroppedItem {
+            endpoint: "shares",
+            item: "timeseries_value",
+            key: Some(key),
+            reason: ProjectionIssue::InvalidField {
+                field: "values",
+                ..
+            },
+        } if key == "annualBasicAverageShares[0]"
     )));
 
     let err = FundamentalsBuilder::new(&client, sym)

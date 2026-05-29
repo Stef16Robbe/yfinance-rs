@@ -305,24 +305,70 @@ fn parse_timeseries_values<T>(
     ctx: &mut ProjectionContext,
     key: &str,
     values_json: &serde_json::Value,
-) -> Result<Option<Vec<T>>, YfError>
+) -> Result<Option<Vec<Option<T>>>, YfError>
 where
     T: serde::de::DeserializeOwned,
 {
-    match serde_json::from_value(values_json.clone()) {
-        Ok(values) => Ok(Some(values)),
-        Err(err) => {
-            ctx.dropped_item(
-                "timeseries_item",
-                Some(key.to_string()),
-                ProjectionIssue::InvalidField {
-                    field: "values",
-                    details: err.to_string(),
-                },
-            )?;
-            Ok(None)
+    let Some(values) = values_json.as_array() else {
+        let details = match serde_json::from_value::<Vec<T>>(values_json.clone()) {
+            Ok(_) => "expected timeseries values array".to_string(),
+            Err(err) => err.to_string(),
+        };
+        ctx.dropped_item(
+            "timeseries_item",
+            Some(key.to_string()),
+            ProjectionIssue::InvalidField {
+                field: "values",
+                details,
+            },
+        )?;
+        return Ok(None);
+    };
+
+    let mut parsed = Vec::with_capacity(values.len());
+    for (idx, value) in values.iter().enumerate() {
+        match serde_json::from_value(value.clone()) {
+            Ok(value) => parsed.push(Some(value)),
+            Err(err) => {
+                parsed.push(None);
+                ctx.dropped_item(
+                    "timeseries_value",
+                    Some(format!("{key}[{idx}]")),
+                    ProjectionIssue::InvalidField {
+                        field: "values",
+                        details: err.to_string(),
+                    },
+                )?;
+            }
         }
     }
+
+    Ok(Some(parsed))
+}
+
+fn parsed_timeseries_value<T>(values: &[Option<T>], idx: usize) -> Option<&T> {
+    values.get(idx).and_then(Option::as_ref)
+}
+
+fn reported_decimal_at(
+    values: &[Option<TimeseriesValueDecimal>],
+    idx: usize,
+) -> Option<paft::Decimal> {
+    parsed_timeseries_value(values, idx)
+        .and_then(|value| value.reported_value.and_then(|reported| reported.raw))
+}
+
+fn reported_u64_at(values: &[Option<TimeseriesValueU64>], idx: usize) -> Option<u64> {
+    parsed_timeseries_value(values, idx)
+        .and_then(|value| value.reported_value.and_then(|reported| reported.raw))
+}
+
+fn reported_share_count_at(
+    values: &[Option<super::wire::TimeseriesValue>],
+    idx: usize,
+) -> Option<u64> {
+    parsed_timeseries_value(values, idx)
+        .and_then(|value| value.reported_value.and_then(|reported| reported.raw))
 }
 
 fn row_for_timestamp<'a, T>(
@@ -378,15 +424,17 @@ fn process_statement_money_values<T>(
     };
 
     for (idx, timestamp) in timestamps.iter().enumerate() {
+        if parsed_timeseries_value(&values, idx).is_none() {
+            continue;
+        }
+
         let row_key = format!("{field}@{timestamp}");
         let Some(row) = row_for_timestamp(ctx, rows_map, *timestamp, row_key.clone(), create_row)?
         else {
             continue;
         };
 
-        let value = values
-            .get(idx)
-            .and_then(|value| value.reported_value.and_then(|reported| reported.raw));
+        let value = reported_decimal_at(&values, idx);
         let money = optional_money_decimal(
             ctx,
             "timeseries.reportedValue",
@@ -426,6 +474,10 @@ fn process_statement_u64_values<T>(
     };
 
     for (idx, timestamp) in timestamps.iter().enumerate() {
+        if parsed_timeseries_value(&values, idx).is_none() {
+            continue;
+        }
+
         let Some(row) = row_for_timestamp(
             ctx,
             rows_map,
@@ -437,9 +489,7 @@ fn process_statement_u64_values<T>(
             continue;
         };
 
-        let value = values
-            .get(idx)
-            .and_then(|value| value.reported_value.and_then(|reported| reported.raw));
+        let value = reported_u64_at(&values, idx);
         assign_value(row, field, value);
     }
 
@@ -1132,24 +1182,15 @@ pub(super) async fn shares(
         return Ok(ctx.finish(vec![]));
     };
 
-    let values: Vec<super::wire::TimeseriesValue> = match serde_json::from_value(values_json) {
-        Ok(values) => values,
-        Err(err) => {
-            ctx.dropped_item(
-                "share_count",
-                Some(type_key.to_string()),
-                ProjectionIssue::InvalidField {
-                    field: "values",
-                    details: err.to_string(),
-                },
-            )?;
-            return Ok(ctx.finish(Vec::new()));
-        }
+    let Some(values) =
+        parse_timeseries_values::<super::wire::TimeseriesValue>(&mut ctx, type_key, &values_json)?
+    else {
+        return Ok(ctx.finish(Vec::new()));
     };
 
     let mut counts = Vec::new();
-    for (ts, val) in timestamps.into_iter().zip(values) {
-        let Some(shares) = val.reported_value.and_then(|rv| rv.raw) else {
+    for (idx, ts) in timestamps.into_iter().enumerate() {
+        let Some(shares) = reported_share_count_at(&values, idx) else {
             continue;
         };
         let date = match i64_to_datetime(ts) {

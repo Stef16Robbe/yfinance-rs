@@ -168,25 +168,59 @@ impl V7QuoteNode {
         Ok(exchange)
     }
 
-    fn instrument(&self, exchange: Option<paft::domain::Exchange>) -> Result<Instrument, YfError> {
+    fn instrument_projection(
+        &self,
+        exchange: Option<paft::domain::Exchange>,
+    ) -> Result<Instrument, ProjectionIssue> {
         let sym = self
             .symbol
             .as_deref()
             .filter(|symbol| !symbol.trim().is_empty())
-            .ok_or_else(|| YfError::MissingData("v7 quote node missing symbol".into()))?;
+            .ok_or(ProjectionIssue::MissingRequiredField { field: "symbol" })?;
         let kind = self
             .quote_type
             .as_deref()
-            .ok_or_else(|| YfError::MissingData("v7 quote node missing quoteType".into()))
-            .and_then(string_to_asset_kind)?;
+            .ok_or(ProjectionIssue::MissingRequiredField { field: "quoteType" })
+            .and_then(|quote_type| {
+                string_to_asset_kind(quote_type).map_err(|err| ProjectionIssue::InvalidField {
+                    field: "quoteType",
+                    details: err.to_string(),
+                })
+            })?;
 
         let instrument = match exchange {
             Some(ex) => Instrument::from_symbol_and_exchange(sym, ex, kind),
             None => Instrument::from_symbol(sym, kind),
         };
 
-        instrument
-            .map_err(|err| YfError::InvalidData(format!("invalid v7 quote symbol {sym:?}: {err}")))
+        instrument.map_err(|err| ProjectionIssue::InvalidField {
+            field: "symbol",
+            details: err.to_string(),
+        })
+    }
+
+    fn instrument(&self, exchange: Option<paft::domain::Exchange>) -> Result<Instrument, YfError> {
+        self.instrument_projection(exchange)
+            .map_err(|issue| self.instrument_error(issue))
+    }
+
+    fn instrument_error(&self, issue: ProjectionIssue) -> YfError {
+        match issue {
+            ProjectionIssue::MissingRequiredField { field } => {
+                YfError::MissingData(format!("v7 quote node missing {field}"))
+            }
+            ProjectionIssue::InvalidField {
+                field: "symbol",
+                details,
+            } => YfError::InvalidData(format!(
+                "invalid v7 quote symbol {:?}: {details}",
+                self.symbol.as_deref().unwrap_or_default()
+            )),
+            ProjectionIssue::InvalidField { field, details } => {
+                YfError::InvalidData(format!("invalid v7 quote {field}: {details}"))
+            }
+            other => YfError::InvalidData(format!("invalid v7 quote instrument: {other}")),
+        }
     }
 
     fn positive_book_level(
@@ -819,6 +853,24 @@ impl TryFrom<V7QuoteNode> for Quote {
 }
 
 impl V7QuoteNode {
+    pub(crate) fn to_quote_item_with_context(
+        &self,
+        ctx: &mut ProjectionContext,
+    ) -> Result<Option<Quote>, YfError> {
+        let key = self.symbol.clone();
+        let exchange = self.exchange_with_context(ctx, key.as_deref())?;
+        let instrument = match self.instrument_projection(exchange) {
+            Ok(instrument) => instrument,
+            Err(reason) => {
+                ctx.dropped_item("quote", key, reason)?;
+                return Ok(None);
+            }
+        };
+
+        self.quote_from_instrument_with_context(ctx, key, instrument)
+            .map(Some)
+    }
+
     pub(crate) fn to_quote_with_context(
         &self,
         ctx: &mut ProjectionContext,
@@ -826,6 +878,16 @@ impl V7QuoteNode {
         let key = self.symbol.clone();
         let exchange = self.exchange_with_context(ctx, key.as_deref())?;
         let instrument = self.instrument(exchange)?;
+
+        self.quote_from_instrument_with_context(ctx, key, instrument)
+    }
+
+    fn quote_from_instrument_with_context(
+        &self,
+        ctx: &mut ProjectionContext,
+        key: Option<String>,
+        instrument: Instrument,
+    ) -> Result<Quote, YfError> {
         let currencies = self.currency_units();
 
         Ok(Quote {

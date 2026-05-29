@@ -142,7 +142,9 @@ impl QuotesBuilder {
         let mut ctx = ProjectionContext::new("quotes", self.data_quality);
         let mut quotes = Vec::with_capacity(results.len());
         for result in results {
-            quotes.push(result.to_quote_with_context(&mut ctx)?);
+            if let Some(quote) = result.to_quote_item_with_context(&mut ctx)? {
+                quotes.push(quote);
+            }
         }
 
         Ok(ctx.finish(quotes))

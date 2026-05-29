@@ -41,16 +41,23 @@ async fn offline_multi_quotes_uses_recorded_fixture() {
 }
 
 #[tokio::test]
-async fn malformed_quote_node_missing_symbol_returns_error() {
+async fn malformed_quote_node_missing_symbol_is_dropped_from_batch() {
     let server = setup_server();
-    let _mock = server.mock(|when, then| {
+    let mock = server.mock(|when, then| {
         when.method(GET)
             .path("/v7/finance/quote")
-            .query_param("symbols", "AAPL");
+            .query_param("symbols", "AAPL,MSFT");
         then.status(200)
             .header("content-type", "application/json")
             .body(
-                r#"{"quoteResponse":{"result":[{"quoteType":"EQUITY","regularMarketPrice":190.0}]}}"#,
+                r#"{
+                  "quoteResponse": {
+                    "result": [
+                      { "quoteType": "EQUITY", "regularMarketPrice": 190.0 },
+                      { "symbol": "MSFT", "quoteType": "EQUITY", "regularMarketPrice": 420.0 }
+                    ]
+                  }
+                }"#,
             );
     });
 
@@ -60,16 +67,32 @@ async fn malformed_quote_node_missing_symbol_returns_error() {
         .build()
         .unwrap();
 
-    let result = yfinance_rs::QuotesBuilder::new(&client)
-        .symbols(["AAPL"])
+    let response = yfinance_rs::QuotesBuilder::new(&client)
+        .symbols(["AAPL", "MSFT"])
+        .fetch_with_diagnostics()
+        .await
+        .unwrap();
+
+    assert_eq!(response.data.len(), 1);
+    assert_eq!(response.data[0].instrument.symbol.as_str(), "MSFT");
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::DroppedItem {
+            endpoint: "quotes",
+            item: "quote",
+            key: None,
+            reason: ProjectionIssue::MissingRequiredField { field: "symbol" },
+        }
+    )));
+
+    let err = yfinance_rs::QuotesBuilder::new(&client)
+        .symbols(["AAPL", "MSFT"])
+        .strict()
         .fetch()
         .await;
 
-    match result {
-        Err(YfError::MissingData(message)) => assert!(message.contains("missing symbol")),
-        Err(other) => panic!("expected missing symbol error, got {other:?}"),
-        Ok(_) => panic!("expected missing symbol error"),
-    }
+    mock.assert_calls(2);
+    assert!(matches!(err, Err(YfError::DataQuality(_))));
 }
 
 #[tokio::test]
@@ -114,9 +137,9 @@ async fn batch_quotes_with_diagnostics_reports_unresolved_currency_for_present_p
 }
 
 #[tokio::test]
-async fn malformed_quote_node_invalid_symbol_returns_error() {
+async fn malformed_quote_node_invalid_symbol_is_dropped_from_batch() {
     let server = setup_server();
-    let _mock = server.mock(|when, then| {
+    let mock = server.mock(|when, then| {
         when.method(GET)
             .path("/v7/finance/quote")
             .query_param("symbols", "BAD");
@@ -133,16 +156,35 @@ async fn malformed_quote_node_invalid_symbol_returns_error() {
         .build()
         .unwrap();
 
-    let result = yfinance_rs::QuotesBuilder::new(&client)
+    let response = yfinance_rs::QuotesBuilder::new(&client)
         .symbols(["BAD"])
-        .fetch()
-        .await;
+        .fetch_with_diagnostics()
+        .await
+        .unwrap();
 
-    match result {
-        Err(YfError::InvalidData(message)) => assert!(message.contains("BAD SYMBOL")),
-        Err(other) => panic!("expected invalid symbol error, got {other:?}"),
-        Ok(_) => panic!("expected invalid symbol error"),
-    }
+    assert!(response.data.is_empty());
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::DroppedItem {
+            endpoint: "quotes",
+            item: "quote",
+            key: Some(key),
+            reason: ProjectionIssue::InvalidField {
+                field: "symbol",
+                ..
+            },
+        } if key == "BAD SYMBOL"
+    )));
+
+    let err = yfinance_rs::QuotesBuilder::new(&client)
+        .symbols(["BAD"])
+        .strict()
+        .fetch()
+        .await
+        .unwrap_err();
+
+    mock.assert_calls(2);
+    assert!(matches!(err, YfError::DataQuality(_)));
 }
 
 #[tokio::test]
