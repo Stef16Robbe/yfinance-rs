@@ -122,7 +122,7 @@ where
         timeseries_currency_evidence(&result_vec, prefix, monetary_keys)?;
     let currency = if needs_currency {
         match client
-            .resolve_reporting_currency_unit(
+            .resolve_reporting_currency(
                 &symbol,
                 override_currency,
                 ReportingCurrencyEvidence::TimeseriesCurrencyCode(direct_currency.as_deref()),
@@ -132,9 +132,8 @@ where
             .await
         {
             Ok(currency) => {
-                ctx.currency_resolution(client, &symbol, CurrencyKind::Reporting)
-                    .await?;
-                Some(currency)
+                ctx.currency_resolution(&symbol, CurrencyKind::Reporting, &currency)?;
+                Some(currency.into_unit())
             }
             Err(err @ YfError::InvalidData(_)) => return Err(err),
             Err(err) if data_quality == DataQuality::Strict => return Err(err),
@@ -766,7 +765,7 @@ pub(super) async fn earnings(
         .await;
     let currency = if earnings_has_monetary_values(&e) {
         match client
-            .resolve_reporting_currency_unit(
+            .resolve_reporting_currency(
                 symbol,
                 override_currency,
                 ReportingCurrencyEvidence::FinancialCurrency(e.financial_currency.as_deref()),
@@ -776,9 +775,8 @@ pub(super) async fn earnings(
             .await
         {
             Ok(currency) => {
-                ctx.currency_resolution(client, symbol, CurrencyKind::Reporting)
-                    .await?;
-                Some(currency)
+                ctx.currency_resolution(symbol, CurrencyKind::Reporting, &currency)?;
+                Some(currency.into_unit())
             }
             Err(err @ YfError::InvalidData(_)) => return Err(err),
             Err(err) if data_quality == DataQuality::Strict => return Err(err),

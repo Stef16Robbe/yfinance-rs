@@ -8,7 +8,7 @@ use crate::core::{
     DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfError, YfResponse,
     client::{CacheMode, RetryConfig},
     conversions::{i64_to_datetime, string_to_insider_position, string_to_transaction_type},
-    currency_resolver::{ReportingCurrencyEvidence, ResolvedCurrencyUnit},
+    currency_resolver::{CurrencyKind, ReportingCurrencyEvidence, ResolvedCurrencyUnit},
     diagnostics::{optional_decimal_f64, optional_money_u64},
     quotesummary,
 };
@@ -287,9 +287,9 @@ async fn resolve_reporting_currency(
     symbol: &str,
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
-) -> Result<ResolvedCurrencyUnit, YfError> {
+) -> Result<crate::core::currency_resolver::ResolvedCurrency, YfError> {
     client
-        .resolve_reporting_currency_unit(
+        .resolve_reporting_currency(
             symbol,
             None,
             ReportingCurrencyEvidence::None,
@@ -305,14 +305,17 @@ async fn optional_reporting_currency(
     needed: bool,
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
-    ctx: &ProjectionContext,
+    ctx: &mut ProjectionContext,
 ) -> Result<Option<ResolvedCurrencyUnit>, YfError> {
     if !needed {
         return Ok(None);
     }
 
     match resolve_reporting_currency(client, symbol, cache_mode, retry_override).await {
-        Ok(currency) => Ok(Some(currency)),
+        Ok(currency) => {
+            ctx.currency_resolution(symbol, CurrencyKind::Reporting, &currency)?;
+            Ok(Some(currency.into_unit()))
+        }
         Err(err) if ctx.policy() == DataQuality::Strict => Err(err),
         Err(_) => Ok(None),
     }
@@ -386,7 +389,7 @@ pub(super) async fn insider_transactions(
         transactions.iter().any(|t| from_raw(t.value).is_some()),
         cache_mode,
         retry_override,
-        &ctx,
+        &mut ctx,
     )
     .await?;
 

@@ -59,6 +59,7 @@ impl From<crate::core::currency_resolver::CurrencyKind> for YfCurrencyKind {
 impl From<crate::core::currency_resolver::CurrencySource> for YfCurrencySource {
     fn from(value: crate::core::currency_resolver::CurrencySource) -> Self {
         match value {
+            crate::core::currency_resolver::CurrencySource::Override => Self::Override,
             crate::core::currency_resolver::CurrencySource::DirectProvider => Self::DirectProvider,
             crate::core::currency_resolver::CurrencySource::CachedProvider => Self::CachedProvider,
             crate::core::currency_resolver::CurrencySource::QuoteEnrichment => {
@@ -80,6 +81,7 @@ impl From<crate::core::currency_resolver::CurrencySource> for YfCurrencySource {
 impl From<crate::core::currency_resolver::EvidenceStrength> for YfEvidenceStrength {
     fn from(value: crate::core::currency_resolver::EvidenceStrength) -> Self {
         match value {
+            crate::core::currency_resolver::EvidenceStrength::Override => Self::Override,
             crate::core::currency_resolver::EvidenceStrength::ProfileHeuristic => {
                 Self::ProfileHeuristic
             }

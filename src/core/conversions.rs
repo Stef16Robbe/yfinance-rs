@@ -162,56 +162,62 @@ pub const fn datetime_to_i64(dt: DateTime<Utc>) -> i64 {
     dt.timestamp()
 }
 
+/// Parse a Yahoo exchange token into a provider-agnostic exchange.
+///
+/// # Errors
+/// Returns `YfError::InvalidData` if the token cannot be represented by `paft`.
+pub fn parse_exchange_str(s: &str) -> Result<Exchange, YfError> {
+    // Map Yahoo Finance exchange names to paft Exchange values.
+    match s.trim() {
+        "NasdaqGS" | "NasdaqCM" | "NasdaqGM" => Ok(Exchange::NASDAQ),
+        "NYSE" => Ok(Exchange::NYSE),
+        "AMEX" => Ok(Exchange::AMEX),
+        "BATS" => Ok(Exchange::BATS),
+        "OTC" => Ok(Exchange::OTC),
+        "LSE" => Ok(Exchange::LSE),
+        "TSE" => Ok(Exchange::TSE),
+        "HKEX" => Ok(Exchange::HKEX),
+        "SSE" => Ok(Exchange::SSE),
+        "SZSE" => Ok(Exchange::SZSE),
+        "TSX" => Ok(Exchange::TSX),
+        "ASX" => Ok(Exchange::ASX),
+        "Euronext" => Ok(Exchange::Euronext),
+        "XETRA" => Ok(Exchange::XETRA),
+        "SIX" => Ok(Exchange::SIX),
+        "BIT" => Ok(Exchange::BIT),
+        "BME" => Ok(Exchange::BME),
+        "AEX" => Ok(Exchange::AEX),
+        "BRU" => Ok(Exchange::BRU),
+        "LIS" => Ok(Exchange::LIS),
+        "EPA" => Ok(Exchange::EPA),
+        "OSL" => Ok(Exchange::OSL),
+        "STO" => Ok(Exchange::STO),
+        "CPH" => Ok(Exchange::CPH),
+        "WSE" => Ok(Exchange::WSE),
+        "PSE" => Ok(Exchange::PSE),
+        "BSE" => Ok(Exchange::BSE),
+        "MOEX" => Ok(Exchange::MOEX),
+        "BIST" => Ok(Exchange::BIST),
+        "JSE" => Ok(Exchange::JSE),
+        "TASE" => Ok(Exchange::TASE),
+        "BSE_HU" => Ok(Exchange::BSE_HU),
+        "NSE" => Ok(Exchange::NSE),
+        "KRX" => Ok(Exchange::KRX),
+        "SGX" => Ok(Exchange::SGX),
+        "SET" => Ok(Exchange::SET),
+        "KLSE" => Ok(Exchange::KLSE),
+        "PSE_CZ" => Ok(Exchange::PSE_CZ),
+        "IDX" => Ok(Exchange::IDX),
+        "HOSE" => Ok(Exchange::HOSE),
+        token => Exchange::try_from_str(token)
+            .map_err(|err| YfError::InvalidData(format!("invalid exchange {s:?}: {err}"))),
+    }
+}
+
 /// Convert String to Exchange enum
-#[allow(clippy::single_option_map)]
 #[must_use]
 pub fn string_to_exchange(s: Option<String>) -> Option<Exchange> {
-    s.and_then(|s| {
-        // Map Yahoo Finance exchange names to paft Exchange values
-        match s.as_str() {
-            "NasdaqGS" | "NasdaqCM" | "NasdaqGM" => Some(Exchange::NASDAQ),
-            "NYSE" => Some(Exchange::NYSE),
-            "AMEX" => Some(Exchange::AMEX),
-            "BATS" => Some(Exchange::BATS),
-            "OTC" => Some(Exchange::OTC),
-            "LSE" => Some(Exchange::LSE),
-            "TSE" => Some(Exchange::TSE),
-            "HKEX" => Some(Exchange::HKEX),
-            "SSE" => Some(Exchange::SSE),
-            "SZSE" => Some(Exchange::SZSE),
-            "TSX" => Some(Exchange::TSX),
-            "ASX" => Some(Exchange::ASX),
-            "Euronext" => Some(Exchange::Euronext),
-            "XETRA" => Some(Exchange::XETRA),
-            "SIX" => Some(Exchange::SIX),
-            "BIT" => Some(Exchange::BIT),
-            "BME" => Some(Exchange::BME),
-            "AEX" => Some(Exchange::AEX),
-            "BRU" => Some(Exchange::BRU),
-            "LIS" => Some(Exchange::LIS),
-            "EPA" => Some(Exchange::EPA),
-            "OSL" => Some(Exchange::OSL),
-            "STO" => Some(Exchange::STO),
-            "CPH" => Some(Exchange::CPH),
-            "WSE" => Some(Exchange::WSE),
-            "PSE" => Some(Exchange::PSE),
-            "BSE" => Some(Exchange::BSE),
-            "MOEX" => Some(Exchange::MOEX),
-            "BIST" => Some(Exchange::BIST),
-            "JSE" => Some(Exchange::JSE),
-            "TASE" => Some(Exchange::TASE),
-            "BSE_HU" => Some(Exchange::BSE_HU),
-            "NSE" => Some(Exchange::NSE),
-            "KRX" => Some(Exchange::KRX),
-            "SGX" => Some(Exchange::SGX),
-            "SET" => Some(Exchange::SET),
-            "KLSE" => Some(Exchange::KLSE),
-            "PSE_CZ" => Some(Exchange::PSE_CZ),
-            "IDX" => Some(Exchange::IDX),
-            "HOSE" => Some(Exchange::HOSE),
-            _ => Exchange::try_from(s).ok(),
-        }
-    })
+    s.and_then(|s| parse_exchange_str(&s).ok())
 }
 
 /// Convert Exchange to String

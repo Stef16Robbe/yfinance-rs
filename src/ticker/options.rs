@@ -116,7 +116,7 @@ pub async fn option_chain_with_diagnostics(
     });
 
     let currency = match client
-        .resolve_trading_currency_unit(
+        .resolve_trading_currency(
             &symbol,
             None,
             TradingCurrencyEvidence::OptionsQuote(currency_from_response.as_deref()),
@@ -126,9 +126,8 @@ pub async fn option_chain_with_diagnostics(
         .await
     {
         Ok(currency) => {
-            ctx.currency_resolution(client, &symbol, CurrencyKind::Trading)
-                .await?;
-            Some(currency)
+            ctx.currency_resolution(&symbol, CurrencyKind::Trading, &currency)?;
+            Some(currency.into_unit())
         }
         Err(err) => {
             crate::core::logging::trace_debug!(

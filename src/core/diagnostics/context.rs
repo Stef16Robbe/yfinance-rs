@@ -1,6 +1,6 @@
 use crate::core::{
-    ProjectionIssue, YfClient, YfDiagnostics, YfError, YfResponse, YfWarning,
-    currency_resolver::CurrencyKind,
+    ProjectionIssue, YfDiagnostics, YfError, YfResponse, YfWarning,
+    currency_resolver::{CurrencyKind, ResolvedCurrency},
     diagnostics::{DataQuality, YfCurrencyKind, YfCurrencySource, YfEvidenceStrength},
 };
 
@@ -118,15 +118,12 @@ impl ProjectionContext {
         })
     }
 
-    pub(crate) async fn currency_resolution(
+    pub(crate) fn currency_resolution(
         &mut self,
-        client: &YfClient,
         symbol: &str,
         kind: CurrencyKind,
+        resolved: &ResolvedCurrency,
     ) -> Result<(), YfError> {
-        let Some(resolved) = client.cached_resolved_currency(symbol, kind).await else {
-            return Ok(());
-        };
         if resolved.source().is_direct_provider() {
             return Ok(());
         }

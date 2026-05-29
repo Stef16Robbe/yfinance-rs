@@ -346,7 +346,7 @@ async fn history_trading_currency(
     ctx: &mut ProjectionContext,
 ) -> Result<Option<ResolvedCurrencyUnit>, YfError> {
     match client
-        .resolve_trading_currency_unit(
+        .resolve_trading_currency(
             symbol,
             None,
             TradingCurrencyEvidence::ChartMeta(chart_currency),
@@ -356,9 +356,8 @@ async fn history_trading_currency(
         .await
     {
         Ok(currency) => {
-            ctx.currency_resolution(client, symbol, CurrencyKind::Trading)
-                .await?;
-            Ok(Some(currency))
+            ctx.currency_resolution(symbol, CurrencyKind::Trading, &currency)?;
+            Ok(Some(currency.into_unit()))
         }
         Err(err @ YfError::InvalidData(_)) => Err(err),
         Err(err) if ctx.policy() == DataQuality::Strict => Err(err),
@@ -398,7 +397,7 @@ async fn action_default_currency(
     }
 
     match client
-        .resolve_corporate_action_currency_unit(
+        .resolve_corporate_action_currency(
             symbol,
             None,
             CorporateActionCurrencyEvidence::ChartMeta(chart_currency),
@@ -407,7 +406,10 @@ async fn action_default_currency(
         )
         .await
     {
-        Ok(currency) => Ok(Some(currency)),
+        Ok(currency) => {
+            ctx.currency_resolution(symbol, CurrencyKind::CorporateAction, &currency)?;
+            Ok(Some(currency.into_unit()))
+        }
         Err(err) => {
             if ctx.policy() == DataQuality::Strict {
                 Err(err)

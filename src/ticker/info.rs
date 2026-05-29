@@ -108,12 +108,16 @@ pub(super) async fn fetch_info_with_diagnostics(
         None => key_statistics,
     };
     let snapshot = quote.to_snapshot_with_context(&mut ctx)?;
+    let calendar = match calendar {
+        Some(calendar) => Some(calendar),
+        None => quote.calendar_fallback_with_context(&mut ctx)?,
+    };
 
     Ok(ctx.finish(Info {
         snapshot,
         key_statistics,
         profile,
-        calendar: calendar.or_else(|| quote.calendar_fallback()),
+        calendar,
         price_target,
         recommendation_summary: rec_summary,
         esg_scores: esg_summary.and_then(|s| s.scores),

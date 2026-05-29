@@ -33,15 +33,35 @@ use paft::fundamentals::analysis::{
 use paft::money::Currency;
 // Period is available via prelude or directly; we use string_to_period for parsing, so import not needed
 
-fn parse_optional<T>(
+fn nonempty(value: Option<&str>) -> Option<&str> {
+    value.map(str::trim).filter(|value| !value.is_empty())
+}
+
+fn parse_optional_projected<T>(
+    ctx: &mut ProjectionContext,
+    path: &'static str,
+    key: Option<String>,
+    field: &'static str,
     value: Option<&str>,
     parse: impl FnOnce(&str) -> Result<T, YfError>,
 ) -> Result<Option<T>, YfError> {
-    value
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(parse)
-        .transpose()
+    let Some(value) = nonempty(value) else {
+        return Ok(None);
+    };
+    match parse(value) {
+        Ok(value) => Ok(Some(value)),
+        Err(err) => {
+            ctx.omitted_present_field(
+                path,
+                key,
+                ProjectionIssue::InvalidField {
+                    field,
+                    details: err.to_string(),
+                },
+            )?;
+            Ok(None)
+        }
+    }
 }
 
 fn required_period(
@@ -323,57 +343,42 @@ pub(super) async fn upgrades_downgrades(
                 continue;
             }
         };
-        let from_grade = match parse_optional::<RecommendationGrade>(
+        let from_grade = parse_optional_projected::<RecommendationGrade>(
+            &mut ctx,
+            "upgradeDowngradeHistory.history[].fromGrade",
+            key.clone(),
+            "fromGrade",
             h.from_grade.as_deref(),
             string_to_recommendation_grade,
-        ) {
-            Ok(value) => value,
-            Err(err) => {
-                ctx.dropped_item(
-                    "upgrade_downgrade",
-                    key.clone(),
-                    ProjectionIssue::InvalidField {
-                        field: "fromGrade",
-                        details: err.to_string(),
-                    },
-                )?;
-                continue;
-            }
-        };
-        let to_grade = match parse_optional::<RecommendationGrade>(
+        )?;
+        let to_grade = parse_optional_projected::<RecommendationGrade>(
+            &mut ctx,
+            "upgradeDowngradeHistory.history[].toGrade",
+            key.clone(),
+            "toGrade",
             h.to_grade.as_deref(),
             string_to_recommendation_grade,
-        ) {
-            Ok(value) => value,
-            Err(err) => {
-                ctx.dropped_item(
-                    "upgrade_downgrade",
-                    key.clone(),
-                    ProjectionIssue::InvalidField {
-                        field: "toGrade",
-                        details: err.to_string(),
-                    },
-                )?;
-                continue;
-            }
+        )?;
+        let (action_value, action_path, action_field) = match nonempty(h.action.as_deref()) {
+            Some(action) => (
+                Some(action),
+                "upgradeDowngradeHistory.history[].action",
+                "action",
+            ),
+            None => (
+                nonempty(h.grade_change.as_deref()),
+                "upgradeDowngradeHistory.history[].gradeChange",
+                "gradeChange",
+            ),
         };
-        let action = match parse_optional::<RecommendationAction>(
-            h.action.or(h.grade_change).as_deref(),
+        let action = parse_optional_projected::<RecommendationAction>(
+            &mut ctx,
+            action_path,
+            key.clone(),
+            action_field,
+            action_value,
             string_to_recommendation_action,
-        ) {
-            Ok(value) => value,
-            Err(err) => {
-                ctx.dropped_item(
-                    "upgrade_downgrade",
-                    key.clone(),
-                    ProjectionIssue::InvalidField {
-                        field: "action",
-                        details: err.to_string(),
-                    },
-                )?;
-                continue;
-            }
-        };
+        )?;
 
         rows.push(UpgradeDowngradeRow {
             ts,
@@ -415,7 +420,7 @@ pub(super) async fn analyst_price_target(
     let low = from_raw(fd.target_low_price);
     let unit = if [mean, high, low].iter().any(Option::is_some) {
         match client
-            .resolve_trading_currency_unit(
+            .resolve_trading_currency(
                 symbol,
                 override_currency,
                 TradingCurrencyEvidence::None,
@@ -425,9 +430,8 @@ pub(super) async fn analyst_price_target(
             .await
         {
             Ok(unit) => {
-                ctx.currency_resolution(client, symbol, CurrencyKind::Trading)
-                    .await?;
-                Some(unit)
+                ctx.currency_resolution(symbol, CurrencyKind::Trading, &unit)?;
+                Some(unit.into_unit())
             }
             Err(err @ YfError::InvalidData(_)) => return Err(err),
             Err(err) if data_quality == DataQuality::Strict => return Err(err),
@@ -490,6 +494,7 @@ struct AnalystCurrencyResolver<'a> {
 impl AnalystCurrencyResolver<'_> {
     async fn resolve_if_any<T: Sync>(
         &self,
+        ctx: &mut ProjectionContext,
         values: &[Option<T>],
         evidence: AnalystEstimateCurrencyEvidence<'_>,
     ) -> Result<Option<ResolvedCurrencyUnit>, YfError> {
@@ -499,7 +504,7 @@ impl AnalystCurrencyResolver<'_> {
 
         match self
             .client
-            .resolve_analyst_estimate_currency_unit(
+            .resolve_analyst_estimate_currency(
                 self.symbol,
                 self.override_currency.clone(),
                 evidence,
@@ -508,7 +513,10 @@ impl AnalystCurrencyResolver<'_> {
             )
             .await
         {
-            Ok(unit) => Ok(Some(unit)),
+            Ok(resolved) => {
+                ctx.currency_resolution(self.symbol, CurrencyKind::AnalystEstimate, &resolved)?;
+                Ok(Some(resolved.into_unit()))
+            }
             Err(err @ YfError::InvalidData(_)) => Err(err),
             Err(err) if self.data_quality == DataQuality::Strict => Err(err),
             Err(_) => Ok(None),
@@ -995,6 +1003,7 @@ pub(super) async fn earnings_trend(
         let earnings_values = raw.earnings.price_values();
         let earnings_unit = currency_resolver
             .resolve_if_any(
+                &mut ctx,
                 &earnings_values,
                 AnalystEstimateCurrencyEvidence::Earnings(raw.earnings.currency.as_deref()),
             )
@@ -1003,6 +1012,7 @@ pub(super) async fn earnings_trend(
         let revenue_values = raw.revenue.money_values();
         let revenue_unit = currency_resolver
             .resolve_if_any(
+                &mut ctx,
                 &revenue_values,
                 AnalystEstimateCurrencyEvidence::Revenue(raw.revenue.currency.as_deref()),
             )
@@ -1011,6 +1021,7 @@ pub(super) async fn earnings_trend(
         let eps_values = raw.eps_trend.price_values();
         let eps_unit = currency_resolver
             .resolve_if_any(
+                &mut ctx,
                 &eps_values,
                 AnalystEstimateCurrencyEvidence::EpsTrend(raw.eps_trend.currency.as_deref()),
             )

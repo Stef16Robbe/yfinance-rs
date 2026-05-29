@@ -58,7 +58,7 @@ pub enum YfWarning {
         /// Description of the repair.
         repair: &'static str,
     },
-    /// Currency was resolved from non-direct provider evidence.
+    /// Currency was resolved from an override or non-direct provider evidence.
     CurrencyInferred {
         /// Stable endpoint or mapper name.
         endpoint: &'static str,
@@ -132,6 +132,16 @@ impl fmt::Display for YfWarning {
                 f,
                 "{endpoint}: repaired {item}{}: {repair}",
                 fmt_key(key.as_deref())
+            ),
+            Self::CurrencyInferred {
+                endpoint,
+                symbol,
+                kind,
+                source: YfCurrencySource::Override,
+                strength,
+            } => write!(
+                f,
+                "{endpoint}: used override {kind:?} currency for {symbol} ({strength:?})"
             ),
             Self::CurrencyInferred {
                 endpoint,

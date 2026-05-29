@@ -1,7 +1,9 @@
 use httpmock::{Method::GET, MockServer};
+use paft::money::{Currency, IsoCurrency};
 use url::Url;
 use yfinance_rs::{
-    ApiPreference, ProjectionIssue, YfClient, YfError, YfWarning, analysis::AnalysisBuilder,
+    ApiPreference, ProjectionIssue, YfClient, YfCurrencyKind, YfCurrencySource, YfError,
+    YfEvidenceStrength, YfWarning, analysis::AnalysisBuilder,
 };
 
 #[tokio::test]
@@ -296,6 +298,88 @@ async fn recommendation_counts_report_invalid_present_values() {
 }
 
 #[tokio::test]
+async fn upgrades_downgrades_keep_rows_when_optional_fields_are_invalid() {
+    let sym = "AAPL";
+    let server = MockServer::start();
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "upgradeDowngradeHistory")
+            .query_param("crumb", "crumb");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "quoteSummary": {
+                    "result": [{
+                      "upgradeDowngradeHistory": {
+                        "history": [{
+                          "epochGradeDate": 1704067200,
+                          "firm": "Example Research",
+                          "fromGrade": "!!!",
+                          "toGrade": "Buy",
+                          "action": "!!!"
+                        }]
+                      }
+                    }],
+                    "error": null
+                  }
+                }"#,
+            );
+    });
+
+    let client = YfClient::builder()
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._api_preference(ApiPreference::ApiOnly)
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let response = AnalysisBuilder::new(&client, sym)
+        .upgrades_downgrades_with_diagnostics()
+        .await
+        .unwrap();
+
+    assert_eq!(response.data.len(), 1);
+    assert!(response.data[0].from_grade.is_none());
+    assert_eq!(
+        response.data[0]
+            .to_grade
+            .as_ref()
+            .map(std::string::ToString::to_string)
+            .as_deref(),
+        Some("BUY")
+    );
+    assert!(response.data[0].action.is_none());
+    for path in [
+        "upgradeDowngradeHistory.history[].fromGrade",
+        "upgradeDowngradeHistory.history[].action",
+    ] {
+        assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+            warning,
+            YfWarning::OmittedPresentField {
+                path: warning_path,
+                key: Some(key),
+                reason: ProjectionIssue::InvalidField { .. },
+                ..
+            } if *warning_path == path && key == "Example Research"
+        )));
+    }
+
+    let err = AnalysisBuilder::new(&client, sym)
+        .strict()
+        .upgrades_downgrades()
+        .await
+        .unwrap_err();
+
+    mock.assert_calls(2);
+    assert!(matches!(err, YfError::DataQuality(_)));
+}
+
+#[tokio::test]
 async fn price_target_reports_present_prices_when_currency_cannot_be_resolved() {
     let sym = "NOCURRENCY";
     let server = MockServer::start();
@@ -349,6 +433,60 @@ async fn price_target_reports_present_prices_when_currency_cannot_be_resolved() 
             reason: ProjectionIssue::CurrencyUnresolved,
             ..
         }
+    )));
+}
+
+#[tokio::test]
+async fn price_target_reports_override_currency_resolution() {
+    let sym = "OVERRIDE";
+    let server = MockServer::start();
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "financialData")
+            .query_param("crumb", "crumb");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "quoteSummary": {
+                    "result": [{
+                      "financialData": {
+                        "targetMeanPrice": { "raw": 10.0 }
+                      }
+                    }],
+                    "error": null
+                  }
+                }"#,
+            );
+    });
+
+    let client = YfClient::builder()
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._api_preference(ApiPreference::ApiOnly)
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let response = AnalysisBuilder::new(&client, sym)
+        .analyst_price_target_with_diagnostics(Some(Currency::Iso(IsoCurrency::USD)))
+        .await
+        .unwrap();
+
+    mock.assert();
+    assert!(response.data.mean.is_some());
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::CurrencyInferred {
+            symbol,
+            kind: YfCurrencyKind::Trading,
+            source: YfCurrencySource::Override,
+            strength: YfEvidenceStrength::Override,
+            ..
+        } if symbol == sym
     )));
 }
 

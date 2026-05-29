@@ -16,6 +16,7 @@ impl CurrencyKind {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CurrencySource {
+    Override,
     DirectProvider,
     CachedProvider,
     QuoteEnrichment,
@@ -26,6 +27,7 @@ pub enum CurrencySource {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum EvidenceStrength {
+    Override,
     ProfileHeuristic,
     ListingHeuristic,
     EnrichedProvider,
@@ -64,6 +66,10 @@ impl ResolvedCurrency {
 
     pub(crate) const fn strength(&self) -> EvidenceStrength {
         self.strength
+    }
+
+    pub(crate) fn into_unit(self) -> ResolvedCurrencyUnit {
+        self.unit
     }
 }
 

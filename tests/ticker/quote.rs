@@ -114,6 +114,61 @@ async fn quote_with_diagnostics_reports_invalid_currency_for_present_price() {
 }
 
 #[tokio::test]
+async fn quote_with_diagnostics_reports_invalid_optional_provider_fields() {
+    let server = MockServer::start();
+
+    let body = r#"{
+      "quoteResponse": {
+        "result": [
+          {
+            "symbol":"AAPL",
+            "quoteType": "EQUITY",
+            "regularMarketPrice": 190.25,
+            "currency": "USD",
+            "fullExchangeName": "!!!",
+            "marketState": "!!!",
+            "regularMarketTime": 9223372036854775807
+          }
+        ],
+        "error": null
+      }
+    }"#;
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "AAPL");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+    let ticker = Ticker::new(&client, "AAPL");
+
+    let response = ticker.quote_with_diagnostics().await.unwrap();
+    mock.assert();
+
+    assert!(response.data.instrument.exchange.is_none());
+    assert!(response.data.market_state.is_none());
+    assert!(response.data.as_of.is_none());
+    for path in ["fullExchangeName", "marketState", "regularMarketTime"] {
+        assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+            warning,
+            YfWarning::OmittedPresentField {
+                endpoint: "quote",
+                path: warning_path,
+                key: Some(key),
+                reason: ProjectionIssue::InvalidField { .. },
+            } if *warning_path == path && key == "AAPL"
+        )));
+    }
+}
+
+#[tokio::test]
 async fn quote_v7_usd_crypto_price_keeps_provider_precision() {
     let server = MockServer::start();
 

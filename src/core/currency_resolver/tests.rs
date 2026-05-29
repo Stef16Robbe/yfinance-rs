@@ -269,7 +269,7 @@ async fn analyst_direct_currency_does_not_poison_symbol_cache() {
     );
 
     let fallback = client
-        .resolve_analyst_estimate_currency_unit(
+        .resolve_analyst_estimate_currency(
             "TEST",
             None,
             AnalystEstimateCurrencyEvidence::Earnings(None),
@@ -278,7 +278,9 @@ async fn analyst_direct_currency_does_not_poison_symbol_cache() {
         )
         .await
         .expect("reporting fallback");
-    assert_eq!(currency(&fallback), Currency::Iso(IsoCurrency::GBP));
+    assert_eq!(currency(&fallback.unit), Currency::Iso(IsoCurrency::GBP));
+    assert_eq!(fallback.source(), CurrencySource::CachedProvider);
+    assert_eq!(fallback.strength(), EvidenceStrength::DirectProvider);
 }
 
 #[tokio::test]

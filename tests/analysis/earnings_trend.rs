@@ -1,7 +1,10 @@
 use httpmock::{Method::GET, MockServer};
 use paft::money::{Currency, IsoCurrency};
 use url::Url;
-use yfinance_rs::{ApiPreference, Ticker, YfClient};
+use yfinance_rs::{
+    ApiPreference, Ticker, YfClient, YfCurrencyKind, YfCurrencySource, YfEvidenceStrength,
+    YfWarning, analysis::AnalysisBuilder,
+};
 
 fn fixture(endpoint: &str, symbol: &str) -> String {
     crate::common::fixture(endpoint, symbol, "json")
@@ -68,6 +71,86 @@ const PROFILE_UNITED_KINGDOM: &str = r#"{
     "error": null
   }
 }"#;
+
+#[tokio::test]
+async fn earnings_trend_reports_inferred_analyst_currency_from_quote_enrichment() {
+    let sym = "AAPL";
+    let server = MockServer::start();
+
+    let trend_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "earningsTrend")
+            .query_param("crumb", "crumb");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "quoteSummary": {
+                    "result": [{
+                      "earningsTrend": {
+                        "trend": [{
+                          "period": "0q",
+                          "earningsEstimate": {
+                            "avg": { "raw": 1.25 }
+                          }
+                        }]
+                      }
+                    }],
+                    "error": null
+                  }
+                }"#,
+            );
+    });
+    let quote_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", sym);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "quoteResponse": {
+                    "result": [{
+                      "symbol": "AAPL",
+                      "quoteType": "EQUITY",
+                      "financialCurrency": "USD"
+                    }],
+                    "error": null
+                  }
+                }"#,
+            );
+    });
+
+    let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._api_preference(ApiPreference::ApiOnly)
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let response = AnalysisBuilder::new(&client, sym)
+        .earnings_trend_with_diagnostics(None)
+        .await
+        .unwrap();
+
+    trend_mock.assert();
+    quote_mock.assert();
+    assert!(response.data[0].earnings_estimate.avg.is_some());
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::CurrencyInferred {
+            symbol,
+            kind: YfCurrencyKind::AnalystEstimate,
+            source: YfCurrencySource::QuoteEnrichment,
+            strength: YfEvidenceStrength::EnrichedProvider,
+            ..
+        } if symbol == sym
+    )));
+}
 
 #[tokio::test]
 async fn offline_earnings_trend_uses_recorded_fixture() {

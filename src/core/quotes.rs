@@ -6,7 +6,9 @@ use crate::{
     core::{
         DataQuality, ProjectionContext, ProjectionIssue,
         client::{CacheEndpoint, CacheMode, RetryConfig, normalize_symbols},
-        conversions::{decimal_from_f64, i64_to_datetime, string_to_asset_kind},
+        conversions::{
+            decimal_from_f64, i64_to_datetime, parse_exchange_str, string_to_asset_kind,
+        },
         currency_resolver::{CurrencyHints, ResolvedCurrencyUnit},
         diagnostics::optional_decimal_f64,
         net, quotesummary,
@@ -15,7 +17,7 @@ use crate::{
 };
 use paft::Decimal;
 use paft::aggregates::Snapshot;
-use paft::domain::Instrument;
+use paft::domain::{Exchange, Instrument, MarketState};
 use paft::fundamentals::statements::Calendar;
 use paft::fundamentals::statistics::KeyStatistics;
 use paft::market::orderbook::BookLevel;
@@ -116,14 +118,54 @@ impl V7QuoteNode {
         QuoteCurrencyUnits::from_quote_node(self)
     }
 
-    fn exchange(&self) -> Option<paft::domain::Exchange> {
-        crate::core::conversions::string_to_exchange(
-            self.full_exchange_name
-                .clone()
-                .or_else(|| self.exchange.clone())
-                .or_else(|| self.market.clone())
-                .or_else(|| self.market_cap_figure_exchange.clone()),
-        )
+    fn exchange_candidates(&self) -> [(&'static str, Option<&str>); 4] {
+        [
+            ("fullExchangeName", self.full_exchange_name.as_deref()),
+            ("exchange", self.exchange.as_deref()),
+            ("market", self.market.as_deref()),
+            (
+                "marketCapFigureExchange",
+                self.market_cap_figure_exchange.as_deref(),
+            ),
+        ]
+    }
+
+    fn exchange(&self) -> Option<Exchange> {
+        self.exchange_candidates()
+            .into_iter()
+            .find_map(|(_, value)| {
+                value
+                    .and_then(nonempty)
+                    .and_then(|value| parse_exchange_str(value).ok())
+            })
+    }
+
+    fn exchange_with_context(
+        &self,
+        ctx: &mut ProjectionContext,
+        key: Option<&str>,
+    ) -> Result<Option<Exchange>, YfError> {
+        let mut exchange = None;
+        for (path, value) in self.exchange_candidates() {
+            let Some(value) = value.and_then(nonempty) else {
+                continue;
+            };
+            match parse_exchange_str(value) {
+                Ok(parsed) if exchange.is_none() => exchange = Some(parsed),
+                Ok(_) => {}
+                Err(err) => {
+                    ctx.omitted_present_field(
+                        path,
+                        key.map(str::to_owned),
+                        ProjectionIssue::InvalidField {
+                            field: path,
+                            details: err.to_string(),
+                        },
+                    )?;
+                }
+            }
+        }
+        Ok(exchange)
     }
 
     fn instrument(&self, exchange: Option<paft::domain::Exchange>) -> Result<Instrument, YfError> {
@@ -168,24 +210,67 @@ impl V7QuoteNode {
         Ok(price.map(|price| BookLevel::new(price, size.map(Decimal::from))))
     }
 
-    fn as_of(&self) -> Option<chrono::DateTime<chrono::Utc>> {
-        self.regular_market_time
-            .and_then(|timestamp| i64_to_datetime(timestamp).ok())
+    fn market_state_with_context(
+        &self,
+        ctx: &mut ProjectionContext,
+        key: Option<String>,
+    ) -> Result<Option<MarketState>, YfError> {
+        let Some(value) = self.market_state.as_deref().and_then(nonempty) else {
+            return Ok(None);
+        };
+        match value.parse() {
+            Ok(state) => Ok(Some(state)),
+            Err(err) => {
+                ctx.omitted_present_field(
+                    "marketState",
+                    key,
+                    ProjectionIssue::InvalidField {
+                        field: "marketState",
+                        details: err.to_string(),
+                    },
+                )?;
+                Ok(None)
+            }
+        }
+    }
+
+    fn as_of_with_context(
+        &self,
+        ctx: &mut ProjectionContext,
+        key: Option<String>,
+    ) -> Result<Option<chrono::DateTime<chrono::Utc>>, YfError> {
+        let Some(timestamp) = self.regular_market_time else {
+            return Ok(None);
+        };
+        match i64_to_datetime(timestamp) {
+            Ok(timestamp) => Ok(Some(timestamp)),
+            Err(err) => {
+                ctx.omitted_present_field(
+                    "regularMarketTime",
+                    key,
+                    ProjectionIssue::InvalidField {
+                        field: "regularMarketTime",
+                        details: err.to_string(),
+                    },
+                )?;
+                Ok(None)
+            }
+        }
     }
 
     pub(crate) fn to_snapshot_with_context(
         &self,
         ctx: &mut ProjectionContext,
     ) -> Result<Snapshot, YfError> {
-        let exchange = self.exchange();
-        let currencies = self.currency_units();
         let key = self.symbol.clone();
+        let exchange = self.exchange_with_context(ctx, key.as_deref())?;
+        let currencies = self.currency_units();
 
         Ok(Snapshot {
             instrument: self.instrument(exchange)?,
             name: self.long_name.clone().or_else(|| self.short_name.clone()),
-            market_state: self.market_state.as_deref().and_then(|s| s.parse().ok()),
-            as_of: self.as_of(),
+            market_state: self.market_state_with_context(ctx, key.clone())?,
+            as_of: self.as_of_with_context(ctx, key.clone())?,
             last: currencies.quote_price(
                 ctx,
                 "regularMarketPrice",
@@ -234,7 +319,7 @@ impl V7QuoteNode {
         let key = self.symbol.clone();
 
         Ok(KeyStatistics {
-            as_of: self.as_of(),
+            as_of: self.as_of_with_context(ctx, key.clone())?,
             market_cap: currencies.quote_money(
                 ctx,
                 "marketCap",
@@ -299,14 +384,31 @@ impl V7QuoteNode {
         })
     }
 
-    pub(crate) fn calendar_fallback(&self) -> Option<Calendar> {
-        self.dividend_date
-            .and_then(|ts| i64_to_datetime(ts).ok())
-            .map(|ts| Calendar {
+    pub(crate) fn calendar_fallback_with_context(
+        &self,
+        ctx: &mut ProjectionContext,
+    ) -> Result<Option<Calendar>, YfError> {
+        let Some(timestamp) = self.dividend_date else {
+            return Ok(None);
+        };
+        match i64_to_datetime(timestamp) {
+            Ok(timestamp) => Ok(Some(Calendar {
                 earnings_dates: Vec::new(),
                 ex_dividend_date: None,
-                dividend_payment_date: Some(ts),
-            })
+                dividend_payment_date: Some(timestamp),
+            })),
+            Err(err) => {
+                ctx.omitted_present_field(
+                    "dividendDate",
+                    self.symbol.clone(),
+                    ProjectionIssue::InvalidField {
+                        field: "dividendDate",
+                        details: err.to_string(),
+                    },
+                )?;
+                Ok(None)
+            }
+        }
     }
 }
 
@@ -653,13 +755,7 @@ async fn store_quote_node_hints(client: &YfClient, symbol: &str, node: &V7QuoteN
 }
 
 async fn store_quote_node_instrument(client: &YfClient, symbol: &str, node: &V7QuoteNode) {
-    let exch = crate::core::conversions::string_to_exchange(
-        node.full_exchange_name
-            .clone()
-            .or_else(|| node.exchange.clone())
-            .or_else(|| node.market.clone())
-            .or_else(|| node.market_cap_figure_exchange.clone()),
-    );
+    let exch = node.exchange();
     let Some(kind) = node
         .quote_type
         .as_deref()
@@ -720,10 +816,10 @@ impl V7QuoteNode {
         &self,
         ctx: &mut ProjectionContext,
     ) -> Result<Quote, YfError> {
-        let exchange = self.exchange();
+        let key = self.symbol.clone();
+        let exchange = self.exchange_with_context(ctx, key.as_deref())?;
         let instrument = self.instrument(exchange)?;
         let currencies = self.currency_units();
-        let key = self.symbol.clone();
 
         Ok(Quote {
             instrument,
@@ -740,13 +836,13 @@ impl V7QuoteNode {
             previous_close: currencies.quote_price(
                 ctx,
                 "regularMarketPreviousClose",
-                key,
+                key.clone(),
                 self.regular_market_previous_close,
                 "quote previous close",
             )?,
             day_volume: self.regular_market_volume,
-            market_state: self.market_state.as_deref().and_then(|s| s.parse().ok()),
-            as_of: self.as_of(),
+            market_state: self.market_state_with_context(ctx, key.clone())?,
+            as_of: self.as_of_with_context(ctx, key)?,
             provider: (),
         })
     }
