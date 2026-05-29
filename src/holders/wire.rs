@@ -1,5 +1,6 @@
 use crate::core::wire::{RawDate, RawNum};
 use serde::Deserialize;
+use serde_json::Value;
 
 #[derive(Deserialize)]
 pub struct V10Result {
@@ -20,7 +21,7 @@ pub struct V10Result {
 #[derive(Deserialize)]
 pub struct OwnershipNode {
     #[serde(rename = "ownershipList")]
-    pub(crate) ownership_list: Option<Vec<InstitutionalHolderNode>>,
+    pub(crate) ownership_list: Option<Vec<Value>>,
 }
 
 #[derive(Deserialize)]
@@ -49,7 +50,7 @@ pub struct MajorHoldersBreakdownNode {
 
 #[derive(Deserialize)]
 pub struct InsiderTransactionsNode {
-    pub(crate) transactions: Option<Vec<InsiderTransactionNode>>,
+    pub(crate) transactions: Option<Vec<Value>>,
 }
 
 #[derive(Deserialize)]
@@ -70,7 +71,7 @@ pub struct InsiderTransactionNode {
 
 #[derive(Deserialize)]
 pub struct InsiderHoldersNode {
-    pub(crate) holders: Option<Vec<InsiderRosterHolderNode>>,
+    pub(crate) holders: Option<Vec<Value>>,
 }
 
 #[derive(Deserialize)]

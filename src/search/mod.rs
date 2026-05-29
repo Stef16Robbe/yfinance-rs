@@ -1,6 +1,7 @@
 use paft::domain::{Exchange, Instrument};
 use paft::market::responses::search::{SearchResponse, SearchResult};
 use serde::Deserialize;
+use serde_json::Value;
 use url::Url;
 
 use crate::core::ProjectionContext;
@@ -8,6 +9,7 @@ use crate::core::client::{CacheEndpoint, CacheMode, RetryConfig};
 use crate::core::conversions::string_to_asset_kind;
 use crate::{DataQuality, ProjectionIssue, YfClient, YfError, YfResponse};
 
+#[allow(clippy::too_many_lines)]
 fn parse_search_body(body: &str, ctx: &mut ProjectionContext) -> Result<SearchResponse, YfError> {
     let env: V1SearchEnvelope = serde_json::from_str(body).map_err(YfError::Json)?;
 
@@ -15,7 +17,22 @@ fn parse_search_body(body: &str, ctx: &mut ProjectionContext) -> Result<SearchRe
         .quotes
         .ok_or_else(|| YfError::MissingData("search quotes missing".into()))?;
     let mut results = Vec::new();
-    for q in quotes {
+    for (idx, q) in quotes.into_iter().enumerate() {
+        let key = Some(search_quote_diag_key(&q, idx));
+        let q = match serde_json::from_value::<V1SearchQuote>(q) {
+            Ok(q) => q,
+            Err(err) => {
+                ctx.dropped_item(
+                    "search_result",
+                    key,
+                    ProjectionIssue::InvalidField {
+                        field: "quote",
+                        details: err.to_string(),
+                    },
+                )?;
+                continue;
+            }
+        };
         let key = q.symbol.clone();
         let Some(sym) = q.symbol.map(|sym| sym.trim().to_string()) else {
             ctx.dropped_item(
@@ -110,6 +127,15 @@ fn parse_search_body(body: &str, ctx: &mut ProjectionContext) -> Result<SearchRe
         results,
         provider: (),
     })
+}
+
+fn search_quote_diag_key(value: &Value, idx: usize) -> String {
+    value
+        .get("symbol")
+        .and_then(serde_json::Value::as_str)
+        .map(str::trim)
+        .filter(|symbol| !symbol.is_empty())
+        .map_or_else(|| format!("quotes[{idx}]"), ToString::to_string)
 }
 
 /* ---------------- Public API ---------------- */
@@ -340,7 +366,7 @@ struct V1SearchEnvelope {
     explains: Option<serde_json::Value>,
     #[allow(dead_code)]
     count: Option<i64>,
-    quotes: Option<Vec<V1SearchQuote>>,
+    quotes: Option<Vec<Value>>,
     #[allow(dead_code)]
     news: Option<serde_json::Value>,
     #[allow(dead_code)]

@@ -2,7 +2,10 @@ use super::model::{
     InsiderRosterHolder, InsiderTransaction, InstitutionalHolder, MajorHolder,
     NetSharePurchaseActivity,
 };
-use super::wire::{InstitutionalHolderNode, OwnershipNode, V10Result};
+use super::wire::{
+    InsiderRosterHolderNode, InsiderTransactionNode, InstitutionalHolderNode, OwnershipNode,
+    V10Result,
+};
 use crate::core::wire::{from_raw, from_raw_date};
 use crate::core::{
     DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfError, YfResponse,
@@ -127,6 +130,27 @@ fn nonempty(value: Option<String>) -> Option<String> {
     value.filter(|value| !value.trim().is_empty())
 }
 
+fn holder_diag_key(
+    value: &serde_json::Value,
+    key_field: &'static str,
+    fallback: &'static str,
+    idx: usize,
+) -> String {
+    value
+        .get(key_field)
+        .and_then(serde_json::Value::as_str)
+        .map(str::trim)
+        .filter(|key| !key.is_empty())
+        .map_or_else(|| format!("{fallback}[{idx}]"), ToString::to_string)
+}
+
+fn raw_field_present(value: &serde_json::Value, field: &'static str) -> bool {
+    value
+        .get(field)
+        .and_then(|value| value.get("raw"))
+        .is_some_and(|value| !value.is_null())
+}
+
 fn parse_optional<T>(
     value: Option<&str>,
     parse: impl FnOnce(&str) -> Result<T, YfError>,
@@ -220,7 +244,7 @@ async fn map_ownership_list(
     let currency = optional_reporting_currency(
         client,
         symbol,
-        holders.iter().any(|h| from_raw(h.value).is_some()),
+        holders.iter().any(|h| raw_field_present(h, "value")),
         cache_mode,
         retry_override,
         ctx,
@@ -228,7 +252,22 @@ async fn map_ownership_list(
     .await?;
 
     let mut rows = Vec::new();
-    for h in holders {
+    for (idx, h) in holders.into_iter().enumerate() {
+        let key = Some(holder_diag_key(&h, "organization", "ownershipList", idx));
+        let h = match serde_json::from_value::<InstitutionalHolderNode>(h) {
+            Ok(holder) => holder,
+            Err(err) => {
+                ctx.dropped_item(
+                    "institutional_holder",
+                    key,
+                    ProjectionIssue::InvalidField {
+                        field: "holder",
+                        details: err.to_string(),
+                    },
+                )?;
+                continue;
+            }
+        };
         let key = h.organization.as_deref().map(str::to_string);
         let Some(holder) = nonempty(h.organization) else {
             ctx.dropped_item(
@@ -282,7 +321,7 @@ fn ownership_list_or_unavailable(
     node: Option<OwnershipNode>,
     features: OwnershipFeatureNames,
     ctx: &mut ProjectionContext,
-) -> Result<Option<Vec<InstitutionalHolderNode>>, YfError> {
+) -> Result<Option<Vec<serde_json::Value>>, YfError> {
     let Some(node) = node else {
         ctx.unavailable_feature(features.module)?;
         return Ok(None);
@@ -392,6 +431,7 @@ pub(super) async fn mutual_fund_holders(
     Ok(ctx.finish(rows))
 }
 
+#[allow(clippy::too_many_lines)]
 pub(super) async fn insider_transactions(
     client: &YfClient,
     symbol: &str,
@@ -420,7 +460,7 @@ pub(super) async fn insider_transactions(
     let currency = optional_reporting_currency(
         client,
         symbol,
-        transactions.iter().any(|t| from_raw(t.value).is_some()),
+        transactions.iter().any(|t| raw_field_present(t, "value")),
         cache_mode,
         retry_override,
         &mut ctx,
@@ -428,7 +468,22 @@ pub(super) async fn insider_transactions(
     .await?;
 
     let mut rows = Vec::new();
-    for t in transactions {
+    for (idx, t) in transactions.into_iter().enumerate() {
+        let key = Some(holder_diag_key(&t, "filerName", "transactions", idx));
+        let t = match serde_json::from_value::<InsiderTransactionNode>(t) {
+            Ok(transaction) => transaction,
+            Err(err) => {
+                ctx.dropped_item(
+                    "insider_transaction",
+                    key,
+                    ProjectionIssue::InvalidField {
+                        field: "transaction",
+                        details: err.to_string(),
+                    },
+                )?;
+                continue;
+            }
+        };
         let key = t.insider.as_deref().map(str::to_string);
         let Some(insider) = nonempty(t.insider) else {
             ctx.dropped_item(
@@ -519,7 +574,22 @@ pub(super) async fn insider_roster_holders(
     };
 
     let mut rows = Vec::new();
-    for h in holders {
+    for (idx, h) in holders.into_iter().enumerate() {
+        let key = Some(holder_diag_key(&h, "name", "holders", idx));
+        let h = match serde_json::from_value::<InsiderRosterHolderNode>(h) {
+            Ok(holder) => holder,
+            Err(err) => {
+                ctx.dropped_item(
+                    "insider_roster_holder",
+                    key,
+                    ProjectionIssue::InvalidField {
+                        field: "holder",
+                        details: err.to_string(),
+                    },
+                )?;
+                continue;
+            }
+        };
         let key = h.name.as_deref().map(str::to_string);
         let Some(name) = nonempty(h.name) else {
             ctx.dropped_item(

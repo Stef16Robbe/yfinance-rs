@@ -5,7 +5,7 @@ use std::time::Duration;
 use url::Url;
 use yfinance_rs::{
     CacheMode, EquityQuery, PredefinedScreener, ProjectionIssue, Region, ScreenerBuilder, YfClient,
-    YfWarning, equity_fields,
+    YfError, YfWarning, equity_fields,
 };
 
 fn fixture(endpoint: &str, key: &str) -> String {
@@ -163,6 +163,83 @@ async fn predefined_screener_with_diagnostics_reports_invalid_currency_for_prese
             } if key == "BADCUR" && code == "!!!"
         )
     }));
+}
+
+#[tokio::test]
+async fn malformed_screener_quote_is_dropped_without_losing_valid_siblings() {
+    let server = MockServer::start();
+    let body = r#"{
+      "finance": {
+        "error": null,
+        "result": [{
+          "count": 2,
+          "quotes": [
+            {
+              "symbol": "BADQUOTE",
+              "quoteType": "EQUITY",
+              "regularMarketPrice": "not-a-number"
+            },
+            {
+              "symbol": "AAPL",
+              "quoteType": "EQUITY",
+              "regularMarketPrice": 190.0,
+              "currency": "USD"
+            }
+          ]
+        }]
+      }
+    }"#;
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v1/finance/screener/predefined/saved")
+            .query_param("scrIds", "day_gainers")
+            .query_param("corsDomain", "finance.yahoo.com")
+            .query_param("formatted", "false")
+            .query_param("lang", "en-US")
+            .query_param("region", "US");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let client = YfClient::default();
+    let base = Url::parse(&format!(
+        "{}/v1/finance/screener/predefined/saved",
+        server.base_url()
+    ))
+    .unwrap();
+    let response = ScreenerBuilder::predefined(&client, PredefinedScreener::DayGainers)
+        .predefined_screener_base(base.clone())
+        .cache_mode(CacheMode::Bypass)
+        .fetch_with_diagnostics()
+        .await
+        .unwrap();
+
+    assert_eq!(response.data.results.len(), 1);
+    assert_eq!(response.data.results[0].symbol.as_deref(), Some("AAPL"));
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::DroppedItem {
+            endpoint: "screener",
+            item: "screener_result",
+            key: Some(key),
+            reason: ProjectionIssue::InvalidField {
+                field: "quote",
+                ..
+            },
+        } if key == "BADQUOTE"
+    )));
+
+    let err = ScreenerBuilder::predefined(&client, PredefinedScreener::DayGainers)
+        .predefined_screener_base(base)
+        .cache_mode(CacheMode::Bypass)
+        .strict()
+        .fetch()
+        .await
+        .unwrap_err();
+
+    mock.assert_calls(2);
+    assert!(matches!(err, YfError::DataQuality(_)));
 }
 
 #[tokio::test]

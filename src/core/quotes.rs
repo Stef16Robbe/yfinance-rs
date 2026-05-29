@@ -1,5 +1,6 @@
 // src/core/quotes.rs
 use serde::Deserialize;
+use serde_json::Value;
 
 use crate::{
     YfClient, YfError,
@@ -38,7 +39,7 @@ pub struct V7Envelope {
 
 #[derive(Deserialize)]
 pub struct V7QuoteResponse {
-    pub(crate) result: Option<Vec<V7QuoteNode>>,
+    pub(crate) result: Option<Vec<Value>>,
     pub(crate) error: Option<V7Error>,
 }
 
@@ -686,6 +687,22 @@ pub async fn fetch_v7_quotes(
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
 ) -> Result<Vec<V7QuoteNode>, YfError> {
+    let values = fetch_v7_quote_values(client, symbols, cache_mode, retry_override).await?;
+    values
+        .into_iter()
+        .map(|value| serde_json::from_value(value).map_err(YfError::Json))
+        .collect()
+}
+
+/// Centralized function to fetch raw quote nodes from the v7 API.
+/// Projection callers can then choose strict or best-effort node conversion.
+#[allow(clippy::too_many_lines)]
+pub async fn fetch_v7_quote_values(
+    client: &YfClient,
+    symbols: &[&str],
+    cache_mode: CacheMode,
+    retry_override: Option<&RetryConfig>,
+) -> Result<Vec<Value>, YfError> {
     if symbols.is_empty() {
         return Err(YfError::InvalidParams(
             "symbols list cannot be empty".into(),
@@ -732,9 +749,52 @@ pub async fn fetch_v7_quotes(
         .result
         .ok_or_else(|| YfError::MissingData("v7 quoteResponse.result missing".into()))?;
 
-    store_v7_quote_side_effects(client, symbols, &nodes).await;
+    store_v7_quote_side_effects_from_values(client, symbols, &nodes).await;
 
     Ok(nodes)
+}
+
+pub fn quote_node_from_value_with_context(
+    value: Value,
+    idx: usize,
+    ctx: &mut ProjectionContext,
+) -> Result<Option<V7QuoteNode>, YfError> {
+    let key = Some(quote_node_diag_key_from_value(&value, idx));
+    match serde_json::from_value(value) {
+        Ok(node) => Ok(Some(node)),
+        Err(err) => {
+            ctx.dropped_item(
+                "quote",
+                key,
+                ProjectionIssue::InvalidField {
+                    field: "quote",
+                    details: err.to_string(),
+                },
+            )?;
+            Ok(None)
+        }
+    }
+}
+
+fn quote_node_diag_key_from_value(value: &Value, idx: usize) -> String {
+    value
+        .get("symbol")
+        .and_then(serde_json::Value::as_str)
+        .map(str::trim)
+        .filter(|symbol| !symbol.is_empty())
+        .map_or_else(|| format!("result[{idx}]"), ToString::to_string)
+}
+
+async fn store_v7_quote_side_effects_from_values(
+    client: &YfClient,
+    requested_symbols: &[&str],
+    values: &[Value],
+) {
+    let nodes = values
+        .iter()
+        .filter_map(|value| serde_json::from_value(value.clone()).ok())
+        .collect::<Vec<_>>();
+    store_v7_quote_side_effects(client, requested_symbols, &nodes).await;
 }
 
 async fn store_v7_quote_side_effects(

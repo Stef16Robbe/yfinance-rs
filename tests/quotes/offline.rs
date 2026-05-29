@@ -96,6 +96,72 @@ async fn malformed_quote_node_missing_symbol_is_dropped_from_batch() {
 }
 
 #[tokio::test]
+async fn structurally_malformed_quote_node_is_dropped_from_batch() {
+    let server = setup_server();
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "AAPL,MSFT");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "quoteResponse": {
+                    "result": [
+                      {
+                        "symbol": "AAPL",
+                        "quoteType": "EQUITY",
+                        "regularMarketPrice": "not-a-number"
+                      },
+                      {
+                        "symbol": "MSFT",
+                        "quoteType": "EQUITY",
+                        "regularMarketPrice": 420.0
+                      }
+                    ]
+                  }
+                }"#,
+            );
+    });
+
+    let base = Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap();
+    let client = yfinance_rs::YfClient::builder()
+        .base_quote_v7(base)
+        .build()
+        .unwrap();
+
+    let response = yfinance_rs::QuotesBuilder::new(&client)
+        .symbols(["AAPL", "MSFT"])
+        .fetch_with_diagnostics()
+        .await
+        .unwrap();
+
+    assert_eq!(response.data.len(), 1);
+    assert_eq!(response.data[0].instrument.symbol.as_str(), "MSFT");
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::DroppedItem {
+            endpoint: "quotes",
+            item: "quote",
+            key: Some(key),
+            reason: ProjectionIssue::InvalidField {
+                field: "quote",
+                ..
+            },
+        } if key == "AAPL"
+    )));
+
+    let err = yfinance_rs::QuotesBuilder::new(&client)
+        .symbols(["AAPL", "MSFT"])
+        .strict()
+        .fetch()
+        .await;
+
+    mock.assert_calls(2);
+    assert!(matches!(err, Err(YfError::DataQuality(_))));
+}
+
+#[tokio::test]
 async fn batch_quotes_with_diagnostics_reports_unresolved_currency_for_present_price() {
     let server = setup_server();
     let _mock = server.mock(|when, then| {

@@ -56,7 +56,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Calendar, holder, ESG, and analyst mappers now route present-but-unrepresentable date and decimal fields through projection diagnostics instead of silently omitting them or failing best-effort calls.
 - Recommendation, analyst-count, search-exchange, history-timezone, inferred cash-flow, and share-count projections now report present-but-invalid, rounded, or inferred provider values through diagnostics; strict mode rejects those losses instead of silently returning `None` or coerced data.
 - Malformed required records, including bad OHLC candles, option contracts with invalid strikes, and invalid dividend/capital-gain amounts, are skipped item-by-item.
-- Batch quote projection now skips malformed quote nodes item-by-item in best-effort mode and reports `DroppedItem` diagnostics, matching search, options, holders, and fundamentals row handling; strict mode still rejects the first malformed quote node.
+- Batch quote projection now skips semantically or structurally malformed quote nodes item-by-item in best-effort mode and reports `DroppedItem` diagnostics, matching search, options, holders, and fundamentals row handling; strict mode still rejects the first malformed quote node.
+- Option-chain projection now parses contracts item-by-item, so one structurally malformed contract no longer aborts the whole chain in best-effort mode.
+- Holder list projections now parse rows item-by-item, so one structurally malformed ownership, insider transaction, or insider roster row no longer aborts valid siblings in best-effort mode.
+- Search projection now parses quote results item-by-item, so one structurally malformed search quote no longer aborts valid sibling results in best-effort mode.
+- Screener projection now parses quote results item-by-item, so one structurally malformed screener quote no longer aborts valid sibling results in best-effort mode.
 - Fundamentals timeseries projections now diagnose malformed values item-by-item instead of dropping every period for the affected field.
 - Missing or invalid Yahoo timestamps no longer become Unix epoch/default datetimes in quote, history, news, holder, analyst, calendar, and fundamentals mappings.
 - Missing quote/search/screener/download instrument kinds no longer default to equity; provider asset-kind metadata is required where the public model needs an instrument.

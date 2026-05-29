@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use serde_json::Value;
 use url::Url;
 
 use crate::{
@@ -200,7 +201,7 @@ async fn underlying_instrument(
 #[allow(clippy::too_many_arguments)]
 fn project_option_side(
     ctx: &mut ProjectionContext,
-    side: Option<Vec<OptContractNode>>,
+    side: Option<Vec<Value>>,
     option_side: OptionSide,
     expiration: Option<i64>,
     currency: Option<&ResolvedCurrencyUnit>,
@@ -208,7 +209,27 @@ fn project_option_side(
     underlying: &Instrument,
     out: &mut Vec<OptionContract>,
 ) -> Result<(), YfError> {
-    for contract in side.unwrap_or_default() {
+    for (idx, contract) in side.unwrap_or_default().into_iter().enumerate() {
+        let key = Some(option_contract_diag_key_from_value(
+            &contract,
+            option_side,
+            expiration,
+            idx,
+        ));
+        let contract = match serde_json::from_value::<OptContractNode>(contract) {
+            Ok(contract) => contract,
+            Err(err) => {
+                ctx.dropped_item(
+                    "option_contract",
+                    key,
+                    ProjectionIssue::InvalidField {
+                        field: "contract",
+                        details: err.to_string(),
+                    },
+                )?;
+                continue;
+            }
+        };
         if let Some(contract) = project_option_contract(
             ctx,
             &contract,
@@ -428,6 +449,30 @@ fn option_contract_diag_key(
     })
 }
 
+fn option_contract_diag_key_from_value(
+    contract: &Value,
+    option_side: OptionSide,
+    expiration: Option<i64>,
+    idx: usize,
+) -> String {
+    if let Some(symbol) = contract
+        .get("contractSymbol")
+        .and_then(serde_json::Value::as_str)
+        .map(str::trim)
+        .filter(|symbol| !symbol.is_empty())
+    {
+        return symbol.to_string();
+    }
+
+    let side = match option_side {
+        OptionSide::Call => "call",
+        OptionSide::Put => "put",
+    };
+    let expiration =
+        expiration.map_or_else(|| "?".to_string(), |expiration| expiration.to_string());
+    format!("{side}[{idx}]@{expiration}")
+}
+
 fn currency_projection_issue(code: Option<&str>) -> ProjectionIssue {
     let Some(code) = code.map(str::trim).filter(|code| !code.is_empty()) else {
         return ProjectionIssue::CurrencyUnresolved;
@@ -558,8 +603,8 @@ impl OptQuoteNode {
 struct OptByDateNode {
     #[serde(rename = "expirationDate")]
     expiration_date: Option<i64>,
-    calls: Option<Vec<OptContractNode>>,
-    puts: Option<Vec<OptContractNode>>,
+    calls: Option<Vec<Value>>,
+    puts: Option<Vec<Value>>,
 }
 
 #[derive(Deserialize)]

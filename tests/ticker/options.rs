@@ -359,6 +359,12 @@ async fn option_chain_skips_bad_strikes_and_keeps_valid_contracts() {
                 "lastPrice":5.0
               },
               {
+                "contractSymbol":"AAPL250117C00175000",
+                "strike":"not-a-number",
+                "expiration":1737072000,
+                "lastPrice":4.0
+              },
+              {
                 "contractSymbol":"AAPL250117C00180000",
                 "strike":180.0,
                 "expiration":1737072000,
@@ -395,18 +401,33 @@ async fn option_chain_skips_bad_strikes_and_keeps_valid_contracts() {
         .unwrap();
     let ticker = Ticker::new(&client, "AAPL");
 
-    let chain = ticker.option_chain(Some(date)).await.unwrap();
+    let response = ticker
+        .option_chain_with_diagnostics(Some(date))
+        .await
+        .unwrap();
     mock.assert();
 
-    let calls = chain.calls().collect::<Vec<_>>();
-    let puts_count = chain.puts().count();
+    let calls = response.data.calls().collect::<Vec<_>>();
+    let puts_count = response.data.puts().count();
 
     assert_eq!(
         calls.len(),
         1,
-        "contract with unrepresentable strike is skipped"
+        "contracts with malformed or unrepresentable strikes are skipped"
     );
     assert_eq!(puts_count, 1, "valid sibling put survives");
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::DroppedItem {
+            endpoint: "options",
+            item: "option_contract",
+            key: Some(key),
+            reason: ProjectionIssue::InvalidField {
+                field: "contract",
+                ..
+            },
+        } if key == "AAPL250117C00175000"
+    )));
 
     let call = calls[0];
     assert!((money_to_f64(&call.key.strike) - 180.0).abs() < 1e-9);

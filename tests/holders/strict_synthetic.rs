@@ -117,6 +117,81 @@ async fn missing_ownership_list_is_provider_unavailable() {
 }
 
 #[tokio::test]
+async fn malformed_holder_row_is_dropped_without_losing_valid_siblings() {
+    let sym = "BADHOLDER";
+    let server = MockServer::start();
+
+    let holders_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", INSTITUTION_OWNERSHIP)
+            .query_param("crumb", "crumb");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "quoteSummary": {
+                    "result": [{
+                      "institutionOwnership": {
+                        "ownershipList": [
+                          {
+                            "organization": "Malformed Capital",
+                            "position": { "raw": "not-a-number" },
+                            "reportDate": { "raw": 1704067200 }
+                          },
+                          {
+                            "organization": "Valid Capital",
+                            "position": { "raw": 10 },
+                            "reportDate": { "raw": 1704067200 }
+                          }
+                        ]
+                      }
+                    }],
+                    "error": null
+                  }
+                }"#,
+            );
+    });
+
+    let client = YfClient::builder()
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let response = HoldersBuilder::new(&client, sym)
+        .institutional_holders_with_diagnostics()
+        .await
+        .unwrap();
+
+    assert_eq!(response.data.len(), 1);
+    assert_eq!(response.data[0].holder, "Valid Capital");
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::DroppedItem {
+            endpoint: "holders",
+            item: "institutional_holder",
+            key: Some(key),
+            reason: ProjectionIssue::InvalidField {
+                field: "holder",
+                ..
+            },
+        } if key == "Malformed Capital"
+    )));
+
+    let err = HoldersBuilder::new(&client, sym)
+        .strict()
+        .institutional_holders()
+        .await
+        .unwrap_err();
+
+    holders_mock.assert_calls(2);
+    assert!(matches!(err, YfError::DataQuality(_)));
+}
+
+#[tokio::test]
 async fn insider_roster_missing_position_is_not_defaulted_to_officer() {
     let sym = "AAPL";
     let server = MockServer::start();

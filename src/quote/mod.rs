@@ -131,7 +131,7 @@ impl QuotesBuilder {
         }
 
         let symbol_slices: Vec<&str> = self.symbols.iter().map(AsRef::as_ref).collect();
-        let results = core_quotes::fetch_v7_quotes(
+        let results = core_quotes::fetch_v7_quote_values(
             &self.client,
             &symbol_slices,
             self.cache_mode,
@@ -141,7 +141,12 @@ impl QuotesBuilder {
 
         let mut ctx = ProjectionContext::new("quotes", self.data_quality);
         let mut quotes = Vec::with_capacity(results.len());
-        for result in results {
+        for (idx, result) in results.into_iter().enumerate() {
+            let Some(result) =
+                core_quotes::quote_node_from_value_with_context(result, idx, &mut ctx)?
+            else {
+                continue;
+            };
             if let Some(quote) = result.to_quote_item_with_context(&mut ctx)? {
                 quotes.push(quote);
             }

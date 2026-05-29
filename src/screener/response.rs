@@ -75,10 +75,27 @@ pub(super) fn parse_screener_body_with_diagnostics(
 
     let count = optional_u32_from_i64(&mut ctx, "count", None, "count", result.count)?;
     let mut results = Vec::new();
-    for quote in result
+    for (idx, quote) in result
         .quotes
         .ok_or_else(|| YfError::MissingData("screener quotes missing".into()))?
+        .into_iter()
+        .enumerate()
     {
+        let key = Some(screener_quote_diag_key(&quote, idx));
+        let quote = match serde_json::from_value::<WireQuote>(quote) {
+            Ok(quote) => quote,
+            Err(err) => {
+                ctx.dropped_item(
+                    "screener_result",
+                    key,
+                    ProjectionIssue::InvalidField {
+                        field: "quote",
+                        details: err.to_string(),
+                    },
+                )?;
+                continue;
+            }
+        };
         results.push(quote.project(&mut ctx)?);
     }
 
@@ -99,7 +116,7 @@ struct WireFinance {
 #[derive(Debug, Deserialize)]
 struct WireResult {
     count: Option<i64>,
-    quotes: Option<Vec<WireQuote>>,
+    quotes: Option<Vec<Value>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -232,6 +249,15 @@ impl WireQuote {
             fields: wire.extra,
         })
     }
+}
+
+fn screener_quote_diag_key(value: &Value, idx: usize) -> String {
+    value
+        .get("symbol")
+        .and_then(serde_json::Value::as_str)
+        .map(str::trim)
+        .filter(|symbol| !symbol.is_empty())
+        .map_or_else(|| format!("quotes[{idx}]"), ToString::to_string)
 }
 
 fn project_instrument(

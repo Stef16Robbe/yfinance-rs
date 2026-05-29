@@ -168,3 +168,62 @@ async fn invalid_search_exchange_is_reported_as_projection_loss() {
     mock.assert_calls(2);
     assert!(matches!(err, YfError::DataQuality(_)));
 }
+
+#[tokio::test]
+async fn malformed_search_quote_is_dropped_without_losing_valid_siblings() {
+    let query = "malformed row";
+    let server = MockServer::start();
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v1/finance/search")
+            .query_param("q", query)
+            .query_param("quotesCount", "10")
+            .query_param("newsCount", "0")
+            .query_param("listsCount", "0");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "quotes": [
+                    { "symbol": 123, "quoteType": "EQUITY" },
+                    { "symbol": "AAPL", "quoteType": "EQUITY", "exchange": "NasdaqGS" }
+                  ]
+                }"#,
+            );
+    });
+
+    let client = YfClient::builder().build().unwrap();
+    let base = Url::parse(&format!("{}/v1/finance/search", server.base_url())).unwrap();
+
+    let response = SearchBuilder::new(&client, query)
+        .search_base(base.clone())
+        .fetch_with_diagnostics()
+        .await
+        .unwrap();
+
+    assert_eq!(response.data.results.len(), 1);
+    assert_eq!(response.data.results[0].instrument.symbol.as_str(), "AAPL");
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::DroppedItem {
+            endpoint: "search",
+            item: "search_result",
+            key: Some(key),
+            reason: ProjectionIssue::InvalidField {
+                field: "quote",
+                ..
+            },
+        } if key == "quotes[0]"
+    )));
+
+    let err = SearchBuilder::new(&client, query)
+        .search_base(base)
+        .strict()
+        .fetch()
+        .await
+        .unwrap_err();
+
+    mock.assert_calls(2);
+    assert!(matches!(err, YfError::DataQuality(_)));
+}
