@@ -15,7 +15,12 @@ use crate::core::{
 use paft::Decimal;
 use paft::fundamentals::holders::{InsiderPosition, TransactionType};
 
-const MODULES: &str = "institutionOwnership,fundOwnership,majorHoldersBreakdown,insiderTransactions,insiderHolders,netSharePurchaseActivity";
+const INSTITUTION_OWNERSHIP_MODULE: &str = "institutionOwnership";
+const FUND_OWNERSHIP_MODULE: &str = "fundOwnership";
+const MAJOR_HOLDERS_MODULE: &str = "majorHoldersBreakdown";
+const INSIDER_TRANSACTIONS_MODULE: &str = "insiderTransactions";
+const INSIDER_HOLDERS_MODULE: &str = "insiderHolders";
+const NET_SHARE_PURCHASE_ACTIVITY_MODULE: &str = "netSharePurchaseActivity";
 const INSTITUTION_OWNERSHIP: OwnershipFeatureNames = OwnershipFeatureNames {
     module: "institutionOwnership",
     list: "institutionOwnership.ownershipList",
@@ -34,13 +39,14 @@ struct OwnershipFeatureNames {
 async fn fetch_holders_modules(
     client: &YfClient,
     symbol: &str,
+    modules: &str,
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
 ) -> Result<V10Result, YfError> {
     quotesummary::fetch_module_result(
         client,
         symbol,
-        MODULES,
+        modules,
         "holders",
         cache_mode,
         retry_override,
@@ -56,7 +62,14 @@ pub(super) async fn major_holders(
     data_quality: DataQuality,
 ) -> Result<YfResponse<Vec<MajorHolder>>, YfError> {
     let mut ctx = ProjectionContext::new("holders", data_quality);
-    let root = fetch_holders_modules(client, symbol, cache_mode, retry_override).await?;
+    let root = fetch_holders_modules(
+        client,
+        symbol,
+        MAJOR_HOLDERS_MODULE,
+        cache_mode,
+        retry_override,
+    )
+    .await?;
     let Some(breakdown) = root.major_holders_breakdown else {
         ctx.unavailable_feature("majorHoldersBreakdown")?;
         return Ok(ctx.finish(Vec::new()));
@@ -329,7 +342,14 @@ pub(super) async fn institutional_holders(
     data_quality: DataQuality,
 ) -> Result<YfResponse<Vec<InstitutionalHolder>>, YfError> {
     let mut ctx = ProjectionContext::new("holders", data_quality);
-    let root = fetch_holders_modules(client, symbol, cache_mode, retry_override).await?;
+    let root = fetch_holders_modules(
+        client,
+        symbol,
+        INSTITUTION_OWNERSHIP_MODULE,
+        cache_mode,
+        retry_override,
+    )
+    .await?;
     let rows = map_ownership_list(
         client,
         symbol,
@@ -351,7 +371,14 @@ pub(super) async fn mutual_fund_holders(
     data_quality: DataQuality,
 ) -> Result<YfResponse<Vec<InstitutionalHolder>>, YfError> {
     let mut ctx = ProjectionContext::new("holders", data_quality);
-    let root = fetch_holders_modules(client, symbol, cache_mode, retry_override).await?;
+    let root = fetch_holders_modules(
+        client,
+        symbol,
+        FUND_OWNERSHIP_MODULE,
+        cache_mode,
+        retry_override,
+    )
+    .await?;
     let rows = map_ownership_list(
         client,
         symbol,
@@ -373,7 +400,14 @@ pub(super) async fn insider_transactions(
     data_quality: DataQuality,
 ) -> Result<YfResponse<Vec<InsiderTransaction>>, YfError> {
     let mut ctx = ProjectionContext::new("holders", data_quality);
-    let root = fetch_holders_modules(client, symbol, cache_mode, retry_override).await?;
+    let root = fetch_holders_modules(
+        client,
+        symbol,
+        INSIDER_TRANSACTIONS_MODULE,
+        cache_mode,
+        retry_override,
+    )
+    .await?;
     let Some(insider_transactions) = root.insider_transactions else {
         ctx.unavailable_feature("insiderTransactions")?;
         return Ok(ctx.finish(Vec::new()));
@@ -467,7 +501,14 @@ pub(super) async fn insider_roster_holders(
     data_quality: DataQuality,
 ) -> Result<YfResponse<Vec<InsiderRosterHolder>>, YfError> {
     let mut ctx = ProjectionContext::new("holders", data_quality);
-    let root = fetch_holders_modules(client, symbol, cache_mode, retry_override).await?;
+    let root = fetch_holders_modules(
+        client,
+        symbol,
+        INSIDER_HOLDERS_MODULE,
+        cache_mode,
+        retry_override,
+    )
+    .await?;
     let Some(insider_holders) = root.insider_holders else {
         ctx.unavailable_feature("insiderHolders")?;
         return Ok(ctx.finish(Vec::new()));
@@ -552,7 +593,14 @@ pub(super) async fn net_share_purchase_activity(
     data_quality: DataQuality,
 ) -> Result<YfResponse<Option<NetSharePurchaseActivity>>, YfError> {
     let mut ctx = ProjectionContext::new("holders", data_quality);
-    let root = fetch_holders_modules(client, symbol, cache_mode, retry_override).await?;
+    let root = fetch_holders_modules(
+        client,
+        symbol,
+        NET_SHARE_PURCHASE_ACTIVITY_MODULE,
+        cache_mode,
+        retry_override,
+    )
+    .await?;
     let Some(n) = root.net_share_purchase_activity else {
         ctx.unavailable_feature("netSharePurchaseActivity")?;
         return Ok(ctx.finish(None));

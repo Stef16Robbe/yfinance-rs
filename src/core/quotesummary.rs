@@ -107,13 +107,24 @@ pub async fn fetch_module_result<T>(
 where
     T: for<'de> serde::Deserialize<'de>,
 {
-    let env = fetch(client, symbol, modules, caller, cache_mode, retry_override).await?;
-
-    let result_val = env
-        .quote_summary
-        .and_then(|qs| qs.result)
-        .and_then(|mut v| v.pop())
-        .ok_or_else(|| YfError::MissingData("empty quoteSummary result".into()))?;
+    let result_val =
+        fetch_module_value(client, symbol, modules, caller, cache_mode, retry_override).await?;
 
     serde_json::from_value(result_val).map_err(YfError::Json)
+}
+
+pub async fn fetch_module_value(
+    client: &YfClient,
+    symbol: &str,
+    modules: &str,
+    caller: &str,
+    cache_mode: CacheMode,
+    retry_override: Option<&RetryConfig>,
+) -> Result<serde_json::Value, YfError> {
+    let env = fetch(client, symbol, modules, caller, cache_mode, retry_override).await?;
+
+    env.quote_summary
+        .and_then(|qs| qs.result)
+        .and_then(|mut v| v.pop())
+        .ok_or_else(|| YfError::MissingData("empty quoteSummary result".into()))
 }

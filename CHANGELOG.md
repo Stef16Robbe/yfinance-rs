@@ -33,6 +33,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- `Ticker::info()` now batches its quoteSummary modules into one request, avoids duplicate `financialData` fetches, and skips Yahoo's dead ESG module; use `Ticker::sustainability()` for an explicit ESG request.
+- Holder convenience methods now request only the quoteSummary module they project instead of fetching every holder/insider module for each call.
 - `StreamMethod::Websocket` startup failures are now returned from `StreamBuilder::start().await`
   instead of being logged in the spawned task while the caller receives `Ok`.
 - Streaming quote volume deltas now use one shared cumulative-volume state transition across

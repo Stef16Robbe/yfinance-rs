@@ -609,6 +609,13 @@ impl QuoteSummaryKeyStatistics {
     }
 }
 
+pub fn key_statistics_from_quote_summary_value(
+    value: serde_json::Value,
+) -> Result<KeyStatistics, YfError> {
+    let root: QuoteSummaryKeyStatistics = serde_json::from_value(value).map_err(YfError::Json)?;
+    Ok(root.into_key_statistics())
+}
+
 pub fn merge_key_statistics(
     mut base: KeyStatistics,
     quote_summary: &KeyStatistics,

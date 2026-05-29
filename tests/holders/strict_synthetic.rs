@@ -4,16 +4,20 @@ use yfinance_rs::{
     ApiPreference, HoldersBuilder, ProjectionIssue, Ticker, YfClient, YfError, YfWarning,
 };
 
+const INSTITUTION_OWNERSHIP: &str = "institutionOwnership";
+const MAJOR_HOLDERS: &str = "majorHoldersBreakdown";
+const INSIDER_HOLDERS: &str = "insiderHolders";
+const NET_SHARE_PURCHASE_ACTIVITY: &str = "netSharePurchaseActivity";
+
 #[tokio::test]
 async fn missing_institution_ownership_module_is_provider_unavailable() {
     let sym = "NOOWN";
     let server = MockServer::start();
-    let modules = "institutionOwnership,fundOwnership,majorHoldersBreakdown,insiderTransactions,insiderHolders,netSharePurchaseActivity";
 
     let holders_mock = server.mock(|when, then| {
         when.method(GET)
             .path(format!("/v10/finance/quoteSummary/{sym}"))
-            .query_param("modules", modules)
+            .query_param("modules", INSTITUTION_OWNERSHIP)
             .query_param("crumb", "crumb");
         then.status(200)
             .header("content-type", "application/json")
@@ -59,12 +63,11 @@ async fn missing_institution_ownership_module_is_provider_unavailable() {
 async fn missing_ownership_list_is_provider_unavailable() {
     let sym = "NOLIST";
     let server = MockServer::start();
-    let modules = "institutionOwnership,fundOwnership,majorHoldersBreakdown,insiderTransactions,insiderHolders,netSharePurchaseActivity";
 
     let holders_mock = server.mock(|when, then| {
         when.method(GET)
             .path(format!("/v10/finance/quoteSummary/{sym}"))
-            .query_param("modules", modules)
+            .query_param("modules", INSTITUTION_OWNERSHIP)
             .query_param("crumb", "crumb");
         then.status(200)
             .header("content-type", "application/json")
@@ -117,12 +120,11 @@ async fn missing_ownership_list_is_provider_unavailable() {
 async fn insider_roster_missing_position_is_not_defaulted_to_officer() {
     let sym = "AAPL";
     let server = MockServer::start();
-    let modules = "institutionOwnership,fundOwnership,majorHoldersBreakdown,insiderTransactions,insiderHolders,netSharePurchaseActivity";
 
     let mock = server.mock(|when, then| {
         when.method(GET)
             .path(format!("/v10/finance/quoteSummary/{sym}"))
-            .query_param("modules", modules)
+            .query_param("modules", INSIDER_HOLDERS)
             .query_param("crumb", "crumb");
         then.status(200)
             .header("content-type", "application/json")
@@ -166,12 +168,11 @@ async fn insider_roster_missing_position_is_not_defaulted_to_officer() {
 async fn optional_holder_value_is_omitted_when_currency_cannot_be_resolved() {
     let sym = "NOCURRENCY";
     let server = MockServer::start();
-    let modules = "institutionOwnership,fundOwnership,majorHoldersBreakdown,insiderTransactions,insiderHolders,netSharePurchaseActivity";
 
     let holders_mock = server.mock(|when, then| {
         when.method(GET)
             .path(format!("/v10/finance/quoteSummary/{sym}"))
-            .query_param("modules", modules)
+            .query_param("modules", INSTITUTION_OWNERSHIP)
             .query_param("crumb", "crumb");
         then.status(200)
             .header("content-type", "application/json")
@@ -220,12 +221,11 @@ async fn optional_holder_value_is_omitted_when_currency_cannot_be_resolved() {
 async fn holder_diagnostics_report_present_value_with_unresolved_currency() {
     let sym = "NOCURRENCY";
     let server = MockServer::start();
-    let modules = "institutionOwnership,fundOwnership,majorHoldersBreakdown,insiderTransactions,insiderHolders,netSharePurchaseActivity";
 
     let holders_mock = server.mock(|when, then| {
         when.method(GET)
             .path(format!("/v10/finance/quoteSummary/{sym}"))
-            .query_param("modules", modules)
+            .query_param("modules", INSTITUTION_OWNERSHIP)
             .query_param("crumb", "crumb");
         then.status(200)
             .header("content-type", "application/json")
@@ -280,12 +280,11 @@ async fn holder_diagnostics_report_present_value_with_unresolved_currency() {
 async fn major_holder_decimal_conversion_failure_is_reported() {
     let sym = "MAJOR";
     let server = MockServer::start();
-    let modules = "institutionOwnership,fundOwnership,majorHoldersBreakdown,insiderTransactions,insiderHolders,netSharePurchaseActivity";
 
     let holders_mock = server.mock(|when, then| {
         when.method(GET)
             .path(format!("/v10/finance/quoteSummary/{sym}"))
-            .query_param("modules", modules)
+            .query_param("modules", MAJOR_HOLDERS)
             .query_param("crumb", "crumb");
         then.status(200)
             .header("content-type", "application/json")
@@ -342,12 +341,11 @@ async fn major_holder_decimal_conversion_failure_is_reported() {
 async fn net_share_purchase_activity_missing_period_is_reported() {
     let sym = "NETBAD";
     let server = MockServer::start();
-    let modules = "institutionOwnership,fundOwnership,majorHoldersBreakdown,insiderTransactions,insiderHolders,netSharePurchaseActivity";
 
     let holders_mock = server.mock(|when, then| {
         when.method(GET)
             .path(format!("/v10/finance/quoteSummary/{sym}"))
-            .query_param("modules", modules)
+            .query_param("modules", NET_SHARE_PURCHASE_ACTIVITY)
             .query_param("crumb", "crumb");
         then.status(200)
             .header("content-type", "application/json")
@@ -395,12 +393,11 @@ async fn net_share_purchase_activity_missing_period_is_reported() {
 async fn strict_net_share_purchase_activity_errors_on_missing_period() {
     let sym = "NETBAD";
     let server = MockServer::start();
-    let modules = "institutionOwnership,fundOwnership,majorHoldersBreakdown,insiderTransactions,insiderHolders,netSharePurchaseActivity";
 
     let holders_mock = server.mock(|when, then| {
         when.method(GET)
             .path(format!("/v10/finance/quoteSummary/{sym}"))
-            .query_param("modules", modules)
+            .query_param("modules", NET_SHARE_PURCHASE_ACTIVITY)
             .query_param("crumb", "crumb");
         then.status(200)
             .header("content-type", "application/json")
@@ -438,12 +435,11 @@ async fn strict_net_share_purchase_activity_errors_on_missing_period() {
 async fn net_share_purchase_activity_percent_conversion_failure_is_reported() {
     let sym = "NETPCT";
     let server = MockServer::start();
-    let modules = "institutionOwnership,fundOwnership,majorHoldersBreakdown,insiderTransactions,insiderHolders,netSharePurchaseActivity";
 
     let holders_mock = server.mock(|when, then| {
         when.method(GET)
             .path(format!("/v10/finance/quoteSummary/{sym}"))
-            .query_param("modules", modules)
+            .query_param("modules", NET_SHARE_PURCHASE_ACTIVITY)
             .query_param("crumb", "crumb");
         then.status(200)
             .header("content-type", "application/json")

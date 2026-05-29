@@ -17,7 +17,6 @@ pub(super) async fn fetch_esg_scores(
     retry_override: Option<&RetryConfig>,
     data_quality: DataQuality,
 ) -> Result<YfResponse<EsgSummary>, YfError> {
-    let mut ctx = ProjectionContext::new("esg", data_quality);
     let root: V10Result = quotesummary::fetch_module_result(
         client,
         symbol,
@@ -28,6 +27,15 @@ pub(super) async fn fetch_esg_scores(
     )
     .await?;
 
+    map_esg_scores(symbol, root, data_quality)
+}
+
+fn map_esg_scores(
+    symbol: &str,
+    root: V10Result,
+    data_quality: DataQuality,
+) -> Result<YfResponse<EsgSummary>, YfError> {
+    let mut ctx = ProjectionContext::new("esg", data_quality);
     let Some(esg) = root.esg_scores else {
         ctx.unavailable_feature("esgScores")?;
         return Ok(ctx.finish(EsgSummary {

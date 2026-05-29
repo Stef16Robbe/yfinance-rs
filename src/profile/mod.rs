@@ -109,6 +109,66 @@ async fn load_with_fallback(
     }
 }
 
+async fn load_from_quote_summary_value_api(
+    client: &YfClient,
+    symbol: &str,
+    value: serde_json::Value,
+) -> Result<Profile, YfError> {
+    let root: api::V10Result = serde_json::from_value(value).map_err(YfError::Json)?;
+    api::load_from_quote_summary_result(client, symbol, root).await
+}
+
+async fn load_value_with_fallback(
+    client: &YfClient,
+    symbol: &str,
+    value: serde_json::Value,
+    cache_mode: CacheMode,
+    retry_override: Option<&RetryConfig>,
+) -> Result<Profile, YfError> {
+    match load_from_quote_summary_value_api(client, symbol, value).await {
+        Ok(p) => Ok(p),
+        Err(e @ YfError::Auth(_)) => Err(e),
+        Err(e) => {
+            crate::core::logging::trace_warn!(
+                error = %e,
+                "profile batched API data failed; falling back to scrape"
+            );
+            #[cfg(not(feature = "tracing"))]
+            let _ = &e;
+            scrape::load_from_scrape(client, symbol, cache_mode, retry_override).await
+        }
+    }
+}
+
+pub(crate) async fn load_profile_from_quote_summary_value(
+    client: &YfClient,
+    symbol: &str,
+    value: serde_json::Value,
+    cache_mode: CacheMode,
+    retry_override: Option<&RetryConfig>,
+) -> Result<Profile, YfError> {
+    #[cfg(not(feature = "test-mode"))]
+    {
+        load_value_with_fallback(client, symbol, value, cache_mode, retry_override).await
+    }
+
+    #[cfg(feature = "test-mode")]
+    {
+        use crate::core::client::ApiPreference;
+        match client.api_preference() {
+            ApiPreference::ApiThenScrape => {
+                load_value_with_fallback(client, symbol, value, cache_mode, retry_override).await
+            }
+            ApiPreference::ApiOnly => {
+                load_from_quote_summary_value_api(client, symbol, value).await
+            }
+            ApiPreference::ScrapeOnly => {
+                scrape::load_from_scrape(client, symbol, cache_mode, retry_override).await
+            }
+        }
+    }
+}
+
 pub(crate) async fn load_profile_with_options(
     client: &YfClient,
     symbol: &str,

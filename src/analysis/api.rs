@@ -22,8 +22,8 @@ use crate::{
 use super::fetch::fetch_modules;
 use super::model::{PriceTarget, RecommendationRow, RecommendationSummary, UpgradeDowngradeRow};
 use super::wire::{
-    EarningsEstimateNode, EarningsTrendItemNode, EpsRevisionsNode, EpsTrendNode,
-    RecommendationNode, RevenueEstimateNode,
+    EarningsEstimateNode, EarningsTrendItemNode, EpsRevisionsNode, EpsTrendNode, FinancialDataNode,
+    RecommendationNode, RecommendationTrendNode, RevenueEstimateNode,
 };
 use paft::domain::Period;
 use paft::fundamentals::analysis::{
@@ -210,7 +210,6 @@ pub(super) async fn recommendation_summary(
     retry_override: Option<&RetryConfig>,
     data_quality: DataQuality,
 ) -> Result<YfResponse<RecommendationSummary>, YfError> {
-    let mut ctx = ProjectionContext::new("analysis", data_quality);
     let root = fetch_modules(
         client,
         symbol,
@@ -220,16 +219,31 @@ pub(super) async fn recommendation_summary(
     )
     .await?;
 
-    let trend = if let Some(recommendation_trend) = root.recommendation_trend {
-        if let Some(trend) = recommendation_trend.trend {
-            trend
+    map_recommendation_summary(
+        symbol,
+        root.recommendation_trend.as_ref(),
+        root.financial_data.as_ref(),
+        data_quality,
+    )
+}
+
+fn map_recommendation_summary(
+    symbol: &str,
+    recommendation_trend: Option<&RecommendationTrendNode>,
+    financial_data: Option<&FinancialDataNode>,
+    data_quality: DataQuality,
+) -> Result<YfResponse<RecommendationSummary>, YfError> {
+    let mut ctx = ProjectionContext::new("analysis", data_quality);
+    let trend = if let Some(recommendation_trend) = recommendation_trend {
+        if let Some(trend) = recommendation_trend.trend.as_ref() {
+            trend.as_slice()
         } else {
             ctx.unavailable_feature("recommendationTrend.trend")?;
-            Vec::new()
+            &[]
         }
     } else {
         ctx.unavailable_feature("recommendationTrend")?;
-        Vec::new()
+        &[]
     };
 
     let latest = trend.first();
@@ -266,8 +280,11 @@ pub(super) async fn recommendation_summary(
         (None, None, None, None, None, None)
     };
 
-    let (mean, _mean_key) = root.financial_data.map_or((None, None), |fd| {
-        (from_raw(fd.recommendation_mean), fd.recommendation_key)
+    let (mean, _mean_key) = financial_data.map_or((None, None), |fd| {
+        (
+            from_raw(fd.recommendation_mean),
+            fd.recommendation_key.as_deref(),
+        )
     });
     let mean = optional_decimal_f64(
         &mut ctx,
@@ -401,9 +418,30 @@ pub(super) async fn analyst_price_target(
     retry_override: Option<&RetryConfig>,
     data_quality: DataQuality,
 ) -> Result<YfResponse<PriceTarget>, YfError> {
-    let mut ctx = ProjectionContext::new("analysis", data_quality);
     let root = fetch_modules(client, symbol, "financialData", cache_mode, retry_override).await?;
-    let Some(fd) = root.financial_data else {
+    map_analyst_price_target(
+        client,
+        symbol,
+        override_currency,
+        root.financial_data.as_ref(),
+        cache_mode,
+        retry_override,
+        data_quality,
+    )
+    .await
+}
+
+async fn map_analyst_price_target(
+    client: &YfClient,
+    symbol: &str,
+    override_currency: Option<Currency>,
+    financial_data: Option<&FinancialDataNode>,
+    cache_mode: CacheMode,
+    retry_override: Option<&RetryConfig>,
+    data_quality: DataQuality,
+) -> Result<YfResponse<PriceTarget>, YfError> {
+    let mut ctx = ProjectionContext::new("analysis", data_quality);
+    let Some(fd) = financial_data else {
         ctx.unavailable_feature("financialData")?;
         return Ok(ctx.finish(PriceTarget::default()));
     };
@@ -480,6 +518,60 @@ pub(super) async fn analyst_price_target(
         low,
         number_of_analysts,
     }))
+}
+
+pub(super) async fn price_target_and_recommendation_summary_from_quote_summary_value(
+    client: &YfClient,
+    symbol: &str,
+    override_currency: Option<Currency>,
+    value: serde_json::Value,
+    cache_mode: CacheMode,
+    retry_override: Option<&RetryConfig>,
+    data_quality: DataQuality,
+) -> Result<super::InfoAnalysisParts, YfError> {
+    let root: super::wire::V10Result = serde_json::from_value(value).map_err(YfError::Json)?;
+    Ok(map_price_target_and_recommendation_summary(
+        client,
+        symbol,
+        override_currency,
+        &root,
+        cache_mode,
+        retry_override,
+        data_quality,
+    )
+    .await)
+}
+
+async fn map_price_target_and_recommendation_summary(
+    client: &YfClient,
+    symbol: &str,
+    override_currency: Option<Currency>,
+    root: &super::wire::V10Result,
+    cache_mode: CacheMode,
+    retry_override: Option<&RetryConfig>,
+    data_quality: DataQuality,
+) -> super::InfoAnalysisParts {
+    let price_target = map_analyst_price_target(
+        client,
+        symbol,
+        override_currency,
+        root.financial_data.as_ref(),
+        cache_mode,
+        retry_override,
+        data_quality,
+    )
+    .await;
+    let recommendation_summary = map_recommendation_summary(
+        symbol,
+        root.recommendation_trend.as_ref(),
+        root.financial_data.as_ref(),
+        data_quality,
+    );
+
+    super::InfoAnalysisParts {
+        price_target,
+        recommendation_summary,
+    }
 }
 
 struct AnalystCurrencyResolver<'a> {

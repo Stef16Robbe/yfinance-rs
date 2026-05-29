@@ -279,3 +279,10 @@ impl FundamentalsBuilder {
         .await
     }
 }
+
+pub(crate) fn calendar_from_quote_summary_value(
+    value: serde_json::Value,
+    data_quality: DataQuality,
+) -> Result<YfResponse<Calendar>, YfError> {
+    api::calendar_from_quote_summary_value(value, data_quality)
+}

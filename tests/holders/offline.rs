@@ -7,8 +7,7 @@ fn fixture(endpoint: &str, symbol: &str) -> String {
     crate::common::fixture(endpoint, symbol, "json")
 }
 
-fn setup_holders_mock<'a>(server: &'a MockServer, symbol: &'a str) -> Mock<'a> {
-    let modules = "institutionOwnership,fundOwnership,majorHoldersBreakdown,insiderTransactions,insiderHolders,netSharePurchaseActivity";
+fn setup_holders_mock<'a>(server: &'a MockServer, symbol: &'a str, modules: &'a str) -> Mock<'a> {
     server.mock(|when, then| {
         when.method(GET)
             .path(format!("/v10/finance/quoteSummary/{symbol}"))
@@ -24,7 +23,12 @@ fn setup_holders_mock<'a>(server: &'a MockServer, symbol: &'a str) -> Mock<'a> {
 async fn offline_all_holders_from_fixture() {
     let sym = "AAPL";
     let server = MockServer::start();
-    let mock = setup_holders_mock(&server, sym);
+    let major_mock = setup_holders_mock(&server, sym, "majorHoldersBreakdown");
+    let institutional_mock = setup_holders_mock(&server, sym, "institutionOwnership");
+    let mutual_fund_mock = setup_holders_mock(&server, sym, "fundOwnership");
+    let insider_transactions_mock = setup_holders_mock(&server, sym, "insiderTransactions");
+    let insider_roster_mock = setup_holders_mock(&server, sym, "insiderHolders");
+    let net_purchase_mock = setup_holders_mock(&server, sym, "netSharePurchaseActivity");
     let quote_mock = crate::common::mock_quote_v7(&server, sym);
 
     let client = YfClient::builder()
@@ -89,7 +93,11 @@ async fn offline_all_holders_from_fixture() {
     // Insider Transactions (can be empty)
     let _insider_trans = t.insider_transactions().await.unwrap();
 
-    // Verify the mock was hit for each of the 6 calls.
-    mock.assert_calls(6);
+    major_mock.assert();
+    institutional_mock.assert();
+    mutual_fund_mock.assert();
+    insider_transactions_mock.assert();
+    insider_roster_mock.assert();
+    net_purchase_mock.assert();
     quote_mock.assert();
 }

@@ -29,6 +29,14 @@ pub async fn load_from_quote_summary_api(
     )
     .await?;
 
+    load_from_quote_summary_result(client, symbol, first).await
+}
+
+pub(super) async fn load_from_quote_summary_result(
+    client: &YfClient,
+    symbol: &str,
+    first: V10Result,
+) -> Result<Profile, YfError> {
     let kind = first
         .quote_type
         .as_ref()
@@ -113,7 +121,7 @@ pub async fn load_from_quote_summary_api(
 /* --------- Minimal serde mapping for the API JSON --------- */
 
 #[derive(Deserialize)]
-struct V10Result {
+pub(super) struct V10Result {
     #[serde(rename = "assetProfile")]
     asset_profile: Option<V10AssetProfile>,
     #[serde(rename = "fundProfile")]

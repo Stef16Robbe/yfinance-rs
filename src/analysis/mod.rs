@@ -14,6 +14,11 @@ use crate::core::{
 };
 use paft::money::Currency;
 
+pub(crate) struct InfoAnalysisParts {
+    pub(crate) price_target: Result<YfResponse<PriceTarget>, YfError>,
+    pub(crate) recommendation_summary: Result<YfResponse<RecommendationSummary>, YfError>,
+}
+
 /// A builder for fetching analyst-related data for a specific symbol.
 pub struct AnalysisBuilder {
     client: YfClient,
@@ -225,4 +230,25 @@ impl AnalysisBuilder {
         )
         .await
     }
+}
+
+pub(crate) async fn price_target_and_recommendation_summary_from_quote_summary_value(
+    client: &YfClient,
+    symbol: &str,
+    override_currency: Option<Currency>,
+    value: serde_json::Value,
+    cache_mode: CacheMode,
+    retry_override: Option<&RetryConfig>,
+    data_quality: DataQuality,
+) -> Result<InfoAnalysisParts, YfError> {
+    api::price_target_and_recommendation_summary_from_quote_summary_value(
+        client,
+        symbol,
+        override_currency,
+        value,
+        cache_mode,
+        retry_override,
+        data_quality,
+    )
+    .await
 }

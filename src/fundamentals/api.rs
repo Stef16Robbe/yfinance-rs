@@ -950,8 +950,23 @@ pub(super) async fn calendar(
     retry_override: Option<&RetryConfig>,
     data_quality: DataQuality,
 ) -> Result<YfResponse<super::Calendar>, YfError> {
-    let mut ctx = ProjectionContext::new("calendar", data_quality);
     let root = fetch_modules(client, symbol, "calendarEvents", cache_mode, retry_override).await?;
+    map_calendar(root, data_quality)
+}
+
+pub(super) fn calendar_from_quote_summary_value(
+    value: serde_json::Value,
+    data_quality: DataQuality,
+) -> Result<YfResponse<super::Calendar>, YfError> {
+    let root: super::wire::V10Result = serde_json::from_value(value).map_err(YfError::Json)?;
+    map_calendar(root, data_quality)
+}
+
+fn map_calendar(
+    root: super::wire::V10Result,
+    data_quality: DataQuality,
+) -> Result<YfResponse<super::Calendar>, YfError> {
+    let mut ctx = ProjectionContext::new("calendar", data_quality);
     let Some(calendar_events) = root.calendar_events else {
         ctx.unavailable_feature("calendarEvents")?;
         return Ok(ctx.finish(super::Calendar {
