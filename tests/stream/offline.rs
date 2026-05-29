@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use std::{
     io::ErrorKind,
     net::{TcpListener, TcpStream},
@@ -251,6 +252,63 @@ async fn stream_polling_explicitly_offline() {
     mock.assert();
 
     assert!(got.is_ok());
+}
+
+#[tokio::test]
+async fn stream_polling_uses_regular_market_time_as_update_timestamp() {
+    let server = crate::common::setup_server();
+    let provider_time = 1_761_768_001;
+
+    let body = format!(
+        r#"{{
+            "quoteResponse": {{
+                "result": [
+                    {{
+                        "symbol": "MSFT",
+                        "quoteType": "EQUITY",
+                        "regularMarketPrice": 420.00,
+                        "regularMarketPreviousClose": 419.00,
+                        "regularMarketVolume": 1000,
+                        "regularMarketTime": {provider_time},
+                        "currency": "USD"
+                    }}
+                ],
+                "error": null
+            }}
+        }}"#
+    );
+
+    let mock = server.mock(|when, then| {
+        when.method(httpmock::Method::GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "MSFT");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let client = yfinance_rs::YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+
+    let builder = yfinance_rs::StreamBuilder::new(&client)
+        .symbols(["MSFT"])
+        .method(StreamMethod::Polling)
+        .interval(Duration::from_millis(50));
+
+    let (handle, mut rx) = builder.start().await.unwrap();
+    let update = timeout(Duration::from_secs(3), rx.recv())
+        .await
+        .expect("timed out waiting for polling stream update")
+        .expect("stream closed without emitting an update");
+    handle.abort();
+    mock.assert();
+
+    assert_eq!(
+        update.ts,
+        DateTime::<Utc>::from_timestamp(provider_time, 0).unwrap()
+    );
 }
 
 #[tokio::test]

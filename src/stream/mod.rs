@@ -702,10 +702,13 @@ async fn run_polling_stream(
         tokio::select! {
             _ = ticker.tick() => {
                 if tx.is_closed() { break; }
-                let ts: DateTime<Utc> = chrono::Utc::now();
                 match crate::core::quotes::fetch_v7_quotes(&client, &symbol_slices, cache_mode, retry_override).await {
                     Ok(quotes) => {
                         for q in quotes {
+                            let ts = q
+                                .regular_market_time
+                                .and_then(|t| DateTime::from_timestamp(t, 0))
+                                .unwrap_or_else(Utc::now);
                             let sym_s = q.symbol.clone().unwrap_or_default();
                             let lp = q.regular_market_price.or(q.regular_market_previous_close);
 

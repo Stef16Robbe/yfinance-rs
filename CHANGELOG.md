@@ -46,6 +46,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   instead of being logged in the spawned task while the caller receives `Ok`.
 - WebSocket streams now flush pong replies for ping frames and treat remote close/EOF as stream
   failures, allowing `WebsocketWithFallback` to fall back to polling unless the caller stopped it.
+- Polling streams now timestamp quote updates with Yahoo's `regularMarketTime` when available
+  instead of always using the local polling receive time.
 - Streaming quote volume deltas now use one shared cumulative-volume state transition across
   WebSocket and polling streams, and untyped stream instrument fallbacks no longer poison the
   client instrument cache.
