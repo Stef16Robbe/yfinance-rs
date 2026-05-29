@@ -35,6 +35,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- `DownloadBuilder` best-effort batches now drop only the symbol whose chart metadata lacks
+  a usable instrument kind and report a diagnostic, instead of failing the whole batch.
 - Text redaction now masks crumb and auth-like query parameters after comma-separated
   Yahoo query values such as quoteSummary modules.
 - `Ticker::info()` now batches its quoteSummary modules into one request, avoids duplicate `financialData` fetches, and no longer exposes an always-empty ESG field for Yahoo's dead `esgScores` module; use `Ticker::sustainability()` for explicit best-effort ESG requests.

@@ -4,8 +4,8 @@ use crate::{
     core::client::{CacheMode, RetryConfig, normalize_symbols},
     core::conversions::f64_from_currency_value,
     core::{
-        Candle, DataQuality, HistoryResponse, Interval, ProjectionContext, Range, YfClient,
-        YfError, YfResponse,
+        Candle, DataQuality, HistoryResponse, Interval, ProjectionContext, ProjectionIssue, Range,
+        YfClient, YfError, YfResponse,
     },
     history::HistoryBuilder,
 };
@@ -188,9 +188,16 @@ impl DownloadBuilder {
             self.maybe_repair(&mut resp.candles, &sym, ctx)?;
             self.apply_rounding_if_enabled(&mut resp.candles);
 
-            let instrument = self.client.cached_instrument(&sym).await.ok_or_else(|| {
-                YfError::MissingData(format!("download instrument metadata missing for {sym}"))
-            })?;
+            let Some(instrument) = self.client.cached_instrument(&sym).await else {
+                ctx.dropped_item(
+                    "download_entry",
+                    Some(sym),
+                    ProjectionIssue::MissingRequiredField {
+                        field: "chart.meta.instrumentType",
+                    },
+                )?;
+                continue;
+            };
 
             entries.push(DownloadEntry {
                 instrument,

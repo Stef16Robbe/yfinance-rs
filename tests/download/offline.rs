@@ -5,7 +5,9 @@ use url::Url;
 use crate::common;
 use yfinance_rs::core::conversions::*;
 use yfinance_rs::core::{Interval, Range};
-use yfinance_rs::{DownloadBuilder, DownloadConcurrency, YfClient, YfError};
+use yfinance_rs::{
+    DownloadBuilder, DownloadConcurrency, ProjectionIssue, YfClient, YfError, YfWarning,
+};
 
 fn has_more_than_two_decimals(x: f64) -> bool {
     if !x.is_finite() {
@@ -28,6 +30,35 @@ async fn wait_for_mock_calls(
         tokio::time::sleep(std::time::Duration::from_millis(10)).await;
     }
     mock.calls_async().await >= expected
+}
+
+const fn chart_body_without_instrument_type() -> &'static str {
+    r#"{
+      "chart": {
+        "result": [{
+          "meta": {
+            "currency": "USD",
+            "symbol": "NOKIND",
+            "timezone": "America/New_York",
+            "gmtoffset": -14400
+          },
+          "timestamp": [1710000000],
+          "indicators": {
+            "quote": [{
+              "open": [100.0],
+              "high": [101.0],
+              "low": [99.0],
+              "close": [100.5],
+              "volume": [1000]
+            }],
+            "adjclose": [{
+              "adjclose": [100.5]
+            }]
+          }
+        }],
+        "error": null
+      }
+    }"#
 }
 
 #[tokio::test]
@@ -84,6 +115,109 @@ async fn download_multi_symbols_happy_path() {
         .collect();
     assert!(keys.iter().any(|s| s == "AAPL"));
     assert!(keys.iter().any(|s| s == "MSFT"));
+}
+
+#[tokio::test]
+async fn best_effort_download_drops_entry_without_instrument_metadata() {
+    let server = common::setup_server();
+
+    let m_aapl = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v8/finance/chart/AAPL")
+            .query_param("range", "6mo")
+            .query_param("interval", "1d")
+            .query_param("includePrePost", "false")
+            .query_param("events", "div|split|capitalGains");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(common::fixture("history_chart", "AAPL", "json"));
+    });
+
+    let m_missing = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v8/finance/chart/NOKIND")
+            .query_param("range", "6mo")
+            .query_param("interval", "1d")
+            .query_param("includePrePost", "false")
+            .query_param("events", "div|split|capitalGains");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(chart_body_without_instrument_type());
+    });
+
+    let client = YfClient::builder()
+        .base_chart(Url::parse(&format!("{}/v8/finance/chart/", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+
+    let response = DownloadBuilder::new(&client)
+        .symbols(["AAPL", "NOKIND"])
+        .run_with_diagnostics()
+        .await
+        .unwrap();
+
+    m_aapl.assert();
+    m_missing.assert();
+
+    assert_eq!(response.data.entries.len(), 1);
+    assert_eq!(response.data.entries[0].instrument.symbol.as_str(), "AAPL");
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::DroppedItem {
+            endpoint: "download",
+            item: "download_entry",
+            key: Some(key),
+            reason: ProjectionIssue::MissingRequiredField {
+                field: "chart.meta.instrumentType",
+            },
+        } if key == "NOKIND"
+    )));
+}
+
+#[tokio::test]
+async fn strict_download_errors_without_instrument_metadata() {
+    let server = common::setup_server();
+
+    let m_missing = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v8/finance/chart/NOKIND")
+            .query_param("range", "6mo")
+            .query_param("interval", "1d")
+            .query_param("includePrePost", "false")
+            .query_param("events", "div|split|capitalGains");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(chart_body_without_instrument_type());
+    });
+
+    let client = YfClient::builder()
+        .base_chart(Url::parse(&format!("{}/v8/finance/chart/", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+
+    let err = DownloadBuilder::new(&client)
+        .symbols(["NOKIND"])
+        .strict()
+        .run()
+        .await
+        .unwrap_err();
+
+    m_missing.assert();
+
+    let YfError::DataQuality(warning) = err else {
+        panic!("expected data-quality error");
+    };
+    assert!(matches!(
+        &*warning,
+        YfWarning::DroppedItem {
+            endpoint: "download",
+            item: "download_entry",
+            key: Some(key),
+            reason: ProjectionIssue::MissingRequiredField {
+                field: "chart.meta.instrumentType",
+            },
+        } if key == "NOKIND"
+    ));
 }
 
 #[tokio::test]
