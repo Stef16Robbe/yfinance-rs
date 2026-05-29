@@ -75,6 +75,7 @@ async fn offline_recommendations_summary_uses_recorded_fixture() {
         + s.sell.unwrap_or(0)
         + s.strong_sell.unwrap_or(0);
     assert!(total > 0, "record with YF_RECORD=1 first");
+    assert_eq!(s.mean_rating_text.as_deref(), Some("strong_buy"));
 }
 
 #[tokio::test]

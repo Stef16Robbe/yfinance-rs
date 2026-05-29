@@ -68,7 +68,5 @@ async fn analysis_invalid_crumb_then_retry_succeeds() {
     ok.assert();
 
     assert_eq!(s.mean, decimal_from_f64(2.5));
-    // The mean_rating_text field might not be populated in the test data
-    // Let's just check that the summary was created successfully
-    assert!(s.mean.is_some());
+    assert_eq!(s.mean_rating_text.as_deref(), Some("buy"));
 }

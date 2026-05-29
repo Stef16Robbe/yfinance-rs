@@ -280,10 +280,10 @@ fn map_recommendation_summary(
         (None, None, None, None, None, None)
     };
 
-    let (mean, _mean_key) = financial_data.map_or((None, None), |fd| {
+    let (mean, mean_rating_text) = financial_data.map_or((None, None), |fd| {
         (
             from_raw(fd.recommendation_mean),
-            fd.recommendation_key.as_deref(),
+            fd.recommendation_key.clone(),
         )
     });
     let mean = optional_decimal_f64(
@@ -302,7 +302,7 @@ fn map_recommendation_summary(
         sell: s,
         strong_sell: ss,
         mean,
-        mean_rating_text: None,
+        mean_rating_text,
     }))
 }
 

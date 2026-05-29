@@ -100,6 +100,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Quote, fast-info, key-statistics, option-chain, and screener projections now report present prices, market caps, strikes, and related fields that cannot be represented because currency metadata is missing or invalid instead of silently returning `None` or dropping contracts.
 - Quote exchange, market-state, timestamp, analyst currency-source, and optional upgrade/downgrade grade/action projection losses now emit diagnostics consistently; strict mode rejects those present malformed provider fields instead of silently omitting them or dropping otherwise valid rows.
 - Options endpoints now surface Yahoo `optionChain.error` payloads as `YfError::Api` instead of reporting them as empty option results.
+- Recommendation summaries now populate `mean_rating_text` from Yahoo's `recommendationKey`.
 
 ### Changed
 
