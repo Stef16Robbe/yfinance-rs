@@ -34,11 +34,7 @@ pub async fn expiration_dates(
         fetch_options_raw(client, &symbol, None, cache_mode, retry_override).await?;
     let env: OptEnvelope = serde_json::from_str(&body).map_err(YfError::Json)?;
 
-    let first = env
-        .option_chain
-        .and_then(|oc| oc.result)
-        .and_then(|mut v| v.pop())
-        .ok_or_else(|| YfError::MissingData("empty options result".into()))?;
+    let first = first_option_result(env)?;
 
     Ok(first.expiration_dates.unwrap_or_default())
 }
@@ -78,11 +74,7 @@ pub async fn option_chain_with_diagnostics(
         fetch_options_raw(client, &symbol, date, cache_mode, retry_override).await?;
     let env: OptEnvelope = serde_json::from_str(&body).map_err(YfError::Json)?;
 
-    let first = env
-        .option_chain
-        .and_then(|oc| oc.result)
-        .and_then(|mut v| v.pop())
-        .ok_or_else(|| YfError::MissingData("empty options result".into()))?;
+    let first = first_option_result(env)?;
 
     if let Some(quote) = first.quote.as_ref() {
         client
@@ -556,7 +548,6 @@ struct OptEnvelope {
 #[derive(Deserialize)]
 struct OptChainNode {
     result: Option<Vec<OptResultNode>>,
-    #[allow(dead_code)]
     error: Option<serde_json::Value>,
 }
 
@@ -568,6 +559,34 @@ struct OptResultNode {
     expiration_dates: Option<Vec<i64>>,
     quote: Option<OptQuoteNode>,
     options: Option<Vec<OptByDateNode>>,
+}
+
+fn first_option_result(env: OptEnvelope) -> Result<OptResultNode, YfError> {
+    let option_chain = env
+        .option_chain
+        .ok_or_else(|| YfError::MissingData("empty options result".into()))?;
+
+    if let Some(error) = option_chain.error.as_ref() {
+        let message = option_chain_error_message(error);
+        crate::core::logging::trace_error!(
+            error = %message,
+            "optionChain error"
+        );
+        return Err(YfError::Api(format!("yahoo error: {message}")));
+    }
+
+    option_chain
+        .result
+        .and_then(|mut v| v.pop())
+        .ok_or_else(|| YfError::MissingData("empty options result".into()))
+}
+
+fn option_chain_error_message(error: &Value) -> String {
+    error
+        .get("description")
+        .and_then(Value::as_str)
+        .or_else(|| error.get("message").and_then(Value::as_str))
+        .map_or_else(|| error.to_string(), str::to_owned)
 }
 
 #[derive(Deserialize)]

@@ -2,7 +2,7 @@ use paft::domain::AssetKind;
 use serde_json::Value;
 use url::Url;
 use yfinance_rs::core::conversions::{money_to_currency_str, money_to_f64};
-use yfinance_rs::{ProjectionIssue, Ticker, YfClient, YfWarning};
+use yfinance_rs::{ProjectionIssue, Ticker, YfClient, YfError, YfWarning};
 
 #[tokio::test]
 async fn options_expirations_happy() {
@@ -24,6 +24,39 @@ async fn options_expirations_happy() {
         !expiries.is_empty(),
         "record {symbol} options fixtures first via YF_RECORD=1 cargo test --test ticker -- options"
     );
+}
+
+#[tokio::test]
+async fn options_expirations_surface_yahoo_error() {
+    let server = crate::common::setup_server();
+    let symbol = "AAPL";
+
+    let body = r#"{
+      "optionChain": {
+        "result": null,
+        "error": { "description": "No options found" }
+      }
+    }"#;
+
+    let mock = server.mock(|when, then| {
+        when.method(httpmock::Method::GET)
+            .path("/v7/finance/options/AAPL")
+            .is_true(|req| !req.query_params().iter().any(|(k, _)| k == "date"));
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let client = YfClient::builder()
+        .base_options_v7(Url::parse(&format!("{}/v7/finance/options/", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+    let ticker = Ticker::new(&client, symbol);
+
+    let err = ticker.options().await.unwrap_err();
+    mock.assert();
+
+    assert_yahoo_api_error(err, "No options found");
 }
 
 #[tokio::test]
@@ -81,6 +114,42 @@ async fn option_chain_for_specific_date() {
         assert_eq!(money_to_currency_str(price).as_deref(), Some("USD"));
     }
     assert_eq!(p.expiration_at.unwrap().timestamp(), date);
+}
+
+#[tokio::test]
+async fn option_chain_with_diagnostics_surfaces_yahoo_error() {
+    let server = crate::common::setup_server();
+    let date = 1_737_072_000_i64;
+
+    let body = r#"{
+      "optionChain": {
+        "result": null,
+        "error": { "description": "No data found, symbol may be delisted" }
+      }
+    }"#;
+
+    let mock = server.mock(|when, then| {
+        when.method(httpmock::Method::GET)
+            .path("/v7/finance/options/AAPL")
+            .query_param("date", date.to_string());
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let client = YfClient::builder()
+        .base_options_v7(Url::parse(&format!("{}/v7/finance/options/", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+    let ticker = Ticker::new(&client, "AAPL");
+
+    let err = ticker
+        .option_chain_with_diagnostics(Some(date))
+        .await
+        .unwrap_err();
+    mock.assert();
+
+    assert_yahoo_api_error(err, "No data found");
 }
 
 #[tokio::test]
@@ -506,6 +575,16 @@ fn mock_dated_options_request<'a>(
             .header("content-type", "application/json")
             .body(body);
     })
+}
+
+fn assert_yahoo_api_error(err: YfError, expected: &str) {
+    match err {
+        YfError::Api(message) => assert!(
+            message.contains("yahoo error:") && message.contains(expected),
+            "expected Yahoo API error containing {expected:?}; got {message}"
+        ),
+        other => panic!("expected Api error, got {other:?}"),
+    }
 }
 
 #[tokio::test]
