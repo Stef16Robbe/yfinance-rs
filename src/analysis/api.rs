@@ -9,7 +9,7 @@ use crate::{
         },
         currency_resolver::{
             AnalystEstimateCurrencyEvidence, CurrencyHints, CurrencyKind, ResolvedCurrencyUnit,
-            TradingCurrencyEvidence,
+            TradingCurrencyEvidence, project_currency_resolution,
         },
         diagnostics::{
             optional_decimal_f64, optional_money_i64, optional_price_f64, optional_u32_from_i64,
@@ -457,24 +457,22 @@ async fn map_analyst_price_target(
     let high = from_raw(fd.target_high_price);
     let low = from_raw(fd.target_low_price);
     let unit = if [mean, high, low].iter().any(Option::is_some) {
-        match client
-            .resolve_trading_currency(
-                symbol,
-                override_currency,
-                TradingCurrencyEvidence::None,
-                cache_mode,
-                retry_override,
-            )
-            .await
-        {
-            Ok(unit) => {
-                ctx.currency_resolution(symbol, CurrencyKind::Trading, &unit)?;
-                Some(unit.into_unit())
-            }
-            Err(err @ YfError::InvalidData(_)) => return Err(err),
-            Err(err) if data_quality == DataQuality::Strict => return Err(err),
-            Err(_) => None,
-        }
+        project_currency_resolution(
+            &mut ctx,
+            symbol,
+            CurrencyKind::Trading,
+            None,
+            client
+                .resolve_trading_currency(
+                    symbol,
+                    override_currency,
+                    TradingCurrencyEvidence::None,
+                    cache_mode,
+                    retry_override,
+                )
+                .await,
+        )?
+        .into_unit()
     } else {
         None
     };
@@ -580,7 +578,6 @@ struct AnalystCurrencyResolver<'a> {
     override_currency: Option<Currency>,
     cache_mode: CacheMode,
     retry_override: Option<&'a RetryConfig>,
-    data_quality: DataQuality,
 }
 
 impl AnalystCurrencyResolver<'_> {
@@ -594,25 +591,28 @@ impl AnalystCurrencyResolver<'_> {
             return Ok(None);
         }
 
-        match self
-            .client
-            .resolve_analyst_estimate_currency(
-                self.symbol,
-                self.override_currency.clone(),
-                evidence,
-                self.cache_mode,
-                self.retry_override,
-            )
-            .await
-        {
-            Ok(resolved) => {
-                ctx.currency_resolution(self.symbol, CurrencyKind::AnalystEstimate, &resolved)?;
-                Ok(Some(resolved.into_unit()))
-            }
-            Err(err @ YfError::InvalidData(_)) => Err(err),
-            Err(err) if self.data_quality == DataQuality::Strict => Err(err),
-            Err(_) => Ok(None),
-        }
+        let direct_code = match evidence {
+            AnalystEstimateCurrencyEvidence::Earnings(code)
+            | AnalystEstimateCurrencyEvidence::Revenue(code)
+            | AnalystEstimateCurrencyEvidence::EpsTrend(code) => code,
+        };
+
+        Ok(project_currency_resolution(
+            ctx,
+            self.symbol,
+            CurrencyKind::AnalystEstimate,
+            direct_code,
+            self.client
+                .resolve_analyst_estimate_currency(
+                    self.symbol,
+                    self.override_currency.clone(),
+                    evidence,
+                    self.cache_mode,
+                    self.retry_override,
+                )
+                .await,
+        )?
+        .into_unit())
     }
 }
 
@@ -1085,7 +1085,6 @@ pub(super) async fn earnings_trend(
         override_currency,
         cache_mode,
         retry_override,
-        data_quality,
     };
 
     let mut rows = Vec::with_capacity(trend.len());

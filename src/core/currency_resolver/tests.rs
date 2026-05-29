@@ -106,6 +106,23 @@ async fn override_resolution_does_not_poison_inferred_cache() {
 }
 
 #[tokio::test]
+async fn override_currency_without_metadata_is_invalid_params() {
+    let client = YfClient::default();
+    let err = client
+        .resolve_reporting_currency_unit(
+            "TEST",
+            Some(Currency::try_from_str("NO_METADATA").expect("canonical custom currency")),
+            ReportingCurrencyEvidence::None,
+            CacheMode::Use,
+            None,
+        )
+        .await
+        .expect_err("unregistered override currency should fail");
+
+    assert!(matches!(err, crate::core::YfError::InvalidParams(_)));
+}
+
+#[tokio::test]
 async fn provider_hint_replaces_cached_listing_heuristic() {
     let client = YfClient::default();
     client

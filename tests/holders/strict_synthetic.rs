@@ -352,6 +352,68 @@ async fn holder_diagnostics_report_present_value_with_unresolved_currency() {
 }
 
 #[tokio::test]
+async fn strict_holder_value_rejects_invalid_enriched_currency_as_data_quality() {
+    let sym = "BADENRICH";
+    let server = MockServer::start();
+
+    let holders_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", INSTITUTION_OWNERSHIP)
+            .query_param("crumb", "crumb");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "quoteSummary": {
+                    "result": [{
+                      "institutionOwnership": {
+                        "ownershipList": [{
+                          "organization": "Invalid Currency Capital",
+                          "position": { "raw": 10 },
+                          "reportDate": { "raw": 1704067200 },
+                          "value": { "raw": 12345 }
+                        }]
+                      }
+                    }],
+                    "error": null
+                  }
+                }"#,
+            );
+    });
+    let quote_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", sym);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{"quoteResponse":{"result":[{"symbol":"BADENRICH","quoteType":"EQUITY","financialCurrency":"!!!"}],"error":null}}"#,
+            );
+    });
+
+    let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._api_preference(ApiPreference::ApiOnly)
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let err = HoldersBuilder::new(&client, sym)
+        .strict()
+        .institutional_holders_with_diagnostics()
+        .await
+        .unwrap_err();
+
+    holders_mock.assert();
+    quote_mock.assert();
+    assert!(matches!(err, YfError::DataQuality(_)));
+}
+
+#[tokio::test]
 async fn major_holder_decimal_conversion_failure_is_reported() {
     let sym = "MAJOR";
     let server = MockServer::start();

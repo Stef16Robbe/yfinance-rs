@@ -255,7 +255,7 @@ impl YfClient {
     ) -> Result<ResolvedCurrency, YfError> {
         if let Some(currency) = override_currency {
             return Ok(ResolvedCurrency::new(
-                ResolvedCurrencyUnit::from_currency(currency),
+                override_currency_unit(symbol, kind, currency)?,
                 CurrencySource::Override,
                 EvidenceStrength::Override,
             ));
@@ -516,6 +516,19 @@ fn direct_currency_unit(
                 evidence.label
             ))
         })
+}
+
+fn override_currency_unit(
+    symbol: &str,
+    kind: CurrencyKind,
+    currency: Currency,
+) -> Result<ResolvedCurrencyUnit, YfError> {
+    currency.decimal_places().map_err(|err| {
+        YfError::InvalidParams(format!(
+            "invalid {kind:?} currency override for {symbol}: {err}"
+        ))
+    })?;
+    Ok(ResolvedCurrencyUnit::from_currency(currency))
 }
 
 fn cross_kind_cached_resolution(resolved: &ResolvedCurrency) -> ResolvedCurrency {

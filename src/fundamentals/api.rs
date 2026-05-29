@@ -8,6 +8,7 @@ use crate::{
         conversions::{i64_to_datetime, string_to_period},
         currency_resolver::{
             CurrencyHints, CurrencyKind, ReportingCurrencyEvidence, ResolvedCurrencyUnit,
+            project_currency_resolution,
         },
         diagnostics::{optional_money_decimal, optional_price_f64},
         wire::{RawDate, RawDecimal, RawNumU64},
@@ -121,24 +122,22 @@ where
     let (direct_currency, needs_currency) =
         timeseries_currency_evidence(&result_vec, prefix, monetary_keys)?;
     let currency = if needs_currency {
-        match client
-            .resolve_reporting_currency(
-                &symbol,
-                override_currency,
-                ReportingCurrencyEvidence::TimeseriesCurrencyCode(direct_currency.as_deref()),
-                cache_mode,
-                retry_override,
-            )
-            .await
-        {
-            Ok(currency) => {
-                ctx.currency_resolution(&symbol, CurrencyKind::Reporting, &currency)?;
-                Some(currency.into_unit())
-            }
-            Err(err @ YfError::InvalidData(_)) => return Err(err),
-            Err(err) if data_quality == DataQuality::Strict => return Err(err),
-            Err(_) => None,
-        }
+        project_currency_resolution(
+            &mut ctx,
+            &symbol,
+            CurrencyKind::Reporting,
+            direct_currency.as_deref(),
+            client
+                .resolve_reporting_currency(
+                    &symbol,
+                    override_currency,
+                    ReportingCurrencyEvidence::TimeseriesCurrencyCode(direct_currency.as_deref()),
+                    cache_mode,
+                    retry_override,
+                )
+                .await,
+        )?
+        .into_unit()
     } else {
         None
     };
@@ -816,24 +815,22 @@ pub(super) async fn earnings(
         )
         .await;
     let currency = if earnings_has_monetary_values(&e) {
-        match client
-            .resolve_reporting_currency(
-                symbol,
-                override_currency,
-                ReportingCurrencyEvidence::FinancialCurrency(e.financial_currency.as_deref()),
-                cache_mode,
-                retry_override,
-            )
-            .await
-        {
-            Ok(currency) => {
-                ctx.currency_resolution(symbol, CurrencyKind::Reporting, &currency)?;
-                Some(currency.into_unit())
-            }
-            Err(err @ YfError::InvalidData(_)) => return Err(err),
-            Err(err) if data_quality == DataQuality::Strict => return Err(err),
-            Err(_) => None,
-        }
+        project_currency_resolution(
+            &mut ctx,
+            symbol,
+            CurrencyKind::Reporting,
+            e.financial_currency.as_deref(),
+            client
+                .resolve_reporting_currency(
+                    symbol,
+                    override_currency,
+                    ReportingCurrencyEvidence::FinancialCurrency(e.financial_currency.as_deref()),
+                    cache_mode,
+                    retry_override,
+                )
+                .await,
+        )?
+        .into_unit()
     } else {
         None
     };

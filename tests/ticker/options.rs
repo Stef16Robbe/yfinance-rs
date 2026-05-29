@@ -215,7 +215,7 @@ async fn option_chain_uses_response_underlying_identity() {
 }
 
 #[tokio::test]
-async fn option_chain_with_diagnostics_drops_contracts_when_currency_is_invalid() {
+async fn option_chain_with_diagnostics_errors_when_direct_currency_is_invalid() {
     let server = crate::common::setup_server();
     let date = 1_737_072_000_i64;
 
@@ -257,24 +257,13 @@ async fn option_chain_with_diagnostics_drops_contracts_when_currency_is_invalid(
         .unwrap();
     let ticker = Ticker::new(&client, "AAPL");
 
-    let response = ticker
+    let err = ticker
         .option_chain_with_diagnostics(Some(date))
         .await
-        .unwrap();
+        .expect_err("invalid direct option-chain currency should fail");
     mock.assert();
 
-    assert!(response.data.contracts.is_empty());
-    assert!(response.diagnostics.warnings.iter().any(|warning| {
-        matches!(
-            warning,
-            YfWarning::DroppedItem {
-                endpoint: "options",
-                item: "option_contract",
-                key: Some(key),
-                reason: ProjectionIssue::InvalidCurrency { code },
-            } if key == "AAPL250117C00180000" && code == "!!!"
-        )
-    }));
+    assert!(matches!(err, YfError::InvalidData(_)));
 }
 
 #[tokio::test]

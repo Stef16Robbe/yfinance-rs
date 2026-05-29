@@ -436,6 +436,77 @@ async fn price_target_reports_present_prices_when_currency_cannot_be_resolved() 
 }
 
 #[tokio::test]
+async fn earnings_trend_omits_values_when_enriched_currency_is_invalid() {
+    let sym = "BADENRICH";
+    let server = MockServer::start();
+
+    let trend_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "earningsTrend")
+            .query_param("crumb", "crumb");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "quoteSummary": {
+                    "result": [{
+                      "earningsTrend": {
+                        "trend": [{
+                          "period": "0q",
+                          "revenueEstimate": {
+                            "avg": { "raw": 1000 },
+                            "numberOfAnalysts": { "raw": 3 }
+                          }
+                        }]
+                      }
+                    }],
+                    "error": null
+                  }
+                }"#,
+            );
+    });
+    let quote_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", sym);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{"quoteResponse":{"result":[{"symbol":"BADENRICH","quoteType":"EQUITY","financialCurrency":"!!!"}],"error":null}}"#,
+            );
+    });
+
+    let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._api_preference(ApiPreference::ApiOnly)
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let response = AnalysisBuilder::new(&client, sym)
+        .earnings_trend_with_diagnostics(None)
+        .await
+        .unwrap();
+
+    trend_mock.assert();
+    quote_mock.assert();
+    assert_eq!(response.data.len(), 1);
+    assert!(response.data[0].revenue_estimate.avg.is_none());
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::OmittedPresentField {
+            path: "earningsTrend[].revenueEstimate.avg",
+            reason: ProjectionIssue::CurrencyUnresolved,
+            ..
+        }
+    )));
+}
+
+#[tokio::test]
 async fn price_target_accepts_override_currency_in_strict_mode() {
     let sym = "OVERRIDE";
     let server = MockServer::start();

@@ -9,6 +9,7 @@ use crate::{
         client::{CacheEndpoint, CacheMode, RetryConfig, SymbolEndpoint, normalize_symbol},
         currency_resolver::{
             CurrencyHints, CurrencyKind, ResolvedCurrencyUnit, TradingCurrencyEvidence,
+            project_currency_resolution,
         },
         diagnostics::optional_decimal_f64,
         net,
@@ -107,34 +108,23 @@ pub async fn option_chain_with_diagnostics(
         })
     });
 
-    let currency = match client
-        .resolve_trading_currency(
-            &symbol,
-            None,
-            TradingCurrencyEvidence::OptionsQuote(currency_from_response.as_deref()),
-            cache_mode,
-            retry_override,
-        )
-        .await
-    {
-        Ok(currency) => {
-            ctx.currency_resolution(&symbol, CurrencyKind::Trading, &currency)?;
-            Some(currency.into_unit())
-        }
-        Err(err) => {
-            crate::core::logging::trace_debug!(
-                symbol = %symbol,
-                error = %err,
-                "failed to resolve option-chain trading currency"
-            );
-            #[cfg(not(feature = "tracing"))]
-            let _ = &err;
-            None
-        }
-    };
-    let currency_issue = currency
-        .is_none()
-        .then(|| currency_projection_issue(currency_from_response.as_deref()));
+    let currency = project_currency_resolution(
+        &mut ctx,
+        &symbol,
+        CurrencyKind::Trading,
+        currency_from_response.as_deref(),
+        client
+            .resolve_trading_currency(
+                &symbol,
+                None,
+                TradingCurrencyEvidence::OptionsQuote(currency_from_response.as_deref()),
+                cache_mode,
+                retry_override,
+            )
+            .await,
+    )?;
+    let currency_issue = currency.issue().cloned();
+    let currency = currency.into_unit();
     let underlying = underlying_instrument(client, &symbol, underlying_from_response).await?;
 
     let mut contracts = Vec::new();
@@ -462,19 +452,6 @@ fn option_contract_diag_key_from_value(
     let expiration =
         expiration.map_or_else(|| "?".to_string(), |expiration| expiration.to_string());
     format!("{side}[{idx}]@{expiration}")
-}
-
-fn currency_projection_issue(code: Option<&str>) -> ProjectionIssue {
-    let Some(code) = code.map(str::trim).filter(|code| !code.is_empty()) else {
-        return ProjectionIssue::CurrencyUnresolved;
-    };
-    if ResolvedCurrencyUnit::from_code(code).is_none() {
-        ProjectionIssue::InvalidCurrency {
-            code: code.to_string(),
-        }
-    } else {
-        ProjectionIssue::CurrencyUnresolved
-    }
 }
 
 fn underlying_instrument_from_result(node: &OptResultNode) -> Option<Instrument> {

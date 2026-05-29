@@ -11,7 +11,9 @@ use crate::core::{
     DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfError, YfResponse,
     client::{CacheMode, RetryConfig},
     conversions::{i64_to_datetime, string_to_insider_position, string_to_transaction_type},
-    currency_resolver::{CurrencyKind, ReportingCurrencyEvidence, ResolvedCurrencyUnit},
+    currency_resolver::{
+        CurrencyKind, ReportingCurrencyEvidence, ResolvedCurrencyUnit, project_currency_resolution,
+    },
     diagnostics::{optional_decimal_f64, optional_money_u64},
     quotesummary,
 };
@@ -363,14 +365,14 @@ async fn optional_reporting_currency(
         return Ok(None);
     }
 
-    match resolve_reporting_currency(client, symbol, cache_mode, retry_override).await {
-        Ok(currency) => {
-            ctx.currency_resolution(symbol, CurrencyKind::Reporting, &currency)?;
-            Ok(Some(currency.into_unit()))
-        }
-        Err(err) if ctx.policy() == DataQuality::Strict => Err(err),
-        Err(_) => Ok(None),
-    }
+    Ok(project_currency_resolution(
+        ctx,
+        symbol,
+        CurrencyKind::Reporting,
+        None,
+        resolve_reporting_currency(client, symbol, cache_mode, retry_override).await,
+    )?
+    .into_unit())
 }
 
 pub(super) async fn institutional_holders(
