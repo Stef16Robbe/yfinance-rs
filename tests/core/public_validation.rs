@@ -1,4 +1,14 @@
-use std::time::Duration;
+use std::{
+    io::{ErrorKind, Read, Write},
+    net::{SocketAddr, TcpListener},
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+        mpsc::{self, Receiver},
+    },
+    thread::{self, JoinHandle},
+    time::Duration,
+};
 
 use httpmock::Method::GET;
 use url::Url;
@@ -29,6 +39,70 @@ fn assert_invalid_params(err: YfError, expected: &str) {
     }
 }
 
+struct CaptureServer {
+    addr: SocketAddr,
+    stop: Arc<AtomicBool>,
+    requests: Receiver<Vec<u8>>,
+    handle: Option<JoinHandle<()>>,
+}
+
+impl CaptureServer {
+    fn start() -> Self {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let addr = listener.local_addr().unwrap();
+        listener.set_nonblocking(true).unwrap();
+
+        let stop = Arc::new(AtomicBool::new(false));
+        let stop_thread = Arc::clone(&stop);
+        let (tx, requests) = mpsc::channel();
+        let handle = thread::spawn(move || {
+            while !stop_thread.load(Ordering::Relaxed) {
+                match listener.accept() {
+                    Ok((mut stream, _)) => {
+                        stream
+                            .set_read_timeout(Some(Duration::from_millis(200)))
+                            .unwrap();
+                        let mut buffer = [0; 2048];
+                        let bytes_read = stream.read(&mut buffer).unwrap_or(0);
+                        let _ = stream
+                            .write_all(b"HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n");
+                        let _ = tx.send(buffer[..bytes_read].to_vec());
+                        return;
+                    }
+                    Err(err) if err.kind() == ErrorKind::WouldBlock => {
+                        thread::sleep(Duration::from_millis(10));
+                    }
+                    Err(_) => return,
+                }
+            }
+        });
+
+        Self {
+            addr,
+            stop,
+            requests,
+            handle: Some(handle),
+        }
+    }
+
+    fn proxy_url(&self) -> String {
+        format!("http://{}", self.addr)
+    }
+
+    fn recv_timeout(&self, timeout: Duration) -> Result<Vec<u8>, mpsc::RecvTimeoutError> {
+        self.requests.recv_timeout(timeout)
+    }
+}
+
+impl Drop for CaptureServer {
+    fn drop(&mut self) {
+        self.stop.store(true, Ordering::Relaxed);
+        if let Some(handle) = self.handle.take() {
+            let _ = handle.join();
+        }
+    }
+}
+
 #[test]
 fn client_builder_rejects_invalid_retry_backoff_factors() {
     for factor in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, -1.0, 0.0] {
@@ -51,6 +125,41 @@ fn client_builder_rejects_excessive_retry_counts() {
     let err = YfClient::builder().retry_config(cfg).build().unwrap_err();
 
     assert_invalid_params(err, "max_retries");
+}
+
+#[tokio::test]
+async fn general_proxy_routes_https_requests_through_proxy() {
+    let proxy = CaptureServer::start();
+    let target = CaptureServer::start();
+    let target_authority = target.addr.to_string();
+    let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("https://{target_authority}/v7/finance/quote")).unwrap())
+        .try_proxy(&proxy.proxy_url())
+        .unwrap()
+        .timeout(Duration::from_secs(2))
+        .build()
+        .unwrap();
+
+    let result = QuotesBuilder::new(&client).symbols(["AAPL"]).fetch().await;
+
+    assert!(result.is_err());
+    let request = proxy
+        .recv_timeout(Duration::from_secs(2))
+        .expect("HTTPS quote request should be sent to the configured general proxy");
+    let request = String::from_utf8(request).expect("proxy CONNECT request should be UTF-8");
+
+    assert!(
+        request.starts_with("CONNECT "),
+        "expected an HTTPS proxy CONNECT request, got {request:?}"
+    );
+    assert!(
+        request.contains(&target_authority),
+        "expected CONNECT request to target {target_authority}, got {request:?}"
+    );
+    assert!(
+        target.recv_timeout(Duration::from_millis(100)).is_err(),
+        "HTTPS request bypassed the proxy and connected directly to the target"
+    );
 }
 
 #[tokio::test]

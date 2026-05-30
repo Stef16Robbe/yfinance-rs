@@ -28,8 +28,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     println!();
 
-    // Example 2: Using HTTP proxy through builder
-    println!("2. HTTP Proxy Configuration Example:");
+    // Example 2: Using a proxy for all HTTP and HTTPS requests through builder
+    println!("2. General Proxy Configuration Example:");
     // Note: This example uses a dummy proxy URL - replace with actual proxy if needed
     // let client_with_proxy = YfClient::builder()
     //     .proxy("http://proxy.example.com:8080")
@@ -138,7 +138,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!();
     println!("Key points:");
     println!("- Use .custom_client() for full reqwest control");
-    println!("- Use .proxy() for HTTP proxy setup");
+    println!("- Use .proxy() for proxying all HTTP and HTTPS requests");
     println!("- Use .https_proxy() for HTTPS proxy setup");
     println!("- Use .try_proxy() or .try_https_proxy() for error handling");
     println!("- Custom client takes precedence over other HTTP settings");

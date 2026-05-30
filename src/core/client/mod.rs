@@ -699,7 +699,7 @@ impl YfClientBuilder {
         self
     }
 
-    /// Sets an HTTP proxy for all requests.
+    /// Sets a proxy for all HTTP and HTTPS requests.
     ///
     /// This is a convenience method for setting up proxy configuration without
     /// needing to create a full custom client. If you need more advanced proxy
@@ -731,11 +731,11 @@ impl YfClientBuilder {
             url::Url::parse(proxy_url).is_ok(),
             "invalid proxy URL format: {proxy_url}"
         );
-        self.proxy = Some(reqwest::Proxy::http(proxy_url).expect("invalid proxy URL"));
+        self.proxy = Some(reqwest::Proxy::all(proxy_url).expect("invalid proxy URL"));
         self
     }
 
-    /// Sets an HTTP proxy for all requests with error handling.
+    /// Sets a proxy for all HTTP and HTTPS requests with error handling.
     ///
     /// This is a convenience method for setting up proxy configuration without
     /// needing to create a full custom client. If you need more advanced proxy
@@ -760,13 +760,13 @@ impl YfClientBuilder {
         url::Url::parse(proxy_url)
             .map_err(|e| YfError::InvalidParams(format!("invalid proxy URL format: {e}")))?;
 
-        let proxy = reqwest::Proxy::http(proxy_url)
+        let proxy = reqwest::Proxy::all(proxy_url)
             .map_err(|e| YfError::InvalidParams(format!("invalid proxy URL: {e}")))?;
         self.proxy = Some(proxy);
         Ok(self)
     }
 
-    /// Sets an HTTPS proxy for all requests.
+    /// Sets a proxy for HTTPS requests.
     ///
     /// This is a convenience method for setting up HTTPS proxy configuration.
     ///
@@ -800,7 +800,7 @@ impl YfClientBuilder {
         self
     }
 
-    /// Sets an HTTPS proxy for all requests with error handling.
+    /// Sets a proxy for HTTPS requests with error handling.
     ///
     /// This is a convenience method for setting up HTTPS proxy configuration.
     ///

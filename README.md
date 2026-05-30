@@ -560,7 +560,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 #### Proxy Configuration
 
-You can configure HTTP/HTTPS proxies through the builder:
+You can configure general or scheme-specific proxies through the builder:
 
 ```rust
 use yfinance_rs::{YfClient, YfClientBuilder, Ticker};

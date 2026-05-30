@@ -38,6 +38,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- General proxy configuration through `YfClientBuilder::proxy()` and
+  `try_proxy()` now applies to Yahoo's HTTPS requests instead of only matching
+  plain HTTP URLs.
 - `DownloadBuilder` best-effort batches now drop only the symbol whose chart metadata lacks
   a usable instrument kind and report a diagnostic, instead of failing the whole batch.
 - `ScreenerNumber` no longer exposes public enum variants that can bypass
