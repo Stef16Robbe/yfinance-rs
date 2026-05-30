@@ -169,6 +169,63 @@ async fn quote_with_diagnostics_reports_invalid_optional_provider_fields() {
 }
 
 #[tokio::test]
+async fn quote_with_diagnostics_drops_malformed_v7_node_before_valid_sibling() {
+    let server = MockServer::start();
+
+    let body = r#"{
+      "quoteResponse": {
+        "result": [
+          {
+            "symbol":"AAPL",
+            "quoteType": "EQUITY",
+            "regularMarketPrice": "not-a-number"
+          },
+          {
+            "symbol":"AAPL",
+            "quoteType": "EQUITY",
+            "regularMarketPrice": 190.25,
+            "currency": "USD"
+          }
+        ],
+        "error": null
+      }
+    }"#;
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "AAPL");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+    let ticker = Ticker::new(&client, "AAPL");
+
+    let response = ticker.quote_with_diagnostics().await.unwrap();
+    mock.assert();
+
+    assert_eq!(response.data.instrument.symbol.as_str(), "AAPL");
+    assert!(response.data.price.is_some());
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::DroppedItem {
+            endpoint: "quote",
+            item: "quote",
+            key: Some(key),
+            reason: ProjectionIssue::InvalidField {
+                field: "quote",
+                ..
+            },
+        } if key == "AAPL"
+    )));
+}
+
+#[tokio::test]
 async fn quote_v7_usd_crypto_price_keeps_provider_precision() {
     let server = MockServer::start();
 

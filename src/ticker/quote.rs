@@ -55,11 +55,9 @@ pub async fn fetch_quote_with_diagnostics(
 ) -> Result<YfResponse<Quote>, YfError> {
     let mut ctx = ProjectionContext::new("quote", data_quality);
     let symbols = [symbol];
-    let mut results = quotes::fetch_v7_quotes(client, &symbols, cache_mode, retry_override).await?;
-
-    let result = results.pop().ok_or_else(|| {
-        YfError::MissingData(format!("no quote result found for symbol {symbol}"))
-    })?;
+    let results =
+        quotes::fetch_v7_quote_values(client, &symbols, cache_mode, retry_override).await?;
+    let result = quotes::required_quote_node_from_values_with_context(results, symbol, &mut ctx)?;
 
     let quote = result.to_quote_with_context(&mut ctx)?;
     Ok(ctx.finish(quote))
@@ -91,11 +89,9 @@ pub async fn fetch_fast_info_with_diagnostics(
 ) -> Result<YfResponse<FastInfo>, YfError> {
     let mut ctx = ProjectionContext::new("fast_info", data_quality);
     let symbols = [symbol];
-    let mut results = quotes::fetch_v7_quotes(client, &symbols, cache_mode, retry_override).await?;
-
-    let result = results.pop().ok_or_else(|| {
-        YfError::MissingData(format!("no quote result found for symbol {symbol}"))
-    })?;
+    let results =
+        quotes::fetch_v7_quote_values(client, &symbols, cache_mode, retry_override).await?;
+    let result = quotes::required_quote_node_from_values_with_context(results, symbol, &mut ctx)?;
 
     let snapshot = result.to_snapshot_with_context(&mut ctx)?;
     Ok(ctx.finish(snapshot))
@@ -128,17 +124,20 @@ pub async fn fetch_key_statistics_with_diagnostics(
     let mut ctx = ProjectionContext::new("key_statistics", data_quality);
     let symbols = [symbol];
     let (quote_res, quote_summary_res) = tokio::join!(
-        quotes::fetch_v7_quotes(client, &symbols, cache_mode, retry_override),
+        quotes::fetch_v7_quote_values(client, &symbols, cache_mode, retry_override),
         quotes::fetch_quote_summary_key_statistics(client, symbol, cache_mode, retry_override)
     );
 
-    let mut results = quote_res?;
-
-    let result = results.pop().ok_or_else(|| {
-        YfError::MissingData(format!("no quote result found for symbol {symbol}"))
-    })?;
-
-    let stats = result.to_key_statistics_with_context(&mut ctx)?;
+    let results = quote_res?;
+    if results.is_empty() {
+        return Err(YfError::MissingData(format!(
+            "no quote result found for symbol {symbol}"
+        )));
+    }
+    let stats = match quotes::first_quote_node_from_values_with_context(results, &mut ctx)? {
+        Some(result) => result.to_key_statistics_with_context(&mut ctx)?,
+        None => KeyStatistics::default(),
+    };
     let stats = match log_err(
         &mut ctx,
         quote_summary_res,

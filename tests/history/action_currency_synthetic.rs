@@ -150,3 +150,53 @@ async fn candles_without_resolved_currency_are_dropped_with_diagnostics() {
         })
     ));
 }
+
+#[tokio::test]
+async fn candles_with_invalid_chart_currency_are_dropped_with_diagnostics() {
+    let server = MockServer::start();
+    let body = r#"{
+      "chart":{"result":[{
+        "meta":{"currency":"!!!","timezone":"America/New_York","gmtoffset":-14400},
+        "timestamp":[1704067200],
+        "indicators":{"quote":[{
+          "open":[100.0],"high":[101.0],"low":[99.0],"close":[100.5],"volume":[1000]
+        }],"adjclose":[{"adjclose":[100.5]}]}
+      }],"error":null}
+    }"#;
+
+    let mock = server.mock(|when, then| {
+        when.method(GET).path("/v8/finance/chart/BADCURRENCY");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let client = YfClient::builder()
+        .base_chart(Url::parse(&format!("{}/v8/finance/chart/", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+
+    let response = HistoryBuilder::new(&client, "BADCURRENCY")
+        .fetch_full_with_diagnostics()
+        .await
+        .expect("best-effort invalid chart currency should not abort history");
+
+    assert!(response.data.candles.is_empty());
+    assert!(matches!(
+        response.diagnostics.warnings.first(),
+        Some(YfWarning::DroppedItem {
+            item: "candle",
+            reason: ProjectionIssue::InvalidCurrency { code },
+            ..
+        }) if code == "!!!"
+    ));
+
+    let err = HistoryBuilder::new(&client, "BADCURRENCY")
+        .strict()
+        .fetch_full()
+        .await
+        .unwrap_err();
+
+    mock.assert_calls(2);
+    assert!(matches!(err, yfinance_rs::YfError::DataQuality(_)));
+}

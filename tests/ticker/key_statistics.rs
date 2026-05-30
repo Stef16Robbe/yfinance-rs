@@ -214,6 +214,79 @@ async fn key_statistics_with_diagnostics_reports_invalid_financial_currency() {
 }
 
 #[tokio::test]
+async fn key_statistics_with_diagnostics_drops_malformed_v7_node_before_valid_sibling() {
+    let server = MockServer::start();
+    let sym = "AAPL";
+    let crumb = "test-crumb";
+    let quote_body = r#"{
+      "quoteResponse": {
+        "result": [
+          {
+            "symbol": "AAPL",
+            "quoteType": "EQUITY",
+            "marketCap": "not-a-number"
+          },
+          {
+            "symbol": "AAPL",
+            "quoteType": "EQUITY",
+            "currency": "USD",
+            "marketCap": 3000000000000
+          }
+        ],
+        "error": null
+      }
+    }"#;
+
+    let quote_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", sym);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(quote_body);
+    });
+    let key_statistics_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", crate::common::KEY_STATISTICS_MODULES)
+            .query_param("crumb", crumb);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(r#"{"quoteSummary":{"result":[{}],"error":null}}"#);
+    });
+
+    let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._preauth("cookie", crumb)
+        .build()
+        .unwrap();
+
+    let response = Ticker::new(&client, sym)
+        .key_statistics_with_diagnostics()
+        .await
+        .unwrap();
+
+    quote_mock.assert();
+    key_statistics_mock.assert();
+    assert!(response.data.market_cap.is_some());
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::DroppedItem {
+            endpoint: "key_statistics",
+            item: "quote",
+            key: Some(key),
+            reason: ProjectionIssue::InvalidField {
+                field: "quote",
+                ..
+            },
+        } if key == sym
+    )));
+}
+
+#[tokio::test]
 async fn key_statistics_market_cap_preserves_large_integer_precision() {
     let server = MockServer::start();
     let sym = "BIG";

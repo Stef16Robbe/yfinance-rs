@@ -163,6 +163,103 @@ async fn statements_use_timeseries_currency_code_before_enrichment() {
 }
 
 #[tokio::test]
+async fn conflicting_timeseries_currency_codes_omit_only_conflicting_values() {
+    let server = MockServer::start();
+    let sym = "MIXEDCURRENCY";
+    let body = r#"{
+      "timeseries": {
+        "result": [{
+          "meta": { "type": ["annualTotalRevenue"] },
+          "timestamp": [1704067200, 1735689600],
+          "annualTotalRevenue": [
+            {
+              "asOfDate": "2024-01-01",
+              "periodType": "12M",
+              "currencyCode": "USD",
+              "reportedValue": {"raw": 42.0}
+            },
+            {
+              "asOfDate": "2025-01-01",
+              "periodType": "12M",
+              "currencyCode": "EUR",
+              "reportedValue": {"raw": 43.0}
+            }
+          ]
+        }],
+        "error": null
+      }
+    }"#;
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!(
+                "/ws/fundamentals-timeseries/v1/finance/timeseries/{sym}"
+            ))
+            .query_param_exists("type")
+            .query_param("crumb", "crumb");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let client = YfClient::builder()
+        .base_timeseries(
+            Url::parse(&format!(
+                "{}/ws/fundamentals-timeseries/v1/finance/timeseries/",
+                server.base_url()
+            ))
+            .unwrap(),
+        )
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let response = FundamentalsBuilder::new(&client, sym)
+        .income_statement_with_diagnostics(false, None)
+        .await
+        .expect("best-effort currency conflict should not abort the statement");
+
+    assert_eq!(response.data.len(), 2);
+    let valid = response
+        .data
+        .iter()
+        .find(|row| row.period.to_string() == "2024-01-01")
+        .unwrap();
+    let conflicting = response
+        .data
+        .iter()
+        .find(|row| row.period.to_string() == "2025-01-01")
+        .unwrap();
+    assert_eq!(
+        valid.total_revenue.as_ref().map(Money::currency),
+        Some(&Currency::Iso(IsoCurrency::USD))
+    );
+    assert!(conflicting.total_revenue.is_none());
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::OmittedPresentField {
+            path: "timeseries.reportedValue",
+            key: Some(key),
+            reason: ProjectionIssue::InvalidField {
+                field: "currencyCode",
+                details,
+            },
+            ..
+        } if key == "TotalRevenue@1735689600"
+            && details.contains("conflicting timeseries currencyCode values")
+    )));
+
+    let err = FundamentalsBuilder::new(&client, sym)
+        .strict()
+        .income_statement(false, None)
+        .await
+        .unwrap_err();
+
+    mock.assert_calls(2);
+    assert!(matches!(err, YfError::DataQuality(_)));
+}
+
+#[tokio::test]
 async fn invalid_timeseries_currency_code_is_best_effort_diagnostic() {
     let server = MockServer::start();
     let sym = "BADCURRENCY";

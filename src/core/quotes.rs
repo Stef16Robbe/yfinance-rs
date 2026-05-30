@@ -798,6 +798,29 @@ pub fn quote_node_from_value_with_context(
     }
 }
 
+pub fn first_quote_node_from_values_with_context(
+    values: Vec<Value>,
+    ctx: &mut ProjectionContext,
+) -> Result<Option<V7QuoteNode>, YfError> {
+    for (idx, value) in values.into_iter().enumerate() {
+        if let Some(node) = quote_node_from_value_with_context(value, idx, ctx)? {
+            return Ok(Some(node));
+        }
+    }
+
+    Ok(None)
+}
+
+pub fn required_quote_node_from_values_with_context(
+    values: Vec<Value>,
+    symbol: &str,
+    ctx: &mut ProjectionContext,
+) -> Result<V7QuoteNode, YfError> {
+    first_quote_node_from_values_with_context(values, ctx)?.ok_or_else(|| {
+        YfError::MissingData(format!("no valid quote result found for symbol {symbol}"))
+    })
+}
+
 fn quote_node_diag_key_from_value(value: &Value, idx: usize) -> String {
     value
         .get("symbol")

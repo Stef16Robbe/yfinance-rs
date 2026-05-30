@@ -9,7 +9,7 @@ use crate::core::{
     client::{CacheMode, RetryConfig, normalize_symbol},
     currency_resolver::{
         CorporateActionCurrencyEvidence, CurrencyHints, CurrencyKind, ResolvedCurrencyUnit,
-        TradingCurrencyEvidence,
+        TradingCurrencyEvidence, project_currency_resolution,
     },
 };
 use crate::history::wire::MetaNode;
@@ -345,36 +345,33 @@ async fn history_trading_currency(
     retry_override: Option<&RetryConfig>,
     ctx: &mut ProjectionContext,
 ) -> Result<Option<ResolvedCurrencyUnit>, YfError> {
-    match client
-        .resolve_trading_currency(
-            symbol,
-            None,
-            TradingCurrencyEvidence::ChartMeta(chart_currency),
-            cache_mode,
-            retry_override,
-        )
-        .await
-    {
-        Ok(currency) => {
-            ctx.currency_resolution(symbol, CurrencyKind::Trading, &currency)?;
-            Ok(Some(currency.into_unit()))
-        }
-        Err(err @ YfError::InvalidData(_)) => Err(err),
-        Err(err) if ctx.policy() == DataQuality::Strict => Err(err),
-        Err(err) => {
-            ctx.dropped_item("candle", None, history_currency_issue(&err))?;
-            Ok(None)
-        }
-    }
-}
+    let projected = project_currency_resolution(
+        ctx,
+        symbol,
+        CurrencyKind::Trading,
+        chart_currency,
+        client
+            .resolve_trading_currency(
+                symbol,
+                None,
+                TradingCurrencyEvidence::ChartMeta(chart_currency),
+                cache_mode,
+                retry_override,
+            )
+            .await,
+    )?;
 
-fn history_currency_issue(err: &YfError) -> ProjectionIssue {
-    match err {
-        YfError::MissingData(_) => ProjectionIssue::CurrencyUnresolved,
-        _ => ProjectionIssue::ProviderError {
-            message: err.to_string(),
-        },
+    let issue = projected.issue().cloned();
+    if let Some(currency) = projected.into_unit() {
+        return Ok(Some(currency));
     }
+
+    ctx.dropped_item(
+        "candle",
+        None,
+        issue.unwrap_or(ProjectionIssue::CurrencyUnresolved),
+    )?;
+    Ok(None)
 }
 
 #[allow(clippy::too_many_arguments)]

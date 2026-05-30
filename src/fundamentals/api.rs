@@ -34,6 +34,8 @@ const SHARE_COUNT_LOOKBACK_DAYS: i64 = 548;
 
 #[derive(serde::Deserialize)]
 struct TimeseriesValueDecimal {
+    #[serde(rename = "currencyCode")]
+    currency_code: Option<String>,
     #[serde(rename = "reportedValue")]
     reported_value: Option<RawDecimal>,
 }
@@ -65,6 +67,8 @@ struct TimeseriesItem<'a, T> {
     prefix: &'a str,
     currency: Option<&'a ResolvedCurrencyUnit>,
     currency_issue: Option<&'a ProjectionIssue>,
+    expected_currency_code: Option<&'a str>,
+    ignore_value_currency_codes: bool,
     ctx: &'a mut ProjectionContext,
 }
 
@@ -90,24 +94,17 @@ where
     let symbol = normalize_symbol(symbol)?;
 
     let mut ctx = ProjectionContext::new(endpoint_name, data_quality);
+    let has_currency_override = override_currency.is_some();
     let prefix = if quarterly { "quarterly" } else { "annual" };
     let url = timeseries_url(client, &symbol, prefix, keys)?;
-    let endpoint = format!("timeseries_{endpoint_name}_{prefix}");
-    let (body, _) = crate::core::net::fetch_text_with_auth_retry(
+    let body = fetch_timeseries_body(
         client,
+        &symbol,
+        endpoint_name,
+        prefix,
         url,
-        crate::core::net::AuthFetchConfig {
-            auth_mode: crate::core::net::AuthMode::RequiredCrumb,
-            cache_endpoint: CacheEndpoint::Fundamentals,
-            cache_mode,
-            cache_body: None,
-            retry_override,
-            endpoint: &endpoint,
-            fixture_key: &symbol,
-            ext: "json",
-            retry_on_invalid_crumb_body: true,
-        },
-        |url| client.http().get(url),
+        cache_mode,
+        retry_override,
     )
     .await?;
 
@@ -123,7 +120,7 @@ where
     }
 
     let (direct_currency, needs_currency) =
-        timeseries_currency_evidence(&result_vec, prefix, monetary_keys)?;
+        timeseries_currency_evidence(&result_vec, prefix, monetary_keys);
     let (currency, currency_issue) = if needs_currency {
         let projected_currency = project_currency_resolution(
             &mut ctx,
@@ -175,12 +172,45 @@ where
                 prefix,
                 currency: currency.as_ref(),
                 currency_issue: currency_issue.as_ref(),
+                expected_currency_code: direct_currency.as_deref(),
+                ignore_value_currency_codes: has_currency_override,
                 ctx: &mut ctx,
             })?;
         }
     }
 
     Ok(ctx.finish(rows_map.into_values().rev().collect()))
+}
+
+async fn fetch_timeseries_body(
+    client: &YfClient,
+    symbol: &str,
+    endpoint_name: &'static str,
+    prefix: &str,
+    url: Url,
+    cache_mode: CacheMode,
+    retry_override: Option<&RetryConfig>,
+) -> Result<String, YfError> {
+    let endpoint = format!("timeseries_{endpoint_name}_{prefix}");
+    let (body, _) = crate::core::net::fetch_text_with_auth_retry(
+        client,
+        url,
+        crate::core::net::AuthFetchConfig {
+            auth_mode: crate::core::net::AuthMode::RequiredCrumb,
+            cache_endpoint: CacheEndpoint::Fundamentals,
+            cache_mode,
+            cache_body: None,
+            retry_override,
+            endpoint: &endpoint,
+            fixture_key: symbol,
+            ext: "json",
+            retry_on_invalid_crumb_body: true,
+        },
+        |url| client.http().get(url),
+    )
+    .await?;
+
+    Ok(body)
 }
 
 fn timeseries_url(
@@ -245,7 +275,7 @@ fn timeseries_currency_evidence(
     result: &[TimeseriesData],
     prefix: &str,
     monetary_keys: &[&str],
-) -> Result<(Option<String>, bool), YfError> {
+) -> (Option<String>, bool) {
     let monetary_types = monetary_keys
         .iter()
         .map(|key| format!("{prefix}{key}"))
@@ -284,20 +314,12 @@ fn timeseries_currency_evidence(
                     continue;
                 };
 
-                if let Some(existing) = currency_code.as_deref()
-                    && existing != code
-                {
-                    return Err(YfError::InvalidData(format!(
-                        "conflicting timeseries currencyCode values for {key}: {existing} and {code}"
-                    )));
-                }
-
                 currency_code.get_or_insert_with(|| code.to_string());
             }
         }
     }
 
-    Ok((currency_code, needs_currency))
+    (currency_code, needs_currency)
 }
 
 fn period_from_timestamp(timestamp: i64) -> Result<Period, YfError> {
@@ -375,6 +397,41 @@ fn reported_share_count_at(
         .and_then(|value| value.reported_value.and_then(|reported| reported.raw))
 }
 
+fn timeseries_value_currency_issue(
+    value: &TimeseriesValueDecimal,
+    expected_code: Option<&str>,
+    ignore_value_currency_codes: bool,
+) -> Option<ProjectionIssue> {
+    if ignore_value_currency_codes {
+        return None;
+    }
+
+    let code = value
+        .currency_code
+        .as_deref()
+        .map(str::trim)
+        .filter(|code| !code.is_empty())?;
+
+    if ResolvedCurrencyUnit::from_code(code).is_none() {
+        return Some(ProjectionIssue::InvalidCurrency {
+            code: code.to_string(),
+        });
+    }
+
+    if let Some(expected) = expected_code
+        .map(str::trim)
+        .filter(|expected| !expected.is_empty())
+        && expected != code
+    {
+        return Some(ProjectionIssue::InvalidField {
+            field: "currencyCode",
+            details: format!("conflicting timeseries currencyCode values: {expected} and {code}"),
+        });
+    }
+
+    None
+}
+
 fn row_for_timestamp<'a, T>(
     ctx: &mut ProjectionContext,
     rows_map: &'a mut BTreeMap<i64, T>,
@@ -416,6 +473,8 @@ fn process_statement_money_values<T>(
         prefix,
         currency,
         currency_issue,
+        expected_currency_code,
+        ignore_value_currency_codes,
         ctx,
     } = item;
 
@@ -440,15 +499,30 @@ fn process_statement_money_values<T>(
         };
 
         let value = reported_decimal_at(&values, idx);
-        let money = optional_money_decimal_with_currency_issue(
-            ctx,
-            "timeseries.reportedValue",
-            Some(row_key),
-            currency,
-            currency_issue,
-            value,
-            "statement monetary value",
-        )?;
+        let currency_issue_for_value = value.and_then(|_| {
+            parsed_timeseries_value(&values, idx).and_then(|parsed| {
+                timeseries_value_currency_issue(
+                    parsed,
+                    expected_currency_code,
+                    ignore_value_currency_codes,
+                )
+            })
+        });
+        let money = match currency_issue_for_value {
+            Some(issue) => {
+                ctx.omitted_present_field("timeseries.reportedValue", Some(row_key), issue)?;
+                None
+            }
+            None => optional_money_decimal_with_currency_issue(
+                ctx,
+                "timeseries.reportedValue",
+                Some(row_key),
+                currency,
+                currency_issue,
+                value,
+                "statement monetary value",
+            )?,
+        };
 
         assign_money(row, field, money);
     }

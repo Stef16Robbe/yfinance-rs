@@ -80,6 +80,7 @@ pub(super) async fn fetch_info_with_diagnostics(
         cache_mode,
         retry_override,
         data_quality,
+        &mut ctx,
     ))
     .await?;
     let (quote_summary_key_statistics, profile, price_target, rec_summary, calendar) =
@@ -172,6 +173,7 @@ async fn fetch_info_parts(
     cache_mode: CacheMode,
     retry_override: Option<&RetryConfig>,
     data_quality: DataQuality,
+    ctx: &mut ProjectionContext,
 ) -> Result<
     (
         crate::core::quotes::V7QuoteNode,
@@ -181,14 +183,12 @@ async fn fetch_info_parts(
 > {
     let symbols = [symbol];
     let (quote_res, quote_summary_res) = tokio::join!(
-        crate::core::quotes::fetch_v7_quotes(client, &symbols, cache_mode, retry_override),
+        crate::core::quotes::fetch_v7_quote_values(client, &symbols, cache_mode, retry_override),
         fetch_info_quote_summary_parts(client, symbol, cache_mode, retry_override, data_quality)
     );
 
-    let mut quotes = quote_res?;
-    let quote = quotes.pop().ok_or_else(|| {
-        YfError::MissingData(format!("no quote result found for symbol {symbol}"))
-    })?;
+    let quote =
+        crate::core::quotes::required_quote_node_from_values_with_context(quote_res?, symbol, ctx)?;
     Ok((quote, quote_summary_res))
 }
 
