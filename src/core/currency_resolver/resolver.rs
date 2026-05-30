@@ -3,7 +3,7 @@ use super::{
     ReportingCurrencyEvidence, ResolvedCurrency, ResolvedCurrencyUnit, TradingCurrencyEvidence,
     hints::CurrencyHintField,
     inference,
-    types::{CurrencySource, EvidenceStrength},
+    types::{CurrencySource, EvidenceStrength, InvalidCurrencyEvidence},
 };
 use crate::core::{
     YfClient, YfError,
@@ -348,9 +348,16 @@ impl YfClient {
         retry_override: Option<&RetryConfig>,
         provisional: Option<&ResolvedCurrency>,
     ) -> Result<ResolvedCurrency, YfError> {
+        let mut invalid_evidence = Vec::new();
+
         if let Some(resolved) = self
-            .resolve_first_hint(symbol, CurrencyKind::Trading, &TRADING_CACHED_HINTS)
-            .await?
+            .resolve_first_hint(
+                symbol,
+                CurrencyKind::Trading,
+                &TRADING_CACHED_HINTS,
+                &mut invalid_evidence,
+            )
+            .await
         {
             return Ok(resolved);
         }
@@ -358,8 +365,13 @@ impl YfClient {
         self.enrich_quote_hints(symbol, cache_mode, retry_override)
             .await;
         if let Some(resolved) = self
-            .resolve_first_hint(symbol, CurrencyKind::Trading, &TRADING_QUOTE_HINTS)
-            .await?
+            .resolve_first_hint(
+                symbol,
+                CurrencyKind::Trading,
+                &TRADING_QUOTE_HINTS,
+                &mut invalid_evidence,
+            )
+            .await
         {
             return Ok(resolved);
         }
@@ -370,7 +382,8 @@ impl YfClient {
                 unit,
                 CurrencySource::ListingHeuristic,
                 EvidenceStrength::ListingHeuristic,
-            );
+            )
+            .with_invalid_evidence(std::mem::take(&mut invalid_evidence));
             self.store_resolved_currency(symbol, CurrencyKind::Trading, resolved.clone())
                 .await;
             return Ok(resolved);
@@ -379,14 +392,29 @@ impl YfClient {
         self.enrich_profile_hints(symbol, cache_mode, retry_override)
             .await;
         if let Some(resolved) = self
-            .resolve_first_hint(symbol, CurrencyKind::Trading, &TRADING_PROFILE_HINTS)
-            .await?
+            .resolve_first_hint(
+                symbol,
+                CurrencyKind::Trading,
+                &TRADING_PROFILE_HINTS,
+                &mut invalid_evidence,
+            )
+            .await
         {
             return Ok(resolved);
         }
 
         if let Some(resolved) = provisional {
-            return Ok(resolved.clone());
+            return Ok(resolved
+                .clone()
+                .with_invalid_evidence(std::mem::take(&mut invalid_evidence)));
+        }
+
+        if let Some(invalid) = invalid_evidence.first() {
+            return Err(invalid_currency_evidence_error(
+                symbol,
+                CurrencyKind::Trading,
+                invalid,
+            ));
         }
 
         Err(YfError::MissingData(format!(
@@ -401,9 +429,16 @@ impl YfClient {
         retry_override: Option<&RetryConfig>,
         provisional: Option<&ResolvedCurrency>,
     ) -> Result<ResolvedCurrency, YfError> {
+        let mut invalid_evidence = Vec::new();
+
         if let Some(resolved) = self
-            .resolve_first_hint(symbol, CurrencyKind::Reporting, &REPORTING_CACHED_HINTS)
-            .await?
+            .resolve_first_hint(
+                symbol,
+                CurrencyKind::Reporting,
+                &REPORTING_CACHED_HINTS,
+                &mut invalid_evidence,
+            )
+            .await
         {
             return Ok(resolved);
         }
@@ -411,8 +446,13 @@ impl YfClient {
         self.enrich_quote_hints(symbol, cache_mode, retry_override)
             .await;
         if let Some(resolved) = self
-            .resolve_first_hint(symbol, CurrencyKind::Reporting, &REPORTING_QUOTE_HINTS)
-            .await?
+            .resolve_first_hint(
+                symbol,
+                CurrencyKind::Reporting,
+                &REPORTING_QUOTE_HINTS,
+                &mut invalid_evidence,
+            )
+            .await
         {
             return Ok(resolved);
         }
@@ -424,8 +464,9 @@ impl YfClient {
                 symbol,
                 CurrencyKind::Reporting,
                 &REPORTING_QUOTE_SUMMARY_HINTS,
+                &mut invalid_evidence,
             )
-            .await?
+            .await
         {
             return Ok(resolved);
         }
@@ -433,14 +474,29 @@ impl YfClient {
         self.enrich_profile_hints(symbol, cache_mode, retry_override)
             .await;
         if let Some(resolved) = self
-            .resolve_first_hint(symbol, CurrencyKind::Reporting, &REPORTING_PROFILE_HINTS)
-            .await?
+            .resolve_first_hint(
+                symbol,
+                CurrencyKind::Reporting,
+                &REPORTING_PROFILE_HINTS,
+                &mut invalid_evidence,
+            )
+            .await
         {
             return Ok(resolved);
         }
 
         if let Some(resolved) = provisional {
-            return Ok(resolved.clone());
+            return Ok(resolved
+                .clone()
+                .with_invalid_evidence(std::mem::take(&mut invalid_evidence)));
+        }
+
+        if let Some(invalid) = invalid_evidence.first() {
+            return Err(invalid_currency_evidence_error(
+                symbol,
+                CurrencyKind::Reporting,
+                invalid,
+            ));
         }
 
         Err(YfError::MissingData(format!(
@@ -453,27 +509,27 @@ impl YfClient {
         symbol: &str,
         kind: CurrencyKind,
         evidence: &[HintEvidence],
-    ) -> Result<Option<ResolvedCurrency>, YfError> {
+        invalid_evidence: &mut Vec<InvalidCurrencyEvidence>,
+    ) -> Option<ResolvedCurrency> {
         let hints = self.cached_currency_hints(symbol).await;
         for hint in evidence {
             if let Some(code) = hints.invalid_code(hint.field) {
-                return Err(YfError::InvalidData(format!(
-                    "invalid {kind:?} currency code for {symbol} in {:?}: {code}",
-                    hint.field
-                )));
+                push_invalid_currency_evidence(invalid_evidence, hint.field, code);
+                continue;
             }
 
             let unit = hints.unit(hint.field).cloned();
 
             if let Some(unit) = unit {
-                let resolved = ResolvedCurrency::new(unit, hint.source, hint.strength);
+                let resolved = ResolvedCurrency::new(unit, hint.source, hint.strength)
+                    .with_invalid_evidence(std::mem::take(invalid_evidence));
                 self.store_resolved_currency(symbol, kind, resolved.clone())
                     .await;
-                return Ok(Some(resolved));
+                return Some(resolved);
             }
         }
 
-        Ok(None)
+        None
     }
 
     async fn cached_resolution_is_final(
@@ -531,6 +587,34 @@ fn override_currency_unit(
     Ok(ResolvedCurrencyUnit::from_currency(currency))
 }
 
+fn invalid_currency_evidence_error(
+    symbol: &str,
+    kind: CurrencyKind,
+    invalid: &InvalidCurrencyEvidence,
+) -> YfError {
+    YfError::InvalidData(format!(
+        "invalid {kind:?} currency code for {symbol} in {}: {}",
+        invalid.path(),
+        invalid.code()
+    ))
+}
+
+fn push_invalid_currency_evidence(
+    invalid_evidence: &mut Vec<InvalidCurrencyEvidence>,
+    field: CurrencyHintField,
+    code: &str,
+) {
+    let path = field.provider_path();
+    if invalid_evidence
+        .iter()
+        .any(|invalid| invalid.path() == path && invalid.code() == code)
+    {
+        return;
+    }
+
+    invalid_evidence.push(InvalidCurrencyEvidence::new(path, code));
+}
+
 fn cross_kind_cached_resolution(resolved: &ResolvedCurrency) -> ResolvedCurrency {
     if resolved.source() == CurrencySource::DirectProvider {
         ResolvedCurrency::new(
@@ -538,6 +622,7 @@ fn cross_kind_cached_resolution(resolved: &ResolvedCurrency) -> ResolvedCurrency
             CurrencySource::CachedProvider,
             resolved.strength(),
         )
+        .with_invalid_evidence(resolved.invalid_evidence().iter().cloned())
     } else {
         resolved.clone()
     }

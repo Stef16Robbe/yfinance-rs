@@ -163,7 +163,7 @@ async fn statements_use_timeseries_currency_code_before_enrichment() {
 }
 
 #[tokio::test]
-async fn invalid_timeseries_currency_code_is_invalid_data() {
+async fn invalid_timeseries_currency_code_is_best_effort_diagnostic() {
     let server = MockServer::start();
     let sym = "BADCURRENCY";
     let body = r#"{
@@ -217,14 +217,23 @@ async fn invalid_timeseries_currency_code_is_invalid_data() {
         .build()
         .unwrap();
 
-    let err = Ticker::new(&client, sym)
-        .income_stmt(None)
+    let response = FundamentalsBuilder::new(&client, sym)
+        .income_statement_with_diagnostics(false, None)
         .await
-        .expect_err("invalid direct timeseries currency should fail");
+        .expect("best-effort invalid direct timeseries currency should not fail");
 
     timeseries_mock.assert();
     assert_eq!(quote_mock.calls(), 0);
-    assert!(matches!(err, YfError::InvalidData(_)));
+    assert_eq!(response.data.len(), 1);
+    assert!(response.data[0].total_revenue.is_none());
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::OmittedPresentField {
+            path: "timeseries.reportedValue",
+            reason: ProjectionIssue::InvalidCurrency { code },
+            ..
+        } if code == "!!!"
+    )));
 }
 
 #[tokio::test]
@@ -294,8 +303,8 @@ async fn statements_omit_values_when_enriched_currency_is_invalid() {
         warning,
         YfWarning::OmittedPresentField {
             path: "timeseries.reportedValue",
-            reason: ProjectionIssue::CurrencyUnresolved,
+            reason: ProjectionIssue::InvalidCurrency { code },
             ..
-        }
+        } if code == "!!!"
     )));
 }

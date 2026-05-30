@@ -2,9 +2,12 @@ use super::{
     AnalystEstimateCurrencyEvidence, CorporateActionCurrencyEvidence, CurrencyHints, CurrencyKind,
     ReportingCurrencyEvidence, ResolvedCurrency, ResolvedCurrencyUnit, TradingCurrencyEvidence,
     hints::CurrencyHintField,
+    project_currency_resolution,
     types::{CurrencySource, EvidenceStrength},
 };
-use crate::core::{YfClient, client::CacheMode};
+use crate::core::{
+    DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfWarning, client::CacheMode,
+};
 use httpmock::{Method::GET, MockServer};
 use paft::Decimal;
 use paft::money::{Currency, IsoCurrency};
@@ -355,6 +358,107 @@ async fn invalid_enriched_currency_is_invalid_data() {
             .hint(CurrencyHintField::Quote)
             .is_unknown()
     );
+}
+
+#[tokio::test]
+#[allow(clippy::used_underscore_items)]
+async fn invalid_reporting_quote_hint_falls_back_to_quote_summary_hint() {
+    let server = MockServer::start();
+    let quote_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "BAD");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{"quoteResponse":{"result":[{"symbol":"BAD","quoteType":"EQUITY","financialCurrency":"!!!"}],"error":null}}"#,
+            );
+    });
+    let quote_summary_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v10/finance/quoteSummary/BAD")
+            .query_param("modules", "financialData,earnings");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{"quoteSummary":{"result":[{"financialData":{"financialCurrency":"USD"}}],"error":null}}"#,
+            );
+    });
+    let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let resolved = client
+        .resolve_reporting_currency(
+            "BAD",
+            None,
+            ReportingCurrencyEvidence::None,
+            CacheMode::Use,
+            None,
+        )
+        .await
+        .expect("valid quoteSummary hint should outrank invalid quote hint");
+
+    assert_eq!(quote_mock.calls(), 1);
+    assert_eq!(quote_summary_mock.calls(), 1);
+    assert_eq!(currency(&resolved.unit), Currency::Iso(IsoCurrency::USD));
+    assert_eq!(resolved.source(), CurrencySource::QuoteSummaryEnrichment);
+    assert_eq!(
+        resolved
+            .invalid_evidence()
+            .iter()
+            .map(|invalid| (invalid.path(), invalid.code()))
+            .collect::<Vec<_>>(),
+        vec![("financialCurrency", "!!!")]
+    );
+
+    let mut ctx = ProjectionContext::new("currency_test", DataQuality::BestEffort);
+    let projected =
+        project_currency_resolution(&mut ctx, "BAD", CurrencyKind::Reporting, None, Ok(resolved))
+            .expect("best-effort projection should keep valid fallback currency");
+    assert!(projected.into_unit().is_some());
+
+    let response = ctx.finish(());
+    assert!(response.diagnostics.warnings.iter().any(|warning| {
+        matches!(
+            warning,
+            YfWarning::OmittedPresentField {
+                endpoint: "currency_test",
+                path: "financialCurrency",
+                key: Some(key),
+                reason: ProjectionIssue::InvalidCurrency { code },
+            } if key == "BAD" && code == "!!!"
+        )
+    }));
+}
+
+#[tokio::test]
+async fn invalid_direct_currency_projects_as_omitted_data() {
+    let mut ctx = ProjectionContext::new("currency_test", DataQuality::BestEffort);
+
+    let projected = project_currency_resolution(
+        &mut ctx,
+        "TEST",
+        CurrencyKind::Reporting,
+        Some("!!!"),
+        Err(crate::core::YfError::InvalidData(
+            "invalid reporting currency code for TEST from financialCurrency: !!!".to_string(),
+        )),
+    )
+    .expect("best-effort projection should not hard fail invalid direct provider code");
+
+    assert_eq!(
+        projected.issue(),
+        Some(&ProjectionIssue::InvalidCurrency {
+            code: "!!!".to_string()
+        })
+    );
+    assert!(projected.into_unit().is_none());
 }
 
 #[tokio::test]

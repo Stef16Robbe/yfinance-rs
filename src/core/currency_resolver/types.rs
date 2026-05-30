@@ -40,11 +40,35 @@ impl EvidenceStrength {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) struct InvalidCurrencyEvidence {
+    path: &'static str,
+    code: String,
+}
+
+impl InvalidCurrencyEvidence {
+    pub(super) fn new(path: &'static str, code: impl Into<String>) -> Self {
+        Self {
+            path,
+            code: code.into(),
+        }
+    }
+
+    pub(super) const fn path(&self) -> &'static str {
+        self.path
+    }
+
+    pub(super) fn code(&self) -> &str {
+        &self.code
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct ResolvedCurrency {
     pub(super) unit: ResolvedCurrencyUnit,
     pub(super) source: CurrencySource,
     pub(super) strength: EvidenceStrength,
+    invalid_evidence: Vec<InvalidCurrencyEvidence>,
 }
 
 impl ResolvedCurrency {
@@ -57,7 +81,16 @@ impl ResolvedCurrency {
             unit,
             source,
             strength,
+            invalid_evidence: Vec::new(),
         }
+    }
+
+    pub(super) fn with_invalid_evidence(
+        mut self,
+        invalid_evidence: impl IntoIterator<Item = InvalidCurrencyEvidence>,
+    ) -> Self {
+        self.invalid_evidence.extend(invalid_evidence);
+        self
     }
 
     pub(crate) const fn source(&self) -> CurrencySource {
@@ -66,6 +99,10 @@ impl ResolvedCurrency {
 
     pub(crate) const fn strength(&self) -> EvidenceStrength {
         self.strength
+    }
+
+    pub(super) fn invalid_evidence(&self) -> &[InvalidCurrencyEvidence] {
+        &self.invalid_evidence
     }
 
     pub(crate) fn into_unit(self) -> ResolvedCurrencyUnit {

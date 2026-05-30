@@ -10,7 +10,9 @@ use crate::{
             CurrencyHints, CurrencyKind, ReportingCurrencyEvidence, ResolvedCurrencyUnit,
             project_currency_resolution,
         },
-        diagnostics::{optional_money_decimal, optional_price_f64},
+        diagnostics::{
+            optional_money_decimal, optional_money_decimal_with_currency_issue, optional_price_f64,
+        },
         wire::{RawDate, RawDecimal, RawNumU64},
     },
     fundamentals::wire::{TimeseriesData, TimeseriesEnvelope},
@@ -62,6 +64,7 @@ struct TimeseriesItem<'a, T> {
     timestamps: &'a [i64],
     prefix: &'a str,
     currency: Option<&'a ResolvedCurrencyUnit>,
+    currency_issue: Option<&'a ProjectionIssue>,
     ctx: &'a mut ProjectionContext,
 }
 
@@ -121,8 +124,8 @@ where
 
     let (direct_currency, needs_currency) =
         timeseries_currency_evidence(&result_vec, prefix, monetary_keys)?;
-    let currency = if needs_currency {
-        project_currency_resolution(
+    let (currency, currency_issue) = if needs_currency {
+        let projected_currency = project_currency_resolution(
             &mut ctx,
             &symbol,
             CurrencyKind::Reporting,
@@ -136,10 +139,11 @@ where
                     retry_override,
                 )
                 .await,
-        )?
-        .into_unit()
+        )?;
+        let currency_issue = projected_currency.issue().cloned();
+        (projected_currency.into_unit(), currency_issue)
     } else {
-        None
+        (None, None)
     };
 
     let mut rows_map = BTreeMap::<i64, T>::new();
@@ -170,6 +174,7 @@ where
                 timestamps: &timestamps,
                 prefix,
                 currency: currency.as_ref(),
+                currency_issue: currency_issue.as_ref(),
                 ctx: &mut ctx,
             })?;
         }
@@ -410,6 +415,7 @@ fn process_statement_money_values<T>(
         timestamps,
         prefix,
         currency,
+        currency_issue,
         ctx,
     } = item;
 
@@ -434,11 +440,12 @@ fn process_statement_money_values<T>(
         };
 
         let value = reported_decimal_at(&values, idx);
-        let money = optional_money_decimal(
+        let money = optional_money_decimal_with_currency_issue(
             ctx,
             "timeseries.reportedValue",
             Some(row_key),
             currency,
+            currency_issue,
             value,
             "statement monetary value",
         )?;

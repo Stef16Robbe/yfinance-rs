@@ -65,6 +65,15 @@ impl CurrencyHintField {
             Self::ProfileCountry => 3,
         }
     }
+
+    pub(super) const fn provider_path(self) -> &'static str {
+        match self {
+            Self::Quote => "currency",
+            Self::Financial => "financialCurrency",
+            Self::QuoteSummaryFinancial => "quoteSummary.financialCurrency",
+            Self::ProfileCountry => "profile.country",
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default)]

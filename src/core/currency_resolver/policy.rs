@@ -40,27 +40,61 @@ pub fn project_currency_resolution(
 ) -> Result<ProjectedCurrency, YfError> {
     match resolution {
         Ok(resolved) => {
+            for invalid in resolved.invalid_evidence() {
+                ctx.omitted_present_field(
+                    invalid.path(),
+                    Some(symbol.to_string()),
+                    ProjectionIssue::InvalidCurrency {
+                        code: invalid.code().to_string(),
+                    },
+                )?;
+            }
             ctx.currency_resolution(symbol, kind, &resolved)?;
             Ok(ProjectedCurrency::resolved(resolved.into_unit()))
         }
-        Err(err) if invalid_direct_currency_code(direct_code) => Err(err),
-        Err(err) => Ok(ProjectedCurrency::omitted(currency_resolution_issue(&err))),
+        Err(err) => Ok(ProjectedCurrency::omitted(currency_resolution_issue(
+            direct_code,
+            &err,
+        ))),
     }
 }
 
-fn invalid_direct_currency_code(code: Option<&str>) -> bool {
-    let Some(code) = code.map(str::trim).filter(|code| !code.is_empty()) else {
-        return false;
-    };
+fn invalid_direct_currency_issue(code: Option<&str>) -> Option<ProjectionIssue> {
+    let code = code.map(str::trim).filter(|code| !code.is_empty())?;
 
-    ResolvedCurrencyUnit::from_code(code).is_none()
+    ResolvedCurrencyUnit::from_code(code)
+        .is_none()
+        .then(|| ProjectionIssue::InvalidCurrency {
+            code: code.to_string(),
+        })
 }
 
-fn currency_resolution_issue(err: &YfError) -> ProjectionIssue {
+fn currency_resolution_issue(direct_code: Option<&str>, err: &YfError) -> ProjectionIssue {
+    if let Some(issue) = invalid_direct_currency_issue(direct_code) {
+        return issue;
+    }
+    if let Some(issue) = invalid_resolved_currency_issue(err) {
+        return issue;
+    }
+
     match err {
         YfError::MissingData(_) => ProjectionIssue::CurrencyUnresolved,
         other => ProjectionIssue::ProviderError {
             message: other.to_string(),
         },
     }
+}
+
+fn invalid_resolved_currency_issue(err: &YfError) -> Option<ProjectionIssue> {
+    let YfError::InvalidData(message) = err else {
+        return None;
+    };
+    if !message.contains(" currency code ") {
+        return None;
+    }
+
+    let (_, code) = message.rsplit_once(": ")?;
+    Some(ProjectionIssue::InvalidCurrency {
+        code: code.to_string(),
+    })
 }
