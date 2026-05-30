@@ -3,7 +3,8 @@
 use crate::{
     YfClient, YfError,
     core::{
-        client::{CacheEndpoint, CacheMode, RetryConfig, SymbolEndpoint, normalize_symbol},
+        CallOptions,
+        client::{CacheEndpoint, SymbolEndpoint, normalize_symbol},
         currency_resolver::CurrencyHints,
     },
 };
@@ -23,8 +24,7 @@ use extract::extract_bootstrap_json;
 pub async fn load_from_scrape(
     client: &YfClient,
     symbol: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    options: &CallOptions,
 ) -> Result<Profile, YfError> {
     let symbol = normalize_symbol(symbol)?;
     let mut url = client.symbol_url(SymbolEndpoint::Quote, &symbol)?;
@@ -38,8 +38,7 @@ pub async fn load_from_scrape(
         &url,
         crate::core::net::CacheFetchConfig {
             cache_endpoint: CacheEndpoint::ProfileHtml,
-            cache_mode,
-            retry_override,
+            options,
             endpoint: "profile_html",
             fixture_key: &symbol,
             ext: "html",

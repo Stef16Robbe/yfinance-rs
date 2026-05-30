@@ -145,6 +145,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - The crates.io publish job now requires the protected `crates-io` GitHub Actions environment, and CI action pins have been refreshed.
 - Published crate packages now exclude repository workflow metadata and tracked macOS editor artifacts.
 - Internal debug diagnostics now use the optional `tracing` feature consistently instead of `YF_DEBUG`-gated stderr output.
+- Consolidate per-call cache, retry, and data-quality plumbing behind a shared internal call-options struct.
 
 ## [0.8.0] - 2026-05-27
 

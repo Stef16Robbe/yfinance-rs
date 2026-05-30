@@ -3,8 +3,8 @@ use serde_json::Value;
 
 use crate::{
     core::{
-        DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfError,
-        client::{CacheEndpoint, CacheMode, RetryConfig, normalize_symbol},
+        CallOptions, ProjectionContext, ProjectionIssue, YfClient, YfError,
+        client::{CacheEndpoint, normalize_symbol},
         conversions::i64_to_datetime,
         net,
     },
@@ -30,12 +30,10 @@ pub(super) async fn fetch_news(
     symbol: &str,
     count: u32,
     tab: NewsTab,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
-    data_quality: DataQuality,
+    options: &CallOptions,
 ) -> Result<crate::YfResponse<Vec<NewsArticle>>, YfError> {
     let symbol = normalize_symbol(symbol)?;
-    let mut ctx = ProjectionContext::new("news", data_quality);
+    let mut ctx = ProjectionContext::new("news", options.data_quality());
     let mut url = client.base_news().join("xhr/ncp")?;
     url.query_pairs_mut()
         .append_pair("queryRef", tab_as_str(tab))
@@ -57,8 +55,7 @@ pub(super) async fn fetch_news(
         &body_json,
         net::CacheFetchConfig {
             cache_endpoint: CacheEndpoint::News,
-            cache_mode,
-            retry_override,
+            options,
             endpoint: &endpoint,
             fixture_key: &symbol,
             ext: "json",

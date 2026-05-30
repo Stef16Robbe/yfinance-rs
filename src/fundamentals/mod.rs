@@ -10,7 +10,7 @@ pub use model::{
 };
 
 use crate::core::{
-    DataQuality, YfClient, YfError, YfResponse,
+    CallOptions, DataQuality, YfClient, YfError, YfResponse,
     client::{CacheMode, RetryConfig},
 };
 use paft::money::Currency;
@@ -19,9 +19,7 @@ use paft::money::Currency;
 pub struct FundamentalsBuilder {
     client: YfClient,
     symbol: String,
-    cache_mode: CacheMode,
-    retry_override: Option<RetryConfig>,
-    data_quality: DataQuality,
+    options: CallOptions,
 }
 
 impl FundamentalsBuilder {
@@ -30,30 +28,28 @@ impl FundamentalsBuilder {
         Self {
             client: client.clone(),
             symbol: symbol.into(),
-            cache_mode: CacheMode::Default,
-            retry_override: None,
-            data_quality: DataQuality::BestEffort,
+            options: CallOptions::default(),
         }
     }
 
     /// Sets the cache mode for this specific API call.
     #[must_use]
     pub const fn cache_mode(mut self, mode: CacheMode) -> Self {
-        self.cache_mode = mode;
+        self.options.cache_mode = mode;
         self
     }
 
     /// Overrides the default retry policy for this specific API call.
     #[must_use]
     pub fn retry_policy(mut self, cfg: Option<RetryConfig>) -> Self {
-        self.retry_override = cfg;
+        self.options = self.options.with_retry_policy(cfg);
         self
     }
 
     /// Sets how provider projection issues are handled.
     #[must_use]
     pub const fn data_quality(mut self, policy: DataQuality) -> Self {
-        self.data_quality = policy;
+        self.options.data_quality = policy;
         self
     }
 
@@ -98,9 +94,7 @@ impl FundamentalsBuilder {
             &self.symbol,
             quarterly,
             override_currency,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-            self.data_quality,
+            &self.options,
         )
         .await
     }
@@ -140,9 +134,7 @@ impl FundamentalsBuilder {
             &self.symbol,
             quarterly,
             override_currency,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-            self.data_quality,
+            &self.options,
         )
         .await
     }
@@ -182,9 +174,7 @@ impl FundamentalsBuilder {
             &self.symbol,
             quarterly,
             override_currency,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-            self.data_quality,
+            &self.options,
         )
         .await
     }
@@ -210,15 +200,7 @@ impl FundamentalsBuilder {
         &self,
         override_currency: Option<Currency>,
     ) -> Result<YfResponse<Earnings>, YfError> {
-        api::earnings(
-            &self.client,
-            &self.symbol,
-            override_currency,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-            self.data_quality,
-        )
-        .await
+        api::earnings(&self.client, &self.symbol, override_currency, &self.options).await
     }
 
     /// Fetches corporate calendar events like earnings dates.
@@ -236,14 +218,7 @@ impl FundamentalsBuilder {
     ///
     /// Returns a `YfError` if the request fails or strict data-quality mode rejects a projection issue.
     pub async fn calendar_with_diagnostics(&self) -> Result<YfResponse<Calendar>, YfError> {
-        api::calendar(
-            &self.client,
-            &self.symbol,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-            self.data_quality,
-        )
-        .await
+        api::calendar(&self.client, &self.symbol, &self.options).await
     }
 
     /// Fetches the historical number of shares outstanding.
@@ -272,9 +247,7 @@ impl FundamentalsBuilder {
             None,
             None,
             quarterly,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-            self.data_quality,
+            &self.options,
         )
         .await
     }

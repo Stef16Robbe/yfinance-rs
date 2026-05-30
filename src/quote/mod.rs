@@ -1,7 +1,7 @@
-use crate::core::client::CacheMode;
-use crate::core::client::RetryConfig;
 use crate::core::{
-    DataQuality, ProjectionContext, Quote, YfClient, YfError, YfResponse, quotes as core_quotes,
+    CallOptions, DataQuality, ProjectionContext, Quote, YfClient, YfError, YfResponse,
+    client::{CacheMode, RetryConfig},
+    quotes as core_quotes,
 };
 
 /// Fetches quotes for multiple symbols.
@@ -42,9 +42,7 @@ where
 pub struct QuotesBuilder {
     client: YfClient,
     symbols: Vec<String>,
-    cache_mode: CacheMode,
-    retry_override: Option<RetryConfig>,
-    data_quality: DataQuality,
+    options: CallOptions,
 }
 
 impl QuotesBuilder {
@@ -54,30 +52,28 @@ impl QuotesBuilder {
         Self {
             client: client.clone(),
             symbols: Vec::new(),
-            cache_mode: CacheMode::Default,
-            retry_override: None,
-            data_quality: DataQuality::BestEffort,
+            options: CallOptions::default(),
         }
     }
 
     /// Sets the cache mode for this specific API call.
     #[must_use]
     pub const fn cache_mode(mut self, mode: CacheMode) -> Self {
-        self.cache_mode = mode;
+        self.options.cache_mode = mode;
         self
     }
 
     /// Overrides the default retry policy for this specific API call.
     #[must_use]
     pub fn retry_policy(mut self, cfg: Option<RetryConfig>) -> Self {
-        self.retry_override = cfg;
+        self.options = self.options.with_retry_policy(cfg);
         self
     }
 
     /// Sets how provider projection issues are handled.
     #[must_use]
     pub const fn data_quality(mut self, policy: DataQuality) -> Self {
-        self.data_quality = policy;
+        self.options.data_quality = policy;
         self
     }
 
@@ -131,15 +127,10 @@ impl QuotesBuilder {
         }
 
         let symbol_slices: Vec<&str> = self.symbols.iter().map(AsRef::as_ref).collect();
-        let results = core_quotes::fetch_v7_quote_values(
-            &self.client,
-            &symbol_slices,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-        )
-        .await?;
+        let results =
+            core_quotes::fetch_v7_quote_values(&self.client, &symbol_slices, &self.options).await?;
 
-        let mut ctx = ProjectionContext::new("quotes", self.data_quality);
+        let mut ctx = ProjectionContext::new("quotes", self.options.data_quality());
         let mut quotes = Vec::with_capacity(results.len());
         for (idx, result) in results.into_iter().enumerate() {
             let Some(result) =

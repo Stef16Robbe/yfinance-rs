@@ -1,10 +1,7 @@
 use crate::{
     core::{
-        DataQuality, ProjectionContext, YfClient, YfError, YfResponse,
-        client::{CacheMode, RetryConfig},
-        diagnostics::optional_decimal_f64,
-        quotesummary,
-        wire::from_raw,
+        CallOptions, DataQuality, ProjectionContext, YfClient, YfError, YfResponse,
+        diagnostics::optional_decimal_f64, quotesummary, wire::from_raw,
     },
     esg::wire::V10Result,
 };
@@ -13,21 +10,12 @@ use paft::fundamentals::esg::{EsgInvolvement, EsgScores, EsgSummary};
 pub(super) async fn fetch_esg_scores(
     client: &YfClient,
     symbol: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
-    data_quality: DataQuality,
+    options: &CallOptions,
 ) -> Result<YfResponse<EsgSummary>, YfError> {
-    let root: V10Result = quotesummary::fetch_module_result(
-        client,
-        symbol,
-        "esgScores",
-        "esg",
-        cache_mode,
-        retry_override,
-    )
-    .await?;
+    let root: V10Result =
+        quotesummary::fetch_module_result(client, symbol, "esgScores", "esg", options).await?;
 
-    map_esg_scores(symbol, root, data_quality)
+    map_esg_scores(symbol, root, options.data_quality())
 }
 
 fn map_esg_scores(

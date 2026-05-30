@@ -19,7 +19,10 @@ pub use model::NewsArticle;
 
 use crate::{
     DataQuality, YfClient, YfError, YfResponse,
-    core::client::{CacheMode, RetryConfig},
+    core::{
+        CallOptions,
+        client::{CacheMode, RetryConfig},
+    },
 };
 
 pub(crate) const fn tab_as_str(tab: NewsTab) -> &'static str {
@@ -36,9 +39,7 @@ pub struct NewsBuilder {
     symbol: String,
     count: u32,
     tab: NewsTab,
-    cache_mode: CacheMode,
-    retry_override: Option<RetryConfig>,
-    data_quality: DataQuality,
+    options: CallOptions,
 }
 
 impl NewsBuilder {
@@ -49,30 +50,28 @@ impl NewsBuilder {
             symbol: symbol.into(),
             count: 10,
             tab: NewsTab::default(),
-            cache_mode: CacheMode::Default,
-            retry_override: None,
-            data_quality: DataQuality::BestEffort,
+            options: CallOptions::default(),
         }
     }
 
     /// Sets the cache mode for this specific API call.
     #[must_use]
     pub const fn cache_mode(mut self, mode: CacheMode) -> Self {
-        self.cache_mode = mode;
+        self.options.cache_mode = mode;
         self
     }
 
     /// Overrides the default retry policy for this specific API call.
     #[must_use]
     pub fn retry_policy(mut self, cfg: Option<RetryConfig>) -> Self {
-        self.retry_override = cfg;
+        self.options = self.options.with_retry_policy(cfg);
         self
     }
 
     /// Sets how provider projection issues are handled.
     #[must_use]
     pub const fn data_quality(mut self, policy: DataQuality) -> Self {
-        self.data_quality = policy;
+        self.options.data_quality = policy;
         self
     }
 
@@ -117,9 +116,7 @@ impl NewsBuilder {
             &self.symbol,
             self.count,
             self.tab,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-            self.data_quality,
+            &self.options,
         )
         .await
     }

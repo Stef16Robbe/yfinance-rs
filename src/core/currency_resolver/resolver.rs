@@ -5,10 +5,7 @@ use super::{
     inference,
     types::{CurrencySource, EvidenceStrength, InvalidCurrencyEvidence},
 };
-use crate::core::{
-    YfClient, YfError,
-    client::{CacheMode, RetryConfig},
-};
+use crate::core::{CallOptions, YfClient, YfError};
 use paft::money::Currency;
 
 #[derive(Clone, Copy)]
@@ -93,16 +90,14 @@ impl YfClient {
         symbol: &str,
         override_currency: Option<Currency>,
         evidence: TradingCurrencyEvidence<'_>,
-        cache_mode: CacheMode,
-        retry_override: Option<&RetryConfig>,
+        options: &CallOptions,
     ) -> Result<ResolvedCurrency, YfError> {
         self.resolve_currency_from_evidence(
             symbol,
             CurrencyKind::Trading,
             override_currency,
             DirectCurrencyEvidence::new(evidence.direct_code(), evidence.label()),
-            cache_mode,
-            retry_override,
+            options,
         )
         .await
     }
@@ -113,18 +108,11 @@ impl YfClient {
         symbol: &str,
         override_currency: Option<Currency>,
         evidence: TradingCurrencyEvidence<'_>,
-        cache_mode: CacheMode,
-        retry_override: Option<&RetryConfig>,
+        options: &CallOptions,
     ) -> Result<ResolvedCurrencyUnit, YfError> {
-        self.resolve_trading_currency(
-            symbol,
-            override_currency,
-            evidence,
-            cache_mode,
-            retry_override,
-        )
-        .await
-        .map(ResolvedCurrency::into_unit)
+        self.resolve_trading_currency(symbol, override_currency, evidence, options)
+            .await
+            .map(ResolvedCurrency::into_unit)
     }
 
     pub(crate) async fn resolve_reporting_currency(
@@ -132,16 +120,14 @@ impl YfClient {
         symbol: &str,
         override_currency: Option<Currency>,
         evidence: ReportingCurrencyEvidence<'_>,
-        cache_mode: CacheMode,
-        retry_override: Option<&RetryConfig>,
+        options: &CallOptions,
     ) -> Result<ResolvedCurrency, YfError> {
         self.resolve_currency_from_evidence(
             symbol,
             CurrencyKind::Reporting,
             override_currency,
             DirectCurrencyEvidence::new(evidence.direct_code(), evidence.label()),
-            cache_mode,
-            retry_override,
+            options,
         )
         .await
     }
@@ -152,18 +138,11 @@ impl YfClient {
         symbol: &str,
         override_currency: Option<Currency>,
         evidence: ReportingCurrencyEvidence<'_>,
-        cache_mode: CacheMode,
-        retry_override: Option<&RetryConfig>,
+        options: &CallOptions,
     ) -> Result<ResolvedCurrencyUnit, YfError> {
-        self.resolve_reporting_currency(
-            symbol,
-            override_currency,
-            evidence,
-            cache_mode,
-            retry_override,
-        )
-        .await
-        .map(ResolvedCurrency::into_unit)
+        self.resolve_reporting_currency(symbol, override_currency, evidence, options)
+            .await
+            .map(ResolvedCurrency::into_unit)
     }
 
     pub(crate) async fn resolve_corporate_action_currency(
@@ -171,16 +150,14 @@ impl YfClient {
         symbol: &str,
         override_currency: Option<Currency>,
         evidence: CorporateActionCurrencyEvidence<'_>,
-        cache_mode: CacheMode,
-        retry_override: Option<&RetryConfig>,
+        options: &CallOptions,
     ) -> Result<ResolvedCurrency, YfError> {
         self.resolve_currency_from_evidence(
             symbol,
             CurrencyKind::CorporateAction,
             override_currency,
             DirectCurrencyEvidence::new(evidence.direct_code(), evidence.label()),
-            cache_mode,
-            retry_override,
+            options,
         )
         .await
     }
@@ -191,18 +168,11 @@ impl YfClient {
         symbol: &str,
         override_currency: Option<Currency>,
         evidence: CorporateActionCurrencyEvidence<'_>,
-        cache_mode: CacheMode,
-        retry_override: Option<&RetryConfig>,
+        options: &CallOptions,
     ) -> Result<ResolvedCurrencyUnit, YfError> {
-        self.resolve_corporate_action_currency(
-            symbol,
-            override_currency,
-            evidence,
-            cache_mode,
-            retry_override,
-        )
-        .await
-        .map(ResolvedCurrency::into_unit)
+        self.resolve_corporate_action_currency(symbol, override_currency, evidence, options)
+            .await
+            .map(ResolvedCurrency::into_unit)
     }
 
     pub(crate) async fn resolve_analyst_estimate_currency(
@@ -210,16 +180,14 @@ impl YfClient {
         symbol: &str,
         override_currency: Option<Currency>,
         evidence: AnalystEstimateCurrencyEvidence<'_>,
-        cache_mode: CacheMode,
-        retry_override: Option<&RetryConfig>,
+        options: &CallOptions,
     ) -> Result<ResolvedCurrency, YfError> {
         self.resolve_currency_from_evidence(
             symbol,
             CurrencyKind::AnalystEstimate,
             override_currency,
             DirectCurrencyEvidence::new(evidence.direct_code(), evidence.label()),
-            cache_mode,
-            retry_override,
+            options,
         )
         .await
     }
@@ -230,18 +198,11 @@ impl YfClient {
         symbol: &str,
         override_currency: Option<Currency>,
         evidence: AnalystEstimateCurrencyEvidence<'_>,
-        cache_mode: CacheMode,
-        retry_override: Option<&RetryConfig>,
+        options: &CallOptions,
     ) -> Result<ResolvedCurrencyUnit, YfError> {
-        self.resolve_analyst_estimate_currency(
-            symbol,
-            override_currency,
-            evidence,
-            cache_mode,
-            retry_override,
-        )
-        .await
-        .map(ResolvedCurrency::into_unit)
+        self.resolve_analyst_estimate_currency(symbol, override_currency, evidence, options)
+            .await
+            .map(ResolvedCurrency::into_unit)
     }
 
     async fn resolve_currency_from_evidence(
@@ -250,8 +211,7 @@ impl YfClient {
         kind: CurrencyKind,
         override_currency: Option<Currency>,
         direct_evidence: DirectCurrencyEvidence<'_>,
-        cache_mode: CacheMode,
-        retry_override: Option<&RetryConfig>,
+        options: &CallOptions,
     ) -> Result<ResolvedCurrency, YfError> {
         if let Some(currency) = override_currency {
             return Ok(ResolvedCurrency::new(
@@ -285,13 +245,8 @@ impl YfClient {
 
         match kind {
             CurrencyKind::Trading => {
-                self.resolve_trading_currency_from_hints(
-                    symbol,
-                    cache_mode,
-                    retry_override,
-                    cached.as_ref(),
-                )
-                .await
+                self.resolve_trading_currency_from_hints(symbol, options, cached.as_ref())
+                    .await
             }
             CurrencyKind::Reporting | CurrencyKind::AnalystEstimate => {
                 let reporting_cached = if matches!(kind, CurrencyKind::AnalystEstimate) {
@@ -313,8 +268,7 @@ impl YfClient {
                 }
                 self.resolve_reporting_currency_from_hints(
                     symbol,
-                    cache_mode,
-                    retry_override,
+                    options,
                     reporting_cached.as_ref(),
                 )
                 .await
@@ -330,13 +284,8 @@ impl YfClient {
                 {
                     return Ok(cross_kind_cached_resolution(resolved));
                 }
-                self.resolve_trading_currency_from_hints(
-                    symbol,
-                    cache_mode,
-                    retry_override,
-                    trading_cached.as_ref(),
-                )
-                .await
+                self.resolve_trading_currency_from_hints(symbol, options, trading_cached.as_ref())
+                    .await
             }
         }
     }
@@ -344,8 +293,7 @@ impl YfClient {
     async fn resolve_trading_currency_from_hints(
         &self,
         symbol: &str,
-        cache_mode: CacheMode,
-        retry_override: Option<&RetryConfig>,
+        options: &CallOptions,
         provisional: Option<&ResolvedCurrency>,
     ) -> Result<ResolvedCurrency, YfError> {
         let mut invalid_evidence = Vec::new();
@@ -362,8 +310,7 @@ impl YfClient {
             return Ok(resolved);
         }
 
-        self.enrich_quote_hints(symbol, cache_mode, retry_override)
-            .await;
+        self.enrich_quote_hints(symbol, options).await;
         if let Some(resolved) = self
             .resolve_first_hint(
                 symbol,
@@ -389,8 +336,7 @@ impl YfClient {
             return Ok(resolved);
         }
 
-        self.enrich_profile_hints(symbol, cache_mode, retry_override)
-            .await;
+        self.enrich_profile_hints(symbol, options).await;
         if let Some(resolved) = self
             .resolve_first_hint(
                 symbol,
@@ -425,8 +371,7 @@ impl YfClient {
     async fn resolve_reporting_currency_from_hints(
         &self,
         symbol: &str,
-        cache_mode: CacheMode,
-        retry_override: Option<&RetryConfig>,
+        options: &CallOptions,
         provisional: Option<&ResolvedCurrency>,
     ) -> Result<ResolvedCurrency, YfError> {
         let mut invalid_evidence = Vec::new();
@@ -443,8 +388,7 @@ impl YfClient {
             return Ok(resolved);
         }
 
-        self.enrich_quote_hints(symbol, cache_mode, retry_override)
-            .await;
+        self.enrich_quote_hints(symbol, options).await;
         if let Some(resolved) = self
             .resolve_first_hint(
                 symbol,
@@ -457,7 +401,7 @@ impl YfClient {
             return Ok(resolved);
         }
 
-        self.enrich_quote_summary_reporting_hints(symbol, cache_mode, retry_override)
+        self.enrich_quote_summary_reporting_hints(symbol, options)
             .await;
         if let Some(resolved) = self
             .resolve_first_hint(
@@ -471,8 +415,7 @@ impl YfClient {
             return Ok(resolved);
         }
 
-        self.enrich_profile_hints(symbol, cache_mode, retry_override)
-            .await;
+        self.enrich_profile_hints(symbol, options).await;
         if let Some(resolved) = self
             .resolve_first_hint(
                 symbol,

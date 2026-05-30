@@ -2,11 +2,7 @@
 
 use crate::{
     YfClient, YfError,
-    core::{
-        client::{CacheMode, RetryConfig},
-        currency_resolver::CurrencyHints,
-        quotesummary,
-    },
+    core::{CallOptions, currency_resolver::CurrencyHints, quotesummary},
 };
 use paft::domain::Isin;
 use serde::Deserialize;
@@ -16,16 +12,14 @@ use super::{Address, Company, Fund, Profile, YahooProfileKind, resolve_fund_kind
 pub async fn load_from_quote_summary_api(
     client: &YfClient,
     symbol: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    options: &CallOptions,
 ) -> Result<Profile, YfError> {
     let first: V10Result = quotesummary::fetch_module_result(
         client,
         symbol,
         "assetProfile,quoteType,fundProfile",
         "profile",
-        cache_mode,
-        retry_override,
+        options,
     )
     .await?;
 

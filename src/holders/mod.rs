@@ -9,16 +9,17 @@ pub use model::{
 
 use crate::{
     DataQuality, YfClient, YfError, YfResponse,
-    core::client::{CacheMode, RetryConfig},
+    core::{
+        CallOptions,
+        client::{CacheMode, RetryConfig},
+    },
 };
 
 /// A builder for fetching holder data for a specific symbol.
 pub struct HoldersBuilder {
     client: YfClient,
     symbol: String,
-    cache_mode: CacheMode,
-    retry_override: Option<RetryConfig>,
-    data_quality: DataQuality,
+    options: CallOptions,
 }
 
 impl HoldersBuilder {
@@ -27,30 +28,28 @@ impl HoldersBuilder {
         Self {
             client: client.clone(),
             symbol: symbol.into(),
-            cache_mode: CacheMode::Default,
-            retry_override: None,
-            data_quality: DataQuality::BestEffort,
+            options: CallOptions::default(),
         }
     }
 
     /// Sets the cache mode for this specific API call.
     #[must_use]
     pub const fn cache_mode(mut self, mode: CacheMode) -> Self {
-        self.cache_mode = mode;
+        self.options.cache_mode = mode;
         self
     }
 
     /// Overrides the default retry policy for this specific API call.
     #[must_use]
     pub fn retry_policy(mut self, cfg: Option<RetryConfig>) -> Self {
-        self.retry_override = cfg;
+        self.options = self.options.with_retry_policy(cfg);
         self
     }
 
     /// Sets how provider projection issues are handled.
     #[must_use]
     pub const fn data_quality(mut self, policy: DataQuality) -> Self {
-        self.data_quality = policy;
+        self.options.data_quality = policy;
         self
     }
 
@@ -77,14 +76,7 @@ impl HoldersBuilder {
     pub async fn major_holders_with_diagnostics(
         &self,
     ) -> Result<YfResponse<Vec<MajorHolder>>, YfError> {
-        api::major_holders(
-            &self.client,
-            &self.symbol,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-            self.data_quality,
-        )
-        .await
+        api::major_holders(&self.client, &self.symbol, &self.options).await
     }
 
     /// Fetches a list of the top institutional holders.
@@ -107,14 +99,7 @@ impl HoldersBuilder {
     pub async fn institutional_holders_with_diagnostics(
         &self,
     ) -> Result<YfResponse<Vec<InstitutionalHolder>>, YfError> {
-        api::institutional_holders(
-            &self.client,
-            &self.symbol,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-            self.data_quality,
-        )
-        .await
+        api::institutional_holders(&self.client, &self.symbol, &self.options).await
     }
 
     /// Fetches a list of the top mutual fund holders.
@@ -137,14 +122,7 @@ impl HoldersBuilder {
     pub async fn mutual_fund_holders_with_diagnostics(
         &self,
     ) -> Result<YfResponse<Vec<InstitutionalHolder>>, YfError> {
-        api::mutual_fund_holders(
-            &self.client,
-            &self.symbol,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-            self.data_quality,
-        )
-        .await
+        api::mutual_fund_holders(&self.client, &self.symbol, &self.options).await
     }
 
     /// Fetches a list of recent insider transactions.
@@ -167,14 +145,7 @@ impl HoldersBuilder {
     pub async fn insider_transactions_with_diagnostics(
         &self,
     ) -> Result<YfResponse<Vec<InsiderTransaction>>, YfError> {
-        api::insider_transactions(
-            &self.client,
-            &self.symbol,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-            self.data_quality,
-        )
-        .await
+        api::insider_transactions(&self.client, &self.symbol, &self.options).await
     }
 
     /// Fetches a roster of company insiders and their holdings.
@@ -197,14 +168,7 @@ impl HoldersBuilder {
     pub async fn insider_roster_holders_with_diagnostics(
         &self,
     ) -> Result<YfResponse<Vec<InsiderRosterHolder>>, YfError> {
-        api::insider_roster_holders(
-            &self.client,
-            &self.symbol,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-            self.data_quality,
-        )
-        .await
+        api::insider_roster_holders(&self.client, &self.symbol, &self.options).await
     }
 
     /// Fetches a summary of net insider purchase and sale activity.
@@ -229,13 +193,6 @@ impl HoldersBuilder {
     pub async fn net_share_purchase_activity_with_diagnostics(
         &self,
     ) -> Result<YfResponse<Option<NetSharePurchaseActivity>>, YfError> {
-        api::net_share_purchase_activity(
-            &self.client,
-            &self.symbol,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-            self.data_quality,
-        )
-        .await
+        api::net_share_purchase_activity(&self.client, &self.symbol, &self.options).await
     }
 }

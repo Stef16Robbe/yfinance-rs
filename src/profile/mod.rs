@@ -14,10 +14,7 @@ pub(crate) mod debug;
 
 use crate::{
     YfClient, YfError,
-    core::{
-        client::{CacheMode, RetryConfig},
-        conversions::string_to_fund_kind,
-    },
+    core::{CallOptions, client::CacheMode, conversions::string_to_fund_kind},
 };
 use paft::fundamentals::profile::FundKind;
 
@@ -91,10 +88,9 @@ fn resolve_fund_kind(
 async fn load_with_fallback(
     client: &YfClient,
     symbol: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    options: &CallOptions,
 ) -> Result<Profile, YfError> {
-    match api::load_from_quote_summary_api(client, symbol, cache_mode, retry_override).await {
+    match api::load_from_quote_summary_api(client, symbol, options).await {
         Ok(p) => Ok(p),
         Err(e @ YfError::Auth(_)) => Err(e),
         Err(e) => {
@@ -104,7 +100,7 @@ async fn load_with_fallback(
             );
             #[cfg(not(feature = "tracing"))]
             let _ = &e;
-            scrape::load_from_scrape(client, symbol, cache_mode, retry_override).await
+            scrape::load_from_scrape(client, symbol, options).await
         }
     }
 }
@@ -122,8 +118,7 @@ async fn load_value_with_fallback(
     client: &YfClient,
     symbol: &str,
     value: serde_json::Value,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    options: &CallOptions,
 ) -> Result<Profile, YfError> {
     match load_from_quote_summary_value_api(client, symbol, value).await {
         Ok(p) => Ok(p),
@@ -135,7 +130,7 @@ async fn load_value_with_fallback(
             );
             #[cfg(not(feature = "tracing"))]
             let _ = &e;
-            scrape::load_from_scrape(client, symbol, cache_mode, retry_override).await
+            scrape::load_from_scrape(client, symbol, options).await
         }
     }
 }
@@ -144,12 +139,11 @@ pub(crate) async fn load_profile_from_quote_summary_value(
     client: &YfClient,
     symbol: &str,
     value: serde_json::Value,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    options: &CallOptions,
 ) -> Result<Profile, YfError> {
     #[cfg(not(feature = "test-mode"))]
     {
-        load_value_with_fallback(client, symbol, value, cache_mode, retry_override).await
+        load_value_with_fallback(client, symbol, value, options).await
     }
 
     #[cfg(feature = "test-mode")]
@@ -157,14 +151,12 @@ pub(crate) async fn load_profile_from_quote_summary_value(
         use crate::core::client::ApiPreference;
         match client.api_preference() {
             ApiPreference::ApiThenScrape => {
-                load_value_with_fallback(client, symbol, value, cache_mode, retry_override).await
+                load_value_with_fallback(client, symbol, value, options).await
             }
             ApiPreference::ApiOnly => {
                 load_from_quote_summary_value_api(client, symbol, value).await
             }
-            ApiPreference::ScrapeOnly => {
-                scrape::load_from_scrape(client, symbol, cache_mode, retry_override).await
-            }
+            ApiPreference::ScrapeOnly => scrape::load_from_scrape(client, symbol, options).await,
         }
     }
 }
@@ -172,29 +164,24 @@ pub(crate) async fn load_profile_from_quote_summary_value(
 pub(crate) async fn load_profile_with_options(
     client: &YfClient,
     symbol: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    options: &CallOptions,
 ) -> Result<Profile, YfError> {
     let symbol = crate::core::client::normalize_symbol(symbol)?;
 
     #[cfg(not(feature = "test-mode"))]
     {
-        load_with_fallback(client, &symbol, cache_mode, retry_override).await
+        load_with_fallback(client, &symbol, options).await
     }
 
     #[cfg(feature = "test-mode")]
     {
         use crate::core::client::ApiPreference;
         match client.api_preference() {
-            ApiPreference::ApiThenScrape => {
-                load_with_fallback(client, &symbol, cache_mode, retry_override).await
-            }
+            ApiPreference::ApiThenScrape => load_with_fallback(client, &symbol, options).await,
             ApiPreference::ApiOnly => {
-                api::load_from_quote_summary_api(client, &symbol, cache_mode, retry_override).await
+                api::load_from_quote_summary_api(client, &symbol, options).await
             }
-            ApiPreference::ScrapeOnly => {
-                scrape::load_from_scrape(client, &symbol, cache_mode, retry_override).await
-            }
+            ApiPreference::ScrapeOnly => scrape::load_from_scrape(client, &symbol, options).await,
         }
     }
 }
@@ -209,5 +196,6 @@ pub(crate) async fn load_profile_with_options(
 /// Returns `YfError` if the network request fails, the response cannot be parsed,
 /// or the data for the symbol is not available.
 pub async fn load_profile(client: &YfClient, symbol: &str) -> Result<Profile, YfError> {
-    load_profile_with_options(client, symbol, CacheMode::Use, None).await
+    let options = CallOptions::default().with_cache_mode(CacheMode::Use);
+    load_profile_with_options(client, symbol, &options).await
 }

@@ -1,8 +1,7 @@
 use crate::{
-    DataQuality, YfClient, YfError, YfResponse, analysis,
-    core::ProjectionContext,
-    core::client::{CacheMode, RetryConfig, normalize_symbol},
-    core::quotesummary,
+    YfClient, YfError, YfResponse, analysis,
+    core::client::normalize_symbol,
+    core::{CallOptions, ProjectionContext, quotesummary},
     fundamentals,
     profile::Profile,
     ticker::Info,
@@ -51,38 +50,22 @@ fn log_response_async<T>(
 pub(super) async fn fetch_info(
     client: &YfClient,
     symbol: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    options: &CallOptions,
 ) -> Result<Info, YfError> {
-    Ok(fetch_info_with_diagnostics(
-        client,
-        symbol,
-        cache_mode,
-        retry_override,
-        DataQuality::BestEffort,
-    )
-    .await?
-    .into_data())
+    Ok(fetch_info_with_diagnostics(client, symbol, options)
+        .await?
+        .into_data())
 }
 
 pub(super) async fn fetch_info_with_diagnostics(
     client: &YfClient,
     symbol: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
-    data_quality: DataQuality,
+    options: &CallOptions,
 ) -> Result<YfResponse<Info>, YfError> {
     let symbol = normalize_symbol(symbol)?;
-    let mut ctx = ProjectionContext::new("info", data_quality);
-    let (quote, quote_summary_parts) = Box::pin(fetch_info_parts(
-        client,
-        &symbol,
-        cache_mode,
-        retry_override,
-        data_quality,
-        &mut ctx,
-    ))
-    .await?;
+    let mut ctx = ProjectionContext::new("info", options.data_quality());
+    let (quote, quote_summary_parts) =
+        Box::pin(fetch_info_parts(client, &symbol, options, &mut ctx)).await?;
     let (quote_summary_key_statistics, profile, price_target, rec_summary, calendar) =
         match quote_summary_parts {
             Ok(parts) => {
@@ -170,9 +153,7 @@ struct InfoQuoteSummaryParts {
 async fn fetch_info_parts(
     client: &YfClient,
     symbol: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
-    data_quality: DataQuality,
+    options: &CallOptions,
     ctx: &mut ProjectionContext,
 ) -> Result<
     (
@@ -183,8 +164,8 @@ async fn fetch_info_parts(
 > {
     let symbols = [symbol];
     let (quote_res, quote_summary_res) = tokio::join!(
-        crate::core::quotes::fetch_v7_quote_values(client, &symbols, cache_mode, retry_override),
-        fetch_info_quote_summary_parts(client, symbol, cache_mode, retry_override, data_quality)
+        crate::core::quotes::fetch_v7_quote_values(client, &symbols, options),
+        fetch_info_quote_summary_parts(client, symbol, options)
     );
 
     let quote =
@@ -195,17 +176,14 @@ async fn fetch_info_parts(
 async fn fetch_info_quote_summary_parts(
     client: &YfClient,
     symbol: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
-    data_quality: DataQuality,
+    options: &CallOptions,
 ) -> Result<InfoQuoteSummaryParts, YfError> {
     let value = quotesummary::fetch_module_value(
         client,
         symbol,
         INFO_QUOTE_SUMMARY_MODULES,
         "info",
-        cache_mode,
-        retry_override,
+        options,
     )
     .await?;
 
@@ -215,8 +193,7 @@ async fn fetch_info_quote_summary_parts(
             client,
             symbol,
             value.clone(),
-            cache_mode,
-            retry_override,
+            options,
         )
         .await,
         analysis: analysis::price_target_and_recommendation_summary_from_quote_summary_value(
@@ -224,11 +201,9 @@ async fn fetch_info_quote_summary_parts(
             symbol,
             None,
             value.clone(),
-            cache_mode,
-            retry_override,
-            data_quality,
+            options,
         )
         .await,
-        calendar: fundamentals::calendar_from_quote_summary_value(value, data_quality),
+        calendar: fundamentals::calendar_from_quote_summary_value(value, options.data_quality()),
     })
 }

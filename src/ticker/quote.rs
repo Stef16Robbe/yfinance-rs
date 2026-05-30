@@ -1,6 +1,5 @@
 use crate::core::{
-    DataQuality, ProjectionContext, YfClient, YfError, YfResponse,
-    client::{CacheMode, RetryConfig},
+    CallOptions, ProjectionContext, YfClient, YfError, YfResponse,
     models::{FastInfo, Quote},
     quotes,
 };
@@ -32,31 +31,21 @@ fn log_err<T>(
 pub async fn fetch_quote(
     client: &YfClient,
     symbol: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    options: &CallOptions,
 ) -> Result<Quote, YfError> {
-    Ok(fetch_quote_with_diagnostics(
-        client,
-        symbol,
-        cache_mode,
-        retry_override,
-        DataQuality::BestEffort,
-    )
-    .await?
-    .into_data())
+    Ok(fetch_quote_with_diagnostics(client, symbol, options)
+        .await?
+        .into_data())
 }
 
 pub async fn fetch_quote_with_diagnostics(
     client: &YfClient,
     symbol: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
-    data_quality: DataQuality,
+    options: &CallOptions,
 ) -> Result<YfResponse<Quote>, YfError> {
-    let mut ctx = ProjectionContext::new("quote", data_quality);
+    let mut ctx = ProjectionContext::new("quote", options.data_quality());
     let symbols = [symbol];
-    let results =
-        quotes::fetch_v7_quote_values(client, &symbols, cache_mode, retry_override).await?;
+    let results = quotes::fetch_v7_quote_values(client, &symbols, options).await?;
     let result = quotes::required_quote_node_from_values_with_context(results, symbol, &mut ctx)?;
 
     let quote = result.to_quote_with_context(&mut ctx)?;
@@ -66,31 +55,21 @@ pub async fn fetch_quote_with_diagnostics(
 pub async fn fetch_fast_info(
     client: &YfClient,
     symbol: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    options: &CallOptions,
 ) -> Result<FastInfo, YfError> {
-    Ok(fetch_fast_info_with_diagnostics(
-        client,
-        symbol,
-        cache_mode,
-        retry_override,
-        DataQuality::BestEffort,
-    )
-    .await?
-    .into_data())
+    Ok(fetch_fast_info_with_diagnostics(client, symbol, options)
+        .await?
+        .into_data())
 }
 
 pub async fn fetch_fast_info_with_diagnostics(
     client: &YfClient,
     symbol: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
-    data_quality: DataQuality,
+    options: &CallOptions,
 ) -> Result<YfResponse<FastInfo>, YfError> {
-    let mut ctx = ProjectionContext::new("fast_info", data_quality);
+    let mut ctx = ProjectionContext::new("fast_info", options.data_quality());
     let symbols = [symbol];
-    let results =
-        quotes::fetch_v7_quote_values(client, &symbols, cache_mode, retry_override).await?;
+    let results = quotes::fetch_v7_quote_values(client, &symbols, options).await?;
     let result = quotes::required_quote_node_from_values_with_context(results, symbol, &mut ctx)?;
 
     let snapshot = result.to_snapshot_with_context(&mut ctx)?;
@@ -100,32 +79,25 @@ pub async fn fetch_fast_info_with_diagnostics(
 pub async fn fetch_key_statistics(
     client: &YfClient,
     symbol: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    options: &CallOptions,
 ) -> Result<KeyStatistics, YfError> {
-    Ok(fetch_key_statistics_with_diagnostics(
-        client,
-        symbol,
-        cache_mode,
-        retry_override,
-        DataQuality::BestEffort,
+    Ok(
+        fetch_key_statistics_with_diagnostics(client, symbol, options)
+            .await?
+            .into_data(),
     )
-    .await?
-    .into_data())
 }
 
 pub async fn fetch_key_statistics_with_diagnostics(
     client: &YfClient,
     symbol: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
-    data_quality: DataQuality,
+    options: &CallOptions,
 ) -> Result<YfResponse<KeyStatistics>, YfError> {
-    let mut ctx = ProjectionContext::new("key_statistics", data_quality);
+    let mut ctx = ProjectionContext::new("key_statistics", options.data_quality());
     let symbols = [symbol];
     let (quote_res, quote_summary_res) = tokio::join!(
-        quotes::fetch_v7_quote_values(client, &symbols, cache_mode, retry_override),
-        quotes::fetch_quote_summary_key_statistics(client, symbol, cache_mode, retry_override)
+        quotes::fetch_v7_quote_values(client, &symbols, options),
+        quotes::fetch_quote_summary_key_statistics(client, symbol, options)
     );
 
     let results = quote_res?;

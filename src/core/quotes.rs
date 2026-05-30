@@ -7,8 +7,8 @@ use serde_json::Value;
 use crate::{
     YfClient, YfError,
     core::{
-        DataQuality, ProjectionContext, ProjectionIssue,
-        client::{CacheEndpoint, CacheMode, RetryConfig, normalize_symbols},
+        CallOptions, DataQuality, ProjectionContext, ProjectionIssue,
+        client::{CacheEndpoint, normalize_symbols},
         conversions::{decimal_from_f64, i64_to_datetime},
         currency_resolver::{CurrencyHints, ResolvedCurrencyUnit},
         diagnostics::optional_decimal_f64,
@@ -684,16 +684,14 @@ pub fn merge_key_statistics(
 pub async fn fetch_quote_summary_key_statistics(
     client: &YfClient,
     symbol: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    options: &CallOptions,
 ) -> Result<KeyStatistics, YfError> {
     let root: QuoteSummaryKeyStatistics = quotesummary::fetch_module_result(
         client,
         symbol,
         KEY_STATISTICS_MODULES,
         "key_statistics",
-        cache_mode,
-        retry_override,
+        options,
     )
     .await?;
 
@@ -706,10 +704,9 @@ pub async fn fetch_quote_summary_key_statistics(
 pub async fn fetch_v7_quotes(
     client: &YfClient,
     symbols: &[&str],
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    options: &CallOptions,
 ) -> Result<Vec<V7QuoteNode>, YfError> {
-    let values = fetch_v7_quote_values(client, symbols, cache_mode, retry_override).await?;
+    let values = fetch_v7_quote_values(client, symbols, options).await?;
     values
         .into_iter()
         .map(|value| serde_json::from_value(value).map_err(YfError::Json))
@@ -722,8 +719,7 @@ pub async fn fetch_v7_quotes(
 pub async fn fetch_v7_quote_values(
     client: &YfClient,
     symbols: &[&str],
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    options: &CallOptions,
 ) -> Result<Vec<Value>, YfError> {
     if symbols.is_empty() {
         return Err(YfError::InvalidParams(
@@ -743,9 +739,8 @@ pub async fn fetch_v7_quote_values(
         net::AuthFetchConfig {
             auth_mode: net::AuthMode::OptionalCrumb,
             cache_endpoint: CacheEndpoint::Quote,
-            cache_mode,
+            options,
             cache_body: None,
-            retry_override,
             endpoint: "quote_v7",
             fixture_key: &fixture_key,
             ext: "json",

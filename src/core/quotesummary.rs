@@ -1,6 +1,6 @@
 use crate::core::{
-    YfClient, YfError,
-    client::{CacheEndpoint, CacheMode, RetryConfig, SymbolEndpoint, normalize_symbol},
+    CallOptions, YfClient, YfError,
+    client::{CacheEndpoint, SymbolEndpoint, normalize_symbol},
     net,
 };
 use serde::Deserialize;
@@ -28,7 +28,7 @@ pub struct V10Error {
 #[cfg_attr(
     feature = "tracing",
     tracing::instrument(
-        skip(client, cache_mode, retry_override),
+        skip(client, options),
         err,
         fields(symbol = %symbol, modules = %modules, caller = %caller)
     )
@@ -38,8 +38,7 @@ pub async fn fetch(
     symbol: &str,
     modules: &str,
     caller: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    options: &CallOptions,
 ) -> Result<V10Envelope, YfError> {
     let symbol = normalize_symbol(symbol)?;
 
@@ -48,8 +47,7 @@ pub async fn fetch(
         symbol: &str,
         modules: &str,
         caller: &str,
-        cache_mode: CacheMode,
-        retry_override: Option<&RetryConfig>,
+        options: &CallOptions,
     ) -> Result<V10Envelope, YfError> {
         let mut url = client.symbol_url(SymbolEndpoint::QuoteSummary, symbol)?;
         url.query_pairs_mut().append_pair("modules", modules);
@@ -65,9 +63,8 @@ pub async fn fetch(
             net::AuthFetchConfig {
                 auth_mode: net::AuthMode::RequiredCrumb,
                 cache_endpoint: CacheEndpoint::QuoteSummary,
-                cache_mode,
+                options,
                 cache_body: None,
-                retry_override,
                 endpoint: &fixture_endpoint,
                 fixture_key: symbol,
                 ext: "json",
@@ -83,7 +80,7 @@ pub async fn fetch(
         serde_json::from_str(&text).map_err(YfError::Json)
     }
 
-    let env = attempt_fetch(client, &symbol, modules, caller, cache_mode, retry_override).await?;
+    let env = attempt_fetch(client, &symbol, modules, caller, options).await?;
 
     if let Some(error) = env.quote_summary.as_ref().and_then(|qs| qs.error.as_ref()) {
         crate::core::logging::trace_error!(
@@ -101,14 +98,12 @@ pub async fn fetch_module_result<T>(
     symbol: &str,
     modules: &str,
     caller: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    options: &CallOptions,
 ) -> Result<T, YfError>
 where
     T: for<'de> serde::Deserialize<'de>,
 {
-    let result_val =
-        fetch_module_value(client, symbol, modules, caller, cache_mode, retry_override).await?;
+    let result_val = fetch_module_value(client, symbol, modules, caller, options).await?;
 
     serde_json::from_value(result_val).map_err(YfError::Json)
 }
@@ -118,10 +113,9 @@ pub async fn fetch_module_value(
     symbol: &str,
     modules: &str,
     caller: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    options: &CallOptions,
 ) -> Result<serde_json::Value, YfError> {
-    let env = fetch(client, symbol, modules, caller, cache_mode, retry_override).await?;
+    let env = fetch(client, symbol, modules, caller, options).await?;
 
     env.quote_summary
         .and_then(|qs| qs.result)

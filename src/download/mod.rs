@@ -4,8 +4,8 @@ use crate::{
     core::client::{CacheMode, RetryConfig, normalize_symbols},
     core::conversions::f64_from_currency_value,
     core::{
-        Candle, DataQuality, HistoryResponse, Interval, ProjectionContext, ProjectionIssue, Range,
-        YfClient, YfError, YfResponse,
+        CallOptions, Candle, DataQuality, HistoryResponse, Interval, ProjectionContext,
+        ProjectionIssue, Range, YfClient, YfError, YfResponse,
     },
     history::HistoryBuilder,
 };
@@ -72,10 +72,8 @@ pub struct DownloadBuilder {
     rounding: bool,
     repair: bool,
 
-    cache_mode: CacheMode,
-    retry_override: Option<RetryConfig>,
+    options: CallOptions,
     concurrency: DownloadConcurrency,
-    data_quality: DataQuality,
 }
 
 impl DownloadBuilder {
@@ -107,9 +105,9 @@ impl DownloadBuilder {
             .auto_adjust(need_adjust_in_fetch)
             .prepost(self.include_prepost)
             .actions(self.include_actions)
-            .data_quality(self.data_quality)
-            .cache_mode(self.cache_mode)
-            .retry_policy(self.retry_override.clone());
+            .data_quality(self.options.data_quality())
+            .cache_mode(self.options.cache_mode())
+            .retry_policy(self.options.retry_override().cloned());
 
         if let Some((start, end)) = period_dt {
             hb = hb.between(start, end);
@@ -226,31 +224,29 @@ impl DownloadBuilder {
             include_actions: true,
             rounding: false,
             repair: false,
-            cache_mode: CacheMode::Default,
-            retry_override: None,
+            options: CallOptions::default(),
             concurrency: DownloadConcurrency::DEFAULT,
-            data_quality: DataQuality::BestEffort,
         }
     }
 
     /// Sets the cache mode for all API calls made by this builder.
     #[must_use]
     pub const fn cache_mode(mut self, mode: CacheMode) -> Self {
-        self.cache_mode = mode;
+        self.options.cache_mode = mode;
         self
     }
 
     /// Overrides the default retry policy for all API calls made by this builder.
     #[must_use]
     pub fn retry_policy(mut self, cfg: Option<RetryConfig>) -> Self {
-        self.retry_override = cfg;
+        self.options = self.options.with_retry_policy(cfg);
         self
     }
 
     /// Sets how provider projection issues are handled.
     #[must_use]
     pub const fn data_quality(mut self, policy: DataQuality) -> Self {
-        self.data_quality = policy;
+        self.options.data_quality = policy;
         self
     }
 
@@ -376,7 +372,7 @@ impl DownloadBuilder {
             return Err(YfError::InvalidParams("no symbols specified".into()));
         }
         let symbols = normalize_symbols(self.symbols.iter().map(String::as_str))?;
-        let mut ctx = ProjectionContext::new("download", self.data_quality);
+        let mut ctx = ProjectionContext::new("download", self.options.data_quality());
 
         let need_adjust_in_fetch = self.auto_adjust || self.back_adjust;
         let period_dt = self.precompute_period_dt()?;

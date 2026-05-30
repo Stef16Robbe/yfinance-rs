@@ -1,5 +1,6 @@
-use crate::core::client::{
-    CacheEndpoint, CacheMode, RetryConfig, SymbolEndpoint, normalize_symbol,
+use crate::core::{
+    CallOptions,
+    client::{CacheEndpoint, SymbolEndpoint, normalize_symbol},
 };
 use crate::history::wire::{Events, MetaNode, QuoteBlock};
 
@@ -11,30 +12,33 @@ pub struct Fetched {
     pub meta: Option<MetaNode>,
 }
 
-#[allow(clippy::too_many_arguments)]
+#[derive(Clone, Copy)]
+pub struct ChartFetchRequest {
+    pub range: Option<crate::core::Range>,
+    pub period: Option<(i64, i64)>,
+    pub interval: crate::core::Interval,
+    pub include_actions: bool,
+    pub include_prepost: bool,
+}
+
 pub async fn fetch_chart(
     client: &crate::core::YfClient,
     symbol: &str,
-    range: Option<crate::core::Range>,
-    period: Option<(i64, i64)>,
-    interval: crate::core::Interval,
-    include_actions: bool,
-    include_prepost: bool,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    request: ChartFetchRequest,
+    options: &CallOptions,
 ) -> Result<Fetched, crate::core::YfError> {
     let symbol = normalize_symbol(symbol)?;
     let mut url = client.symbol_url(SymbolEndpoint::Chart, &symbol)?;
     {
         let mut qp = url.query_pairs_mut();
 
-        if let Some((p1, p2)) = period {
+        if let Some((p1, p2)) = request.period {
             if p1 >= p2 {
                 return Err(crate::core::YfError::InvalidDates);
             }
             qp.append_pair("period1", &p1.to_string());
             qp.append_pair("period2", &p2.to_string());
-        } else if let Some(r) = range {
+        } else if let Some(r) = request.range {
             qp.append_pair("range", crate::core::models::range_as_str(r));
         } else {
             return Err(crate::core::YfError::InvalidParams(
@@ -42,13 +46,20 @@ pub async fn fetch_chart(
             ));
         }
 
-        qp.append_pair("interval", crate::core::models::interval_as_str(interval));
-        if include_actions {
+        qp.append_pair(
+            "interval",
+            crate::core::models::interval_as_str(request.interval),
+        );
+        if request.include_actions {
             qp.append_pair("events", "div|split|capitalGains");
         }
         qp.append_pair(
             "includePrePost",
-            if include_prepost { "true" } else { "false" },
+            if request.include_prepost {
+                "true"
+            } else {
+                "false"
+            },
         );
     }
 
@@ -57,8 +68,7 @@ pub async fn fetch_chart(
         &url,
         crate::core::net::CacheFetchConfig {
             cache_endpoint: CacheEndpoint::Chart,
-            cache_mode,
-            retry_override,
+            options,
             endpoint: "history_chart",
             fixture_key: &symbol,
             ext: "json",

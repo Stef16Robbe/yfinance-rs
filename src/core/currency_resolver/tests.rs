@@ -6,7 +6,8 @@ use super::{
     types::{CurrencySource, EvidenceStrength},
 };
 use crate::core::{
-    DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfWarning, client::CacheMode,
+    CallOptions, DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfWarning,
+    client::CacheMode,
 };
 use httpmock::{Method::GET, MockServer};
 use paft::Decimal;
@@ -22,6 +23,10 @@ fn currency(unit: &ResolvedCurrencyUnit) -> Currency {
         .expect("known-good test money")
         .currency()
         .clone()
+}
+
+fn test_options() -> CallOptions {
+    CallOptions::default().with_cache_mode(CacheMode::Use)
 }
 
 #[tokio::test]
@@ -88,8 +93,7 @@ async fn override_resolution_does_not_poison_inferred_cache() {
             "TEST",
             Some(Currency::Iso(IsoCurrency::USD)),
             ReportingCurrencyEvidence::None,
-            CacheMode::Use,
-            None,
+            &test_options(),
         )
         .await
         .expect("override currency");
@@ -100,8 +104,7 @@ async fn override_resolution_does_not_poison_inferred_cache() {
             "TEST",
             None,
             ReportingCurrencyEvidence::None,
-            CacheMode::Use,
-            None,
+            &test_options(),
         )
         .await
         .expect("inferred currency");
@@ -116,8 +119,7 @@ async fn override_currency_without_metadata_is_invalid_params() {
             "TEST",
             Some(Currency::try_from_str("NO_METADATA").expect("canonical custom currency")),
             ReportingCurrencyEvidence::None,
-            CacheMode::Use,
-            None,
+            &test_options(),
         )
         .await
         .expect_err("unregistered override currency should fail");
@@ -147,13 +149,7 @@ async fn provider_hint_replaces_cached_listing_heuristic() {
         .await;
 
     let resolved = client
-        .resolve_trading_currency_unit(
-            "TEST",
-            None,
-            TradingCurrencyEvidence::None,
-            CacheMode::Use,
-            None,
-        )
+        .resolve_trading_currency_unit("TEST", None, TradingCurrencyEvidence::None, &test_options())
         .await
         .expect("provider hint should replace heuristic cache");
 
@@ -194,8 +190,7 @@ async fn cached_reporting_profile_heuristic_retries_unknown_enrichment() {
             "TEST",
             None,
             ReportingCurrencyEvidence::None,
-            CacheMode::Use,
-            None,
+            &test_options(),
         )
         .await
         .expect("quote enrichment should replace profile heuristic");
@@ -235,8 +230,7 @@ async fn contextual_currency_kinds_use_typed_cache() {
             "TEST",
             None,
             AnalystEstimateCurrencyEvidence::Earnings(None),
-            CacheMode::Use,
-            None,
+            &test_options(),
         )
         .await
         .expect("cached analyst estimate currency");
@@ -247,8 +241,7 @@ async fn contextual_currency_kinds_use_typed_cache() {
             "TEST",
             None,
             CorporateActionCurrencyEvidence::ChartMeta(None),
-            CacheMode::Use,
-            None,
+            &test_options(),
         )
         .await
         .expect("cached corporate action currency");
@@ -275,8 +268,7 @@ async fn analyst_direct_currency_does_not_poison_symbol_cache() {
             "TEST",
             None,
             AnalystEstimateCurrencyEvidence::Earnings(Some("USD")),
-            CacheMode::Use,
-            None,
+            &test_options(),
         )
         .await
         .expect("direct analyst currency");
@@ -293,8 +285,7 @@ async fn analyst_direct_currency_does_not_poison_symbol_cache() {
             "TEST",
             None,
             AnalystEstimateCurrencyEvidence::Earnings(None),
-            CacheMode::Use,
-            None,
+            &test_options(),
         )
         .await
         .expect("reporting fallback");
@@ -311,8 +302,7 @@ async fn invalid_direct_currency_is_invalid_data() {
             "TEST",
             None,
             ReportingCurrencyEvidence::FinancialCurrency(Some("!!!")),
-            CacheMode::Use,
-            None,
+            &test_options(),
         )
         .await
         .expect_err("invalid direct currency should fail");
@@ -339,13 +329,7 @@ async fn invalid_enriched_currency_is_invalid_data() {
         .unwrap();
 
     let err = client
-        .resolve_trading_currency_unit(
-            "BAD",
-            None,
-            TradingCurrencyEvidence::None,
-            CacheMode::Use,
-            None,
-        )
+        .resolve_trading_currency_unit("BAD", None, TradingCurrencyEvidence::None, &test_options())
         .await
         .expect_err("invalid enriched currency should fail");
 
@@ -398,8 +382,7 @@ async fn invalid_reporting_quote_hint_falls_back_to_quote_summary_hint() {
             "BAD",
             None,
             ReportingCurrencyEvidence::None,
-            CacheMode::Use,
-            None,
+            &test_options(),
         )
         .await
         .expect("valid quoteSummary hint should outrank invalid quote hint");
@@ -480,8 +463,7 @@ async fn listing_inference_uses_yahoo_quote_units() {
             "TSCO.L",
             None,
             TradingCurrencyEvidence::None,
-            CacheMode::Use,
-            None,
+            &test_options(),
         )
         .await
         .expect("listing fallback currency");
@@ -508,12 +490,8 @@ async fn failed_quote_enrichment_is_not_cached() {
         .build()
         .unwrap();
 
-    client
-        .enrich_quote_hints("MISS", CacheMode::Use, None)
-        .await;
-    client
-        .enrich_quote_hints("MISS", CacheMode::Use, None)
-        .await;
+    client.enrich_quote_hints("MISS", &test_options()).await;
+    client.enrich_quote_hints("MISS", &test_options()).await;
 
     assert!(quote_mock.calls() > 1);
     assert!(
@@ -541,12 +519,8 @@ async fn successful_missing_quote_currency_is_cached() {
         .build()
         .unwrap();
 
-    client
-        .enrich_quote_hints("MISS", CacheMode::Use, None)
-        .await;
-    client
-        .enrich_quote_hints("MISS", CacheMode::Use, None)
-        .await;
+    client.enrich_quote_hints("MISS", &test_options()).await;
+    client.enrich_quote_hints("MISS", &test_options()).await;
 
     assert_eq!(quote_mock.calls(), 1);
     assert!(
@@ -574,12 +548,8 @@ async fn successful_empty_quote_response_caches_requested_symbol_missing() {
         .build()
         .unwrap();
 
-    client
-        .enrich_quote_hints("MISS", CacheMode::Use, None)
-        .await;
-    client
-        .enrich_quote_hints("MISS", CacheMode::Use, None)
-        .await;
+    client.enrich_quote_hints("MISS", &test_options()).await;
+    client.enrich_quote_hints("MISS", &test_options()).await;
 
     assert_eq!(quote_mock.calls(), 1);
     let hints = client.cached_currency_hints("MISS").await;
@@ -605,12 +575,8 @@ async fn successful_normalized_quote_response_caches_requested_symbol_key() {
         .build()
         .unwrap();
 
-    client
-        .enrich_quote_hints("miss", CacheMode::Use, None)
-        .await;
-    client
-        .enrich_quote_hints("miss", CacheMode::Use, None)
-        .await;
+    client.enrich_quote_hints("miss", &test_options()).await;
+    client.enrich_quote_hints("miss", &test_options()).await;
 
     assert_eq!(quote_mock.calls(), 1);
     let hints = client.cached_currency_hints("miss").await;

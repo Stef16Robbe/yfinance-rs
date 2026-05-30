@@ -9,7 +9,7 @@ pub use model::{
 };
 
 use crate::core::{
-    DataQuality, YfClient, YfError, YfResponse,
+    CallOptions, DataQuality, YfClient, YfError, YfResponse,
     client::{CacheMode, RetryConfig},
 };
 use paft::money::Currency;
@@ -23,9 +23,7 @@ pub(crate) struct InfoAnalysisParts {
 pub struct AnalysisBuilder {
     client: YfClient,
     symbol: String,
-    cache_mode: CacheMode,
-    retry_override: Option<RetryConfig>,
-    data_quality: DataQuality,
+    options: CallOptions,
 }
 
 impl AnalysisBuilder {
@@ -34,30 +32,28 @@ impl AnalysisBuilder {
         Self {
             client: client.clone(),
             symbol: symbol.into(),
-            cache_mode: CacheMode::Default,
-            retry_override: None,
-            data_quality: DataQuality::BestEffort,
+            options: CallOptions::default(),
         }
     }
 
     /// Sets the cache mode for this specific API call.
     #[must_use]
     pub const fn cache_mode(mut self, mode: CacheMode) -> Self {
-        self.cache_mode = mode;
+        self.options.cache_mode = mode;
         self
     }
 
     /// Overrides the default retry policy for this specific API call.
     #[must_use]
     pub fn retry_policy(mut self, cfg: Option<RetryConfig>) -> Self {
-        self.retry_override = cfg;
+        self.options = self.options.with_retry_policy(cfg);
         self
     }
 
     /// Sets how provider projection issues are handled.
     #[must_use]
     pub const fn data_quality(mut self, policy: DataQuality) -> Self {
-        self.data_quality = policy;
+        self.options.data_quality = policy;
         self
     }
 
@@ -84,14 +80,7 @@ impl AnalysisBuilder {
     pub async fn recommendations_with_diagnostics(
         &self,
     ) -> Result<YfResponse<Vec<RecommendationRow>>, YfError> {
-        api::recommendation_trend(
-            &self.client,
-            &self.symbol,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-            self.data_quality,
-        )
-        .await
+        api::recommendation_trend(&self.client, &self.symbol, &self.options).await
     }
 
     /// Fetches a summary of the latest analyst recommendations.
@@ -114,14 +103,7 @@ impl AnalysisBuilder {
     pub async fn recommendations_summary_with_diagnostics(
         &self,
     ) -> Result<YfResponse<RecommendationSummary>, YfError> {
-        api::recommendation_summary(
-            &self.client,
-            &self.symbol,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-            self.data_quality,
-        )
-        .await
+        api::recommendation_summary(&self.client, &self.symbol, &self.options).await
     }
 
     /// Fetches the history of analyst upgrades and downgrades for the symbol.
@@ -144,14 +126,7 @@ impl AnalysisBuilder {
     pub async fn upgrades_downgrades_with_diagnostics(
         &self,
     ) -> Result<YfResponse<Vec<UpgradeDowngradeRow>>, YfError> {
-        api::upgrades_downgrades(
-            &self.client,
-            &self.symbol,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-            self.data_quality,
-        )
-        .await
+        api::upgrades_downgrades(&self.client, &self.symbol, &self.options).await
     }
 
     /// Fetches the analyst price target summary.
@@ -181,15 +156,8 @@ impl AnalysisBuilder {
         &self,
         override_currency: Option<Currency>,
     ) -> Result<YfResponse<PriceTarget>, YfError> {
-        api::analyst_price_target(
-            &self.client,
-            &self.symbol,
-            override_currency,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-            self.data_quality,
-        )
-        .await
+        api::analyst_price_target(&self.client, &self.symbol, override_currency, &self.options)
+            .await
     }
 
     /// Fetches earnings trend data.
@@ -220,15 +188,7 @@ impl AnalysisBuilder {
         &self,
         override_currency: Option<Currency>,
     ) -> Result<YfResponse<Vec<EarningsTrendRow>>, YfError> {
-        api::earnings_trend(
-            &self.client,
-            &self.symbol,
-            override_currency,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-            self.data_quality,
-        )
-        .await
+        api::earnings_trend(&self.client, &self.symbol, override_currency, &self.options).await
     }
 }
 
@@ -237,18 +197,14 @@ pub(crate) async fn price_target_and_recommendation_summary_from_quote_summary_v
     symbol: &str,
     override_currency: Option<Currency>,
     value: serde_json::Value,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
-    data_quality: DataQuality,
+    options: &CallOptions,
 ) -> Result<InfoAnalysisParts, YfError> {
     api::price_target_and_recommendation_summary_from_quote_summary_value(
         client,
         symbol,
         override_currency,
         value,
-        cache_mode,
-        retry_override,
-        data_quality,
+        options,
     )
     .await
 }

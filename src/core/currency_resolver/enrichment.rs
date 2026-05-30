@@ -1,9 +1,5 @@
 use super::{CurrencyHints, hints::CurrencyHintField};
-use crate::core::{
-    YfClient,
-    client::{CacheMode, RetryConfig},
-    quotes, quotesummary,
-};
+use crate::core::{CallOptions, YfClient, quotes, quotesummary};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -26,12 +22,7 @@ struct EarningsCurrency {
 }
 
 impl YfClient {
-    pub(super) async fn enrich_quote_hints(
-        &self,
-        symbol: &str,
-        cache_mode: CacheMode,
-        retry_override: Option<&RetryConfig>,
-    ) {
+    pub(super) async fn enrich_quote_hints(&self, symbol: &str, options: &CallOptions) {
         let hints = self.cached_currency_hints(symbol).await;
         if !hints.is_unknown(CurrencyHintField::Quote)
             && !hints.is_unknown(CurrencyHintField::Financial)
@@ -40,8 +31,7 @@ impl YfClient {
         }
 
         let symbols = [symbol];
-        if let Err(err) = quotes::fetch_v7_quotes(self, &symbols, cache_mode, retry_override).await
-        {
+        if let Err(err) = quotes::fetch_v7_quotes(self, &symbols, options).await {
             crate::core::logging::trace_debug!(
                 symbol,
                 error = %err,
@@ -55,8 +45,7 @@ impl YfClient {
     pub(super) async fn enrich_quote_summary_reporting_hints(
         &self,
         symbol: &str,
-        cache_mode: CacheMode,
-        retry_override: Option<&RetryConfig>,
+        options: &CallOptions,
     ) {
         if !self
             .cached_currency_hints(symbol)
@@ -71,8 +60,7 @@ impl YfClient {
             symbol,
             "financialData,earnings",
             "currency",
-            cache_mode,
-            retry_override,
+            options,
         )
         .await
         else {
@@ -91,12 +79,7 @@ impl YfClient {
         .await;
     }
 
-    pub(super) async fn enrich_profile_hints(
-        &self,
-        symbol: &str,
-        cache_mode: CacheMode,
-        retry_override: Option<&RetryConfig>,
-    ) {
+    pub(super) async fn enrich_profile_hints(&self, symbol: &str, options: &CallOptions) {
         if !self
             .cached_currency_hints(symbol)
             .await
@@ -105,9 +88,7 @@ impl YfClient {
             return;
         }
 
-        let Ok(profile) =
-            crate::profile::load_profile_with_options(self, symbol, cache_mode, retry_override)
-                .await
+        let Ok(profile) = crate::profile::load_profile_with_options(self, symbol, options).await
         else {
             return;
         };

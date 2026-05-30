@@ -17,7 +17,7 @@ use crate::news::NewsArticle;
 use crate::{
     EsgBuilder,
     core::client::RetryConfig,
-    core::{CacheMode, DataQuality, YfClient, YfError, YfResponse},
+    core::{CacheMode, CallOptions, DataQuality, YfClient, YfError, YfResponse},
     holders::HoldersBuilder,
     news::NewsBuilder,
 };
@@ -68,8 +68,7 @@ pub struct Ticker {
     #[doc(hidden)]
     pub(crate) symbol: String,
     #[doc(hidden)]
-    cache_mode: CacheMode,
-    retry_override: Option<RetryConfig>,
+    options: CallOptions,
 }
 
 impl Ticker {
@@ -80,8 +79,7 @@ impl Ticker {
         Self {
             client: client.clone(),
             symbol: symbol.into(),
-            cache_mode: CacheMode::Default,
-            retry_override: None,
+            options: CallOptions::default(),
         }
     }
 
@@ -90,14 +88,14 @@ impl Ticker {
     /// This allows you to override the client's default cache behavior for a specific ticker.
     #[must_use]
     pub const fn cache_mode(mut self, mode: CacheMode) -> Self {
-        self.cache_mode = mode;
+        self.options.cache_mode = mode;
         self
     }
 
     /// Overrides the client's default retry policy for all subsequent API calls made by this `Ticker` instance.
     #[must_use]
     pub fn retry_policy(mut self, cfg: Option<RetryConfig>) -> Self {
-        self.retry_override = cfg;
+        self.options = self.options.with_retry_policy(cfg);
         self
     }
 
@@ -115,13 +113,7 @@ impl Ticker {
     /// This method will return an error if the required quote data cannot be fetched.
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), err, fields(symbol = %self.symbol)))]
     pub async fn info(&self) -> Result<Info, YfError> {
-        Box::pin(info::fetch_info(
-            &self.client,
-            &self.symbol,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-        ))
-        .await
+        Box::pin(info::fetch_info(&self.client, &self.symbol, &self.options)).await
     }
 
     /// Fetches aggregate `Info` with projection diagnostics for optional submodules.
@@ -130,12 +122,14 @@ impl Ticker {
     ///
     /// This method will return an error if the required quote data cannot be fetched.
     pub async fn info_with_diagnostics(&self) -> Result<YfResponse<Info>, YfError> {
+        let options = self
+            .options
+            .clone()
+            .with_data_quality(DataQuality::BestEffort);
         Box::pin(info::fetch_info_with_diagnostics(
             &self.client,
             &self.symbol,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-            DataQuality::BestEffort,
+            &options,
         ))
         .await
     }
@@ -147,12 +141,11 @@ impl Ticker {
     /// This method will return an error if the required quote data cannot be fetched
     /// or any optional submodule fails to project cleanly.
     pub async fn info_strict(&self) -> Result<Info, YfError> {
+        let options = self.options.clone().strict();
         Ok(Box::pin(info::fetch_info_with_diagnostics(
             &self.client,
             &self.symbol,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-            DataQuality::Strict,
+            &options,
         ))
         .await?
         .into_data())
@@ -167,13 +160,7 @@ impl Ticker {
     /// This method will return an error if the request fails or the response cannot be parsed.
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), err, fields(symbol = %self.symbol)))]
     pub async fn quote(&self) -> Result<Quote, YfError> {
-        quote::fetch_quote(
-            &self.client,
-            &self.symbol,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-        )
-        .await
+        quote::fetch_quote(&self.client, &self.symbol, &self.options).await
     }
 
     /// Fetches a detailed quote with projection diagnostics.
@@ -182,14 +169,11 @@ impl Ticker {
     ///
     /// This method will return an error if the request fails or the response cannot be parsed.
     pub async fn quote_with_diagnostics(&self) -> Result<YfResponse<Quote>, YfError> {
-        quote::fetch_quote_with_diagnostics(
-            &self.client,
-            &self.symbol,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-            DataQuality::BestEffort,
-        )
-        .await
+        let options = self
+            .options
+            .clone()
+            .with_data_quality(DataQuality::BestEffort);
+        quote::fetch_quote_with_diagnostics(&self.client, &self.symbol, &options).await
     }
 
     /// Fetches a "fast" info quote, containing the most essential price and market data.
@@ -198,13 +182,7 @@ impl Ticker {
     ///
     /// This method will return an error if the request fails or the response cannot be parsed.
     pub async fn fast_info(&self) -> Result<FastInfo, YfError> {
-        quote::fetch_fast_info(
-            &self.client,
-            &self.symbol,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-        )
-        .await
+        quote::fetch_fast_info(&self.client, &self.symbol, &self.options).await
     }
 
     /// Fetches a "fast" info quote with projection diagnostics.
@@ -213,14 +191,11 @@ impl Ticker {
     ///
     /// This method will return an error if the request fails or the response cannot be parsed.
     pub async fn fast_info_with_diagnostics(&self) -> Result<YfResponse<FastInfo>, YfError> {
-        quote::fetch_fast_info_with_diagnostics(
-            &self.client,
-            &self.symbol,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-            DataQuality::BestEffort,
-        )
-        .await
+        let options = self
+            .options
+            .clone()
+            .with_data_quality(DataQuality::BestEffort);
+        quote::fetch_fast_info_with_diagnostics(&self.client, &self.symbol, &options).await
     }
 
     /// Fetches valuation, dividend, volume, and risk statistics for the ticker.
@@ -231,13 +206,7 @@ impl Ticker {
     ///
     /// This method will return an error if the request fails or the response cannot be parsed.
     pub async fn key_statistics(&self) -> Result<KeyStatistics, YfError> {
-        quote::fetch_key_statistics(
-            &self.client,
-            &self.symbol,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-        )
-        .await
+        quote::fetch_key_statistics(&self.client, &self.symbol, &self.options).await
     }
 
     /// Fetches valuation, dividend, volume, and risk statistics with projection diagnostics.
@@ -248,14 +217,11 @@ impl Ticker {
     pub async fn key_statistics_with_diagnostics(
         &self,
     ) -> Result<YfResponse<KeyStatistics>, YfError> {
-        quote::fetch_key_statistics_with_diagnostics(
-            &self.client,
-            &self.symbol,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-            DataQuality::BestEffort,
-        )
-        .await
+        let options = self
+            .options
+            .clone()
+            .with_data_quality(DataQuality::BestEffort);
+        quote::fetch_key_statistics_with_diagnostics(&self.client, &self.symbol, &options).await
     }
 
     /* ---------------- News convenience ---------------- */
@@ -264,8 +230,8 @@ impl Ticker {
     #[must_use]
     pub fn news_builder(&self) -> NewsBuilder {
         NewsBuilder::new(&self.client, &self.symbol)
-            .cache_mode(self.cache_mode)
-            .retry_policy(self.retry_override.clone())
+            .cache_mode(self.options.cache_mode())
+            .retry_policy(self.options.retry_override().cloned())
     }
 
     /// Fetches the latest news articles for the ticker.
@@ -283,8 +249,8 @@ impl Ticker {
     #[must_use]
     pub fn history_builder(&self) -> HistoryBuilder {
         HistoryBuilder::new(&self.client, &self.symbol)
-            .cache_mode(self.cache_mode)
-            .retry_policy(self.retry_override.clone())
+            .cache_mode(self.options.cache_mode())
+            .retry_policy(self.options.retry_override().cloned())
     }
 
     /// Fetches historical price candles with default settings.
@@ -371,7 +337,7 @@ impl Ticker {
             return Ok(None);
         }
 
-        isin::fetch_isin(&self.client, &symbol, self.retry_override.as_ref()).await
+        isin::fetch_isin(&self.client, &symbol, self.options.retry_override()).await
     }
 
     /* ---------------- Options ---------------- */
@@ -382,13 +348,7 @@ impl Ticker {
     ///
     /// This method will return an error if the request fails or the response cannot be parsed.
     pub async fn options(&self) -> Result<Vec<i64>, YfError> {
-        options::expiration_dates(
-            &self.client,
-            &self.symbol,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-        )
-        .await
+        options::expiration_dates(&self.client, &self.symbol, &self.options).await
     }
 
     /// Fetches the full option chain (calls and puts) for a specific expiration date.
@@ -399,14 +359,7 @@ impl Ticker {
     ///
     /// This method will return an error if the request fails or the response cannot be parsed.
     pub async fn option_chain(&self, date: Option<i64>) -> Result<OptionChain, YfError> {
-        options::option_chain(
-            &self.client,
-            &self.symbol,
-            date,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-        )
-        .await
+        options::option_chain(&self.client, &self.symbol, date, &self.options).await
     }
 
     /// Fetches the full option chain with projection diagnostics.
@@ -420,23 +373,19 @@ impl Ticker {
         &self,
         date: Option<i64>,
     ) -> Result<YfResponse<OptionChain>, YfError> {
-        options::option_chain_with_diagnostics(
-            &self.client,
-            &self.symbol,
-            date,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-            DataQuality::BestEffort,
-        )
-        .await
+        let options = self
+            .options
+            .clone()
+            .with_data_quality(DataQuality::BestEffort);
+        options::option_chain_with_diagnostics(&self.client, &self.symbol, date, &options).await
     }
 
     /* ---------------- Holders convenience ---------------- */
 
     fn holders_builder(&self) -> HoldersBuilder {
         HoldersBuilder::new(&self.client, &self.symbol)
-            .cache_mode(self.cache_mode)
-            .retry_policy(self.retry_override.clone())
+            .cache_mode(self.options.cache_mode())
+            .retry_policy(self.options.retry_override().cloned())
     }
 
     /// Fetches the major holders breakdown (e.g., % insiders, % institutions).
@@ -499,8 +448,8 @@ impl Ticker {
 
     fn analysis_builder(&self) -> AnalysisBuilder {
         AnalysisBuilder::new(&self.client, &self.symbol)
-            .cache_mode(self.cache_mode)
-            .retry_policy(self.retry_override.clone())
+            .cache_mode(self.options.cache_mode())
+            .retry_policy(self.options.retry_override().cloned())
     }
 
     /// Fetches the analyst recommendation trend.
@@ -570,8 +519,8 @@ impl Ticker {
 
     fn esg_builder(&self) -> EsgBuilder {
         EsgBuilder::new(&self.client, &self.symbol)
-            .cache_mode(self.cache_mode)
-            .retry_policy(self.retry_override.clone())
+            .cache_mode(self.options.cache_mode())
+            .retry_policy(self.options.retry_override().cloned())
     }
 
     /// Fetches ESG (Environmental, Social, Governance) scores and involvement data for the ticker.
@@ -597,8 +546,8 @@ impl Ticker {
 
     fn fundamentals_builder(&self) -> FundamentalsBuilder {
         FundamentalsBuilder::new(&self.client, &self.symbol)
-            .cache_mode(self.cache_mode)
-            .retry_policy(self.retry_override.clone())
+            .cache_mode(self.options.cache_mode())
+            .retry_policy(self.options.retry_override().cloned())
     }
 
     /// Fetches the annual income statement.

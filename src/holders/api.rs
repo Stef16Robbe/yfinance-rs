@@ -8,8 +8,7 @@ use super::wire::{
 };
 use crate::core::wire::{from_raw, from_raw_date};
 use crate::core::{
-    DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfError, YfResponse,
-    client::{CacheMode, RetryConfig},
+    CallOptions, ProjectionContext, ProjectionIssue, YfClient, YfError, YfResponse,
     conversions::{i64_to_datetime, string_to_insider_position, string_to_transaction_type},
     currency_resolver::{
         CurrencyKind, ReportingCurrencyEvidence, ResolvedCurrencyUnit, project_currency_resolution,
@@ -45,36 +44,18 @@ async fn fetch_holders_modules(
     client: &YfClient,
     symbol: &str,
     modules: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    options: &CallOptions,
 ) -> Result<V10Result, YfError> {
-    quotesummary::fetch_module_result(
-        client,
-        symbol,
-        modules,
-        "holders",
-        cache_mode,
-        retry_override,
-    )
-    .await
+    quotesummary::fetch_module_result(client, symbol, modules, "holders", options).await
 }
 
 pub(super) async fn major_holders(
     client: &YfClient,
     symbol: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
-    data_quality: DataQuality,
+    options: &CallOptions,
 ) -> Result<YfResponse<Vec<MajorHolder>>, YfError> {
-    let mut ctx = ProjectionContext::new("holders", data_quality);
-    let root = fetch_holders_modules(
-        client,
-        symbol,
-        MAJOR_HOLDERS_MODULE,
-        cache_mode,
-        retry_override,
-    )
-    .await?;
+    let mut ctx = ProjectionContext::new("holders", options.data_quality());
+    let root = fetch_holders_modules(client, symbol, MAJOR_HOLDERS_MODULE, options).await?;
     let Some(breakdown) = root.major_holders_breakdown else {
         ctx.unavailable_feature("majorHoldersBreakdown")?;
         return Ok(ctx.finish(Vec::new()));
@@ -235,8 +216,7 @@ async fn map_ownership_list(
     symbol: &str,
     node: Option<OwnershipNode>,
     features: OwnershipFeatureNames,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    options: &CallOptions,
     ctx: &mut ProjectionContext,
 ) -> Result<Vec<InstitutionalHolder>, YfError> {
     let Some(holders) = ownership_list_or_unavailable(node, features, ctx)? else {
@@ -247,8 +227,7 @@ async fn map_ownership_list(
         client,
         symbol,
         holders.iter().any(|h| raw_field_present(h, "value")),
-        cache_mode,
-        retry_override,
+        options,
         ctx,
     )
     .await?;
@@ -339,17 +318,10 @@ fn ownership_list_or_unavailable(
 async fn resolve_reporting_currency(
     client: &YfClient,
     symbol: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    options: &CallOptions,
 ) -> Result<crate::core::currency_resolver::ResolvedCurrency, YfError> {
     client
-        .resolve_reporting_currency(
-            symbol,
-            None,
-            ReportingCurrencyEvidence::None,
-            cache_mode,
-            retry_override,
-        )
+        .resolve_reporting_currency(symbol, None, ReportingCurrencyEvidence::None, options)
         .await
 }
 
@@ -357,8 +329,7 @@ async fn optional_reporting_currency(
     client: &YfClient,
     symbol: &str,
     needed: bool,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    options: &CallOptions,
     ctx: &mut ProjectionContext,
 ) -> Result<Option<ResolvedCurrencyUnit>, YfError> {
     if !needed {
@@ -370,7 +341,7 @@ async fn optional_reporting_currency(
         symbol,
         CurrencyKind::Reporting,
         None,
-        resolve_reporting_currency(client, symbol, cache_mode, retry_override).await,
+        resolve_reporting_currency(client, symbol, options).await,
     )?
     .into_unit())
 }
@@ -378,26 +349,16 @@ async fn optional_reporting_currency(
 pub(super) async fn institutional_holders(
     client: &YfClient,
     symbol: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
-    data_quality: DataQuality,
+    options: &CallOptions,
 ) -> Result<YfResponse<Vec<InstitutionalHolder>>, YfError> {
-    let mut ctx = ProjectionContext::new("holders", data_quality);
-    let root = fetch_holders_modules(
-        client,
-        symbol,
-        INSTITUTION_OWNERSHIP_MODULE,
-        cache_mode,
-        retry_override,
-    )
-    .await?;
+    let mut ctx = ProjectionContext::new("holders", options.data_quality());
+    let root = fetch_holders_modules(client, symbol, INSTITUTION_OWNERSHIP_MODULE, options).await?;
     let rows = map_ownership_list(
         client,
         symbol,
         root.institution_ownership,
         INSTITUTION_OWNERSHIP,
-        cache_mode,
-        retry_override,
+        options,
         &mut ctx,
     )
     .await?;
@@ -407,26 +368,16 @@ pub(super) async fn institutional_holders(
 pub(super) async fn mutual_fund_holders(
     client: &YfClient,
     symbol: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
-    data_quality: DataQuality,
+    options: &CallOptions,
 ) -> Result<YfResponse<Vec<InstitutionalHolder>>, YfError> {
-    let mut ctx = ProjectionContext::new("holders", data_quality);
-    let root = fetch_holders_modules(
-        client,
-        symbol,
-        FUND_OWNERSHIP_MODULE,
-        cache_mode,
-        retry_override,
-    )
-    .await?;
+    let mut ctx = ProjectionContext::new("holders", options.data_quality());
+    let root = fetch_holders_modules(client, symbol, FUND_OWNERSHIP_MODULE, options).await?;
     let rows = map_ownership_list(
         client,
         symbol,
         root.fund_ownership,
         FUND_OWNERSHIP,
-        cache_mode,
-        retry_override,
+        options,
         &mut ctx,
     )
     .await?;
@@ -437,19 +388,10 @@ pub(super) async fn mutual_fund_holders(
 pub(super) async fn insider_transactions(
     client: &YfClient,
     symbol: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
-    data_quality: DataQuality,
+    options: &CallOptions,
 ) -> Result<YfResponse<Vec<InsiderTransaction>>, YfError> {
-    let mut ctx = ProjectionContext::new("holders", data_quality);
-    let root = fetch_holders_modules(
-        client,
-        symbol,
-        INSIDER_TRANSACTIONS_MODULE,
-        cache_mode,
-        retry_override,
-    )
-    .await?;
+    let mut ctx = ProjectionContext::new("holders", options.data_quality());
+    let root = fetch_holders_modules(client, symbol, INSIDER_TRANSACTIONS_MODULE, options).await?;
     let Some(insider_transactions) = root.insider_transactions else {
         ctx.unavailable_feature("insiderTransactions")?;
         return Ok(ctx.finish(Vec::new()));
@@ -463,8 +405,7 @@ pub(super) async fn insider_transactions(
         client,
         symbol,
         transactions.iter().any(|t| raw_field_present(t, "value")),
-        cache_mode,
-        retry_override,
+        options,
         &mut ctx,
     )
     .await?;
@@ -553,19 +494,10 @@ pub(super) async fn insider_transactions(
 pub(super) async fn insider_roster_holders(
     client: &YfClient,
     symbol: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
-    data_quality: DataQuality,
+    options: &CallOptions,
 ) -> Result<YfResponse<Vec<InsiderRosterHolder>>, YfError> {
-    let mut ctx = ProjectionContext::new("holders", data_quality);
-    let root = fetch_holders_modules(
-        client,
-        symbol,
-        INSIDER_HOLDERS_MODULE,
-        cache_mode,
-        retry_override,
-    )
-    .await?;
+    let mut ctx = ProjectionContext::new("holders", options.data_quality());
+    let root = fetch_holders_modules(client, symbol, INSIDER_HOLDERS_MODULE, options).await?;
     let Some(insider_holders) = root.insider_holders else {
         ctx.unavailable_feature("insiderHolders")?;
         return Ok(ctx.finish(Vec::new()));
@@ -660,19 +592,11 @@ pub(super) async fn insider_roster_holders(
 pub(super) async fn net_share_purchase_activity(
     client: &YfClient,
     symbol: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
-    data_quality: DataQuality,
+    options: &CallOptions,
 ) -> Result<YfResponse<Option<NetSharePurchaseActivity>>, YfError> {
-    let mut ctx = ProjectionContext::new("holders", data_quality);
-    let root = fetch_holders_modules(
-        client,
-        symbol,
-        NET_SHARE_PURCHASE_ACTIVITY_MODULE,
-        cache_mode,
-        retry_override,
-    )
-    .await?;
+    let mut ctx = ProjectionContext::new("holders", options.data_quality());
+    let root =
+        fetch_holders_modules(client, symbol, NET_SHARE_PURCHASE_ACTIVITY_MODULE, options).await?;
     let Some(n) = root.net_share_purchase_activity else {
         ctx.unavailable_feature("netSharePurchaseActivity")?;
         return Ok(ctx.finish(None));

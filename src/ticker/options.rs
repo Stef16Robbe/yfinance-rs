@@ -3,10 +3,10 @@ use serde_json::Value;
 use url::Url;
 
 use crate::{
-    DataQuality, ProjectionIssue, YfClient, YfError, YfResponse,
+    ProjectionIssue, YfClient, YfError, YfResponse,
     core::{
-        ProjectionContext,
-        client::{CacheEndpoint, CacheMode, RetryConfig, SymbolEndpoint, normalize_symbol},
+        CallOptions, ProjectionContext,
+        client::{CacheEndpoint, SymbolEndpoint, normalize_symbol},
         currency_resolver::{
             CurrencyHints, CurrencyKind, ResolvedCurrencyUnit, TradingCurrencyEvidence,
             project_currency_resolution,
@@ -27,12 +27,10 @@ use paft::market::options::{OptionContractKey, OptionSide};
 pub async fn expiration_dates(
     client: &YfClient,
     symbol: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    options: &CallOptions,
 ) -> Result<Vec<i64>, YfError> {
     let symbol = normalize_symbol(symbol)?;
-    let (body, _used_url) =
-        fetch_options_raw(client, &symbol, None, cache_mode, retry_override).await?;
+    let (body, _used_url) = fetch_options_raw(client, &symbol, None, options).await?;
     let env: OptEnvelope = serde_json::from_str(&body).map_err(YfError::Json)?;
 
     let first = first_option_result(env)?;
@@ -45,19 +43,11 @@ pub async fn option_chain(
     client: &YfClient,
     symbol: &str,
     date: Option<i64>,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    options: &CallOptions,
 ) -> Result<OptionChain, YfError> {
-    Ok(option_chain_with_diagnostics(
-        client,
-        symbol,
-        date,
-        cache_mode,
-        retry_override,
-        DataQuality::BestEffort,
-    )
-    .await?
-    .into_data())
+    Ok(option_chain_with_diagnostics(client, symbol, date, options)
+        .await?
+        .into_data())
 }
 
 #[allow(clippy::too_many_lines)]
@@ -65,14 +55,11 @@ pub async fn option_chain_with_diagnostics(
     client: &YfClient,
     symbol: &str,
     date: Option<i64>,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
-    data_quality: DataQuality,
+    options: &CallOptions,
 ) -> Result<YfResponse<OptionChain>, YfError> {
     let symbol = normalize_symbol(symbol)?;
-    let mut ctx = ProjectionContext::new("options", data_quality);
-    let (body, used_url) =
-        fetch_options_raw(client, &symbol, date, cache_mode, retry_override).await?;
+    let mut ctx = ProjectionContext::new("options", options.data_quality());
+    let (body, used_url) = fetch_options_raw(client, &symbol, date, options).await?;
     let env: OptEnvelope = serde_json::from_str(&body).map_err(YfError::Json)?;
 
     let first = first_option_result(env)?;
@@ -118,8 +105,7 @@ pub async fn option_chain_with_diagnostics(
                 &symbol,
                 None,
                 TradingCurrencyEvidence::OptionsQuote(currency_from_response.as_deref()),
-                cache_mode,
-                retry_override,
+                options,
             )
             .await,
     )?;
@@ -482,8 +468,7 @@ async fn fetch_options_raw(
     client: &YfClient,
     symbol: &str,
     date: Option<i64>,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    options: &CallOptions,
 ) -> Result<(String, Url), YfError> {
     let symbol = normalize_symbol(symbol)?;
     let mut url = client.symbol_url(SymbolEndpoint::OptionsV7, &symbol)?;
@@ -501,9 +486,8 @@ async fn fetch_options_raw(
         net::AuthFetchConfig {
             auth_mode: net::AuthMode::OptionalCrumb,
             cache_endpoint: CacheEndpoint::Options,
-            cache_mode,
+            options,
             cache_body: None,
-            retry_override,
             endpoint: "options_v7",
             fixture_key: &fixture_key,
             ext: "json",

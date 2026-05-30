@@ -7,6 +7,7 @@
 //! - Internal networking and authentication logic.
 
 /// The main client (`YfClient`), builder, and configuration.
+pub(crate) mod call_options;
 pub mod client;
 pub(crate) mod currency;
 pub(crate) mod currency_resolver;
@@ -38,6 +39,7 @@ pub mod conversions;
 pub(crate) mod net;
 
 // convenient re-exports so most code can just `use crate::core::YfClient`
+pub(crate) use call_options::CallOptions;
 pub use client::{CacheEndpoint, CacheMode, RetryConfig, YfClient, YfClientBuilder};
 pub(crate) use diagnostics::ProjectionContext;
 pub use diagnostics::{

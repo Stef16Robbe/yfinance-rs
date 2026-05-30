@@ -3,8 +3,9 @@ use std::collections::{BTreeMap, btree_map::Entry};
 
 use crate::{
     core::{
-        DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfError, YfResponse,
-        client::{CacheEndpoint, CacheMode, RetryConfig, SymbolEndpoint, normalize_symbol},
+        CallOptions, DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfError,
+        YfResponse,
+        client::{CacheEndpoint, SymbolEndpoint, normalize_symbol},
         conversions::{i64_to_datetime, string_to_period},
         currency_resolver::{
             CurrencyHints, CurrencyKind, ReportingCurrencyEvidence, ResolvedCurrencyUnit,
@@ -51,9 +52,7 @@ struct TimeseriesRequest<'a> {
     symbol: &'a str,
     quarterly: bool,
     override_currency: Option<Currency>,
-    cache_mode: CacheMode,
-    retry_override: Option<&'a RetryConfig>,
-    data_quality: DataQuality,
+    options: &'a CallOptions,
     keys: &'a [&'static str],
     monetary_keys: &'a [&'static str],
     endpoint_name: &'static str,
@@ -84,29 +83,18 @@ where
         symbol,
         quarterly,
         override_currency,
-        cache_mode,
-        retry_override,
-        data_quality,
+        options,
         keys,
         monetary_keys,
         endpoint_name,
     } = request;
     let symbol = normalize_symbol(symbol)?;
 
-    let mut ctx = ProjectionContext::new(endpoint_name, data_quality);
+    let mut ctx = ProjectionContext::new(endpoint_name, options.data_quality());
     let has_currency_override = override_currency.is_some();
     let prefix = if quarterly { "quarterly" } else { "annual" };
     let url = timeseries_url(client, &symbol, prefix, keys)?;
-    let body = fetch_timeseries_body(
-        client,
-        &symbol,
-        endpoint_name,
-        prefix,
-        url,
-        cache_mode,
-        retry_override,
-    )
-    .await?;
+    let body = fetch_timeseries_body(client, &symbol, endpoint_name, prefix, url, options).await?;
 
     let envelope: TimeseriesEnvelope = serde_json::from_str(&body).map_err(YfError::Json)?;
 
@@ -132,8 +120,7 @@ where
                     &symbol,
                     override_currency,
                     ReportingCurrencyEvidence::TimeseriesCurrencyCode(direct_currency.as_deref()),
-                    cache_mode,
-                    retry_override,
+                    options,
                 )
                 .await,
         )?;
@@ -188,8 +175,7 @@ async fn fetch_timeseries_body(
     endpoint_name: &'static str,
     prefix: &str,
     url: Url,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    options: &CallOptions,
 ) -> Result<String, YfError> {
     let endpoint = format!("timeseries_{endpoint_name}_{prefix}");
     let (body, _) = crate::core::net::fetch_text_with_auth_retry(
@@ -198,9 +184,8 @@ async fn fetch_timeseries_body(
         crate::core::net::AuthFetchConfig {
             auth_mode: crate::core::net::AuthMode::RequiredCrumb,
             cache_endpoint: CacheEndpoint::Fundamentals,
-            cache_mode,
+            options,
             cache_body: None,
-            retry_override,
             endpoint: &endpoint,
             fixture_key: symbol,
             ext: "json",
@@ -607,9 +592,7 @@ pub(super) async fn income_statement(
     symbol: &str,
     quarterly: bool,
     override_currency: Option<Currency>,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
-    data_quality: DataQuality,
+    options: &CallOptions,
 ) -> Result<YfResponse<Vec<IncomeStatementRow>>, YfError> {
     let keys = [
         "TotalRevenue",
@@ -628,9 +611,7 @@ pub(super) async fn income_statement(
             symbol,
             quarterly,
             override_currency,
-            cache_mode,
-            retry_override,
-            data_quality,
+            options,
             keys: &keys,
             monetary_keys: &keys,
             endpoint_name,
@@ -710,9 +691,7 @@ pub(super) async fn balance_sheet(
     symbol: &str,
     quarterly: bool,
     override_currency: Option<Currency>,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
-    data_quality: DataQuality,
+    options: &CallOptions,
 ) -> Result<YfResponse<Vec<BalanceSheetRow>>, YfError> {
     let keys = [
         "TotalAssets",
@@ -753,9 +732,7 @@ pub(super) async fn balance_sheet(
             symbol,
             quarterly,
             override_currency,
-            cache_mode,
-            retry_override,
-            data_quality,
+            options,
             keys: &keys,
             monetary_keys: &monetary_keys,
             endpoint_name,
@@ -792,9 +769,7 @@ pub(super) async fn cashflow(
     symbol: &str,
     quarterly: bool,
     override_currency: Option<Currency>,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
-    data_quality: DataQuality,
+    options: &CallOptions,
 ) -> Result<YfResponse<Vec<CashflowRow>>, YfError> {
     let keys = [
         "OperatingCashFlow",
@@ -811,9 +786,7 @@ pub(super) async fn cashflow(
             symbol,
             quarterly,
             override_currency,
-            cache_mode,
-            retry_override,
-            data_quality,
+            options,
             keys: &keys,
             monetary_keys: &keys,
             endpoint_name,
@@ -822,7 +795,7 @@ pub(super) async fn cashflow(
     )
     .await?;
 
-    let mut ctx = ProjectionContext::new(endpoint_name, data_quality);
+    let mut ctx = ProjectionContext::new(endpoint_name, options.data_quality());
     ctx.extend(result.diagnostics);
 
     // After filling values, calculate FCF if it's missing.
@@ -879,12 +852,10 @@ pub(super) async fn earnings(
     client: &YfClient,
     symbol: &str,
     override_currency: Option<Currency>,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
-    data_quality: DataQuality,
+    options: &CallOptions,
 ) -> Result<YfResponse<Earnings>, YfError> {
-    let mut ctx = ProjectionContext::new("earnings", data_quality);
-    let root = fetch_modules(client, symbol, "earnings", cache_mode, retry_override).await?;
+    let mut ctx = ProjectionContext::new("earnings", options.data_quality());
+    let root = fetch_modules(client, symbol, "earnings", options).await?;
     let Some(e) = root.earnings else {
         ctx.unavailable_feature("earnings")?;
         return Ok(ctx.finish(Earnings::default()));
@@ -906,8 +877,7 @@ pub(super) async fn earnings(
                     symbol,
                     override_currency,
                     ReportingCurrencyEvidence::FinancialCurrency(e.financial_currency.as_deref()),
-                    cache_mode,
-                    retry_override,
+                    options,
                 )
                 .await,
         )?
@@ -1076,12 +1046,10 @@ pub(super) async fn earnings(
 pub(super) async fn calendar(
     client: &YfClient,
     symbol: &str,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
-    data_quality: DataQuality,
+    options: &CallOptions,
 ) -> Result<YfResponse<super::Calendar>, YfError> {
-    let root = fetch_modules(client, symbol, "calendarEvents", cache_mode, retry_override).await?;
-    map_calendar(root, data_quality)
+    let root = fetch_modules(client, symbol, "calendarEvents", options).await?;
+    map_calendar(root, options.data_quality())
 }
 
 pub(super) fn calendar_from_quote_summary_value(
@@ -1193,19 +1161,16 @@ fn optional_calendar_date(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 pub(super) async fn shares(
     client: &YfClient,
     symbol: &str,
     start: Option<chrono::DateTime<Utc>>,
     end: Option<chrono::DateTime<Utc>>,
     quarterly: bool,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
-    data_quality: DataQuality,
+    options: &CallOptions,
 ) -> Result<YfResponse<Vec<ShareCount>>, YfError> {
     let symbol = normalize_symbol(symbol)?;
-    let mut ctx = ProjectionContext::new("shares", data_quality);
+    let mut ctx = ProjectionContext::new("shares", options.data_quality());
     let (start_ts, end_ts) = shares_window(start, end);
 
     let type_key = if quarterly {
@@ -1228,9 +1193,8 @@ pub(super) async fn shares(
         crate::core::net::AuthFetchConfig {
             auth_mode: crate::core::net::AuthMode::RequiredCrumb,
             cache_endpoint: CacheEndpoint::Fundamentals,
-            cache_mode,
+            options,
             cache_body: None,
-            retry_override,
             endpoint: &endpoint,
             fixture_key: &symbol,
             ext: "json",

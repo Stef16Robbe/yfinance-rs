@@ -20,6 +20,7 @@ use tokio_tungstenite::{
 
 use crate::{
     YfClient, YfError,
+    core::CallOptions,
     core::client::{CacheMode, RetryConfig, normalize_symbols},
     core::conversions::price_from_f64_with_currency_str,
     core::yahoo_vocab::parse_yahoo_quote_type,
@@ -121,8 +122,7 @@ pub struct StreamBuilder {
     symbols: Vec<String>,
     cfg: StreamConfig,
     method: StreamMethod,
-    cache_mode: CacheMode,
-    retry_override: Option<RetryConfig>,
+    options: CallOptions,
 }
 
 impl StreamBuilder {
@@ -134,22 +134,21 @@ impl StreamBuilder {
             symbols: Vec::new(),
             cfg: StreamConfig::default(),
             method: StreamMethod::default(),
-            cache_mode: CacheMode::Default,
-            retry_override: None,
+            options: CallOptions::default(),
         }
     }
 
     /// Sets the cache mode for this specific API call (only affects polling mode).
     #[must_use]
     pub const fn cache_mode(mut self, mode: CacheMode) -> Self {
-        self.cache_mode = mode;
+        self.options.cache_mode = mode;
         self
     }
 
     /// Overrides the default retry policy for this specific API call (only affects polling mode).
     #[must_use]
     pub fn retry_policy(mut self, cfg: Option<RetryConfig>) -> Self {
-        self.retry_override = cfg;
+        self.options = self.options.with_retry_policy(cfg);
         self
     }
 
@@ -243,8 +242,7 @@ impl StreamBuilder {
 
             let mut stop_rx = stop_rx;
 
-            let cache_mode = self.cache_mode;
-            let retry_override = self.retry_override.clone();
+            let options = self.options.clone();
 
             async move {
                 match method {
@@ -277,29 +275,12 @@ impl StreamBuilder {
                             );
                             #[cfg(not(feature = "tracing"))]
                             let _ = &e;
-                            run_polling_stream(
-                                client,
-                                symbols,
-                                cfg,
-                                tx,
-                                &mut stop_rx,
-                                cache_mode,
-                                retry_override.as_ref(),
-                            )
-                            .await;
+                            run_polling_stream(client, symbols, cfg, tx, &mut stop_rx, &options)
+                                .await;
                         }
                     }
                     StreamMethod::Polling => {
-                        run_polling_stream(
-                            client,
-                            symbols,
-                            cfg,
-                            tx,
-                            &mut stop_rx,
-                            cache_mode,
-                            retry_override.as_ref(),
-                        )
-                        .await;
+                        run_polling_stream(client, symbols, cfg, tx, &mut stop_rx, &options).await;
                     }
                 }
             }
@@ -682,15 +663,13 @@ pub fn decode_and_map_message(text: &str) -> Result<QuoteUpdate, YfError> {
     Ok(ws_pricing_to_update(&ticker, instrument, timestamp, None))
 }
 
-#[allow(clippy::too_many_arguments)]
 async fn run_polling_stream(
     client: crate::core::YfClient,
     symbols: Vec<String>,
     cfg: StreamConfig,
     tx: tokio::sync::mpsc::Sender<QuoteUpdate>,
     stop_rx: &mut tokio::sync::oneshot::Receiver<()>,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    options: &CallOptions,
 ) {
     let mut ticker = tokio::time::interval(cfg.interval);
     let mut last_price: HashMap<String, Option<f64>> = HashMap::new();
@@ -702,7 +681,7 @@ async fn run_polling_stream(
         tokio::select! {
             _ = ticker.tick() => {
                 if tx.is_closed() { break; }
-                match crate::core::quotes::fetch_v7_quotes(&client, &symbol_slices, cache_mode, retry_override).await {
+                match crate::core::quotes::fetch_v7_quotes(&client, &symbol_slices, options).await {
                     Ok(quotes) => {
                         for q in quotes {
                             let ts = q

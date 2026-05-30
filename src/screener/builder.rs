@@ -10,6 +10,7 @@ use super::query::{
     ScreenerQuery, SortDirection, SortField, YahooQuoteType,
 };
 use super::response::{ScreenerResponse, parse_screener_body_with_diagnostics};
+use crate::core::CallOptions;
 use crate::core::client::{CacheEndpoint, CacheMode, RetryConfig};
 use crate::{DataQuality, YfResponse};
 use crate::{YfClient, YfError};
@@ -87,9 +88,7 @@ pub struct ScreenerBuilder<U = Predefined> {
     kind: RequestKind,
     count: Option<ScreenerCount>,
     offset: Option<ResultOffset>,
-    cache_mode: CacheMode,
-    retry_override: Option<RetryConfig>,
-    data_quality: DataQuality,
+    options: CallOptions,
     marker: PhantomData<U>,
 }
 
@@ -109,9 +108,7 @@ impl ScreenerBuilder<Predefined> {
             kind: RequestKind::Predefined(screener),
             count: None,
             offset: None,
-            cache_mode: CacheMode::Default,
-            retry_override: None,
-            data_quality: DataQuality::BestEffort,
+            options: CallOptions::default(),
             marker: PhantomData,
         }
     }
@@ -210,9 +207,7 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
             },
             count: Some(ScreenerCount::DEFAULT),
             offset: Some(ResultOffset::ZERO),
-            cache_mode: CacheMode::Default,
-            retry_override: None,
-            data_quality: DataQuality::BestEffort,
+            options: CallOptions::default(),
             marker: PhantomData,
         }
     }
@@ -234,21 +229,21 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
     /// Sets the cache mode for this request.
     #[must_use]
     pub const fn cache_mode(mut self, mode: CacheMode) -> Self {
-        self.cache_mode = mode;
+        self.options.cache_mode = mode;
         self
     }
 
     /// Overrides the retry policy for this request.
     #[must_use]
     pub fn retry_policy(mut self, cfg: Option<RetryConfig>) -> Self {
-        self.retry_override = cfg;
+        self.options = self.options.with_retry_policy(cfg);
         self
     }
 
     /// Sets how provider projection issues are handled.
     #[must_use]
     pub const fn data_quality(mut self, policy: DataQuality) -> Self {
-        self.data_quality = policy;
+        self.options.data_quality = policy;
         self
     }
 
@@ -340,20 +335,20 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
             }
         }
 
-        if self.cache_mode.reads(CacheEndpoint::Screener)
+        if self.options.cache_mode().reads(CacheEndpoint::Screener)
             && let Some(body) = self.client.cache_get(&url).await
         {
-            return parse_screener_body_with_diagnostics(&body, self.data_quality);
+            return parse_screener_body_with_diagnostics(&body, self.options.data_quality());
         }
 
         let cache_url = url.clone();
         let (body, _) = self.get_with_auth_retry(url, screener.id()).await?;
-        if self.cache_mode.writes(CacheEndpoint::Screener) {
+        if self.options.cache_mode().writes(CacheEndpoint::Screener) {
             self.client
                 .cache_put(CacheEndpoint::Screener, &cache_url, &body, None)
                 .await;
         }
-        parse_screener_body_with_diagnostics(&body, self.data_quality)
+        parse_screener_body_with_diagnostics(&body, self.options.data_quality())
     }
 
     async fn fetch_custom_post(
@@ -369,7 +364,7 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
         let response = self
             .post_with_auth_retry(url, &body, &body_json, &fixture_key)
             .await?;
-        parse_screener_body_with_diagnostics(&response, self.data_quality)
+        parse_screener_body_with_diagnostics(&response, self.options.data_quality())
     }
 
     fn custom_body(&self, parts: CustomParts) -> Value {
@@ -406,15 +401,15 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
         url: Url,
         fixture_key: &str,
     ) -> Result<(String, Url), YfError> {
+        let options = self.options.clone().with_cache_mode(CacheMode::Bypass);
         crate::core::net::fetch_text_with_auth_retry(
             &self.client,
             url,
             crate::core::net::AuthFetchConfig {
                 auth_mode: crate::core::net::AuthMode::OptionalCrumb,
                 cache_endpoint: CacheEndpoint::Screener,
-                cache_mode: CacheMode::Bypass,
+                options: &options,
                 cache_body: None,
-                retry_override: self.retry_override.as_ref(),
                 endpoint: "screener_predefined",
                 fixture_key,
                 ext: "json",
@@ -443,9 +438,8 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
             crate::core::net::AuthFetchConfig {
                 auth_mode: crate::core::net::AuthMode::OptionalCrumb,
                 cache_endpoint: CacheEndpoint::Screener,
-                cache_mode: self.cache_mode,
+                options: &self.options,
                 cache_body: Some(body_json),
-                retry_override: self.retry_override.as_ref(),
                 endpoint: "screener_custom",
                 fixture_key,
                 ext: "json",

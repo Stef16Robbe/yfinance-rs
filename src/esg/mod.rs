@@ -6,16 +6,17 @@ pub use model::{EsgInvolvement, EsgScores, EsgSummary};
 
 use crate::{
     DataQuality, YfClient, YfError, YfResponse,
-    core::client::{CacheMode, RetryConfig},
+    core::{
+        CallOptions,
+        client::{CacheMode, RetryConfig},
+    },
 };
 
 /// A builder for fetching ESG (Environmental, Social, and Governance) data for a specific symbol.
 pub struct EsgBuilder {
     client: YfClient,
     symbol: String,
-    cache_mode: CacheMode,
-    retry_override: Option<RetryConfig>,
-    data_quality: DataQuality,
+    options: CallOptions,
 }
 
 impl EsgBuilder {
@@ -24,30 +25,28 @@ impl EsgBuilder {
         Self {
             client: client.clone(),
             symbol: symbol.into(),
-            cache_mode: CacheMode::Default,
-            retry_override: None,
-            data_quality: DataQuality::BestEffort,
+            options: CallOptions::default(),
         }
     }
 
     /// Sets the cache mode for this specific API call.
     #[must_use]
     pub const fn cache_mode(mut self, mode: CacheMode) -> Self {
-        self.cache_mode = mode;
+        self.options.cache_mode = mode;
         self
     }
 
     /// Overrides the default retry policy for this specific API call.
     #[must_use]
     pub fn retry_policy(mut self, cfg: Option<RetryConfig>) -> Self {
-        self.retry_override = cfg;
+        self.options = self.options.with_retry_policy(cfg);
         self
     }
 
     /// Sets how provider projection issues are handled.
     #[must_use]
     pub const fn data_quality(mut self, policy: DataQuality) -> Self {
-        self.data_quality = policy;
+        self.options.data_quality = policy;
         self
     }
 
@@ -72,13 +71,6 @@ impl EsgBuilder {
     ///
     /// Returns a `YfError` if the request fails or strict data-quality mode rejects a projection issue.
     pub async fn fetch_with_diagnostics(&self) -> Result<YfResponse<EsgSummary>, YfError> {
-        api::fetch_esg_scores(
-            &self.client,
-            &self.symbol,
-            self.cache_mode,
-            self.retry_override.as_ref(),
-            self.data_quality,
-        )
-        .await
+        api::fetch_esg_scores(&self.client, &self.symbol, &self.options).await
     }
 }

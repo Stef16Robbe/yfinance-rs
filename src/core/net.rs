@@ -5,7 +5,7 @@ use serde::de::DeserializeOwned;
 use url::Url;
 
 use crate::core::{
-    YfClient, YfError,
+    CallOptions, YfClient, YfError,
     client::{CacheEndpoint, CacheMode, RetryConfig},
     redaction::RedactedUrl,
 };
@@ -20,9 +20,8 @@ pub enum AuthMode {
 pub struct AuthFetchConfig<'a> {
     pub auth_mode: AuthMode,
     pub cache_endpoint: CacheEndpoint,
-    pub cache_mode: CacheMode,
+    pub options: &'a CallOptions,
     pub cache_body: Option<&'a str>,
-    pub retry_override: Option<&'a RetryConfig>,
     pub endpoint: &'a str,
     pub fixture_key: &'a str,
     pub ext: &'a str,
@@ -32,8 +31,7 @@ pub struct AuthFetchConfig<'a> {
 #[derive(Clone, Copy, Debug)]
 pub struct CacheFetchConfig<'a> {
     pub cache_endpoint: CacheEndpoint,
-    pub cache_mode: CacheMode,
-    pub retry_override: Option<&'a RetryConfig>,
+    pub options: &'a CallOptions,
     pub endpoint: &'a str,
     pub fixture_key: &'a str,
     pub ext: &'a str,
@@ -122,7 +120,7 @@ pub async fn fetch_text_cached(
     url: &Url,
     config: CacheFetchConfig<'_>,
 ) -> Result<String, YfError> {
-    if config.cache_mode.reads(config.cache_endpoint)
+    if config.options.cache_mode().reads(config.cache_endpoint)
         && let Some(text) = client.cache_get(url).await
     {
         return Ok(text);
@@ -132,14 +130,14 @@ pub async fn fetch_text_cached(
         client,
         client.http().get(url.clone()),
         url,
-        config.retry_override,
+        config.options.retry_override(),
         config.endpoint,
         config.fixture_key,
         config.ext,
     )
     .await?;
 
-    if config.cache_mode.writes(config.cache_endpoint) {
+    if config.options.cache_mode().writes(config.cache_endpoint) {
         client
             .cache_put(config.cache_endpoint, url, &text, None)
             .await;
@@ -158,7 +156,7 @@ where
     T: DeserializeOwned,
 {
     let cache_key = YfClient::post_cache_key(url, body_json);
-    if config.cache_mode.reads(config.cache_endpoint)
+    if config.options.cache_mode().reads(config.cache_endpoint)
         && let Some(body) = client.cache_get_key(&cache_key).await
     {
         return serde_json::from_str(&body).map_err(YfError::Json);
@@ -173,14 +171,14 @@ where
         client,
         req,
         url,
-        config.retry_override,
+        config.options.retry_override(),
         config.endpoint,
         config.fixture_key,
         config.ext,
     )
     .await?;
 
-    if config.cache_mode.writes(config.cache_endpoint) {
+    if config.options.cache_mode().writes(config.cache_endpoint) {
         client
             .cache_put_key(config.cache_endpoint, cache_key, &body, None)
             .await;
@@ -294,7 +292,7 @@ async fn fetch_text_auth_attempt<F>(
 where
     F: Fn(Url) -> reqwest::RequestBuilder + Send + Sync,
 {
-    if config.cache_mode.reads(config.cache_endpoint)
+    if config.options.cache_mode().reads(config.cache_endpoint)
         && let Some(body) = client.cache_get_key(cache_key).await
     {
         if should_retry_invalid_crumb_body(config, detect_invalid_crumb_body, &body) {
@@ -306,7 +304,9 @@ where
     }
 
     let req = client.with_auth_cookie(build_request(url.clone())).await;
-    let resp = client.send_with_retry(req, config.retry_override).await?;
+    let resp = client
+        .send_with_retry(req, config.options.retry_override())
+        .await?;
 
     if !resp.status().is_success() {
         return Ok(AuthAttempt::Status {
@@ -322,7 +322,7 @@ where
         return Ok(AuthAttempt::InvalidCrumb);
     }
 
-    if config.cache_mode.writes(config.cache_endpoint) {
+    if config.options.cache_mode().writes(config.cache_endpoint) {
         client
             .cache_put_key(config.cache_endpoint, cache_key.to_string(), &body, None)
             .await;
@@ -345,8 +345,12 @@ where
     client.clear_crumb().await;
     let crumb = ensure_crumb(client, "Crumb is not set after refreshing credentials").await?;
     let crumb_url = url_with_crumb(base_url, &crumb);
+    let retry_options = config
+        .options
+        .clone()
+        .with_cache_mode(retry_cache_mode(config));
     let retry_config = AuthFetchConfig {
-        cache_mode: retry_cache_mode(config),
+        options: &retry_options,
         ..config
     };
 
@@ -369,7 +373,7 @@ where
 }
 
 const fn retry_cache_mode(config: AuthFetchConfig<'_>) -> CacheMode {
-    if config.cache_mode.writes(config.cache_endpoint) {
+    if config.options.cache_mode().writes(config.cache_endpoint) {
         CacheMode::Refresh
     } else {
         CacheMode::Bypass
@@ -418,6 +422,7 @@ mod tests {
     const INVALID_CRUMB_BODY: &str =
         r#"{"quoteResponse":{"result":null,"error":{"description":"Invalid Crumb"}}}"#;
     const OK_BODY: &str = r#"{"quoteResponse":{"result":[],"error":null}}"#;
+    static QUOTE_AUTH_OPTIONS: CallOptions = CallOptions::new().with_cache_mode(CacheMode::Use);
 
     #[must_use]
     fn server_url(server: &MockServer, path_and_query: &str) -> Url {
@@ -435,13 +440,12 @@ mod tests {
     }
 
     #[must_use]
-    const fn quote_auth_config() -> AuthFetchConfig<'static> {
+    fn quote_auth_config() -> AuthFetchConfig<'static> {
         AuthFetchConfig {
             auth_mode: AuthMode::OptionalCrumb,
             cache_endpoint: CacheEndpoint::Quote,
-            cache_mode: CacheMode::Use,
+            options: &QUOTE_AUTH_OPTIONS,
             cache_body: None,
-            retry_override: None,
             endpoint: "quote_v7",
             fixture_key: "AAPL",
             ext: "json",

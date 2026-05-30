@@ -4,7 +4,9 @@ mod assemble;
 mod fetch;
 
 use crate::core::yahoo_vocab::{first_parsed_yahoo_exchange, parse_yahoo_quote_type};
-use crate::core::{DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfError, YfResponse};
+use crate::core::{
+    CallOptions, DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfError, YfResponse,
+};
 use crate::core::{
     client::{CacheMode, RetryConfig, normalize_symbol},
     currency_resolver::{
@@ -22,7 +24,7 @@ use paft::market::responses::history::{Candle, HistoryMeta, HistoryResponse};
 use actions::extract_actions;
 use adjust::cumulative_split_after;
 use assemble::assemble_candles;
-use fetch::fetch_chart;
+use fetch::{ChartFetchRequest, fetch_chart};
 
 /// A builder for fetching historical price data for a single symbol.
 ///
@@ -47,10 +49,8 @@ pub struct HistoryBuilder {
     pub(crate) include_prepost: bool,
     #[doc(hidden)]
     pub(crate) include_actions: bool,
-    pub(crate) cache_mode: CacheMode,
     #[doc(hidden)]
-    pub(crate) retry_override: Option<RetryConfig>,
-    data_quality: DataQuality,
+    options: CallOptions,
 }
 
 impl HistoryBuilder {
@@ -65,30 +65,28 @@ impl HistoryBuilder {
             auto_adjust: true,
             include_prepost: false,
             include_actions: true,
-            cache_mode: CacheMode::Default,
-            retry_override: None,
-            data_quality: DataQuality::BestEffort,
+            options: CallOptions::default(),
         }
     }
 
     /// Sets the cache mode for this specific API call.
     #[must_use]
     pub const fn cache_mode(mut self, mode: CacheMode) -> Self {
-        self.cache_mode = mode;
+        self.options.cache_mode = mode;
         self
     }
 
     /// Overrides the default retry policy for this specific API call.
     #[must_use]
     pub fn retry_policy(mut self, cfg: Option<RetryConfig>) -> Self {
-        self.retry_override = cfg;
+        self.options = self.options.with_retry_policy(cfg);
         self
     }
 
     /// Sets how provider projection issues are handled.
     #[must_use]
     pub const fn data_quality(mut self, policy: DataQuality) -> Self {
-        self.data_quality = policy;
+        self.options.data_quality = policy;
         self
     }
 
@@ -206,20 +204,21 @@ impl HistoryBuilder {
     pub async fn fetch_full_with_diagnostics(
         &self,
     ) -> Result<YfResponse<HistoryResponse>, YfError> {
-        let mut ctx = ProjectionContext::new("history_chart", self.data_quality);
+        let mut ctx = ProjectionContext::new("history_chart", self.options.data_quality());
         let symbol = normalize_symbol(&self.symbol)?;
 
         // 1) Fetch and parse the /chart payload into owned blocks
         let fetched = fetch_chart(
             &self.client,
             &symbol,
-            self.range,
-            self.period,
-            self.interval,
-            self.include_actions,
-            self.include_prepost,
-            self.cache_mode,
-            self.retry_override.as_ref(),
+            ChartFetchRequest {
+                range: self.range,
+                period: self.period,
+                interval: self.interval,
+                include_actions: self.include_actions,
+                include_prepost: self.include_prepost,
+            },
+            &self.options,
         )
         .await?;
 
@@ -246,8 +245,7 @@ impl HistoryBuilder {
                 &self.client,
                 &symbol,
                 chart_currency,
-                self.cache_mode,
-                self.retry_override.as_ref(),
+                &self.options,
                 &mut ctx,
             )
             .await?
@@ -260,8 +258,7 @@ impl HistoryBuilder {
             fetched.events.as_ref(),
             chart_currency,
             currency.as_ref(),
-            self.cache_mode,
-            self.retry_override.as_ref(),
+            &self.options,
             &mut ctx,
         )
         .await?;
@@ -341,8 +338,7 @@ async fn history_trading_currency(
     client: &YfClient,
     symbol: &str,
     chart_currency: Option<&str>,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    options: &CallOptions,
     ctx: &mut ProjectionContext,
 ) -> Result<Option<ResolvedCurrencyUnit>, YfError> {
     let projected = project_currency_resolution(
@@ -355,8 +351,7 @@ async fn history_trading_currency(
                 symbol,
                 None,
                 TradingCurrencyEvidence::ChartMeta(chart_currency),
-                cache_mode,
-                retry_override,
+                options,
             )
             .await,
     )?;
@@ -374,15 +369,13 @@ async fn history_trading_currency(
     Ok(None)
 }
 
-#[allow(clippy::too_many_arguments)]
 async fn action_default_currency(
     client: &YfClient,
     symbol: &str,
     events: Option<&crate::history::wire::Events>,
     chart_currency: Option<&str>,
     trading_currency: Option<&ResolvedCurrencyUnit>,
-    cache_mode: CacheMode,
-    retry_override: Option<&RetryConfig>,
+    options: &CallOptions,
     ctx: &mut ProjectionContext,
 ) -> Result<Option<ResolvedCurrencyUnit>, YfError> {
     if !events_need_default_currency(events) {
@@ -398,8 +391,7 @@ async fn action_default_currency(
             symbol,
             None,
             CorporateActionCurrencyEvidence::ChartMeta(chart_currency),
-            cache_mode,
-            retry_override,
+            options,
         )
         .await
     {
