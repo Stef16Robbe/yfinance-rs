@@ -9,6 +9,10 @@ fn usd(value: f64) -> Money {
     money_from_f64(value, Currency::Iso(IsoCurrency::USD)).expect("known-good USD literal")
 }
 
+fn gbp(value: f64) -> Money {
+    money_from_f64(value, Currency::Iso(IsoCurrency::GBP)).expect("known-good GBP literal")
+}
+
 #[tokio::test]
 async fn cashflow_computes_fcf_when_missing() {
     let server = MockServer::start();
@@ -93,6 +97,112 @@ async fn cashflow_computes_fcf_when_missing() {
 
     mock.assert_calls(2);
     assert!(matches!(err, YfError::DataQuality(_)));
+}
+
+#[tokio::test]
+async fn statements_use_first_valid_currency_code_and_compare_units() {
+    let server = MockServer::start();
+    let sym = "MIXEDUNITS";
+    let body = r#"{
+      "timeseries": {
+        "result": [{
+          "meta": { "type": ["annualTotalRevenue"] },
+          "timestamp": [1704067200, 1735689600, 1767225600],
+          "annualTotalRevenue": [
+            {
+              "currencyCode": "!!!",
+              "reportedValue": {"raw": 41.0}
+            },
+            {
+              "currencyCode": "GBp",
+              "reportedValue": {"raw": 42.0}
+            },
+            {
+              "currencyCode": "GBX",
+              "reportedValue": {"raw": 43.0}
+            }
+          ]
+        }],
+        "error": null
+      }
+    }"#;
+
+    let timeseries_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!(
+                "/ws/fundamentals-timeseries/v1/finance/timeseries/{sym}"
+            ))
+            .query_param_exists("type")
+            .query_param("crumb", "crumb");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+    let quote_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", sym);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{"quoteResponse":{"result":[{"symbol":"MIXEDUNITS","financialCurrency":"USD"}],"error":null}}"#,
+            );
+    });
+
+    let client = YfClient::builder()
+        .base_timeseries(
+            Url::parse(&format!(
+                "{}/ws/fundamentals-timeseries/v1/finance/timeseries/",
+                server.base_url()
+            ))
+            .unwrap(),
+        )
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let response = FundamentalsBuilder::new(&client, sym)
+        .income_statement_with_diagnostics(false, None)
+        .await
+        .expect("best-effort invalid direct value should not poison later valid values");
+
+    timeseries_mock.assert();
+    assert_eq!(
+        quote_mock.calls(),
+        0,
+        "valid same-payload currencyCode should avoid quote enrichment"
+    );
+    assert_eq!(response.data.len(), 3);
+
+    let invalid = response
+        .data
+        .iter()
+        .find(|row| row.period.to_string() == "2024-01-01")
+        .unwrap();
+    let first_valid = response
+        .data
+        .iter()
+        .find(|row| row.period.to_string() == "2025-01-01")
+        .unwrap();
+    let equivalent = response
+        .data
+        .iter()
+        .find(|row| row.period.to_string() == "2026-01-01")
+        .unwrap();
+
+    assert!(invalid.total_revenue.is_none());
+    assert_eq!(first_valid.total_revenue, Some(gbp(42.0)));
+    assert_eq!(equivalent.total_revenue, Some(gbp(43.0)));
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::OmittedPresentField {
+            path: "timeseries.reportedValue",
+            key: Some(key),
+            reason: ProjectionIssue::InvalidCurrency { code },
+            ..
+        } if key == "TotalRevenue@1704067200" && code == "!!!"
+    )));
 }
 
 #[tokio::test]

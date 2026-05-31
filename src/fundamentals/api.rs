@@ -307,6 +307,7 @@ fn timeseries_currency_evidence(
         .map(|key| format!("{prefix}{key}"))
         .collect::<Vec<_>>();
     let mut currency_code: Option<String> = None;
+    let mut invalid_currency_code: Option<String> = None;
     let mut needs_currency = false;
 
     for item in result {
@@ -340,12 +341,16 @@ fn timeseries_currency_evidence(
                     continue;
                 };
 
-                currency_code.get_or_insert_with(|| code.to_string());
+                if ResolvedCurrencyUnit::from_code(code).is_some() {
+                    currency_code.get_or_insert_with(|| code.to_string());
+                } else {
+                    invalid_currency_code.get_or_insert_with(|| code.to_string());
+                }
             }
         }
     }
 
-    (currency_code, needs_currency)
+    (currency_code.or(invalid_currency_code), needs_currency)
 }
 
 fn period_from_timestamp(timestamp: i64) -> Result<Period, YfError> {
@@ -438,16 +443,17 @@ fn timeseries_value_currency_issue(
         .map(str::trim)
         .filter(|code| !code.is_empty())?;
 
-    if ResolvedCurrencyUnit::from_code(code).is_none() {
+    let Some(unit) = ResolvedCurrencyUnit::from_code(code) else {
         return Some(ProjectionIssue::InvalidCurrency {
             code: code.to_string(),
         });
-    }
+    };
 
     if let Some(expected) = expected_code
         .map(str::trim)
         .filter(|expected| !expected.is_empty())
-        && expected != code
+        && let Some(expected_unit) = ResolvedCurrencyUnit::from_code(expected)
+        && expected_unit != unit
     {
         return Some(ProjectionIssue::InvalidField {
             field: "currencyCode",

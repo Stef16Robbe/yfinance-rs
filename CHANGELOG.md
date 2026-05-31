@@ -134,6 +134,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Options endpoints now surface Yahoo `optionChain.error` payloads as `YfError::Api` instead of reporting them as empty option results.
 - Recommendation summaries now populate `mean_rating_text` from Yahoo's `recommendationKey`.
 - Best-effort projection policy is now applied uniformly to statement currency conflicts, invalid history chart currencies, and single-ticker v7 quote node type drift instead of surfacing raw typed-adapter errors before diagnostics can record the affected item.
+- Fundamentals timeseries currency evidence now prefers the first valid same-payload
+  `currencyCode` and compares parsed currency units, so invalid earlier codes or
+  equivalent Yahoo unit aliases do not cause valid statement values to be omitted
+  as conflicts.
 
 ### Changed
 

@@ -3,7 +3,7 @@ use paft::money::{Currency, Money, Price};
 use rust_decimal::Decimal;
 use std::str::FromStr;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ResolvedCurrencyUnit {
     currency: Currency,
     scale: Decimal,
