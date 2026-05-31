@@ -1,0 +1,820 @@
+{
+  "quoteSummary": {
+    "error": null,
+    "result": [
+      {
+        "assetProfile": {
+          "address1": "One Microsoft Way",
+          "auditRisk": 9,
+          "boardRisk": 7,
+          "city": "Redmond",
+          "companyOfficers": [
+            {
+              "age": 58,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Mr. Satya  Nadella",
+              "title": "Chairman & CEO",
+              "totalPay": {
+                "fmt": "12.25M",
+                "longFmt": "12,251,294",
+                "raw": 12251294
+              },
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1967
+            },
+            {
+              "age": 66,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Mr. Bradford L. Smith LCA",
+              "title": "President & Vice Chairman",
+              "totalPay": {
+                "fmt": "4.53M",
+                "longFmt": "4,532,750",
+                "raw": 4532750
+              },
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1959
+            },
+            {
+              "age": 53,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Ms. Amy E. Hood",
+              "title": "Executive VP & CFO",
+              "totalPay": {
+                "fmt": "4.44M",
+                "longFmt": "4,444,191",
+                "raw": 4444191
+              },
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1972
+            },
+            {
+              "age": 53,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Mr. Takeshi  Numoto",
+              "title": "Executive VP & Chief Marketing Officer",
+              "totalPay": {
+                "fmt": "2.87M",
+                "longFmt": "2,871,250",
+                "raw": 2871250
+              },
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1972
+            },
+            {
+              "age": 51,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Mr. Judson B. Althoff",
+              "title": "Executive VP & CEO of Commercial Business",
+              "totalPay": {
+                "fmt": "4.49M",
+                "longFmt": "4,490,115",
+                "raw": 4490115
+              },
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1974
+            },
+            {
+              "age": 53,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Ms. Carolina  Dybeck Happe",
+              "title": "Executive VP & COO",
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1972
+            },
+            {
+              "age": 59,
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Ms. Alice L. Jolla",
+              "title": "Corporate VP & Chief Accounting Officer",
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "yearBorn": 1966
+            },
+            {
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Mr. Matthew  Kerner",
+              "title": "CTO & Corporate VP of Worldwide Sales and Solutions",
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              }
+            },
+            {
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Jonathan  Neilson",
+              "title": "Vice President of Investor Relations",
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              }
+            },
+            {
+              "exercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              },
+              "fiscalYear": 2025,
+              "maxAge": 1,
+              "name": "Mr. Jonathan M. Palmer",
+              "title": "Corporate Vice President & Chief Legal Officer",
+              "unexercisedValue": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              }
+            }
+          ],
+          "compensationAsOfEpochDate": 1767139200,
+          "compensationRisk": 5,
+          "country": "United States",
+          "executiveTeam": [],
+          "fullTimeEmployees": 228000,
+          "governanceEpochDate": 1777593600,
+          "industry": "Software - Infrastructure",
+          "industryDisp": "Software - Infrastructure",
+          "industryKey": "software-infrastructure",
+          "irWebsite": "http://www.microsoft.com/investor/default.aspx",
+          "longBusinessSummary": "Microsoft Corporation develops and supports software, services, devices, and solutions worldwide. The Productivity and Business Processes segment offers Microsoft 365 commercial, enterprise mobility + security, windows commercial, power BI, exchange, sharepoint, Microsoft teams, security and compliance, and copilot; Microsoft 365 commercial products, such as Windows commercial on-premises and office licensed services; Microsoft 365 consumer products and cloud services, including Microsoft 365 consumer subscriptions, office licensed on-premises, and other consumer services; LinkedIn; dynamics products and cloud services, such as dynamics 365, cloud-based applications, and on-premises ERP and CRM applications. Its Intelligent Cloud segment provides Server products and cloud services comprising Azure and other cloud services, GitHub, Nuance Healthcare, virtual desktop offerings, and other cloud services; server products, including SQL and windows server, visual studio and system center related client access licenses, and other on-premises offerings; enterprise and partner services, such as enterprise support and nuance professional services, industry solutions, Microsoft partner network, and learning experience. The Personal Computing segment provides windows and devices, such as Windows OEM licensing and devices and surface and PC accessories; gaming services and solutions, such as Xbox hardware, content, and services, first- and third-party content Xbox game pass, subscriptions, and cloud gaming, advertising, and other cloud services; search and news advertising services that includes Bing and Copilot, Microsoft News and Edge, and third-party affiliates. It sells its products through OEMs, distributors, and resellers; and online and retail stores. The company was founded in 1975 and is headquartered in Redmond, Washington.",
+          "maxAge": 86400,
+          "overallRisk": 4,
+          "phone": "425 882 8080",
+          "sector": "Technology",
+          "sectorDisp": "Technology",
+          "sectorKey": "technology",
+          "shareHolderRightsRisk": 2,
+          "state": "WA",
+          "website": "https://www.microsoft.com",
+          "zip": "98052-6399"
+        },
+        "calendarEvents": {
+          "dividendDate": {
+            "fmt": "2026-06-11",
+            "raw": 1781136000
+          },
+          "earnings": {
+            "earningsAverage": {
+              "fmt": "4.24",
+              "raw": 4.23636
+            },
+            "earningsCallDate": [
+              {
+                "fmt": "2026-04-29",
+                "raw": 1777498200
+              }
+            ],
+            "earningsDate": [
+              {
+                "fmt": "2026-07-29",
+                "raw": 1785355200
+              }
+            ],
+            "earningsHigh": {
+              "fmt": "4.89",
+              "raw": 4.89
+            },
+            "earningsLow": {
+              "fmt": "4.07",
+              "raw": 4.07
+            },
+            "isEarningsDateEstimate": true,
+            "revenueAverage": {
+              "fmt": "87.66B",
+              "longFmt": "87,656,176,510",
+              "raw": 87656176510
+            },
+            "revenueHigh": {
+              "fmt": "91.24B",
+              "longFmt": "91,239,000,000",
+              "raw": 91239000000
+            },
+            "revenueLow": {
+              "fmt": "86.9B",
+              "longFmt": "86,900,000,000",
+              "raw": 86900000000
+            }
+          },
+          "exDividendDate": {
+            "fmt": "2026-05-21",
+            "raw": 1779321600
+          },
+          "maxAge": 1
+        },
+        "defaultKeyStatistics": {
+          "52WeekChange": {
+            "fmt": "-2.54%",
+            "raw": -0.02539128
+          },
+          "SandP52WeekChange": {
+            "fmt": "27.70%",
+            "raw": 0.27697718
+          },
+          "annualHoldingsTurnover": {},
+          "annualReportExpenseRatio": {},
+          "beta": {
+            "fmt": "1.09",
+            "raw": 1.093
+          },
+          "beta3Year": {},
+          "bookValue": {
+            "fmt": "55.78",
+            "raw": 55.777
+          },
+          "category": null,
+          "dateShortInterest": {
+            "fmt": "2026-05-15",
+            "raw": 1778803200
+          },
+          "earningsQuarterlyGrowth": {
+            "fmt": "23.10%",
+            "raw": 0.231
+          },
+          "enterpriseToEbitda": {
+            "fmt": "18.39",
+            "raw": 18.388
+          },
+          "enterpriseToRevenue": {
+            "fmt": "10.66",
+            "raw": 10.657
+          },
+          "enterpriseValue": {
+            "fmt": "3.39T",
+            "longFmt": "3,391,782,387,712",
+            "raw": 3391782387712
+          },
+          "fiveYearAverageReturn": {},
+          "floatShares": {
+            "fmt": "7.42B",
+            "longFmt": "7,417,440,621",
+            "raw": 7417440621
+          },
+          "forwardEps": {
+            "fmt": "19.34",
+            "raw": 19.33773
+          },
+          "forwardPE": {
+            "fmt": "23.28",
+            "raw": 23.28298
+          },
+          "fundFamily": null,
+          "fundInceptionDate": {},
+          "fundingToDate": {},
+          "heldPercentInsiders": {
+            "fmt": "0.08%",
+            "raw": 0.0008
+          },
+          "heldPercentInstitutions": {
+            "fmt": "75.75%",
+            "raw": 0.75747
+          },
+          "impliedSharesOutstanding": {
+            "fmt": "7.43B",
+            "longFmt": "7,428,434,704",
+            "raw": 7428434704
+          },
+          "lastCapGain": {},
+          "lastDividendDate": {
+            "fmt": "2026-05-21",
+            "raw": 1779321600
+          },
+          "lastDividendValue": {
+            "fmt": "0.91",
+            "raw": 0.91
+          },
+          "lastFiscalYearEnd": {
+            "fmt": "2025-06-30",
+            "raw": 1751241600
+          },
+          "lastSplitDate": {
+            "fmt": "2003-02-18",
+            "raw": 1045526400
+          },
+          "lastSplitFactor": "2:1",
+          "latestAmountRaised": {},
+          "latestFundingDate": {},
+          "latestImpliedValuation": {},
+          "latestShareClass": null,
+          "leadInvestor": null,
+          "legalType": null,
+          "maxAge": 1,
+          "morningStarOverallRating": {},
+          "morningStarRiskRating": {},
+          "mostRecentQuarter": {
+            "fmt": "2026-03-31",
+            "raw": 1774915200
+          },
+          "netIncomeToCommon": {
+            "fmt": "125.22B",
+            "longFmt": "125,215,997,952",
+            "raw": 125215997952
+          },
+          "nextFiscalYearEnd": {
+            "fmt": "2026-06-30",
+            "raw": 1782777600
+          },
+          "pegRatio": {
+            "fmt": "1.39",
+            "raw": 1.39
+          },
+          "priceHint": {
+            "fmt": "2",
+            "longFmt": "2",
+            "raw": 2
+          },
+          "priceToBook": {
+            "fmt": "8.07",
+            "raw": 8.0721445
+          },
+          "priceToSalesTrailing12Months": {},
+          "profitMargins": {
+            "fmt": "39.34%",
+            "raw": 0.39341998
+          },
+          "qtdReturn": {},
+          "revenueQuarterlyGrowth": {},
+          "sharesOutstanding": {
+            "fmt": "7.43B",
+            "longFmt": "7,428,434,704",
+            "raw": 7428434704
+          },
+          "sharesPercentSharesOut": {
+            "fmt": "1.04%",
+            "raw": 0.0104
+          },
+          "sharesShort": {
+            "fmt": "77.3M",
+            "longFmt": "77,302,679",
+            "raw": 77302679
+          },
+          "sharesShortPreviousMonthDate": {
+            "fmt": "2026-04-15",
+            "raw": 1776211200
+          },
+          "sharesShortPriorMonth": {
+            "fmt": "83.41M",
+            "longFmt": "83,407,242",
+            "raw": 83407242
+          },
+          "shortPercentOfFloat": {
+            "fmt": "1.04%",
+            "raw": 0.0104
+          },
+          "shortRatio": {
+            "fmt": "2.15",
+            "raw": 2.15
+          },
+          "threeYearAverageReturn": {},
+          "totalAssets": {},
+          "totalFundingRounds": {},
+          "trailingEps": {
+            "fmt": "16.79",
+            "raw": 16.79
+          },
+          "yield": {},
+          "ytdReturn": {}
+        },
+        "financialData": {
+          "currentPrice": {
+            "fmt": "450.24",
+            "raw": 450.24
+          },
+          "currentRatio": {
+            "fmt": "1.28",
+            "raw": 1.283
+          },
+          "debtToEquity": {
+            "fmt": "30.27%",
+            "raw": 30.271
+          },
+          "earningsGrowth": {
+            "fmt": "23.40%",
+            "raw": 0.234
+          },
+          "ebitda": {
+            "fmt": "184.46B",
+            "longFmt": "184,457,003,008",
+            "raw": 184457003008
+          },
+          "ebitdaMargins": {
+            "fmt": "57.96%",
+            "raw": 0.57956004
+          },
+          "financialCurrency": "USD",
+          "freeCashflow": {
+            "fmt": "37.01B",
+            "longFmt": "37,011,251,200",
+            "raw": 37011251200
+          },
+          "grossMargins": {
+            "fmt": "68.31%",
+            "raw": 0.68309
+          },
+          "grossProfits": {
+            "fmt": "217.41B",
+            "longFmt": "217,409,994,752",
+            "raw": 217409994752
+          },
+          "maxAge": 86400,
+          "numberOfAnalystOpinions": {
+            "fmt": "54",
+            "longFmt": "54",
+            "raw": 54
+          },
+          "operatingCashflow": {
+            "fmt": "170.14B",
+            "longFmt": "170,141,007,872",
+            "raw": 170141007872
+          },
+          "operatingMargins": {
+            "fmt": "46.33%",
+            "raw": 0.46326
+          },
+          "profitMargins": {
+            "fmt": "39.34%",
+            "raw": 0.39341998
+          },
+          "quickRatio": {
+            "fmt": "1.14",
+            "raw": 1.142
+          },
+          "recommendationKey": "strong_buy",
+          "recommendationMean": {
+            "fmt": "1.31",
+            "raw": 1.30909
+          },
+          "returnOnAssets": {
+            "fmt": "14.81%",
+            "raw": 0.14814
+          },
+          "returnOnEquity": {
+            "fmt": "34.01%",
+            "raw": 0.34013999
+          },
+          "revenueGrowth": {
+            "fmt": "18.30%",
+            "raw": 0.183
+          },
+          "revenuePerShare": {
+            "fmt": "42.84",
+            "raw": 42.836
+          },
+          "targetHighPrice": {
+            "fmt": "870.00",
+            "raw": 870.0
+          },
+          "targetLowPrice": {
+            "fmt": "400.00",
+            "raw": 400.0
+          },
+          "targetMeanPrice": {
+            "fmt": "560.63",
+            "raw": 560.6302
+          },
+          "targetMedianPrice": {
+            "fmt": "557.50",
+            "raw": 557.5
+          },
+          "totalCash": {
+            "fmt": "78.23B",
+            "longFmt": "78,227,996,672",
+            "raw": 78227996672
+          },
+          "totalCashPerShare": {
+            "fmt": "10.53",
+            "raw": 10.531
+          },
+          "totalDebt": {
+            "fmt": "125.43B",
+            "longFmt": "125,431,996,416",
+            "raw": 125431996416
+          },
+          "totalRevenue": {
+            "fmt": "318.27B",
+            "longFmt": "318,272,995,328",
+            "raw": 318272995328
+          }
+        },
+        "quoteType": {
+          "exchange": "NMS",
+          "firstTradeDateEpochUtc": 511108200,
+          "gmtOffSetMilliseconds": -14400000,
+          "longName": "Microsoft Corporation",
+          "maxAge": 1,
+          "messageBoardId": "finmb_21835",
+          "quoteType": "EQUITY",
+          "shortName": "Microsoft Corporation",
+          "symbol": "MSFT",
+          "timeZoneFullName": "America/New_York",
+          "timeZoneShortName": "EDT",
+          "underlyingSymbol": "MSFT",
+          "uuid": "b004b3ec-de24-385e-b2c1-923f10d3fb62"
+        },
+        "recommendationTrend": {
+          "maxAge": 86400,
+          "trend": [
+            {
+              "buy": 41,
+              "hold": 3,
+              "period": "0m",
+              "sell": 0,
+              "strongBuy": 11,
+              "strongSell": 0
+            },
+            {
+              "buy": 42,
+              "hold": 3,
+              "period": "-1m",
+              "sell": 0,
+              "strongBuy": 9,
+              "strongSell": 0
+            },
+            {
+              "buy": 45,
+              "hold": 3,
+              "period": "-2m",
+              "sell": 0,
+              "strongBuy": 10,
+              "strongSell": 0
+            },
+            {
+              "buy": 44,
+              "hold": 3,
+              "period": "-3m",
+              "sell": 0,
+              "strongBuy": 10,
+              "strongSell": 0
+            }
+          ]
+        },
+        "summaryDetail": {
+          "algorithm": null,
+          "allTimeHigh": {
+            "fmt": "555.45",
+            "raw": 555.45
+          },
+          "allTimeLow": {
+            "fmt": "0.09",
+            "raw": 0.088542
+          },
+          "ask": {
+            "fmt": "451.97",
+            "raw": 451.97
+          },
+          "askSize": {
+            "fmt": "500",
+            "longFmt": "500",
+            "raw": 500
+          },
+          "averageDailyVolume10Day": {
+            "fmt": "38.41M",
+            "longFmt": "38,407,440",
+            "raw": 38407440
+          },
+          "averageVolume": {
+            "fmt": "34.3M",
+            "longFmt": "34,295,722",
+            "raw": 34295722
+          },
+          "averageVolume10days": {
+            "fmt": "38.41M",
+            "longFmt": "38,407,440",
+            "raw": 38407440
+          },
+          "beta": {
+            "fmt": "1.09",
+            "raw": 1.093
+          },
+          "bid": {
+            "fmt": "445.10",
+            "raw": 445.1
+          },
+          "bidSize": {
+            "fmt": "300",
+            "longFmt": "300",
+            "raw": 300
+          },
+          "circulatingSupply": {},
+          "coinMarketCapLink": null,
+          "currency": "USD",
+          "dayHigh": {
+            "fmt": "450.33",
+            "raw": 450.33
+          },
+          "dayLow": {
+            "fmt": "432.36",
+            "raw": 432.36
+          },
+          "dividendRate": {
+            "fmt": "3.64",
+            "raw": 3.64
+          },
+          "dividendYield": {
+            "fmt": "0.81%",
+            "raw": 0.0081
+          },
+          "exDividendDate": {
+            "fmt": "2026-05-21",
+            "raw": 1779321600
+          },
+          "expireDate": {},
+          "fiftyDayAverage": {
+            "fmt": "402.83",
+            "raw": 402.8256
+          },
+          "fiftyTwoWeekHigh": {
+            "fmt": "555.45",
+            "raw": 555.45
+          },
+          "fiftyTwoWeekLow": {
+            "fmt": "356.28",
+            "raw": 356.28
+          },
+          "fiveYearAvgDividendYield": {
+            "fmt": "0.79",
+            "raw": 0.79
+          },
+          "forwardPE": {
+            "fmt": "23.28",
+            "raw": 23.28298
+          },
+          "fromCurrency": null,
+          "fullyDilutedValue": {},
+          "lastMarket": null,
+          "marketCap": {
+            "fmt": "3.34T",
+            "longFmt": "3,344,578,379,776",
+            "raw": 3344578379776
+          },
+          "maxAge": 1,
+          "maxSupply": {},
+          "navPrice": {},
+          "nonDilutedMarketCap": {
+            "fmt": "3.34T",
+            "longFmt": "3,344,578,441,128",
+            "raw": 3344578441128
+          },
+          "open": {
+            "fmt": "432.71",
+            "raw": 432.7125
+          },
+          "openInterest": {},
+          "payoutRatio": {
+            "fmt": "20.73%",
+            "raw": 0.20729999
+          },
+          "previousClose": {
+            "fmt": "426.99",
+            "raw": 426.99
+          },
+          "priceHint": {
+            "fmt": "2",
+            "longFmt": "2",
+            "raw": 2
+          },
+          "priceToSalesTrailing12Months": {
+            "fmt": "10.51",
+            "raw": 10.508521
+          },
+          "qtdReturn": {},
+          "regularMarketDayHigh": {
+            "fmt": "450.33",
+            "raw": 450.33
+          },
+          "regularMarketDayLow": {
+            "fmt": "432.36",
+            "raw": 432.36
+          },
+          "regularMarketOpen": {
+            "fmt": "432.71",
+            "raw": 432.7125
+          },
+          "regularMarketPreviousClose": {
+            "fmt": "426.99",
+            "raw": 426.99
+          },
+          "regularMarketVolume": {
+            "fmt": "77.17M",
+            "longFmt": "77,168,677",
+            "raw": 77168677
+          },
+          "startDate": {},
+          "strikePrice": {},
+          "toCurrency": null,
+          "totalAssets": {},
+          "totalSupply": {},
+          "tradeable": false,
+          "trailingAnnualDividendRate": {
+            "fmt": "3.56",
+            "raw": 3.56
+          },
+          "trailingAnnualDividendYield": {
+            "fmt": "0.83%",
+            "raw": 0.008337432
+          },
+          "trailingPE": {
+            "fmt": "26.82",
+            "raw": 26.81596
+          },
+          "twoHundredDayAverage": {
+            "fmt": "458.46",
+            "raw": 458.46146
+          },
+          "volume": {
+            "fmt": "77.17M",
+            "longFmt": "77,168,677",
+            "raw": 77168677
+          },
+          "volume24Hr": {},
+          "volume24HrMarketCapPercent": {},
+          "volumeAllCurrencies": {},
+          "yield": {},
+          "ytdReturn": {}
+        }
+      }
+    ]
+  }
+}

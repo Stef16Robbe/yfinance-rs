@@ -1,0 +1,274 @@
+{
+  "quoteSummary": {
+    "error": null,
+    "result": [
+      {
+        "fundOwnership": {
+          "maxAge": 1,
+          "ownershipList": [
+            {
+              "maxAge": 1,
+              "organization": "VANGUARD INDEX FUNDS-Vanguard Total Stock Market Index Fund",
+              "pctChange": {
+                "fmt": "-0.59%",
+                "raw": -0.0058999998
+              },
+              "pctHeld": {
+                "fmt": "3.16%",
+                "raw": 0.031600002
+              },
+              "position": {
+                "fmt": "464.38M",
+                "longFmt": "464,375,258",
+                "raw": 464375258
+              },
+              "reportDate": {
+                "fmt": "2025-12-31",
+                "raw": 1767139200
+              },
+              "value": {
+                "fmt": "144.91B",
+                "longFmt": "144,912,941,877",
+                "raw": 144912941877
+              }
+            },
+            {
+              "maxAge": 1,
+              "organization": "VANGUARD INDEX FUNDS-Vanguard 500 Index Fund",
+              "pctChange": {
+                "fmt": "1.77%",
+                "raw": 0.0177
+              },
+              "pctHeld": {
+                "fmt": "2.54%",
+                "raw": 0.0254
+              },
+              "position": {
+                "fmt": "372.62M",
+                "longFmt": "372,615,534",
+                "raw": 372615534
+              },
+              "reportDate": {
+                "fmt": "2025-12-31",
+                "raw": 1767139200
+              },
+              "value": {
+                "fmt": "116.28B",
+                "longFmt": "116,278,402,630",
+                "raw": 116278402630
+              }
+            },
+            {
+              "maxAge": 1,
+              "organization": "iShares Trust-iShares Core S&P 500 ETF",
+              "pctChange": {
+                "fmt": "0.57%",
+                "raw": 0.0057
+              },
+              "pctHeld": {
+                "fmt": "1.29%",
+                "raw": 0.0128999995
+              },
+              "position": {
+                "fmt": "189.89M",
+                "longFmt": "189,894,457",
+                "raw": 189894457
+              },
+              "reportDate": {
+                "fmt": "2026-04-30",
+                "raw": 1777507200
+              },
+              "value": {
+                "fmt": "59.26B",
+                "longFmt": "59,258,463,787",
+                "raw": 59258463787
+              }
+            },
+            {
+              "maxAge": 1,
+              "organization": "Fidelity Concord Street Trust-Fidelity 500 Index Fund",
+              "pctChange": {
+                "fmt": "-0.30%",
+                "raw": -0.003
+              },
+              "pctHeld": {
+                "fmt": "1.28%",
+                "raw": 0.0128
+              },
+              "position": {
+                "fmt": "187.49M",
+                "longFmt": "187,489,423",
+                "raw": 187489423
+              },
+              "reportDate": {
+                "fmt": "2026-03-31",
+                "raw": 1774915200
+              },
+              "value": {
+                "fmt": "58.51B",
+                "longFmt": "58,507,948,883",
+                "raw": 58507948883
+              }
+            },
+            {
+              "maxAge": 1,
+              "organization": "SPDR S&P 500 ETF TRUST-State Street SPDR S&P 500 ETF Trust",
+              "pctChange": {
+                "fmt": "2.56%",
+                "raw": 0.0256
+              },
+              "pctHeld": {
+                "fmt": "1.19%",
+                "raw": 0.0119
+              },
+              "position": {
+                "fmt": "175.43M",
+                "longFmt": "175,431,347",
+                "raw": 175431347
+              },
+              "reportDate": {
+                "fmt": "2026-04-30",
+                "raw": 1777507200
+              },
+              "value": {
+                "fmt": "54.75B",
+                "longFmt": "54,745,105,716",
+                "raw": 54745105716
+              }
+            },
+            {
+              "maxAge": 1,
+              "organization": "VANGUARD INDEX FUNDS-Vanguard Growth Index Fund",
+              "pctChange": {
+                "fmt": "9.41%",
+                "raw": 0.0941
+              },
+              "pctHeld": {
+                "fmt": "1.05%",
+                "raw": 0.0105
+              },
+              "position": {
+                "fmt": "154.16M",
+                "longFmt": "154,161,378",
+                "raw": 154161378
+              },
+              "reportDate": {
+                "fmt": "2025-12-31",
+                "raw": 1767139200
+              },
+              "value": {
+                "fmt": "48.11B",
+                "longFmt": "48,107,599,242",
+                "raw": 48107599242
+              }
+            },
+            {
+              "maxAge": 1,
+              "organization": "Invesco QQQ Trust, Series 1",
+              "pctChange": {
+                "fmt": "1.60%",
+                "raw": 0.016
+              },
+              "pctHeld": {
+                "fmt": "0.77%",
+                "raw": 0.0077
+              },
+              "position": {
+                "fmt": "113.82M",
+                "longFmt": "113,821,885",
+                "raw": 113821885
+              },
+              "reportDate": {
+                "fmt": "2026-04-30",
+                "raw": 1777507200
+              },
+              "value": {
+                "fmt": "35.52B",
+                "longFmt": "35,519,257,155",
+                "raw": 35519257155
+              }
+            },
+            {
+              "maxAge": 1,
+              "organization": "VANGUARD INSTITUTIONAL INDEX FUNDS-Vanguard Institutional Index Fund",
+              "pctChange": {
+                "fmt": "-2.38%",
+                "raw": -0.0238
+              },
+              "pctHeld": {
+                "fmt": "0.56%",
+                "raw": 0.0056
+              },
+              "position": {
+                "fmt": "82.78M",
+                "longFmt": "82,777,763",
+                "raw": 82777763
+              },
+              "reportDate": {
+                "fmt": "2026-03-31",
+                "raw": 1774915200
+              },
+              "value": {
+                "fmt": "25.83B",
+                "longFmt": "25,831,628,519",
+                "raw": 25831628519
+              }
+            },
+            {
+              "maxAge": 1,
+              "organization": "VANGUARD WORLD FUND-Vanguard Information Technology Index Fund",
+              "pctChange": {
+                "fmt": "2.52%",
+                "raw": 0.0252
+              },
+              "pctHeld": {
+                "fmt": "0.50%",
+                "raw": 0.005
+              },
+              "position": {
+                "fmt": "73.42M",
+                "longFmt": "73,417,762",
+                "raw": 73417762
+              },
+              "reportDate": {
+                "fmt": "2026-02-28",
+                "raw": 1772236800
+              },
+              "value": {
+                "fmt": "22.91B",
+                "longFmt": "22,910,746,630",
+                "raw": 22910746630
+              }
+            },
+            {
+              "maxAge": 1,
+              "organization": "iShares Trust-iShares Russell 1000 Growth ETF",
+              "pctChange": {
+                "fmt": "-0.28%",
+                "raw": -0.0028
+              },
+              "pctHeld": {
+                "fmt": "0.35%",
+                "raw": 0.0034999999
+              },
+              "position": {
+                "fmt": "51.11M",
+                "longFmt": "51,112,118",
+                "raw": 51112118
+              },
+              "reportDate": {
+                "fmt": "2026-04-30",
+                "raw": 1777507200
+              },
+              "value": {
+                "fmt": "15.95B",
+                "longFmt": "15,950,047,418",
+                "raw": 15950047418
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

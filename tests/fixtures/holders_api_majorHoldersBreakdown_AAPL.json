@@ -1,0 +1,29 @@
+{
+  "quoteSummary": {
+    "error": null,
+    "result": [
+      {
+        "majorHoldersBreakdown": {
+          "insidersPercentHeld": {
+            "fmt": "1.63%",
+            "raw": 0.01633
+          },
+          "institutionsCount": {
+            "fmt": "7.66k",
+            "longFmt": "7,657",
+            "raw": 7657
+          },
+          "institutionsFloatPercentHeld": {
+            "fmt": "66.90%",
+            "raw": 0.66896003
+          },
+          "institutionsPercentHeld": {
+            "fmt": "65.80%",
+            "raw": 0.65804
+          },
+          "maxAge": 1
+        }
+      }
+    ]
+  }
+}

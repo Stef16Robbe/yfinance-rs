@@ -15,7 +15,7 @@
       "isYahooFinance": true,
       "longname": "Apple Inc.",
       "quoteType": "EQUITY",
-      "score": 33032.0,
+      "score": 27176.0,
       "sector": "Technology",
       "sectorDisp": "Technology",
       "shortname": "Apple Inc.",
@@ -31,7 +31,7 @@
       "isYahooFinance": true,
       "longname": "Apple Hospitality REIT, Inc.",
       "quoteType": "EQUITY",
-      "score": 20046.0,
+      "score": 20038.0,
       "sector": "Real Estate",
       "sectorDisp": "Real Estate",
       "shortname": "Apple Hospitality REIT, Inc.",
@@ -47,27 +47,11 @@
       "isYahooFinance": true,
       "longname": "Apple Inc.",
       "quoteType": "EQUITY",
-      "score": 20016.0,
+      "score": 20009.0,
       "sector": "Technology",
       "sectorDisp": "Technology",
       "shortname": "Apple Inc.                    R",
       "symbol": "APC.DE",
-      "typeDisp": "Equity"
-    },
-    {
-      "exchDisp": "Frankfurt",
-      "exchange": "FRA",
-      "index": "quotes",
-      "industry": "Consumer Electronics",
-      "industryDisp": "Consumer Electronics",
-      "isYahooFinance": true,
-      "longname": "Apple Inc.",
-      "quoteType": "EQUITY",
-      "score": 20010.0,
-      "sector": "Technology",
-      "sectorDisp": "Technology",
-      "shortname": "Apple Inc.                    R",
-      "symbol": "APC.F",
       "typeDisp": "Equity"
     },
     {
@@ -84,6 +68,22 @@
       "sectorDisp": "Consumer Cyclical",
       "shortname": "APPLE INTERNATIONAL CO LTD",
       "symbol": "2788.T",
+      "typeDisp": "Equity"
+    },
+    {
+      "exchDisp": "Frankfurt",
+      "exchange": "FRA",
+      "index": "quotes",
+      "industry": "Consumer Electronics",
+      "industryDisp": "Consumer Electronics",
+      "isYahooFinance": true,
+      "longname": "Apple Inc.",
+      "quoteType": "EQUITY",
+      "score": 20003.0,
+      "sector": "Technology",
+      "sectorDisp": "Technology",
+      "shortname": "Apple Inc.                    R",
+      "symbol": "APC.F",
       "typeDisp": "Equity"
     },
     {
@@ -118,9 +118,9 @@
   "timeTakenForNav": 400,
   "timeTakenForNews": 0,
   "timeTakenForPredefinedScreener": 400,
-  "timeTakenForQuotes": 431,
+  "timeTakenForQuotes": 437,
   "timeTakenForResearchReports": 0,
   "timeTakenForScreenerField": 0,
   "timeTakenForSearchLists": 0,
-  "totalTime": 38
+  "totalTime": 44
 }

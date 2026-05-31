@@ -116,7 +116,10 @@ pub async fn fetch_key_statistics_with_diagnostics(
         "quote_summary_key_statistics",
         symbol,
     )? {
-        Some(quote_summary) => quotes::merge_key_statistics(stats, &quote_summary),
+        Some(quote_summary) => {
+            let quote_summary = quote_summary.into_key_statistics_with_context(&mut ctx, symbol)?;
+            quotes::merge_key_statistics(stats, &quote_summary)
+        }
         None => stats,
     };
 

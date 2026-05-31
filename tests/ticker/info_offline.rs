@@ -128,6 +128,12 @@ async fn offline_info_uses_recorded_fixtures() {
         info.key_statistics.beta,
         Some(crate::common::quote_summary_beta(&key_statistics_fixture))
     );
+    assert_eq!(
+        info.key_statistics.ex_dividend_date,
+        Some(crate::common::quote_summary_ex_dividend_date(
+            &key_statistics_fixture
+        ))
+    );
     assert!(
         info.calendar
             .and_then(|calendar| calendar.dividend_payment_date)

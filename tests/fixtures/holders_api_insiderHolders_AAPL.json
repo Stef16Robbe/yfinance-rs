@@ -1,0 +1,214 @@
+{
+  "quoteSummary": {
+    "error": null,
+    "result": [
+      {
+        "insiderHolders": {
+          "holders": [
+            {
+              "latestTransDate": {
+                "fmt": "2025-11-12",
+                "raw": 1762905600
+              },
+              "maxAge": 1,
+              "name": "ADAMS KATHERINE L",
+              "positionDirect": {
+                "fmt": "175.41k",
+                "longFmt": "175,408",
+                "raw": 175408
+              },
+              "positionDirectDate": {
+                "fmt": "2025-11-12",
+                "raw": 1762905600
+              },
+              "relation": "General Counsel",
+              "transactionDescription": "Stock Gift",
+              "url": ""
+            },
+            {
+              "latestTransDate": {
+                "fmt": "2026-04-02",
+                "raw": 1775088000
+              },
+              "maxAge": 1,
+              "name": "COOK TIMOTHY D",
+              "positionDirect": {
+                "fmt": "3.28M",
+                "longFmt": "3,280,420",
+                "raw": 3280420
+              },
+              "positionDirectDate": {
+                "fmt": "2026-04-02",
+                "raw": 1775088000
+              },
+              "relation": "Chief Executive Officer",
+              "transactionDescription": "Sale",
+              "url": ""
+            },
+            {
+              "latestTransDate": {
+                "fmt": "2026-01-30",
+                "raw": 1769731200
+              },
+              "maxAge": 1,
+              "name": "JUNG ANDREA",
+              "positionDirect": {
+                "fmt": "77.66k",
+                "longFmt": "77,664",
+                "raw": 77664
+              },
+              "positionDirectDate": {
+                "fmt": "2026-01-30",
+                "raw": 1769731200
+              },
+              "relation": "Director",
+              "transactionDescription": "Conversion of Exercise of derivative security",
+              "url": ""
+            },
+            {
+              "latestTransDate": {
+                "fmt": "2026-04-01",
+                "raw": 1775001600
+              },
+              "maxAge": 1,
+              "name": "KHAN SABIH",
+              "positionDirect": {
+                "fmt": "1.11M",
+                "longFmt": "1,105,530",
+                "raw": 1105530
+              },
+              "positionDirectDate": {
+                "fmt": "2026-04-01",
+                "raw": 1775001600
+              },
+              "relation": "Chief Operating Officer",
+              "transactionDescription": "Conversion of Exercise of derivative security",
+              "url": ""
+            },
+            {
+              "latestTransDate": {
+                "fmt": "2026-05-06",
+                "raw": 1778025600
+              },
+              "maxAge": 1,
+              "name": "LEVINSON ARTHUR D",
+              "positionDirect": {
+                "fmt": "3.87M",
+                "longFmt": "3,870,580",
+                "raw": 3870580
+              },
+              "positionDirectDate": {
+                "fmt": "2026-05-06",
+                "raw": 1778025600
+              },
+              "relation": "Director",
+              "transactionDescription": "Stock Gift",
+              "url": ""
+            },
+            {
+              "latestTransDate": {
+                "fmt": "2024-10-04",
+                "raw": 1728000000
+              },
+              "maxAge": 1,
+              "name": "MAESTRI LUCA",
+              "positionDirect": {
+                "fmt": "107.79k",
+                "longFmt": "107,788",
+                "raw": 107788
+              },
+              "positionDirectDate": {
+                "fmt": "2024-10-04",
+                "raw": 1728000000
+              },
+              "relation": "Chief Financial Officer",
+              "transactionDescription": "Sale",
+              "url": ""
+            },
+            {
+              "latestTransDate": {
+                "fmt": "2026-04-02",
+                "raw": 1775088000
+              },
+              "maxAge": 1,
+              "name": "O'BRIEN DEIRDRE",
+              "positionDirect": {
+                "fmt": "136.81k",
+                "longFmt": "136,810",
+                "raw": 136810
+              },
+              "positionDirectDate": {
+                "fmt": "2026-04-02",
+                "raw": 1775088000
+              },
+              "relation": "Officer",
+              "transactionDescription": "Sale",
+              "url": ""
+            },
+            {
+              "latestTransDate": {
+                "fmt": "2026-01-30",
+                "raw": 1769731200
+              },
+              "maxAge": 1,
+              "name": "SUGAR RONALD D",
+              "positionDirect": {
+                "fmt": "110.57k",
+                "longFmt": "110,566",
+                "raw": 110566
+              },
+              "positionDirectDate": {
+                "fmt": "2026-01-30",
+                "raw": 1769731200
+              },
+              "relation": "Director",
+              "transactionDescription": "Conversion of Exercise of derivative security",
+              "url": ""
+            },
+            {
+              "latestTransDate": {
+                "fmt": "2026-01-30",
+                "raw": 1769731200
+              },
+              "maxAge": 1,
+              "name": "WAGNER SUSAN L",
+              "positionDirect": {
+                "fmt": "69.79k",
+                "longFmt": "69,788",
+                "raw": 69788
+              },
+              "positionDirectDate": {
+                "fmt": "2026-01-30",
+                "raw": 1769731200
+              },
+              "relation": "Director",
+              "transactionDescription": "Conversion of Exercise of derivative security",
+              "url": ""
+            },
+            {
+              "latestTransDate": {
+                "fmt": "2025-04-02",
+                "raw": 1743552000
+              },
+              "maxAge": 1,
+              "name": "WILLIAMS JEFFREY E",
+              "positionDirect": {
+                "fmt": "390.06k",
+                "longFmt": "390,059",
+                "raw": 390059
+              },
+              "positionDirectDate": {
+                "fmt": "2025-04-02",
+                "raw": 1743552000
+              },
+              "relation": "Chief Operating Officer",
+              "transactionDescription": "Sale",
+              "url": ""
+            }
+          ],
+          "maxAge": 1
+        }
+      }
+    ]
+  }
+}

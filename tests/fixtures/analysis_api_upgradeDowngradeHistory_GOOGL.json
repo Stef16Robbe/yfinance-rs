@@ -7,6 +7,16 @@
           "history": [
             {
               "action": "main",
+              "currentPriceTarget": 430.0,
+              "epochGradeDate": 1780072998,
+              "firm": "Truist Securities",
+              "fromGrade": "Buy",
+              "priceTargetAction": "Raises",
+              "priorPriceTarget": 415.0,
+              "toGrade": "Buy"
+            },
+            {
+              "action": "main",
               "currentPriceTarget": 393.0,
               "epochGradeDate": 1779367231,
               "firm": "Rosenblatt",

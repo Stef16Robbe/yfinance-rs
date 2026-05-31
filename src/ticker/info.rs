@@ -6,7 +6,6 @@ use crate::{
     profile::Profile,
     ticker::Info,
 };
-use paft::fundamentals::statistics::KeyStatistics;
 
 const INFO_QUOTE_SUMMARY_MODULES: &str = "summaryDetail,defaultKeyStatistics,assetProfile,quoteType,fundProfile,financialData,recommendationTrend,calendarEvents";
 
@@ -70,7 +69,13 @@ pub(super) async fn fetch_info_with_diagnostics(
         match quote_summary_parts {
             Ok(parts) => {
                 let quote_summary_key_statistics =
-                    log_err_async(&mut ctx, parts.key_statistics, "key_statistics", &symbol)?;
+                    match log_err_async(&mut ctx, parts.key_statistics, "key_statistics", &symbol)?
+                    {
+                        Some(key_statistics) => Some(
+                            key_statistics.into_key_statistics_with_context(&mut ctx, &symbol)?,
+                        ),
+                        None => None,
+                    };
                 let profile = log_err_async(&mut ctx, parts.profile, "profile", &symbol)?;
                 let (price_target, rec_summary) = match parts.analysis {
                     Ok(analysis) => {
@@ -144,7 +149,7 @@ pub(super) async fn fetch_info_with_diagnostics(
 }
 
 struct InfoQuoteSummaryParts {
-    key_statistics: Result<KeyStatistics, YfError>,
+    key_statistics: Result<crate::core::quotes::QuoteSummaryKeyStatistics, YfError>,
     profile: Result<Profile, YfError>,
     analysis: Result<analysis::InfoAnalysisParts, YfError>,
     calendar: Result<YfResponse<paft::fundamentals::statements::Calendar>, YfError>,
@@ -188,7 +193,7 @@ async fn fetch_info_quote_summary_parts(
     .await?;
 
     Ok(InfoQuoteSummaryParts {
-        key_statistics: crate::core::quotes::key_statistics_from_quote_summary_value(value.clone()),
+        key_statistics: crate::core::quotes::quote_summary_key_statistics_from_value(value.clone()),
         profile: crate::profile::load_profile_from_quote_summary_value(
             client,
             symbol,

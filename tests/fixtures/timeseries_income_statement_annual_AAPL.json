@@ -3,64 +3,6 @@
     "error": null,
     "result": [
       {
-        "annualTotalRevenue": [
-          {
-            "asOfDate": "2022-09-30",
-            "currencyCode": "USD",
-            "dataId": 20100,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "394.33B",
-              "raw": 394328000000.0
-            }
-          },
-          {
-            "asOfDate": "2023-09-30",
-            "currencyCode": "USD",
-            "dataId": 20100,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "383.29B",
-              "raw": 383285000000.0
-            }
-          },
-          {
-            "asOfDate": "2024-09-30",
-            "currencyCode": "USD",
-            "dataId": 20100,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "391.04B",
-              "raw": 391035000000.0
-            }
-          },
-          {
-            "asOfDate": "2025-09-30",
-            "currencyCode": "USD",
-            "dataId": 20100,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "416.16B",
-              "raw": 416161000000.0
-            }
-          }
-        ],
-        "meta": {
-          "symbol": [
-            "AAPL"
-          ],
-          "type": [
-            "annualTotalRevenue"
-          ]
-        },
-        "timestamp": [
-          1664496000,
-          1696032000,
-          1727654400,
-          1759190400
-        ]
-      },
-      {
         "annualOperatingIncome": [
           {
             "asOfDate": "2022-09-30",
@@ -289,6 +231,64 @@
         ]
       },
       {
+        "annualTotalRevenue": [
+          {
+            "asOfDate": "2022-09-30",
+            "currencyCode": "USD",
+            "dataId": 20100,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "394.33B",
+              "raw": 394328000000.0
+            }
+          },
+          {
+            "asOfDate": "2023-09-30",
+            "currencyCode": "USD",
+            "dataId": 20100,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "383.29B",
+              "raw": 383285000000.0
+            }
+          },
+          {
+            "asOfDate": "2024-09-30",
+            "currencyCode": "USD",
+            "dataId": 20100,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "391.04B",
+              "raw": 391035000000.0
+            }
+          },
+          {
+            "asOfDate": "2025-09-30",
+            "currencyCode": "USD",
+            "dataId": 20100,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "416.16B",
+              "raw": 416161000000.0
+            }
+          }
+        ],
+        "meta": {
+          "symbol": [
+            "AAPL"
+          ],
+          "type": [
+            "annualTotalRevenue"
+          ]
+        },
+        "timestamp": [
+          1664496000,
+          1696032000,
+          1727654400,
+          1759190400
+        ]
+      },
+      {
         "annualInterestExpense": [
           {
             "asOfDate": "2021-09-30",
@@ -333,64 +333,6 @@
           1632960000,
           1664496000,
           1696032000
-        ]
-      },
-      {
-        "annualNetIncome": [
-          {
-            "asOfDate": "2022-09-30",
-            "currencyCode": "USD",
-            "dataId": 20091,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "99.80B",
-              "raw": 99803000000.0
-            }
-          },
-          {
-            "asOfDate": "2023-09-30",
-            "currencyCode": "USD",
-            "dataId": 20091,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "97.00B",
-              "raw": 96995000000.0
-            }
-          },
-          {
-            "asOfDate": "2024-09-30",
-            "currencyCode": "USD",
-            "dataId": 20091,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "93.74B",
-              "raw": 93736000000.0
-            }
-          },
-          {
-            "asOfDate": "2025-09-30",
-            "currencyCode": "USD",
-            "dataId": 20091,
-            "periodType": "12M",
-            "reportedValue": {
-              "fmt": "112.01B",
-              "raw": 112010000000.0
-            }
-          }
-        ],
-        "meta": {
-          "symbol": [
-            "AAPL"
-          ],
-          "type": [
-            "annualNetIncome"
-          ]
-        },
-        "timestamp": [
-          1664496000,
-          1696032000,
-          1727654400,
-          1759190400
         ]
       },
       {
@@ -452,45 +394,45 @@
         ]
       },
       {
-        "annualGrossProfit": [
+        "annualNetIncome": [
           {
             "asOfDate": "2022-09-30",
             "currencyCode": "USD",
-            "dataId": 20046,
+            "dataId": 20091,
             "periodType": "12M",
             "reportedValue": {
-              "fmt": "170.78B",
-              "raw": 170782000000.0
+              "fmt": "99.80B",
+              "raw": 99803000000.0
             }
           },
           {
             "asOfDate": "2023-09-30",
             "currencyCode": "USD",
-            "dataId": 20046,
+            "dataId": 20091,
             "periodType": "12M",
             "reportedValue": {
-              "fmt": "169.15B",
-              "raw": 169148000000.0
+              "fmt": "97.00B",
+              "raw": 96995000000.0
             }
           },
           {
             "asOfDate": "2024-09-30",
             "currencyCode": "USD",
-            "dataId": 20046,
+            "dataId": 20091,
             "periodType": "12M",
             "reportedValue": {
-              "fmt": "180.68B",
-              "raw": 180683000000.0
+              "fmt": "93.74B",
+              "raw": 93736000000.0
             }
           },
           {
             "asOfDate": "2025-09-30",
             "currencyCode": "USD",
-            "dataId": 20046,
+            "dataId": 20091,
             "periodType": "12M",
             "reportedValue": {
-              "fmt": "195.20B",
-              "raw": 195201000000.0
+              "fmt": "112.01B",
+              "raw": 112010000000.0
             }
           }
         ],
@@ -499,7 +441,7 @@
             "AAPL"
           ],
           "type": [
-            "annualGrossProfit"
+            "annualNetIncome"
           ]
         },
         "timestamp": [
@@ -558,6 +500,64 @@
           ],
           "type": [
             "annualTaxProvision"
+          ]
+        },
+        "timestamp": [
+          1664496000,
+          1696032000,
+          1727654400,
+          1759190400
+        ]
+      },
+      {
+        "annualGrossProfit": [
+          {
+            "asOfDate": "2022-09-30",
+            "currencyCode": "USD",
+            "dataId": 20046,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "170.78B",
+              "raw": 170782000000.0
+            }
+          },
+          {
+            "asOfDate": "2023-09-30",
+            "currencyCode": "USD",
+            "dataId": 20046,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "169.15B",
+              "raw": 169148000000.0
+            }
+          },
+          {
+            "asOfDate": "2024-09-30",
+            "currencyCode": "USD",
+            "dataId": 20046,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "180.68B",
+              "raw": 180683000000.0
+            }
+          },
+          {
+            "asOfDate": "2025-09-30",
+            "currencyCode": "USD",
+            "dataId": 20046,
+            "periodType": "12M",
+            "reportedValue": {
+              "fmt": "195.20B",
+              "raw": 195201000000.0
+            }
+          }
+        ],
+        "meta": {
+          "symbol": [
+            "AAPL"
+          ],
+          "type": [
+            "annualGrossProfit"
           ]
         },
         "timestamp": [

@@ -80,6 +80,25 @@ pub fn quote_summary_beta(fixture: &str) -> paft::Decimal {
 }
 
 #[must_use]
+/// Extracts `summaryDetail.exDividendDate` from a recorded quoteSummary key statistics fixture.
+///
+/// # Panics
+///
+/// Panics if the fixture is not valid JSON or does not contain an ex-dividend date.
+pub fn quote_summary_ex_dividend_date(fixture: &str) -> chrono::DateTime<chrono::Utc> {
+    let raw: serde_json::Value = serde_json::from_str(fixture).unwrap();
+    let result = raw["quoteSummary"]["result"]
+        .as_array()
+        .and_then(|results| results.first())
+        .expect("quoteSummary fixture should contain a result");
+    let timestamp = result["summaryDetail"]["exDividendDate"]["raw"]
+        .as_i64()
+        .expect("quoteSummary fixture should contain summaryDetail.exDividendDate");
+
+    chrono::DateTime::from_timestamp(timestamp, 0).expect("exDividendDate should be in range")
+}
+
+#[must_use]
 pub fn mock_cookie_crumb(server: &'_ MockServer) -> (Mock<'_>, Mock<'_>) {
     let cookie_mock = server.mock(|when, then| {
         when.method(GET).path("/consent");

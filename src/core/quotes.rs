@@ -9,11 +9,11 @@ use crate::{
     core::{
         CallOptions, DataQuality, ProjectionContext, ProjectionIssue,
         client::{CacheEndpoint, normalize_symbols},
-        conversions::{decimal_from_f64, i64_to_datetime},
+        conversions::i64_to_datetime,
         currency_resolver::{CurrencyHints, ResolvedCurrencyUnit},
         diagnostics::optional_decimal_f64,
         net, quotesummary,
-        wire::{JsonDecimal, RawNum, from_raw},
+        wire::{JsonDecimal, RawDate, RawDecimal, RawNum, RawNumU64, from_raw, from_raw_date},
         yahoo_vocab::{first_parsed_yahoo_exchange, parse_yahoo_exchange, parse_yahoo_quote_type},
     },
 };
@@ -26,10 +26,6 @@ use paft::market::orderbook::BookLevel;
 use paft::market::quote::Quote;
 
 const KEY_STATISTICS_MODULES: &str = "summaryDetail,defaultKeyStatistics";
-
-fn finite_decimal(value: Option<f64>) -> Option<Decimal> {
-    value.and_then(decimal_from_f64)
-}
 
 // Centralized wire model for the v7 quote API
 #[derive(Deserialize)]
@@ -500,6 +496,20 @@ impl QuoteCurrencyUnits {
         }
     }
 
+    fn from_quote_summary_currency(currency: Option<&str>) -> Self {
+        let (quote, quote_invalid) = parse_currency_unit(currency, false);
+        let quote_major = quote.as_ref().map(ResolvedCurrencyUnit::major_unit);
+        let financial = quote_major.clone();
+
+        Self {
+            quote,
+            quote_invalid,
+            quote_major,
+            financial,
+            financial_invalid: None,
+        }
+    }
+
     fn quote_price(
         &self,
         ctx: &mut ProjectionContext,
@@ -632,52 +642,214 @@ fn optional_with_unit<T, U>(
 }
 
 #[derive(Deserialize)]
-struct QuoteSummaryKeyStatistics {
+pub struct QuoteSummaryKeyStatistics {
     #[serde(rename = "summaryDetail")]
     summary_detail: Option<SummaryDetailNode>,
     #[serde(rename = "defaultKeyStatistics")]
     default_key_statistics: Option<DefaultKeyStatisticsNode>,
 }
 
-#[derive(Deserialize)]
+#[derive(Default, Deserialize)]
 struct SummaryDetailNode {
+    currency: Option<String>,
     beta: Option<RawNum<f64>>,
+    #[serde(rename = "marketCap")]
+    market_cap: Option<RawDecimal>,
+    #[serde(rename = "trailingPE")]
+    trailing_pe: Option<RawNum<f64>>,
+    #[serde(rename = "dividendRate")]
+    dividend_rate: Option<RawNum<f64>>,
+    #[serde(rename = "dividendYield")]
+    dividend_yield: Option<RawNum<f64>>,
+    #[serde(rename = "trailingAnnualDividendYield")]
+    trailing_annual_dividend_yield: Option<RawNum<f64>>,
+    #[serde(rename = "exDividendDate")]
+    ex_dividend_date: Option<RawDate>,
+    #[serde(rename = "fiftyTwoWeekHigh")]
+    fifty_two_week_high: Option<RawNum<f64>>,
+    #[serde(rename = "fiftyTwoWeekLow")]
+    fifty_two_week_low: Option<RawNum<f64>>,
+    #[serde(rename = "averageVolume")]
+    average_volume: Option<RawNumU64>,
 }
 
-#[derive(Deserialize)]
+#[derive(Default, Deserialize)]
 struct DefaultKeyStatisticsNode {
     beta: Option<RawNum<f64>>,
+    #[serde(rename = "sharesOutstanding")]
+    shares_outstanding: Option<RawNumU64>,
+    #[serde(rename = "trailingEps")]
+    trailing_eps: Option<RawNum<f64>>,
 }
 
 impl QuoteSummaryKeyStatistics {
-    fn into_key_statistics(self) -> KeyStatistics {
-        let beta = self
-            .summary_detail
-            .and_then(|node| from_raw(node.beta))
-            .or_else(|| {
-                self.default_key_statistics
-                    .and_then(|node| from_raw(node.beta))
-            });
+    pub fn into_key_statistics_with_context(
+        self,
+        ctx: &mut ProjectionContext,
+        symbol: &str,
+    ) -> Result<KeyStatistics, YfError> {
+        let key = Some(symbol.to_string());
+        let summary_detail = self.summary_detail.unwrap_or_default();
+        let default_key_statistics = self.default_key_statistics.unwrap_or_default();
+        let currencies =
+            QuoteCurrencyUnits::from_quote_summary_currency(summary_detail.currency.as_deref());
+        let beta = from_raw(summary_detail.beta).or_else(|| from_raw(default_key_statistics.beta));
 
-        KeyStatistics {
-            beta: finite_decimal(beta),
-            ..KeyStatistics::default()
+        Ok(KeyStatistics {
+            market_cap: currencies.quote_money(
+                ctx,
+                "summaryDetail.marketCap",
+                key.clone(),
+                raw_decimal(summary_detail.market_cap),
+                "market cap",
+            )?,
+            shares_outstanding: raw_u64(default_key_statistics.shares_outstanding),
+            eps_trailing_twelve_months: currencies.financial_price(
+                ctx,
+                "defaultKeyStatistics.trailingEps",
+                key.clone(),
+                from_raw(default_key_statistics.trailing_eps),
+                "trailing EPS",
+            )?,
+            pe_trailing_twelve_months: optional_decimal_f64(
+                ctx,
+                "summaryDetail.trailingPE",
+                key.clone(),
+                from_raw(summary_detail.trailing_pe),
+                "trailing PE",
+            )?,
+            dividend_per_share_forward: currencies.financial_price(
+                ctx,
+                "summaryDetail.dividendRate",
+                key.clone(),
+                from_raw(summary_detail.dividend_rate),
+                "forward dividend per share",
+            )?,
+            dividend_yield_trailing: optional_decimal_f64(
+                ctx,
+                "summaryDetail.trailingAnnualDividendYield",
+                key.clone(),
+                from_raw(summary_detail.trailing_annual_dividend_yield),
+                "trailing dividend yield",
+            )?,
+            dividend_yield_forward: optional_decimal_f64(
+                ctx,
+                "summaryDetail.dividendYield",
+                key.clone(),
+                from_raw(summary_detail.dividend_yield),
+                "forward dividend yield",
+            )?,
+            ex_dividend_date: optional_timestamp(
+                ctx,
+                "summaryDetail.exDividendDate",
+                key.clone(),
+                from_raw_date(summary_detail.ex_dividend_date),
+            )?,
+            fifty_two_week_high: currencies.quote_price(
+                ctx,
+                "summaryDetail.fiftyTwoWeekHigh",
+                key.clone(),
+                from_raw(summary_detail.fifty_two_week_high),
+                "52-week high",
+            )?,
+            fifty_two_week_low: currencies.quote_price(
+                ctx,
+                "summaryDetail.fiftyTwoWeekLow",
+                key,
+                from_raw(summary_detail.fifty_two_week_low),
+                "52-week low",
+            )?,
+            average_daily_volume_3m: raw_u64(summary_detail.average_volume),
+            beta: optional_decimal_f64(ctx, "beta", Some(symbol.to_string()), beta, "beta")?,
+            as_of: None,
+        })
+    }
+}
+
+fn raw_decimal(raw: Option<RawDecimal>) -> Option<Decimal> {
+    raw.and_then(|value| value.raw)
+}
+
+fn raw_u64(raw: Option<RawNumU64>) -> Option<u64> {
+    raw.and_then(|value| value.raw)
+}
+
+fn optional_timestamp(
+    ctx: &mut ProjectionContext,
+    path: &'static str,
+    key: Option<String>,
+    timestamp: Option<i64>,
+) -> Result<Option<chrono::DateTime<chrono::Utc>>, YfError> {
+    let Some(timestamp) = timestamp else {
+        return Ok(None);
+    };
+
+    match i64_to_datetime(timestamp) {
+        Ok(timestamp) => Ok(Some(timestamp)),
+        Err(err) => {
+            ctx.omitted_present_field(
+                path,
+                key,
+                ProjectionIssue::InvalidField {
+                    field: path,
+                    details: err.to_string(),
+                },
+            )?;
+            Ok(None)
         }
     }
 }
 
-pub fn key_statistics_from_quote_summary_value(
+pub fn quote_summary_key_statistics_from_value(
     value: serde_json::Value,
-) -> Result<KeyStatistics, YfError> {
-    let root: QuoteSummaryKeyStatistics = serde_json::from_value(value).map_err(YfError::Json)?;
-    Ok(root.into_key_statistics())
+) -> Result<QuoteSummaryKeyStatistics, YfError> {
+    serde_json::from_value(value).map_err(YfError::Json)
 }
 
 pub fn merge_key_statistics(
     mut base: KeyStatistics,
     quote_summary: &KeyStatistics,
 ) -> KeyStatistics {
-    base.beta = base.beta.or(quote_summary.beta);
+    if base.market_cap.is_none() {
+        base.market_cap.clone_from(&quote_summary.market_cap);
+    }
+    if base.shares_outstanding.is_none() {
+        base.shares_outstanding = quote_summary.shares_outstanding;
+    }
+    if base.eps_trailing_twelve_months.is_none() {
+        base.eps_trailing_twelve_months
+            .clone_from(&quote_summary.eps_trailing_twelve_months);
+    }
+    if base.pe_trailing_twelve_months.is_none() {
+        base.pe_trailing_twelve_months = quote_summary.pe_trailing_twelve_months;
+    }
+    if base.dividend_per_share_forward.is_none() {
+        base.dividend_per_share_forward
+            .clone_from(&quote_summary.dividend_per_share_forward);
+    }
+    if base.dividend_yield_trailing.is_none() {
+        base.dividend_yield_trailing = quote_summary.dividend_yield_trailing;
+    }
+    if base.dividend_yield_forward.is_none() {
+        base.dividend_yield_forward = quote_summary.dividend_yield_forward;
+    }
+    if base.ex_dividend_date.is_none() {
+        base.ex_dividend_date = quote_summary.ex_dividend_date;
+    }
+    if base.fifty_two_week_high.is_none() {
+        base.fifty_two_week_high
+            .clone_from(&quote_summary.fifty_two_week_high);
+    }
+    if base.fifty_two_week_low.is_none() {
+        base.fifty_two_week_low
+            .clone_from(&quote_summary.fifty_two_week_low);
+    }
+    if base.average_daily_volume_3m.is_none() {
+        base.average_daily_volume_3m = quote_summary.average_daily_volume_3m;
+    }
+    if base.beta.is_none() {
+        base.beta = quote_summary.beta;
+    }
     base
 }
 
@@ -685,17 +857,15 @@ pub async fn fetch_quote_summary_key_statistics(
     client: &YfClient,
     symbol: &str,
     options: &CallOptions,
-) -> Result<KeyStatistics, YfError> {
-    let root: QuoteSummaryKeyStatistics = quotesummary::fetch_module_result(
+) -> Result<QuoteSummaryKeyStatistics, YfError> {
+    quotesummary::fetch_module_result(
         client,
         symbol,
         KEY_STATISTICS_MODULES,
         "key_statistics",
         options,
     )
-    .await?;
-
-    Ok(root.into_key_statistics())
+    .await
 }
 
 /// Centralized function to fetch one or more quotes from the v7 API.

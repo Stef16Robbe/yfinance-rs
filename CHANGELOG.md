@@ -197,7 +197,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Prefer Yahoo long names over short names for search results, quotes, and fast-info snapshots
   when both names are available.
 - Preserve option-chain underlying identity from Yahoo's options response metadata, including ETF/fund quote types and exchange context, instead of falling back to an equity-only request-symbol instrument.
-- Populate beta in `Ticker::key_statistics()` and `info.key_statistics` from quoteSummary `summaryDetail`/`defaultKeyStatistics` when the v7 quote response does not include beta.
+- Populate `Ticker::key_statistics()` and `info.key_statistics` fallbacks from quoteSummary `summaryDetail`/`defaultKeyStatistics`, including beta, ex-dividend date, market cap, shares outstanding, trailing EPS/PE, dividends, 52-week range, and average volume when the v7 quote response omits them.
 
 ### Dependencies
 

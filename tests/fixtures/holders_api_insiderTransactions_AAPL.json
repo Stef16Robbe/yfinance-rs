@@ -1,0 +1,1503 @@
+{
+  "quoteSummary": {
+    "error": null,
+    "result": [
+      {
+        "insiderTransactions": {
+          "maxAge": 1,
+          "transactions": [
+            {
+              "filerName": "BORDERS BEN",
+              "filerRelation": "Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "1.27k",
+                "longFmt": "1,274",
+                "raw": 1274
+              },
+              "startDate": {
+                "fmt": "2026-05-08",
+                "raw": 1778198400
+              },
+              "transactionText": "Sale at price 290.00 per share.",
+              "value": {
+                "fmt": "369.46k",
+                "longFmt": "369,460",
+                "raw": 369460
+              }
+            },
+            {
+              "filerName": "LEVINSON ARTHUR D",
+              "filerRelation": "Director",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "5k",
+                "longFmt": "5,000",
+                "raw": 5000
+              },
+              "startDate": {
+                "fmt": "2026-05-06",
+                "raw": 1778025600
+              },
+              "transactionText": "Stock Gift at price 0.00 per share.",
+              "value": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              }
+            },
+            {
+              "filerName": "LEVINSON ARTHUR D",
+              "filerRelation": "Director",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "250k",
+                "longFmt": "250,000",
+                "raw": 250000
+              },
+              "startDate": {
+                "fmt": "2026-05-06",
+                "raw": 1778025600
+              },
+              "transactionText": "Sale at price 284.57 - 285.04 per share.",
+              "value": {
+                "fmt": "71.19M",
+                "longFmt": "71,189,722",
+                "raw": 71189722
+              }
+            },
+            {
+              "filerName": "PAREKH KEVAN",
+              "filerRelation": "Chief Financial Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "1.53k",
+                "longFmt": "1,534",
+                "raw": 1534
+              },
+              "startDate": {
+                "fmt": "2026-04-23",
+                "raw": 1776902400
+              },
+              "transactionText": "Sale at price 275.00 per share.",
+              "value": {
+                "fmt": "421.85k",
+                "longFmt": "421,850",
+                "raw": 421850
+              }
+            },
+            {
+              "filerName": "BORDERS BEN",
+              "filerRelation": "Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "1.72k",
+                "longFmt": "1,717",
+                "raw": 1717
+              },
+              "startDate": {
+                "fmt": "2026-04-15",
+                "raw": 1776211200
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "PAREKH KEVAN",
+              "filerRelation": "Chief Financial Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "10.93k",
+                "longFmt": "10,928",
+                "raw": 10928
+              },
+              "startDate": {
+                "fmt": "2026-04-15",
+                "raw": 1776211200
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "COOK TIMOTHY D",
+              "filerRelation": "Chief Executive Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "64.95k",
+                "longFmt": "64,949",
+                "raw": 64949
+              },
+              "startDate": {
+                "fmt": "2026-04-02",
+                "raw": 1775088000
+              },
+              "transactionText": "Sale at price 251.25 - 256.00 per share.",
+              "value": {
+                "fmt": "16.51M",
+                "longFmt": "16,512,198",
+                "raw": 16512198
+              }
+            },
+            {
+              "filerName": "O'BRIEN DEIRDRE",
+              "filerRelation": "Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "30k",
+                "longFmt": "30,002",
+                "raw": 30002
+              },
+              "startDate": {
+                "fmt": "2026-04-02",
+                "raw": 1775088000
+              },
+              "transactionText": "Sale at price 255.12 - 255.82 per share.",
+              "value": {
+                "fmt": "7.66M",
+                "longFmt": "7,660,875",
+                "raw": 7660875
+              }
+            },
+            {
+              "filerName": "COOK TIMOTHY D",
+              "filerRelation": "Chief Executive Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "131.58k",
+                "longFmt": "131,576",
+                "raw": 131576
+              },
+              "startDate": {
+                "fmt": "2026-04-01",
+                "raw": 1775001600
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "KHAN SABIH",
+              "filerRelation": "Chief Operating Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "64.32k",
+                "longFmt": "64,317",
+                "raw": 64317
+              },
+              "startDate": {
+                "fmt": "2026-04-01",
+                "raw": 1775001600
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "O'BRIEN DEIRDRE",
+              "filerRelation": "Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "64.32k",
+                "longFmt": "64,317",
+                "raw": 64317
+              },
+              "startDate": {
+                "fmt": "2026-04-01",
+                "raw": 1775001600
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "NEWSTEAD JENNIFER",
+              "filerRelation": "General Counsel",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "60.21k",
+                "longFmt": "60,208",
+                "raw": 60208
+              },
+              "startDate": {
+                "fmt": "2026-03-13",
+                "raw": 1773360000
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "LEVINSON ARTHUR D",
+              "filerRelation": "Director",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "1.11k",
+                "longFmt": "1,113",
+                "raw": 1113
+              },
+              "startDate": {
+                "fmt": "2026-02-26",
+                "raw": 1772064000
+              },
+              "transactionText": "Stock Gift at price 0.00 per share.",
+              "value": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              }
+            },
+            {
+              "filerName": "GORSKY ALEX",
+              "filerRelation": "Director",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "1.25k",
+                "longFmt": "1,255",
+                "raw": 1255
+              },
+              "startDate": {
+                "fmt": "2026-01-30",
+                "raw": 1769731200
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "AUSTIN WANDA M",
+              "filerRelation": "Director",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "1.25k",
+                "longFmt": "1,255",
+                "raw": 1255
+              },
+              "startDate": {
+                "fmt": "2026-01-30",
+                "raw": 1769731200
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "LOZANO MONICA C.",
+              "filerRelation": "Director",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "1.25k",
+                "longFmt": "1,255",
+                "raw": 1255
+              },
+              "startDate": {
+                "fmt": "2026-01-30",
+                "raw": 1769731200
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "SUGAR RONALD D",
+              "filerRelation": "Director",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "1.25k",
+                "longFmt": "1,255",
+                "raw": 1255
+              },
+              "startDate": {
+                "fmt": "2026-01-30",
+                "raw": 1769731200
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "LEVINSON ARTHUR D",
+              "filerRelation": "Director",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "1.11k",
+                "longFmt": "1,113",
+                "raw": 1113
+              },
+              "startDate": {
+                "fmt": "2026-01-30",
+                "raw": 1769731200
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "JUNG ANDREA",
+              "filerRelation": "Director",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "1.25k",
+                "longFmt": "1,255",
+                "raw": 1255
+              },
+              "startDate": {
+                "fmt": "2026-01-30",
+                "raw": 1769731200
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "WAGNER SUSAN L",
+              "filerRelation": "Director",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "1.25k",
+                "longFmt": "1,255",
+                "raw": 1255
+              },
+              "startDate": {
+                "fmt": "2026-01-30",
+                "raw": 1769731200
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "ADAMS KATHERINE L",
+              "filerRelation": "General Counsel",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "3.75k",
+                "longFmt": "3,750",
+                "raw": 3750
+              },
+              "startDate": {
+                "fmt": "2025-11-12",
+                "raw": 1762905600
+              },
+              "transactionText": "Stock Gift at price 0.00 per share.",
+              "value": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              }
+            },
+            {
+              "filerName": "KONDO CHRISTOPHER",
+              "filerRelation": "Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "3.75k",
+                "longFmt": "3,752",
+                "raw": 3752
+              },
+              "startDate": {
+                "fmt": "2025-11-07",
+                "raw": 1762473600
+              },
+              "transactionText": "Sale at price 271.23 per share.",
+              "value": {
+                "fmt": "1.02M",
+                "longFmt": "1,017,655",
+                "raw": 1017655
+              }
+            },
+            {
+              "filerName": "PAREKH KEVAN",
+              "filerRelation": "Chief Financial Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "4.2k",
+                "longFmt": "4,199",
+                "raw": 4199
+              },
+              "startDate": {
+                "fmt": "2025-10-16",
+                "raw": 1760572800
+              },
+              "transactionText": "Sale at price 245.89 - 248.73 per share.",
+              "value": {
+                "fmt": "1.04M",
+                "longFmt": "1,038,787",
+                "raw": 1038787
+              }
+            },
+            {
+              "filerName": "KONDO CHRISTOPHER",
+              "filerRelation": "Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "7.37k",
+                "longFmt": "7,371",
+                "raw": 7371
+              },
+              "startDate": {
+                "fmt": "2025-10-15",
+                "raw": 1760486400
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "PAREKH KEVAN",
+              "filerRelation": "Chief Financial Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "16.46k",
+                "longFmt": "16,457",
+                "raw": 16457
+              },
+              "startDate": {
+                "fmt": "2025-10-15",
+                "raw": 1760486400
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "ADAMS KATHERINE L",
+              "filerRelation": "General Counsel",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "47.12k",
+                "longFmt": "47,125",
+                "raw": 47125
+              },
+              "startDate": {
+                "fmt": "2025-10-02",
+                "raw": 1759363200
+              },
+              "transactionText": "Sale at price 254.83 - 257.54 per share.",
+              "value": {
+                "fmt": "12.1M",
+                "longFmt": "12,101,154",
+                "raw": 12101154
+              }
+            },
+            {
+              "filerName": "COOK TIMOTHY D",
+              "filerRelation": "Chief Executive Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "129.96k",
+                "longFmt": "129,963",
+                "raw": 129963
+              },
+              "startDate": {
+                "fmt": "2025-10-02",
+                "raw": 1759363200
+              },
+              "transactionText": "Sale at price 254.83 - 257.57 per share.",
+              "value": {
+                "fmt": "33.38M",
+                "longFmt": "33,375,723",
+                "raw": 33375723
+              }
+            },
+            {
+              "filerName": "O'BRIEN DEIRDRE",
+              "filerRelation": "Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "43.01k",
+                "longFmt": "43,013",
+                "raw": 43013
+              },
+              "startDate": {
+                "fmt": "2025-10-02",
+                "raw": 1759363200
+              },
+              "transactionText": "Sale at price 257.36 - 258.08 per share.",
+              "value": {
+                "fmt": "11.07M",
+                "longFmt": "11,071,078",
+                "raw": 11071078
+              }
+            },
+            {
+              "filerName": "ADAMS KATHERINE L",
+              "filerRelation": "General Counsel",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "92.4k",
+                "longFmt": "92,403",
+                "raw": 92403
+              },
+              "startDate": {
+                "fmt": "2025-10-01",
+                "raw": 1759276800
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "COOK TIMOTHY D",
+              "filerRelation": "Chief Executive Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "277.21k",
+                "longFmt": "277,206",
+                "raw": 277206
+              },
+              "startDate": {
+                "fmt": "2025-10-01",
+                "raw": 1759276800
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "KHAN SABIH",
+              "filerRelation": "Chief Operating Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "92.4k",
+                "longFmt": "92,403",
+                "raw": 92403
+              },
+              "startDate": {
+                "fmt": "2025-10-01",
+                "raw": 1759276800
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "O'BRIEN DEIRDRE",
+              "filerRelation": "Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "92.4k",
+                "longFmt": "92,403",
+                "raw": 92403
+              },
+              "startDate": {
+                "fmt": "2025-10-01",
+                "raw": 1759276800
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "LEVINSON ARTHUR D",
+              "filerRelation": "Director",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "90k",
+                "longFmt": "90,000",
+                "raw": 90000
+              },
+              "startDate": {
+                "fmt": "2025-08-28",
+                "raw": 1756339200
+              },
+              "transactionText": "Sale at price 232.07 per share.",
+              "value": {
+                "fmt": "20.89M",
+                "longFmt": "20,886,300",
+                "raw": 20886300
+              }
+            },
+            {
+              "filerName": "KONDO CHRISTOPHER",
+              "filerRelation": "Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "435",
+                "longFmt": "435",
+                "raw": 435
+              },
+              "startDate": {
+                "fmt": "2025-08-25",
+                "raw": 1756080000
+              },
+              "transactionText": "Stock Gift at price 0.00 per share.",
+              "value": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              }
+            },
+            {
+              "filerName": "O'BRIEN DEIRDRE",
+              "filerRelation": "Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "34.82k",
+                "longFmt": "34,821",
+                "raw": 34821
+              },
+              "startDate": {
+                "fmt": "2025-08-08",
+                "raw": 1754611200
+              },
+              "transactionText": "Sale at price 223.20 per share.",
+              "value": {
+                "fmt": "7.77M",
+                "longFmt": "7,772,047",
+                "raw": 7772047
+              }
+            },
+            {
+              "filerName": "KONDO CHRISTOPHER",
+              "filerRelation": "Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "4.49k",
+                "longFmt": "4,486",
+                "raw": 4486
+              },
+              "startDate": {
+                "fmt": "2025-05-12",
+                "raw": 1747008000
+              },
+              "transactionText": "Sale at price 208.19 per share.",
+              "value": {
+                "fmt": "933.96k",
+                "longFmt": "933,955",
+                "raw": 933955
+              }
+            },
+            {
+              "filerName": "PAREKH KEVAN",
+              "filerRelation": "Chief Financial Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "4.57k",
+                "longFmt": "4,570",
+                "raw": 4570
+              },
+              "startDate": {
+                "fmt": "2025-04-23",
+                "raw": 1745366400
+              },
+              "transactionText": "Sale at price 206.00 per share.",
+              "value": {
+                "fmt": "941.42k",
+                "longFmt": "941,420",
+                "raw": 941420
+              }
+            },
+            {
+              "filerName": "KONDO CHRISTOPHER",
+              "filerRelation": "Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "7.37k",
+                "longFmt": "7,373",
+                "raw": 7373
+              },
+              "startDate": {
+                "fmt": "2025-04-15",
+                "raw": 1744675200
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "PAREKH KEVAN",
+              "filerRelation": "Chief Financial Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "16.46k",
+                "longFmt": "16,458",
+                "raw": 16458
+              },
+              "startDate": {
+                "fmt": "2025-04-15",
+                "raw": 1744675200
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "WILLIAMS JEFFREY E",
+              "filerRelation": "Chief Operating Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "35.49k",
+                "longFmt": "35,493",
+                "raw": 35493
+              },
+              "startDate": {
+                "fmt": "2025-04-02",
+                "raw": 1743552000
+              },
+              "transactionText": "Sale at price 223.48 - 225.03 per share.",
+              "value": {
+                "fmt": "7.95M",
+                "longFmt": "7,950,691",
+                "raw": 7950691
+              }
+            },
+            {
+              "filerName": "ADAMS KATHERINE L",
+              "filerRelation": "General Counsel",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "38.82k",
+                "longFmt": "38,822",
+                "raw": 38822
+              },
+              "startDate": {
+                "fmt": "2025-04-02",
+                "raw": 1743552000
+              },
+              "transactionText": "Sale at price 221.68 - 224.62 per share.",
+              "value": {
+                "fmt": "8.68M",
+                "longFmt": "8,683,252",
+                "raw": 8683252
+              }
+            },
+            {
+              "filerName": "COOK TIMOTHY D",
+              "filerRelation": "Chief Executive Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "108.14k",
+                "longFmt": "108,136",
+                "raw": 108136
+              },
+              "startDate": {
+                "fmt": "2025-04-02",
+                "raw": 1743552000
+              },
+              "transactionText": "Sale at price 221.77 - 224.76 per share.",
+              "value": {
+                "fmt": "24.18M",
+                "longFmt": "24,184,658",
+                "raw": 24184658
+              }
+            },
+            {
+              "filerName": "WILLIAMS JEFFREY E",
+              "filerRelation": "Chief Operating Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "74.53k",
+                "longFmt": "74,535",
+                "raw": 74535
+              },
+              "startDate": {
+                "fmt": "2025-04-01",
+                "raw": 1743465600
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "ADAMS KATHERINE L",
+              "filerRelation": "General Counsel",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "74.53k",
+                "longFmt": "74,535",
+                "raw": 74535
+              },
+              "startDate": {
+                "fmt": "2025-04-01",
+                "raw": 1743465600
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "COOK TIMOTHY D",
+              "filerRelation": "Chief Executive Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "218.57k",
+                "longFmt": "218,568",
+                "raw": 218568
+              },
+              "startDate": {
+                "fmt": "2025-04-01",
+                "raw": 1743465600
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "O'BRIEN DEIRDRE",
+              "filerRelation": "Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "74.53k",
+                "longFmt": "74,535",
+                "raw": 74535
+              },
+              "startDate": {
+                "fmt": "2025-04-01",
+                "raw": 1743465600
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "LEVINSON ARTHUR D",
+              "filerRelation": "Director",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "1.52k",
+                "longFmt": "1,516",
+                "raw": 1516
+              },
+              "startDate": {
+                "fmt": "2025-02-03",
+                "raw": 1738540800
+              },
+              "transactionText": "Sale at price 226.35 per share.",
+              "value": {
+                "fmt": "343.15k",
+                "longFmt": "343,147",
+                "raw": 343147
+              }
+            },
+            {
+              "filerName": "GORSKY ALEX",
+              "filerRelation": "Director",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "1.52k",
+                "longFmt": "1,516",
+                "raw": 1516
+              },
+              "startDate": {
+                "fmt": "2025-01-31",
+                "raw": 1738281600
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "AUSTIN WANDA M",
+              "filerRelation": "Director",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "1.52k",
+                "longFmt": "1,516",
+                "raw": 1516
+              },
+              "startDate": {
+                "fmt": "2025-01-31",
+                "raw": 1738281600
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "LOZANO MONICA C.",
+              "filerRelation": "Director",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "1.52k",
+                "longFmt": "1,516",
+                "raw": 1516
+              },
+              "startDate": {
+                "fmt": "2025-01-31",
+                "raw": 1738281600
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "SUGAR RONALD D",
+              "filerRelation": "Director",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "1.52k",
+                "longFmt": "1,516",
+                "raw": 1516
+              },
+              "startDate": {
+                "fmt": "2025-01-31",
+                "raw": 1738281600
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "LEVINSON ARTHUR D",
+              "filerRelation": "Director",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "1.52k",
+                "longFmt": "1,516",
+                "raw": 1516
+              },
+              "startDate": {
+                "fmt": "2025-01-31",
+                "raw": 1738281600
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "JUNG ANDREA",
+              "filerRelation": "Director",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "1.52k",
+                "longFmt": "1,516",
+                "raw": 1516
+              },
+              "startDate": {
+                "fmt": "2025-01-31",
+                "raw": 1738281600
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "WAGNER SUSAN L",
+              "filerRelation": "Director",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "1.52k",
+                "longFmt": "1,516",
+                "raw": 1516
+              },
+              "startDate": {
+                "fmt": "2025-01-31",
+                "raw": 1738281600
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "WILLIAMS JEFFREY E",
+              "filerRelation": "Chief Operating Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "I",
+              "shares": {
+                "fmt": "100k",
+                "longFmt": "100,000",
+                "raw": 100000
+              },
+              "startDate": {
+                "fmt": "2024-12-16",
+                "raw": 1734307200
+              },
+              "transactionText": "Sale at price 248.61 - 251.10 per share.",
+              "value": {
+                "fmt": "25M",
+                "longFmt": "24,997,395",
+                "raw": 24997395
+              }
+            },
+            {
+              "filerName": "LEVINSON ARTHUR D",
+              "filerRelation": "Director",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "200k",
+                "longFmt": "200,000",
+                "raw": 200000
+              },
+              "startDate": {
+                "fmt": "2024-11-19",
+                "raw": 1731974400
+              },
+              "transactionText": "Sale at price 224.68 - 229.28 per share.",
+              "value": {
+                "fmt": "45.46M",
+                "longFmt": "45,464,500",
+                "raw": 45464500
+              }
+            },
+            {
+              "filerName": "KONDO CHRISTOPHER",
+              "filerRelation": "Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "4.13k",
+                "longFmt": "4,130",
+                "raw": 4130
+              },
+              "startDate": {
+                "fmt": "2024-11-18",
+                "raw": 1731888000
+              },
+              "transactionText": "Sale at price 228.87 per share.",
+              "value": {
+                "fmt": "945.23k",
+                "longFmt": "945,233",
+                "raw": 945233
+              }
+            },
+            {
+              "filerName": "ADAMS KATHERINE L",
+              "filerRelation": "General Counsel",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "8k",
+                "longFmt": "8,000",
+                "raw": 8000
+              },
+              "startDate": {
+                "fmt": "2024-11-05",
+                "raw": 1730764800
+              },
+              "transactionText": "Stock Gift at price 0.00 per share.",
+              "value": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              }
+            },
+            {
+              "filerName": "KONDO CHRISTOPHER",
+              "filerRelation": "Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "8.12k",
+                "longFmt": "8,115",
+                "raw": 8115
+              },
+              "startDate": {
+                "fmt": "2024-10-15",
+                "raw": 1728950400
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "MAESTRI LUCA",
+              "filerRelation": "Chief Financial Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "59.3k",
+                "longFmt": "59,305",
+                "raw": 59305
+              },
+              "startDate": {
+                "fmt": "2024-10-04",
+                "raw": 1728000000
+              },
+              "transactionText": "Sale at price 226.52 per share.",
+              "value": {
+                "fmt": "13.43M",
+                "longFmt": "13,433,769",
+                "raw": 13433769
+              }
+            },
+            {
+              "filerName": "WILLIAMS JEFFREY E",
+              "filerRelation": "Chief Operating Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "59.73k",
+                "longFmt": "59,730",
+                "raw": 59730
+              },
+              "startDate": {
+                "fmt": "2024-10-02",
+                "raw": 1727827200
+              },
+              "transactionText": "Sale at price 226.80 - 227.22 per share.",
+              "value": {
+                "fmt": "13.55M",
+                "longFmt": "13,550,148",
+                "raw": 13550148
+              }
+            },
+            {
+              "filerName": "ADAMS KATHERINE L",
+              "filerRelation": "General Counsel",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "61.02k",
+                "longFmt": "61,019",
+                "raw": 61019
+              },
+              "startDate": {
+                "fmt": "2024-10-02",
+                "raw": 1727827200
+              },
+              "transactionText": "Sale at price 223.79 - 227.24 per share.",
+              "value": {
+                "fmt": "13.8M",
+                "longFmt": "13,802,297",
+                "raw": 13802297
+              }
+            },
+            {
+              "filerName": "COOK TIMOTHY D",
+              "filerRelation": "Chief Executive Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "223.99k",
+                "longFmt": "223,986",
+                "raw": 223986
+              },
+              "startDate": {
+                "fmt": "2024-10-02",
+                "raw": 1727827200
+              },
+              "transactionText": "Sale at price 223.75 - 226.57 per share.",
+              "value": {
+                "fmt": "50.28M",
+                "longFmt": "50,276,355",
+                "raw": 50276355
+              }
+            },
+            {
+              "filerName": "O'BRIEN DEIRDRE",
+              "filerRelation": "Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "61.02k",
+                "longFmt": "61,019",
+                "raw": 61019
+              },
+              "startDate": {
+                "fmt": "2024-10-02",
+                "raw": 1727827200
+              },
+              "transactionText": "Sale at price 226.72 - 227.13 per share.",
+              "value": {
+                "fmt": "13.84M",
+                "longFmt": "13,843,382",
+                "raw": 13843382
+              }
+            },
+            {
+              "filerName": "WILLIAMS JEFFREY E",
+              "filerRelation": "Chief Operating Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "127.28k",
+                "longFmt": "127,282",
+                "raw": 127282
+              },
+              "startDate": {
+                "fmt": "2024-10-01",
+                "raw": 1727740800
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "ADAMS KATHERINE L",
+              "filerRelation": "General Counsel",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "127.28k",
+                "longFmt": "127,282",
+                "raw": 127282
+              },
+              "startDate": {
+                "fmt": "2024-10-01",
+                "raw": 1727740800
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "MAESTRI LUCA",
+              "filerRelation": "Chief Financial Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "127.28k",
+                "longFmt": "127,282",
+                "raw": 127282
+              },
+              "startDate": {
+                "fmt": "2024-10-01",
+                "raw": 1727740800
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "COOK TIMOTHY D",
+              "filerRelation": "Chief Executive Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "477.3k",
+                "longFmt": "477,301",
+                "raw": 477301
+              },
+              "startDate": {
+                "fmt": "2024-10-01",
+                "raw": 1727740800
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "O'BRIEN DEIRDRE",
+              "filerRelation": "Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "127.28k",
+                "longFmt": "127,282",
+                "raw": 127282
+              },
+              "startDate": {
+                "fmt": "2024-10-01",
+                "raw": 1727740800
+              },
+              "transactionText": ""
+            },
+            {
+              "filerName": "KONDO CHRISTOPHER",
+              "filerRelation": "Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "8.71k",
+                "longFmt": "8,706",
+                "raw": 8706
+              },
+              "startDate": {
+                "fmt": "2024-08-15",
+                "raw": 1723680000
+              },
+              "transactionText": "Sale at price 225.00 per share.",
+              "value": {
+                "fmt": "1.96M",
+                "longFmt": "1,958,850",
+                "raw": 1958850
+              }
+            },
+            {
+              "filerName": "KONDO CHRISTOPHER",
+              "filerRelation": "Officer",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "5.18k",
+                "longFmt": "5,178",
+                "raw": 5178
+              },
+              "startDate": {
+                "fmt": "2024-08-09",
+                "raw": 1723161600
+              },
+              "transactionText": "Sale at price 216.50 per share.",
+              "value": {
+                "fmt": "1.12M",
+                "longFmt": "1,121,037",
+                "raw": 1121037
+              }
+            },
+            {
+              "filerName": "ADAMS KATHERINE L",
+              "filerRelation": "General Counsel",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "4.5k",
+                "longFmt": "4,500",
+                "raw": 4500
+              },
+              "startDate": {
+                "fmt": "2024-08-07",
+                "raw": 1722988800
+              },
+              "transactionText": "Stock Gift at price 0.00 per share.",
+              "value": {
+                "fmt": null,
+                "longFmt": "0",
+                "raw": 0
+              }
+            },
+            {
+              "filerName": "ADAMS KATHERINE L",
+              "filerRelation": "General Counsel",
+              "filerUrl": "",
+              "maxAge": 1,
+              "moneyText": "",
+              "ownership": "D",
+              "shares": {
+                "fmt": "100k",
+                "longFmt": "100,000",
+                "raw": 100000
+              },
+              "startDate": {
+                "fmt": "2024-08-05",
+                "raw": 1722816000
+              },
+              "transactionText": "Sale at price 206.42 - 207.05 per share.",
+              "value": {
+                "fmt": "20.64M",
+                "longFmt": "20,643,512",
+                "raw": 20643512
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
