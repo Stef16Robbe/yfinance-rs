@@ -97,11 +97,7 @@ where
     let body = fetch_timeseries_body(client, &symbol, endpoint_name, prefix, url, options).await?;
 
     let envelope: TimeseriesEnvelope = serde_json::from_str(&body).map_err(YfError::Json)?;
-
-    let result_vec = envelope
-        .timeseries
-        .and_then(|ts| ts.result)
-        .unwrap_or_default();
+    let result_vec = timeseries_results(envelope)?;
 
     if result_vec.is_empty() {
         return Ok(ctx.finish(vec![]));
@@ -196,6 +192,51 @@ async fn fetch_timeseries_body(
     .await?;
 
     Ok(body)
+}
+
+fn timeseries_results(envelope: TimeseriesEnvelope) -> Result<Vec<TimeseriesData>, YfError> {
+    reject_timeseries_error(&envelope)?;
+
+    envelope
+        .timeseries
+        .and_then(|ts| ts.result)
+        .ok_or_else(|| YfError::MissingData("missing timeseries result".into()))
+}
+
+fn reject_timeseries_error(envelope: &TimeseriesEnvelope) -> Result<(), YfError> {
+    if let Some(error) = envelope
+        .timeseries
+        .as_ref()
+        .and_then(|ts| ts.error.as_ref())
+        .or_else(|| {
+            envelope
+                .finance
+                .as_ref()
+                .and_then(|finance| finance.error.as_ref())
+        })
+    {
+        let message = timeseries_error_message(error);
+        crate::core::logging::trace_error!(
+            error = %message,
+            "timeseries error"
+        );
+        return Err(YfError::Api(format!("yahoo error: {message}")));
+    }
+
+    Ok(())
+}
+
+fn timeseries_error_message(error: &serde_json::Value) -> String {
+    ["description", "message", "code"]
+        .into_iter()
+        .find_map(|field| {
+            error
+                .get(field)
+                .and_then(serde_json::Value::as_str)
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+        })
+        .map_or_else(|| error.to_string(), str::to_owned)
 }
 
 fn timeseries_url(
@@ -1205,12 +1246,11 @@ pub(super) async fn shares(
     .await?;
 
     let envelope: TimeseriesEnvelope = serde_json::from_str(&body).map_err(YfError::Json)?;
+    let result_vec = timeseries_results(envelope)?;
 
-    let result_data: Option<TimeseriesData> =
-        envelope.timeseries.and_then(|ts| ts.result).and_then(|v| {
-            v.into_iter()
-                .find(|data| data.values.contains_key(type_key))
-        });
+    let result_data: Option<TimeseriesData> = result_vec
+        .into_iter()
+        .find(|data| data.values.contains_key(type_key));
 
     let Some(TimeseriesData {
         timestamp: Some(timestamps),

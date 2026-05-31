@@ -203,6 +203,165 @@ async fn fundamentals_timeseries_http_error_maps_status_and_is_not_cached() {
 }
 
 #[tokio::test]
+async fn fundamentals_timeseries_yahoo_error_returns_api_error() {
+    let server = MockServer::start();
+    let sym = "NOFUNDS";
+
+    let api_error = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!(
+                "/ws/fundamentals-timeseries/v1/finance/timeseries/{sym}"
+            ))
+            .query_param("symbol", sym)
+            .query_param(
+                "type",
+                "annualTotalRevenue,annualGrossProfit,annualOperatingIncome,annualNetIncome,annualInterestExpense,annualTaxProvision,annualDepreciationAndAmortization",
+            )
+            .query_param("crumb", "crumb")
+            .query_param_exists("period1")
+            .query_param_exists("period2");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "timeseries": {
+                    "result": null,
+                    "error": {
+                      "code": "Not Found",
+                      "description": "No fundamentals data found"
+                    }
+                  }
+                }"#,
+            );
+    });
+
+    let client = YfClient::builder()
+        .base_timeseries(
+            Url::parse(&format!(
+                "{}/ws/fundamentals-timeseries/v1/finance/timeseries/",
+                server.base_url()
+            ))
+            .unwrap(),
+        )
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let err = Ticker::new(&client, sym)
+        .income_stmt(None)
+        .await
+        .unwrap_err();
+
+    api_error.assert();
+    match err {
+        YfError::Api(message) => assert!(
+            message.contains("yahoo error:") && message.contains("No fundamentals data found"),
+            "expected Yahoo API error to be surfaced; got {message}"
+        ),
+        other => panic!("expected Api error, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn fundamentals_timeseries_finance_error_returns_api_error() {
+    let server = MockServer::start();
+    let sym = "BADREQ";
+
+    let api_error = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!(
+                "/ws/fundamentals-timeseries/v1/finance/timeseries/{sym}"
+            ))
+            .query_param("symbol", sym)
+            .query_param("type", "annualOrdinarySharesNumber")
+            .query_param("crumb", "crumb")
+            .query_param_exists("period1")
+            .query_param_exists("period2");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "finance": {
+                    "result": null,
+                    "error": {
+                      "code": "Bad Request",
+                      "description": "Invalid fundamentals timeseries request"
+                    }
+                  }
+                }"#,
+            );
+    });
+
+    let client = YfClient::builder()
+        .base_timeseries(
+            Url::parse(&format!(
+                "{}/ws/fundamentals-timeseries/v1/finance/timeseries/",
+                server.base_url()
+            ))
+            .unwrap(),
+        )
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let err = Ticker::new(&client, sym).shares().await.unwrap_err();
+
+    api_error.assert();
+    match err {
+        YfError::Api(message) => assert!(
+            message.contains("yahoo error:")
+                && message.contains("Invalid fundamentals timeseries request"),
+            "expected Yahoo API error to be surfaced; got {message}"
+        ),
+        other => panic!("expected Api error, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn fundamentals_timeseries_missing_result_is_missing_data() {
+    let server = MockServer::start();
+    let sym = "MALFORMED";
+
+    let malformed = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!(
+                "/ws/fundamentals-timeseries/v1/finance/timeseries/{sym}"
+            ))
+            .query_param("symbol", sym)
+            .query_param("type", "annualOrdinarySharesNumber")
+            .query_param("crumb", "crumb")
+            .query_param_exists("period1")
+            .query_param_exists("period2");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(r#"{"timeseries":{"error":null}}"#);
+    });
+
+    let client = YfClient::builder()
+        .base_timeseries(
+            Url::parse(&format!(
+                "{}/ws/fundamentals-timeseries/v1/finance/timeseries/",
+                server.base_url()
+            ))
+            .unwrap(),
+        )
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let err = Ticker::new(&client, sym).shares().await.unwrap_err();
+
+    malformed.assert();
+    match err {
+        YfError::MissingData(message) => assert!(
+            message.contains("missing timeseries result"),
+            "expected missing timeseries result error; got {message}"
+        ),
+        other => panic!("expected MissingData error, got {other:?}"),
+    }
+}
+
+#[tokio::test]
 async fn malformed_timeseries_value_is_reported_without_dropping_valid_periods() {
     let server = MockServer::start();
     let sym = "BADVALUE";

@@ -110,11 +110,18 @@ pub struct CalendarEarningsNode {
 #[serde(rename_all = "camelCase")]
 pub struct TimeseriesEnvelope {
     pub(crate) timeseries: Option<TimeseriesResult>,
+    pub(crate) finance: Option<TimeseriesErrorNode>,
 }
 
 #[derive(Deserialize)]
 pub struct TimeseriesResult {
     pub(crate) result: Option<Vec<TimeseriesData>>,
+    pub(crate) error: Option<serde_json::Value>,
+}
+
+#[derive(Deserialize)]
+pub struct TimeseriesErrorNode {
+    pub(crate) error: Option<serde_json::Value>,
 }
 
 #[derive(Deserialize)]
