@@ -1,0 +1,43 @@
+{
+  "optionChain": {
+    "result": [
+      {
+        "underlyingSymbol": "NOQT",
+        "expirationDates": [
+          1737072000
+        ],
+        "strikes": [
+          100.0
+        ],
+        "quote": {
+          "symbol": "NOQT",
+          "currency": "USD",
+          "exchange": "NMS",
+          "fullExchangeName": "NasdaqGS"
+        },
+        "options": [
+          {
+            "expirationDate": 1737072000,
+            "calls": [
+              {
+                "contractSymbol": "NOQT250117C00100000",
+                "strike": 100.0,
+                "currency": "USD",
+                "lastPrice": 1.5,
+                "bid": 1.45,
+                "ask": 1.55,
+                "contractSize": "REGULAR",
+                "expiration": 1737072000,
+                "lastTradeDate": 1736870400,
+                "impliedVolatility": 0.25,
+                "inTheMoney": false
+              }
+            ],
+            "puts": []
+          }
+        ]
+      }
+    ],
+    "error": null
+  }
+}

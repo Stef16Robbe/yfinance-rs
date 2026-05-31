@@ -20,7 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   of requiring a static field slice.
 - `StreamBuilder::start()` is now async. In `StreamMethod::Websocket` mode it waits for the
   initial WebSocket handshake and subscription write, returning startup failures directly.
-- `YfError` has new variants for recoverable provider-data failures: `InvalidData`, `RequestNotCloneable`, and `Money`.
+- `YfError` has new variants for provider-data and retry failures: `InvalidData`, `RequestNotCloneable`, `Money`, and `OptionUnderlyingTypeUnavailable`.
 - Removed `HistoryBuilder::keepna` and `DownloadBuilder::keepna`. `paft::Candle` requires valid OHLC prices, so malformed history rows are always dropped instead of fabricating placeholder prices.
 - Replaced the old lossy float-to-money/price/decimal helpers with checked conversion helpers. `core::conversions` is now hidden from public docs and remains internal Yahoo-to-`paft` adapter plumbing with no stability guarantee.
 - Missing or malformed provider classification/date fields now fail or drop the affected row instead of being coerced into plausible values such as epoch timestamps, `Hold`, `Maintain`, `Buy`, `Officer`, `Equity`, or `1970` periods.
@@ -56,6 +56,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `Ticker::isin()` now returns typed HTTP status errors for non-success Business Insider
   responses and keeps suffix-qualified symbols distinct while matching ISIN suggestions.
 - `Ticker::isin()` now validates ISIN check digits and avoids raw fallback matches that are not tied to the requested symbol.
+- Option chains with contracts but no usable Yahoo underlying `quoteType` now fail with `YfError::OptionUnderlyingTypeUnavailable` instead of a generic missing-data error. Empty chains no longer need typed underlying metadata.
 - Holder convenience methods now request only the quoteSummary module they project instead of fetching every holder/insider module for each call.
 - `StreamMethod::Websocket` startup failures are now returned from `StreamBuilder::start().await`
   instead of being logged in the spawned task while the caller receives `Ok`.

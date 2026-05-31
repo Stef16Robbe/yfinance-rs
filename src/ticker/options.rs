@@ -80,6 +80,7 @@ pub async fn option_chain_with_diagnostics(
 
     let currency_from_response = currency_from_result(&first);
     let underlying_from_response = underlying_instrument_from_result(&first);
+    let raw_underlying_quote_type = quote_type_from_result(&first);
 
     let Some(od) = first.options.and_then(|mut v| v.pop()) else {
         return Ok(ctx.finish(OptionChain {
@@ -94,6 +95,13 @@ pub async fn option_chain_with_diagnostics(
                 .find_map(|kv| kv.strip_prefix("date=").and_then(|v| v.parse::<i64>().ok()))
         })
     });
+
+    if !option_date_has_contracts(&od) {
+        return Ok(ctx.finish(OptionChain {
+            contracts: vec![],
+            provider: (),
+        }));
+    }
 
     let currency = project_currency_resolution(
         &mut ctx,
@@ -111,7 +119,13 @@ pub async fn option_chain_with_diagnostics(
     )?;
     let currency_issue = currency.issue().cloned();
     let currency = currency.into_unit();
-    let underlying = underlying_instrument(client, &symbol, underlying_from_response).await?;
+    let underlying = underlying_instrument(
+        client,
+        &symbol,
+        underlying_from_response,
+        raw_underlying_quote_type,
+    )
+    .await?;
 
     let mut contracts = Vec::new();
     project_option_side(
@@ -145,6 +159,7 @@ async fn underlying_instrument(
     client: &YfClient,
     symbol: &str,
     response_instrument: Option<Instrument>,
+    raw_quote_type: Option<String>,
 ) -> Result<Instrument, YfError> {
     if let Some(instrument) = response_instrument {
         client
@@ -160,9 +175,10 @@ async fn underlying_instrument(
         return Ok(instrument);
     }
 
-    Err(YfError::MissingData(format!(
-        "unable to determine option underlying instrument for {symbol}"
-    )))
+    Err(YfError::OptionUnderlyingTypeUnavailable {
+        symbol: symbol.to_string(),
+        quote_type: raw_quote_type,
+    })
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -460,6 +476,20 @@ fn underlying_instrument_from_result(node: &OptResultNode) -> Option<Instrument>
 
 fn quote_type_to_asset_kind(value: &str) -> Result<AssetKind, YfError> {
     parse_yahoo_quote_type(value)
+}
+
+fn quote_type_from_result(node: &OptResultNode) -> Option<String> {
+    node.quote
+        .as_ref()
+        .and_then(|quote| quote.quote_type.as_deref())
+        .map(str::trim)
+        .filter(|quote_type| !quote_type.is_empty())
+        .map(str::to_string)
+}
+
+fn option_date_has_contracts(node: &OptByDateNode) -> bool {
+    node.calls.as_ref().is_some_and(|calls| !calls.is_empty())
+        || node.puts.as_ref().is_some_and(|puts| !puts.is_empty())
 }
 
 /* ---------------- Internal: raw fetch with auth fallback ---------------- */

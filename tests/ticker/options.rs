@@ -276,6 +276,28 @@ async fn option_chain_with_diagnostics_drops_contract_when_direct_currency_is_in
 }
 
 #[tokio::test]
+async fn option_chain_with_contracts_errors_when_underlying_quote_type_is_missing() {
+    let err = option_chain_unavailable_underlying_type_error(
+        "NOQT",
+        "SYNTHETIC_MISSING_UNDERLYING_QUOTE_TYPE",
+    )
+    .await;
+
+    assert_option_underlying_type_unavailable(err, "NOQT", None);
+}
+
+#[tokio::test]
+async fn option_chain_with_contracts_errors_when_underlying_quote_type_is_malformed() {
+    let err = option_chain_unavailable_underlying_type_error(
+        "BADQT",
+        "SYNTHETIC_MALFORMED_UNDERLYING_QUOTE_TYPE",
+    )
+    .await;
+
+    assert_option_underlying_type_unavailable(err, "BADQT", Some("!!!"));
+}
+
+#[tokio::test]
 async fn option_chain_currency_fallback_fetches_quote() {
     let server = crate::common::setup_server();
     let symbol = "AAPL";
@@ -517,6 +539,56 @@ fn assert_fixture_present(id: &str) {
 fn load_options_json(id: &str) -> Value {
     let body = crate::common::fixture("options_v7", id, "json");
     serde_json::from_str(&body).expect("options fixture json")
+}
+
+async fn option_chain_unavailable_underlying_type_error(
+    symbol: &str,
+    fixture_key: &str,
+) -> YfError {
+    let server = crate::common::setup_server();
+    let date = 1_737_072_000_i64;
+    let body = crate::common::fixture("options_v7", fixture_key, "json");
+
+    let mock = server.mock(|when, then| {
+        when.method(httpmock::Method::GET)
+            .path(format!("/v7/finance/options/{symbol}"))
+            .query_param("date", date.to_string());
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let client = YfClient::builder()
+        .base_options_v7(Url::parse(&format!("{}/v7/finance/options/", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+
+    let err = Ticker::new(&client, symbol)
+        .option_chain(Some(date))
+        .await
+        .unwrap_err();
+    mock.assert();
+    err
+}
+
+fn assert_option_underlying_type_unavailable(
+    err: YfError,
+    expected_symbol: &str,
+    expected_quote_type: Option<&str>,
+) {
+    let display = err.to_string();
+    assert!(
+        display.contains("contracts present, underlying type unavailable"),
+        "unexpected error display: {display}"
+    );
+
+    match err {
+        YfError::OptionUnderlyingTypeUnavailable { symbol, quote_type } => {
+            assert_eq!(symbol, expected_symbol);
+            assert_eq!(quote_type.as_deref(), expected_quote_type);
+        }
+        other => panic!("expected OptionUnderlyingTypeUnavailable, got {other:?}"),
+    }
 }
 
 fn extract_expiration_dates(json: &Value) -> Vec<i64> {

@@ -116,6 +116,15 @@ pub enum YfError {
     #[error("Invalid data in response: {0}")]
     InvalidData(String),
 
+    /// Option contracts were present, but Yahoo did not provide a usable underlying type.
+    #[error("contracts present, underlying type unavailable for {symbol}")]
+    OptionUnderlyingTypeUnavailable {
+        /// The requested option-chain symbol.
+        symbol: String,
+        /// The raw Yahoo `quoteType`, when Yahoo supplied one.
+        quote_type: Option<String>,
+    },
+
     /// Indicates that provider data could not be projected losslessly in strict mode.
     #[error("Provider data quality issue: {0}")]
     DataQuality(Box<crate::core::diagnostics::YfWarning>),
