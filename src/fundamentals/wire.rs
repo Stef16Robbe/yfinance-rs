@@ -127,6 +127,7 @@ pub struct TimeseriesErrorNode {
 #[derive(Deserialize)]
 pub struct TimeseriesData {
     pub(crate) timestamp: Option<Vec<i64>>,
+    #[serde(default)]
     #[allow(dead_code)]
     meta: serde_json::Value,
     #[serde(flatten)]

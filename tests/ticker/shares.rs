@@ -8,6 +8,57 @@ fn fixture(endpoint: &str, symbol: &str) -> String {
 }
 
 #[tokio::test]
+async fn offline_shares_accepts_timeseries_items_without_meta() {
+    let sym = "NOMETA";
+    let server = MockServer::start();
+
+    let mock_annual = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!(
+                "/ws/fundamentals-timeseries/v1/finance/timeseries/{sym}"
+            ))
+            .query_param("symbol", sym)
+            .query_param("type", "annualOrdinarySharesNumber")
+            .query_param_exists("period1")
+            .query_param_exists("period2");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "timeseries": {
+                    "result": [{
+                      "timestamp": [1704067200],
+                      "annualOrdinarySharesNumber": [{
+                        "reportedValue": { "raw": 100 }
+                      }]
+                    }],
+                    "error": null
+                  }
+                }"#,
+            );
+    });
+
+    let client = YfClient::builder()
+        .base_timeseries(
+            Url::parse(&format!(
+                "{}/ws/fundamentals-timeseries/v1/finance/timeseries/",
+                server.base_url()
+            ))
+            .unwrap(),
+        )
+        .build()
+        .unwrap();
+
+    let t = Ticker::new(&client, sym);
+    let annual = t.shares().await.unwrap();
+
+    mock_annual.assert();
+    assert_eq!(annual.len(), 1);
+    assert_eq!(annual[0].date.timestamp(), 1_704_067_200);
+    assert_eq!(annual[0].shares, 100);
+}
+
+#[tokio::test]
 async fn offline_shares_uses_recorded_fixture() {
     let sym = "MSFT";
     let server = MockServer::start();

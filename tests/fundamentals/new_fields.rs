@@ -72,6 +72,44 @@ async fn calendar_maps_dividend_dates_to_distinct_paft_fields() {
 }
 
 #[tokio::test]
+async fn income_statement_accepts_timeseries_items_without_meta() {
+    let server = MockServer::start();
+    let symbol = "NOMETA";
+    let body = r#"{
+      "timeseries": {
+        "result": [
+          {
+            "timestamp": [1727654400],
+            "annualTotalRevenue": [{"reportedValue": {"raw": 1000}}]
+          }
+        ],
+        "error": null
+      }
+    }"#;
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!(
+                "/ws/fundamentals-timeseries/v1/finance/timeseries/{symbol}"
+            ))
+            .query_param_exists("type");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let ticker = make_ticker(&server, symbol);
+    let rows = ticker
+        .income_stmt(Some(Currency::Iso(IsoCurrency::USD)))
+        .await
+        .unwrap();
+
+    mock.assert();
+    let row = rows.first().expect("statement row should be present");
+    assert_eq!(row.total_revenue, Some(usd_i64(1000)));
+}
+
+#[tokio::test]
 async fn income_statement_new_fields_are_mapped_to_paft_names() {
     let server = MockServer::start();
     let symbol = "AAPL";

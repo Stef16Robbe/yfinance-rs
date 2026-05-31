@@ -44,6 +44,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Fundamentals timeseries and share-count parsing no longer rejects Yahoo result items that
+  omit the unused `meta` object.
 - General proxy configuration through `YfClientBuilder::proxy()` and
   `try_proxy()` now applies to Yahoo's HTTPS requests instead of only matching
   plain HTTP URLs.
