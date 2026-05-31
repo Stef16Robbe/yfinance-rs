@@ -391,6 +391,8 @@ impl V7QuoteNode {
                 self.trailing_annual_dividend_yield,
                 "trailing dividend yield",
             )?,
+            // Yahoo v7 returns trailingAnnualDividendYield as a decimal fraction,
+            // but dividendYield as percent points. Keep this asymmetry fixture-locked.
             dividend_yield_forward: optional_decimal_f64(
                 ctx,
                 "dividendYield",

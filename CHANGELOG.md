@@ -103,6 +103,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - v7 quote key statistics now distinguish quote-unit prices from major-unit market cap and financial per-share fields, so minor-unit listings such as `TSCO.L` no longer scale EPS/dividend values by the quote-price unit.
 - Empty Yahoo quoteSummary numeric wrappers such as ETF `marketCap: {}` now parse as absent optional values instead of suppressing otherwise valid sibling statistics.
 - Recorded key-statistics fixtures now lock currency-unit scaling for minor-unit listings, normal USD equities, and funds across v7 quote and quoteSummary backfill paths.
+- Recorded v7 quote fixtures now pin Yahoo's asymmetric dividend-yield units: trailing yield arrives as a decimal fraction, while forward yield arrives as percent points.
 - Currency enrichment now caches successful empty v7 quote currency responses as confirmed missing and consistently reuses typed contextual currency cache entries.
 - Heuristic currency cache entries are now provisional until stronger Yahoo currency fields are confirmed missing, so later direct/enriched evidence can replace stale profile or listing inference.
 - Currency listing fallback now infers Yahoo quote units for minor-unit exchanges such as London (`GBp`) instead of assuming major ISO units.

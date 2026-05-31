@@ -657,6 +657,55 @@ async fn key_statistics_market_cap_preserves_large_integer_precision() {
 }
 
 #[tokio::test]
+async fn key_statistics_v7_dividend_yield_units_are_fixture_locked() {
+    let server = MockServer::start();
+    let sym = "MSFT";
+    let crumb = "test-crumb";
+    let (fixture, raw_fixture) = recorded_quote(sym);
+    let raw_quote = first_quote(&raw_fixture, sym);
+    let trailing_raw =
+        Decimal::try_from(raw_quote["trailingAnnualDividendYield"].as_f64().unwrap()).unwrap();
+    let forward_raw = Decimal::try_from(raw_quote["dividendYield"].as_f64().unwrap()).unwrap();
+    assert!(
+        forward_raw > Decimal::new(1, 2),
+        "fixture should keep v7 dividendYield in percent points"
+    );
+    assert!(
+        trailing_raw < Decimal::new(1, 1),
+        "fixture should keep v7 trailingAnnualDividendYield as a fraction"
+    );
+
+    let quote_mock = mock_quote_v7_body(&server, sym, fixture);
+    let key_statistics_mock = mock_key_statistics_body(
+        &server,
+        sym,
+        crumb,
+        r#"{"quoteSummary":{"result":[{}],"error":null}}"#.to_string(),
+    );
+    let client = key_statistics_client(&server, crumb);
+
+    let stats = Ticker::new(&client, sym).key_statistics().await.unwrap();
+
+    quote_mock.assert();
+    key_statistics_mock.assert();
+    assert_eq!(stats.dividend_yield_trailing, Some(trailing_raw));
+    assert_eq!(
+        stats.dividend_yield_forward,
+        Some(forward_raw / Decimal::from(100))
+    );
+    assert_ne!(
+        stats.dividend_yield_trailing,
+        Some(trailing_raw / Decimal::from(100)),
+        "trailingAnnualDividendYield must not be divided a second time"
+    );
+    assert_ne!(
+        stats.dividend_yield_forward,
+        Some(forward_raw),
+        "dividendYield must not be kept as raw percent points"
+    );
+}
+
+#[tokio::test]
 async fn key_statistics_recorded_v7_currency_units_are_field_scoped() {
     for case in RECORDED_CURRENCY_SCALE_CASES {
         let server = MockServer::start();
