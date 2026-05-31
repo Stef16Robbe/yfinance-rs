@@ -72,6 +72,23 @@ const PROFILE_UNITED_KINGDOM: &str = r#"{
   }
 }"#;
 
+const EARNINGS_TREND_HALF_PRESENT_REVISIONS: &str = r#"{
+  "quoteSummary": {
+    "result": [{
+      "earningsTrend": {
+        "trend": [{
+          "period": "0q",
+          "epsRevisions": {
+            "upLast7days": { "raw": 2 },
+            "downLast30days": { "raw": 1 }
+          }
+        }]
+      }
+    }],
+    "error": null
+  }
+}"#;
+
 #[tokio::test]
 async fn earnings_trend_reports_inferred_analyst_currency_from_quote_enrichment() {
     let sym = "AAPL";
@@ -259,6 +276,78 @@ async fn earnings_trend_validates_period_before_currency_enrichment() {
 
     trend_mock.assert_calls(2);
     quote_mock.assert_calls(0);
+}
+
+#[tokio::test]
+async fn earnings_trend_reports_half_present_eps_revision_fields() {
+    let sym = "HALFREV";
+    let server = MockServer::start();
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "earningsTrend")
+            .query_param("crumb", "crumb");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(EARNINGS_TREND_HALF_PRESENT_REVISIONS);
+    });
+
+    let client = YfClient::builder()
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let response = AnalysisBuilder::new(&client, sym)
+        .earnings_trend_with_diagnostics(None)
+        .await
+        .unwrap();
+
+    assert_eq!(response.data.len(), 1);
+    assert!(response.data[0].eps_revisions.historical.is_empty());
+    for (path, missing_field) in [
+        ("earningsTrend[].epsRevisions.upLast7days", "downLast7days"),
+        (
+            "earningsTrend[].epsRevisions.downLast30days",
+            "upLast30days",
+        ),
+    ] {
+        assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+            warning,
+            YfWarning::OmittedPresentField {
+                path: warning_path,
+                key: Some(key),
+                reason: ProjectionIssue::MissingRequiredField { field },
+                ..
+            } if *warning_path == path && key == "0q" && *field == missing_field
+        )));
+    }
+
+    let err = AnalysisBuilder::new(&client, sym)
+        .strict()
+        .earnings_trend(None)
+        .await
+        .unwrap_err();
+
+    assert!(matches!(
+        err,
+        YfError::DataQuality(warning) if matches!(
+            warning.as_ref(),
+            YfWarning::OmittedPresentField {
+                path: "earningsTrend[].epsRevisions.upLast7days",
+                key: Some(key),
+                reason: ProjectionIssue::MissingRequiredField {
+                    field: "downLast7days"
+                },
+                ..
+            } if key == "0q"
+        )
+    ));
+
+    mock.assert_calls(2);
 }
 
 #[tokio::test]

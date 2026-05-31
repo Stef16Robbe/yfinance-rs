@@ -932,17 +932,41 @@ fn project_eps_trend(
     })
 }
 
+#[derive(Clone, Copy)]
+struct RevisionField {
+    path: &'static str,
+    name: &'static str,
+    value: Option<u32>,
+}
+
 fn push_revision_point(
+    ctx: &mut ProjectionContext,
     historical: &mut Vec<RevisionPoint>,
+    period_key: Option<&str>,
     period: &str,
-    up: Option<u32>,
-    down: Option<u32>,
-) {
-    if let (Some(up), Some(down)) = (up, down)
-        && let Ok(point) = RevisionPoint::try_new_str(period, up, down)
-    {
-        historical.push(point);
+    up: RevisionField,
+    down: RevisionField,
+) -> Result<(), YfError> {
+    match (up.value, down.value) {
+        (Some(up), Some(down)) => {
+            if let Ok(point) = RevisionPoint::try_new_str(period, up, down) {
+                historical.push(point);
+            }
+        }
+        (Some(_), None) => ctx.omitted_present_field(
+            up.path,
+            diagnostic_key(period_key),
+            ProjectionIssue::MissingRequiredField { field: down.name },
+        )?,
+        (None, Some(_)) => ctx.omitted_present_field(
+            down.path,
+            diagnostic_key(period_key),
+            ProjectionIssue::MissingRequiredField { field: up.name },
+        )?,
+        (None, None) => {}
     }
+
+    Ok(())
 }
 
 fn project_eps_revisions(
@@ -980,8 +1004,38 @@ fn project_eps_revisions(
     )?;
 
     let mut historical = Vec::new();
-    push_revision_point(&mut historical, "7d", up_last_7_days, down_last_7_days);
-    push_revision_point(&mut historical, "30d", up_last_30_days, down_last_30_days);
+    push_revision_point(
+        ctx,
+        &mut historical,
+        period_key,
+        "7d",
+        RevisionField {
+            path: "earningsTrend[].epsRevisions.upLast7days",
+            name: "upLast7days",
+            value: up_last_7_days,
+        },
+        RevisionField {
+            path: "earningsTrend[].epsRevisions.downLast7days",
+            name: "downLast7days",
+            value: down_last_7_days,
+        },
+    )?;
+    push_revision_point(
+        ctx,
+        &mut historical,
+        period_key,
+        "30d",
+        RevisionField {
+            path: "earningsTrend[].epsRevisions.upLast30days",
+            name: "upLast30days",
+            value: up_last_30_days,
+        },
+        RevisionField {
+            path: "earningsTrend[].epsRevisions.downLast30days",
+            name: "downLast30days",
+            value: down_last_30_days,
+        },
+    )?;
 
     Ok(EpsRevisions { historical })
 }

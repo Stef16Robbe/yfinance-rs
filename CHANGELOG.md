@@ -75,6 +75,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Streaming quote volume deltas now use one shared cumulative-volume state transition across
   WebSocket and polling streams, and untyped stream instrument fallbacks no longer poison the
   client instrument cache.
+- Half-present EPS revision pairs now emit projection diagnostics instead of being silently
+  omitted from earnings-trend responses.
 - Exponential retry backoff now uses real random jitter instead of a deterministic
   attempt-number formula, avoiding synchronized retries across clients.
 - Public retry policies, stream intervals, and user-provided symbols are now validated before
