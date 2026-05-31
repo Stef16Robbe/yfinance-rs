@@ -31,7 +31,7 @@ pub enum YfCurrencySource {
 }
 
 /// Currency evidence strength used by diagnostics.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum YfEvidenceStrength {
     /// Caller-supplied override.
     Override,
@@ -43,6 +43,30 @@ pub enum YfEvidenceStrength {
     EnrichedProvider,
     /// Direct provider evidence from the requested payload.
     DirectProvider,
+}
+
+impl YfEvidenceStrength {
+    const fn rank(self) -> u8 {
+        match self {
+            Self::ProfileHeuristic => 0,
+            Self::ListingHeuristic => 1,
+            Self::EnrichedProvider => 2,
+            Self::DirectProvider => 3,
+            Self::Override => 4,
+        }
+    }
+}
+
+impl PartialOrd for YfEvidenceStrength {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for YfEvidenceStrength {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.rank().cmp(&other.rank())
+    }
 }
 
 impl From<crate::core::currency_resolver::CurrencyKind> for YfCurrencyKind {

@@ -29,6 +29,14 @@ fn test_options() -> CallOptions {
     CallOptions::default().with_cache_mode(CacheMode::Use)
 }
 
+#[test]
+fn evidence_strength_orders_override_as_strongest() {
+    assert!(EvidenceStrength::Override > EvidenceStrength::DirectProvider);
+    assert!(EvidenceStrength::DirectProvider > EvidenceStrength::EnrichedProvider);
+    assert!(EvidenceStrength::EnrichedProvider > EvidenceStrength::ListingHeuristic);
+    assert!(EvidenceStrength::ListingHeuristic > EvidenceStrength::ProfileHeuristic);
+}
+
 #[tokio::test]
 async fn direct_provider_replaces_weaker_profile_cache() {
     let client = YfClient::default();
@@ -71,6 +79,39 @@ async fn direct_provider_replaces_weaker_profile_cache() {
         .await
         .expect("cached currency");
     assert_eq!(currency(&resolved.unit), Currency::Iso(IsoCurrency::USD));
+}
+
+#[tokio::test]
+async fn direct_provider_does_not_replace_stronger_override_cache_entry() {
+    let client = YfClient::default();
+    client
+        .store_resolved_currency(
+            "TEST",
+            CurrencyKind::Reporting,
+            ResolvedCurrency::new(
+                unit("GBP"),
+                CurrencySource::Override,
+                EvidenceStrength::Override,
+            ),
+        )
+        .await;
+    client
+        .store_resolved_currency(
+            "TEST",
+            CurrencyKind::Reporting,
+            ResolvedCurrency::new(
+                unit("USD"),
+                CurrencySource::DirectProvider,
+                EvidenceStrength::DirectProvider,
+            ),
+        )
+        .await;
+
+    let resolved = client
+        .cached_resolved_currency("TEST", CurrencyKind::Reporting)
+        .await
+        .expect("cached currency");
+    assert_eq!(currency(&resolved.unit), Currency::Iso(IsoCurrency::GBP));
 }
 
 #[tokio::test]

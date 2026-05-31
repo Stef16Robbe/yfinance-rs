@@ -25,7 +25,7 @@ pub enum CurrencySource {
     ProfileCountryHeuristic,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum EvidenceStrength {
     Override,
     ProfileHeuristic,
@@ -35,8 +35,30 @@ pub enum EvidenceStrength {
 }
 
 impl EvidenceStrength {
+    const fn rank(self) -> u8 {
+        match self {
+            Self::ProfileHeuristic => 0,
+            Self::ListingHeuristic => 1,
+            Self::EnrichedProvider => 2,
+            Self::DirectProvider => 3,
+            Self::Override => 4,
+        }
+    }
+
     pub(super) const fn is_provider(self) -> bool {
         matches!(self, Self::EnrichedProvider | Self::DirectProvider)
+    }
+}
+
+impl PartialOrd for EvidenceStrength {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for EvidenceStrength {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.rank().cmp(&other.rank())
     }
 }
 

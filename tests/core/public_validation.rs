@@ -12,6 +12,7 @@ use std::{
 
 use httpmock::Method::GET;
 use url::Url;
+use yfinance_rs::YfEvidenceStrength;
 use yfinance_rs::{
     QuotesBuilder, StreamBuilder, StreamMethod, YfClient, YfError,
     core::client::{Backoff, RetryConfig},
@@ -37,6 +38,14 @@ fn assert_invalid_params(err: YfError, expected: &str) {
         ),
         other => panic!("expected InvalidParams, got {other:?}"),
     }
+}
+
+#[test]
+fn public_evidence_strength_orders_override_as_strongest() {
+    assert!(YfEvidenceStrength::Override > YfEvidenceStrength::DirectProvider);
+    assert!(YfEvidenceStrength::DirectProvider > YfEvidenceStrength::EnrichedProvider);
+    assert!(YfEvidenceStrength::EnrichedProvider > YfEvidenceStrength::ListingHeuristic);
+    assert!(YfEvidenceStrength::ListingHeuristic > YfEvidenceStrength::ProfileHeuristic);
 }
 
 struct CaptureServer {
