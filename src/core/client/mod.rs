@@ -95,11 +95,6 @@ fn cache_key_matches_url(key: &str, url: &Url) -> bool {
     cache_key_url(key) == url.as_str()
 }
 
-fn cache_key_has_crumb_query(key: &str) -> bool {
-    Url::parse(cache_key_url(key))
-        .is_ok_and(|url| url.query_pairs().any(|(name, _)| name == "crumb"))
-}
-
 #[derive(Debug, Default)]
 struct ClientState {
     cookie: Option<String>,
@@ -248,13 +243,6 @@ impl YfClient {
 
     pub(crate) fn post_cache_key(url: &Url, body: &str) -> String {
         post_cache_key(url, body)
-    }
-
-    pub(crate) async fn clear_crumb_cache_entries(&self) {
-        if let Some(store) = &self.cache {
-            let mut guard = store.map.write().await;
-            guard.retain(|key, _| !cache_key_has_crumb_query(key));
-        }
     }
 
     // -------- instrument cache (async) --------
@@ -1059,37 +1047,6 @@ mod tests {
         assert_eq!(len, 1);
         assert!(!has_expired);
         assert!(has_fresh);
-    }
-
-    #[tokio::test]
-    async fn clear_crumb_removes_crumb_cache_entries() {
-        let client = cached_client();
-        let plain_url = test_url("https://example.test/v7/finance/quote?symbols=AAPL");
-        let crumb_url = test_url("https://example.test/v7/finance/quote?symbols=AAPL&crumb=stale");
-
-        client
-            .cache_put(CacheEndpoint::Quote, &plain_url, "plain", None)
-            .await;
-        client
-            .cache_put(CacheEndpoint::Quote, &crumb_url, "with crumb", None)
-            .await;
-        client.state.write().await.crumb = Some("stale".to_string());
-
-        client.clear_crumb().await;
-
-        let (len, has_plain, has_crumb) = {
-            let store = client.cache.as_ref().expect("cache is enabled");
-            let guard = store.map.read().await;
-            (
-                guard.len(),
-                guard.contains_key(plain_url.as_str()),
-                guard.contains_key(crumb_url.as_str()),
-            )
-        };
-        assert_eq!(len, 1);
-        assert!(has_plain);
-        assert!(!has_crumb);
-        assert!(client.crumb().await.is_none());
     }
 
     #[tokio::test]

@@ -134,7 +134,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Crumb acquisition now rejects non-success HTTP statuses before reading the body and trims successful crumb bodies before caching them.
 - Status errors, HTTP-client errors, and tracing URL fields now redact crumb and auth-like query parameters before formatting.
 - Build Yahoo symbol path URLs with one percent-encoding helper instead of `Url::join`, preventing symbols containing URL syntax from changing the request target.
-- Expired URL cache entries are now pruned opportunistically on cache reads and writes, and stale crumb-authenticated cache keys are removed when Yahoo credentials are refreshed.
+- Expired URL cache entries are now pruned opportunistically on cache reads and writes.
+- Crumb refresh now relies on exact response-cache key eviction instead of an unreachable sweep for crumb-bearing cache keys.
 - `Ticker`-level cache and retry settings now propagate consistently through history builders, action helpers, and profile loading inside `Ticker::info()`.
 - Caller-supplied currency overrides no longer emit `CurrencyInferred` diagnostics or fail strict-mode projection.
 - Currency evidence strength ordering now treats caller-supplied overrides as stronger than provider and heuristic evidence.
