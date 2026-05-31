@@ -2,8 +2,8 @@ use httpmock::{Method::GET, MockServer};
 use paft::money::{Currency, IsoCurrency};
 use url::Url;
 use yfinance_rs::{
-    Ticker, YfClient, YfCurrencyKind, YfCurrencySource, YfEvidenceStrength, YfWarning,
-    analysis::AnalysisBuilder,
+    ProjectionIssue, Ticker, YfClient, YfCurrencyKind, YfCurrencySource, YfError,
+    YfEvidenceStrength, YfWarning, analysis::AnalysisBuilder,
 };
 
 fn fixture(endpoint: &str, symbol: &str) -> String {
@@ -149,6 +149,116 @@ async fn earnings_trend_reports_inferred_analyst_currency_from_quote_enrichment(
             ..
         } if symbol == sym
     )));
+}
+
+#[tokio::test]
+async fn earnings_trend_validates_period_before_currency_enrichment() {
+    let sym = "BADPERIOD";
+    let server = MockServer::start();
+
+    let trend_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "earningsTrend")
+            .query_param("crumb", "crumb");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "quoteSummary": {
+                    "result": [{
+                      "earningsTrend": {
+                        "trend": [{
+                          "revenueEstimate": {
+                            "avg": { "raw": 1000 }
+                          }
+                        }, {
+                          "period": "0q",
+                          "revenueEstimate": {
+                            "avg": { "raw": 2000 },
+                            "revenueCurrency": "USD"
+                          }
+                        }]
+                      }
+                    }],
+                    "error": null
+                  }
+                }"#,
+            );
+    });
+    let quote_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", sym);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "quoteResponse": {
+                    "result": [{
+                      "symbol": "BADPERIOD",
+                      "quoteType": "EQUITY",
+                      "financialCurrency": "USD"
+                    }],
+                    "error": null
+                  }
+                }"#,
+            );
+    });
+
+    let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let response = AnalysisBuilder::new(&client, sym)
+        .earnings_trend_with_diagnostics(None)
+        .await
+        .unwrap();
+
+    assert_eq!(response.data.len(), 1);
+    assert_eq!(
+        response.data[0]
+            .revenue_estimate
+            .avg
+            .as_ref()
+            .map(|money| money.currency().clone()),
+        Some(Currency::Iso(IsoCurrency::USD))
+    );
+    assert_eq!(response.diagnostics.warnings.len(), 1);
+    assert!(matches!(
+        response.diagnostics.warnings.first(),
+        Some(YfWarning::DroppedItem {
+            item: "earnings_trend",
+            reason: ProjectionIssue::MissingRequiredField { field: "period" },
+            ..
+        })
+    ));
+
+    let err = AnalysisBuilder::new(&client, sym)
+        .strict()
+        .earnings_trend(None)
+        .await
+        .unwrap_err();
+
+    assert!(matches!(
+        err,
+        YfError::DataQuality(warning) if matches!(
+            warning.as_ref(),
+            YfWarning::DroppedItem {
+                item: "earnings_trend",
+                reason: ProjectionIssue::MissingRequiredField { field: "period" },
+                ..
+            }
+        )
+    ));
+
+    trend_mock.assert_calls(2);
+    quote_mock.assert_calls(0);
 }
 
 #[tokio::test]

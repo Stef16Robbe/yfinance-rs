@@ -1044,6 +1044,17 @@ pub(super) async fn earnings_trend(
     for item in trend {
         let raw = RawEarningsTrendItem::from(item);
 
+        let Some(period) = required_period(
+            &mut ctx,
+            "earnings_trend",
+            raw.period_key.clone(),
+            "period",
+            raw.period_key.as_deref(),
+        )?
+        else {
+            continue;
+        };
+
         let earnings_values = raw.earnings.price_values();
         let earnings_unit = currency_resolver
             .resolve_if_any(
@@ -1070,17 +1081,6 @@ pub(super) async fn earnings_trend(
                 AnalystEstimateCurrencyEvidence::EpsTrend(raw.eps_trend.currency.as_deref()),
             )
             .await?;
-
-        let Some(period) = required_period(
-            &mut ctx,
-            "earnings_trend",
-            raw.period_key.clone(),
-            "period",
-            raw.period_key.as_deref(),
-        )?
-        else {
-            continue;
-        };
 
         rows.push(project_earnings_trend_row(
             &mut ctx,
