@@ -11,7 +11,7 @@ use crate::core::{
     CallOptions, ProjectionContext, ProjectionIssue, YfClient, YfError, YfResponse,
     conversions::{i64_to_datetime, string_to_insider_position, string_to_transaction_type},
     currency_resolver::{
-        CurrencyKind, ReportingCurrencyEvidence, ResolvedCurrencyUnit, project_currency_resolution,
+        CurrencyKind, ResolvedCurrencyUnit, TradingCurrencyEvidence, project_currency_resolution,
     },
     diagnostics::{optional_decimal_f64, optional_money_u64},
     quotesummary,
@@ -223,7 +223,7 @@ async fn map_ownership_list(
         return Ok(Vec::new());
     };
 
-    let currency = optional_reporting_currency(
+    let currency = optional_holder_value_currency(
         client,
         symbol,
         holders.iter().any(|h| raw_field_present(h, "value")),
@@ -315,17 +315,17 @@ fn ownership_list_or_unavailable(
     Ok(Some(holders))
 }
 
-async fn resolve_reporting_currency(
+async fn resolve_trading_currency(
     client: &YfClient,
     symbol: &str,
     options: &CallOptions,
 ) -> Result<crate::core::currency_resolver::ResolvedCurrency, YfError> {
     client
-        .resolve_reporting_currency(symbol, None, ReportingCurrencyEvidence::None, options)
+        .resolve_trading_currency(symbol, None, TradingCurrencyEvidence::None, options)
         .await
 }
 
-async fn optional_reporting_currency(
+async fn optional_holder_value_currency(
     client: &YfClient,
     symbol: &str,
     needed: bool,
@@ -339,11 +339,12 @@ async fn optional_reporting_currency(
     Ok(project_currency_resolution(
         ctx,
         symbol,
-        CurrencyKind::Reporting,
+        CurrencyKind::Trading,
         None,
-        resolve_reporting_currency(client, symbol, options).await,
+        resolve_trading_currency(client, symbol, options).await,
     )?
-    .into_unit())
+    .into_unit()
+    .map(|unit| unit.major_unit()))
 }
 
 pub(super) async fn institutional_holders(
@@ -401,7 +402,7 @@ pub(super) async fn insider_transactions(
         return Ok(ctx.finish(Vec::new()));
     };
 
-    let currency = optional_reporting_currency(
+    let currency = optional_holder_value_currency(
         client,
         symbol,
         transactions.iter().any(|t| raw_field_present(t, "value")),

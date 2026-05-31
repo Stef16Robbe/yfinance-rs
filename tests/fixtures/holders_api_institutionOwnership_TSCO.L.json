@@ -1,0 +1,92 @@
+{
+  "quoteSummary": {
+    "error": null,
+    "result": [
+      {
+        "institutionOwnership": {
+          "maxAge": 1,
+          "ownershipList": [
+            {
+              "maxAge": 1,
+              "organization": "Pacer Advisors, Inc.",
+              "pctChange": {
+                "fmt": "12.02%",
+                "raw": 0.12020001
+              },
+              "pctHeld": {
+                "fmt": "0.04%",
+                "raw": 0.0004
+              },
+              "position": {
+                "fmt": "2.82M",
+                "longFmt": "2,823,722",
+                "raw": 2823722
+              },
+              "reportDate": {
+                "fmt": "2026-03-31",
+                "raw": 1774915200
+              },
+              "value": {
+                "fmt": "1.21B",
+                "longFmt": "1,214,765,238",
+                "raw": 1214765238
+              }
+            },
+            {
+              "maxAge": 1,
+              "organization": "Generali Investments Cee, Investicni Spolecnost, A.s.",
+              "pctChange": {
+                "fmt": "100.00%",
+                "raw": 1.0
+              },
+              "pctHeld": {
+                "fmt": "0.00%",
+                "raw": 0.0
+              },
+              "position": {
+                "fmt": "48.1k",
+                "longFmt": "48,105",
+                "raw": 48105
+              },
+              "reportDate": {
+                "fmt": "2026-03-31",
+                "raw": 1774915200
+              },
+              "value": {
+                "fmt": "20.69M",
+                "longFmt": "20,694,771",
+                "raw": 20694771
+              }
+            },
+            {
+              "maxAge": 1,
+              "organization": "Paradigm Asset Management Company, LLC",
+              "pctChange": {
+                "fmt": "0.00%",
+                "raw": 0.0
+              },
+              "pctHeld": {
+                "fmt": "0.00%",
+                "raw": 0.0
+              },
+              "position": {
+                "fmt": "35.25k",
+                "longFmt": "35,253",
+                "raw": 35253
+              },
+              "reportDate": {
+                "fmt": "2026-03-31",
+                "raw": 1774915200
+              },
+              "value": {
+                "fmt": "15.17M",
+                "longFmt": "15,165,841",
+                "raw": 15165841
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

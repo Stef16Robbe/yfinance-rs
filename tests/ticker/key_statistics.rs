@@ -31,6 +31,13 @@ const RECORDED_CURRENCY_SCALE_CASES: &[CurrencyScaleCase] = &[
         requires_dividend: true,
     },
     CurrencyScaleCase {
+        symbol: "SAP",
+        quote_currency: "USD",
+        requires_market_cap: true,
+        requires_eps: true,
+        requires_dividend: true,
+    },
+    CurrencyScaleCase {
         symbol: "MSFT",
         quote_currency: "USD",
         requires_market_cap: true,
@@ -753,7 +760,7 @@ async fn key_statistics_recorded_v7_currency_units_are_field_scoped() {
         assert_major_price(
             stats.dividend_per_share_forward.as_ref(),
             raw_quote["dividendRate"].as_f64(),
-            financial_currency,
+            quote_currency,
             case.symbol,
             "dividendRate",
             case.requires_dividend,

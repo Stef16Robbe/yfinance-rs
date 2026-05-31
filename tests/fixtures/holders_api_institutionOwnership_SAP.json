@@ -1,0 +1,274 @@
+{
+  "quoteSummary": {
+    "error": null,
+    "result": [
+      {
+        "institutionOwnership": {
+          "maxAge": 1,
+          "ownershipList": [
+            {
+              "maxAge": 1,
+              "organization": "Fisher Asset Management, LLC",
+              "pctChange": {
+                "fmt": "-1.32%",
+                "raw": -0.013200001
+              },
+              "pctHeld": {
+                "fmt": "1.24%",
+                "raw": 0.0124
+              },
+              "position": {
+                "fmt": "14.53M",
+                "longFmt": "14,534,441",
+                "raw": 14534441
+              },
+              "reportDate": {
+                "fmt": "2026-03-31",
+                "raw": 1774915200
+              },
+              "value": {
+                "fmt": "2.64B",
+                "longFmt": "2,642,215,931",
+                "raw": 2642215931
+              }
+            },
+            {
+              "maxAge": 1,
+              "organization": "Eagle Capital Management LLC",
+              "pctChange": {
+                "fmt": "89.42%",
+                "raw": 0.89419997
+              },
+              "pctHeld": {
+                "fmt": "0.67%",
+                "raw": 0.0067000003
+              },
+              "position": {
+                "fmt": "7.85M",
+                "longFmt": "7,848,603",
+                "raw": 7848603
+              },
+              "reportDate": {
+                "fmt": "2026-03-31",
+                "raw": 1774915200
+              },
+              "value": {
+                "fmt": "1.43B",
+                "longFmt": "1,426,797,486",
+                "raw": 1426797486
+              }
+            },
+            {
+              "maxAge": 1,
+              "organization": "FMR, LLC",
+              "pctChange": {
+                "fmt": "-3.09%",
+                "raw": -0.0309
+              },
+              "pctHeld": {
+                "fmt": "0.56%",
+                "raw": 0.0056
+              },
+              "position": {
+                "fmt": "6.58M",
+                "longFmt": "6,581,080",
+                "raw": 6581080
+              },
+              "reportDate": {
+                "fmt": "2026-03-31",
+                "raw": 1774915200
+              },
+              "value": {
+                "fmt": "1.2B",
+                "longFmt": "1,196,374,489",
+                "raw": 1196374489
+              }
+            },
+            {
+              "maxAge": 1,
+              "organization": "Capital International Investors",
+              "pctChange": {
+                "fmt": "39.73%",
+                "raw": 0.3973
+              },
+              "pctHeld": {
+                "fmt": "0.43%",
+                "raw": 0.0043
+              },
+              "position": {
+                "fmt": "5.01M",
+                "longFmt": "5,011,856",
+                "raw": 5011856
+              },
+              "reportDate": {
+                "fmt": "2026-03-31",
+                "raw": 1774915200
+              },
+              "value": {
+                "fmt": "911.11M",
+                "longFmt": "911,105,268",
+                "raw": 911105268
+              }
+            },
+            {
+              "maxAge": 1,
+              "organization": "Shaw D.E. & Co., Inc.",
+              "pctChange": {
+                "fmt": "84.99%",
+                "raw": 0.8499
+              },
+              "pctHeld": {
+                "fmt": "0.36%",
+                "raw": 0.0036000002
+              },
+              "position": {
+                "fmt": "4.26M",
+                "longFmt": "4,256,672",
+                "raw": 4256672
+              },
+              "reportDate": {
+                "fmt": "2026-03-31",
+                "raw": 1774915200
+              },
+              "value": {
+                "fmt": "773.82M",
+                "longFmt": "773,820,374",
+                "raw": 773820374
+              }
+            },
+            {
+              "maxAge": 1,
+              "organization": "Morgan Stanley",
+              "pctChange": {
+                "fmt": "-20.20%",
+                "raw": -0.202
+              },
+              "pctHeld": {
+                "fmt": "0.31%",
+                "raw": 0.0031
+              },
+              "position": {
+                "fmt": "3.62M",
+                "longFmt": "3,616,017",
+                "raw": 3616017
+              },
+              "reportDate": {
+                "fmt": "2026-03-31",
+                "raw": 1774915200
+              },
+              "value": {
+                "fmt": "657.36M",
+                "longFmt": "657,355,706",
+                "raw": 657355706
+              }
+            },
+            {
+              "maxAge": 1,
+              "organization": "Goldman Sachs Group Inc",
+              "pctChange": {
+                "fmt": "119.14%",
+                "raw": 1.1914
+              },
+              "pctHeld": {
+                "fmt": "0.28%",
+                "raw": 0.0028
+              },
+              "position": {
+                "fmt": "3.3M",
+                "longFmt": "3,300,374",
+                "raw": 3300374
+              },
+              "reportDate": {
+                "fmt": "2026-03-31",
+                "raw": 1774915200
+              },
+              "value": {
+                "fmt": "599.97M",
+                "longFmt": "599,974,967",
+                "raw": 599974967
+              }
+            },
+            {
+              "maxAge": 1,
+              "organization": "Windacre Partnership LLC",
+              "pctChange": {
+                "fmt": "12.69%",
+                "raw": 0.1269
+              },
+              "pctHeld": {
+                "fmt": "0.24%",
+                "raw": 0.0023999999
+              },
+              "position": {
+                "fmt": "2.76M",
+                "longFmt": "2,762,125",
+                "raw": 2762125
+              },
+              "reportDate": {
+                "fmt": "2026-03-31",
+                "raw": 1774915200
+              },
+              "value": {
+                "fmt": "502.13M",
+                "longFmt": "502,126,685",
+                "raw": 502126685
+              }
+            },
+            {
+              "maxAge": 1,
+              "organization": "Bank of America Corporation",
+              "pctChange": {
+                "fmt": "15.86%",
+                "raw": 0.1586
+              },
+              "pctHeld": {
+                "fmt": "0.17%",
+                "raw": 0.0017
+              },
+              "position": {
+                "fmt": "2.02M",
+                "longFmt": "2,018,383",
+                "raw": 2018383
+              },
+              "reportDate": {
+                "fmt": "2026-03-31",
+                "raw": 1774915200
+              },
+              "value": {
+                "fmt": "366.92M",
+                "longFmt": "366,921,832",
+                "raw": 366921832
+              }
+            },
+            {
+              "maxAge": 1,
+              "organization": "Northern Trust Corporation",
+              "pctChange": {
+                "fmt": "-4.78%",
+                "raw": -0.0478
+              },
+              "pctHeld": {
+                "fmt": "0.12%",
+                "raw": 0.0011999999
+              },
+              "position": {
+                "fmt": "1.43M",
+                "longFmt": "1,429,828",
+                "raw": 1429828
+              },
+              "reportDate": {
+                "fmt": "2026-03-31",
+                "raw": 1774915200
+              },
+              "value": {
+                "fmt": "259.93M",
+                "longFmt": "259,928,422",
+                "raw": 259928422
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

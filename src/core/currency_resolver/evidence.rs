@@ -24,7 +24,6 @@ impl<'a> TradingCurrencyEvidence<'a> {
 
 #[derive(Clone, Copy, Debug)]
 pub enum ReportingCurrencyEvidence<'a> {
-    None,
     FinancialCurrency(Option<&'a str>),
     TimeseriesCurrencyCode(Option<&'a str>),
 }
@@ -32,14 +31,12 @@ pub enum ReportingCurrencyEvidence<'a> {
 impl<'a> ReportingCurrencyEvidence<'a> {
     pub(super) const fn direct_code(self) -> Option<&'a str> {
         match self {
-            Self::None => None,
             Self::FinancialCurrency(code) | Self::TimeseriesCurrencyCode(code) => code,
         }
     }
 
     pub(super) const fn label(self) -> &'static str {
         match self {
-            Self::None => "none",
             Self::FinancialCurrency(_) => "financialCurrency",
             Self::TimeseriesCurrencyCode(_) => "timeseries currencyCode",
         }

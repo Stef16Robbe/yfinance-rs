@@ -60,7 +60,7 @@ async fn live_ticker_currency_unit_scale_fixtures_for_record() {
 
     let client = yfinance_rs::YfClient::builder().build().unwrap();
 
-    for sym in ["TSCO.L", "SBK.JO", "MSFT", "SPY"] {
+    for sym in ["TSCO.L", "SBK.JO", "SAP", "MSFT", "SPY"] {
         let t = yfinance_rs::Ticker::new(&client, sym);
         let stats = t.key_statistics().await.unwrap();
 

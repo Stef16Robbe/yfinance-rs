@@ -384,7 +384,7 @@ async fn strict_holder_value_rejects_invalid_enriched_currency_as_data_quality()
         then.status(200)
             .header("content-type", "application/json")
             .body(
-                r#"{"quoteResponse":{"result":[{"symbol":"BADENRICH","quoteType":"EQUITY","financialCurrency":"!!!"}],"error":null}}"#,
+                r#"{"quoteResponse":{"result":[{"symbol":"BADENRICH","quoteType":"EQUITY","currency":"!!!"}],"error":null}}"#,
             );
     });
 
@@ -406,6 +406,72 @@ async fn strict_holder_value_rejects_invalid_enriched_currency_as_data_quality()
     holders_mock.assert();
     quote_mock.assert();
     assert!(matches!(err, YfError::DataQuality(_)));
+}
+
+#[tokio::test]
+async fn insider_transaction_value_uses_trading_currency_when_financial_currency_differs() {
+    let sym = "SAP";
+    let server = MockServer::start();
+
+    let holders_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "insiderTransactions")
+            .query_param("crumb", "crumb");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "quoteSummary": {
+                    "result": [{
+                      "insiderTransactions": {
+                        "transactions": [{
+                          "filerName": "EXAMPLE INSIDER",
+                          "filerRelation": "Officer",
+                          "transactionText": "Sale",
+                          "shares": { "raw": 10 },
+                          "value": { "raw": 1234 },
+                          "startDate": { "raw": 1704067200 },
+                          "filerUrl": ""
+                        }]
+                      }
+                    }],
+                    "error": null
+                  }
+                }"#,
+            );
+    });
+    let quote_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", sym);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{"quoteResponse":{"result":[{"symbol":"SAP","quoteType":"EQUITY","currency":"USD","financialCurrency":"EUR"}],"error":null}}"#,
+            );
+    });
+
+    let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let rows = Ticker::new(&client, sym)
+        .insider_transactions()
+        .await
+        .unwrap();
+
+    holders_mock.assert();
+    quote_mock.assert();
+    assert_eq!(rows.len(), 1);
+    let value = rows[0].value.as_ref().expect("value should map");
+    assert_eq!(value.currency().to_string(), "USD");
+    assert_eq!(value.amount(), paft::Decimal::from(1234u64));
 }
 
 #[tokio::test]

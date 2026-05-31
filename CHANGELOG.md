@@ -111,7 +111,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - History now uses `chart.meta.currency` for candles and default dividend/capital-gain currency before attempting any inferred fallback, while event-level action currencies override the chart default.
 - History best-effort responses now report unresolved candle currency as a dropped-candle diagnostic instead of aborting the whole response.
 - Yahoo unit currency codes such as `GBp`, `GBX`, `ZAc`, and `ILA` are normalized to their major ISO currencies; per-share `Price` values are scaled from quote units, while aggregate `Money` values stay in major units.
-- v7 quote key statistics now distinguish quote-unit prices from major-unit market cap and financial per-share fields, so minor-unit listings such as `TSCO.L` no longer scale EPS/dividend values by the quote-price unit.
+- v7 quote key statistics now distinguish quote-unit prices from major-unit market cap, financial EPS, and quote-major dividend fields, so minor-unit listings such as `TSCO.L` no longer scale EPS/dividend values by the quote-price unit.
+- Holder and insider transaction values now use the symbol's trading major currency instead of reporting currency, matching Yahoo's shares times market-price aggregate values.
 - Empty Yahoo quoteSummary numeric wrappers such as ETF `marketCap: {}` now parse as absent optional values instead of suppressing otherwise valid sibling statistics.
 - Recorded key-statistics fixtures now lock currency-unit scaling for minor-unit listings, normal USD equities, and funds across v7 quote and quoteSummary backfill paths.
 - Recorded v7 quote fixtures now pin Yahoo's asymmetric dividend-yield units: trailing yield arrives as a decimal fraction, while forward yield arrives as percent points.

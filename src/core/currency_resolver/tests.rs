@@ -133,7 +133,7 @@ async fn override_resolution_does_not_poison_inferred_cache() {
         .resolve_reporting_currency_unit(
             "TEST",
             Some(Currency::Iso(IsoCurrency::USD)),
-            ReportingCurrencyEvidence::None,
+            ReportingCurrencyEvidence::FinancialCurrency(None),
             &test_options(),
         )
         .await
@@ -144,7 +144,7 @@ async fn override_resolution_does_not_poison_inferred_cache() {
         .resolve_reporting_currency_unit(
             "TEST",
             None,
-            ReportingCurrencyEvidence::None,
+            ReportingCurrencyEvidence::FinancialCurrency(None),
             &test_options(),
         )
         .await
@@ -159,7 +159,7 @@ async fn override_currency_without_metadata_is_invalid_params() {
         .resolve_reporting_currency_unit(
             "TEST",
             Some(Currency::try_from_str("NO_METADATA").expect("canonical custom currency")),
-            ReportingCurrencyEvidence::None,
+            ReportingCurrencyEvidence::FinancialCurrency(None),
             &test_options(),
         )
         .await
@@ -230,7 +230,7 @@ async fn cached_reporting_profile_heuristic_retries_unknown_enrichment() {
         .resolve_reporting_currency_unit(
             "TEST",
             None,
-            ReportingCurrencyEvidence::None,
+            ReportingCurrencyEvidence::FinancialCurrency(None),
             &test_options(),
         )
         .await
@@ -422,7 +422,7 @@ async fn invalid_reporting_quote_hint_falls_back_to_quote_summary_hint() {
         .resolve_reporting_currency(
             "BAD",
             None,
-            ReportingCurrencyEvidence::None,
+            ReportingCurrencyEvidence::FinancialCurrency(None),
             &test_options(),
         )
         .await

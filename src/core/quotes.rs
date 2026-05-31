@@ -392,7 +392,7 @@ impl V7QuoteNode {
                 self.trailing_pe,
                 "trailing PE",
             )?,
-            dividend_per_share_forward: currencies.financial_price(
+            dividend_per_share_forward: currencies.quote_major_price(
                 ctx,
                 "dividendRate",
                 key.clone(),
@@ -562,6 +562,25 @@ impl QuoteCurrencyUnits {
             value,
             target,
             |unit, value| unit.money_from_decimal(value).ok(),
+        )
+    }
+
+    fn quote_major_price(
+        &self,
+        ctx: &mut ProjectionContext,
+        path: &'static str,
+        key: Option<String>,
+        value: Option<f64>,
+        target: &'static str,
+    ) -> Result<Option<paft::money::Price>, YfError> {
+        optional_with_unit(
+            ctx,
+            path,
+            key,
+            self.quote_major_unit(),
+            value,
+            target,
+            ResolvedCurrencyUnit::price_from_f64,
         )
     }
 
@@ -735,7 +754,7 @@ impl QuoteSummaryKeyStatistics {
                 from_raw(summary_detail.trailing_pe),
                 "trailing PE",
             )?,
-            dividend_per_share_forward: currencies.financial_price(
+            dividend_per_share_forward: currencies.quote_major_price(
                 ctx,
                 "summaryDetail.dividendRate",
                 key.clone(),
