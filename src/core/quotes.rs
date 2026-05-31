@@ -13,7 +13,10 @@ use crate::{
         currency_resolver::{CurrencyHints, ResolvedCurrencyUnit},
         diagnostics::optional_decimal_f64,
         net, quotesummary,
-        wire::{JsonDecimal, RawDate, RawDecimal, RawNum, RawNumU64, from_raw, from_raw_date},
+        wire::{
+            JsonDecimal, RawDate, RawDecimal, RawNum, RawNumU64, de_u64_from_json, from_raw,
+            from_raw_date,
+        },
         yahoo_vocab::{first_parsed_yahoo_exchange, parse_yahoo_exchange, parse_yahoo_quote_type},
     },
 };
@@ -65,17 +68,25 @@ pub struct V7QuoteNode {
     pub(crate) regular_market_day_low: Option<f64>,
     #[serde(rename = "regularMarketPreviousClose")]
     pub(crate) regular_market_previous_close: Option<f64>,
-    #[serde(rename = "regularMarketVolume")]
+    #[serde(
+        rename = "regularMarketVolume",
+        default,
+        deserialize_with = "de_u64_from_json"
+    )]
     pub(crate) regular_market_volume: Option<u64>,
     pub(crate) bid: Option<f64>,
-    #[serde(rename = "bidSize")]
+    #[serde(rename = "bidSize", default, deserialize_with = "de_u64_from_json")]
     pub(crate) bid_size: Option<u64>,
     pub(crate) ask: Option<f64>,
-    #[serde(rename = "askSize")]
+    #[serde(rename = "askSize", default, deserialize_with = "de_u64_from_json")]
     pub(crate) ask_size: Option<u64>,
     #[serde(rename = "regularMarketTime")]
     pub(crate) regular_market_time: Option<i64>,
-    #[serde(rename = "averageDailyVolume3Month")]
+    #[serde(
+        rename = "averageDailyVolume3Month",
+        default,
+        deserialize_with = "de_u64_from_json"
+    )]
     pub(crate) average_daily_volume_3_month: Option<u64>,
     #[serde(rename = "fiftyTwoWeekHigh")]
     pub(crate) fifty_two_week_high: Option<f64>,
@@ -83,7 +94,11 @@ pub struct V7QuoteNode {
     pub(crate) fifty_two_week_low: Option<f64>,
     #[serde(rename = "marketCap")]
     pub(crate) market_cap: Option<JsonDecimal>,
-    #[serde(rename = "sharesOutstanding")]
+    #[serde(
+        rename = "sharesOutstanding",
+        default,
+        deserialize_with = "de_u64_from_json"
+    )]
     pub(crate) shares_outstanding: Option<u64>,
     #[serde(rename = "epsTrailingTwelveMonths")]
     pub(crate) eps_trailing_twelve_months: Option<f64>,
@@ -879,10 +894,15 @@ pub async fn fetch_v7_quotes(
     options: &CallOptions,
 ) -> Result<Vec<V7QuoteNode>, YfError> {
     let values = fetch_v7_quote_values(client, symbols, options).await?;
-    values
-        .into_iter()
-        .map(|value| serde_json::from_value(value).map_err(YfError::Json))
-        .collect()
+    let mut ctx = ProjectionContext::new("quote_v7", options.data_quality());
+    let mut nodes = Vec::with_capacity(values.len());
+    for (idx, value) in values.into_iter().enumerate() {
+        if let Some(node) = quote_node_from_value_with_context(value, idx, &mut ctx)? {
+            nodes.push(node);
+        }
+    }
+
+    Ok(nodes)
 }
 
 /// Centralized function to fetch raw quote nodes from the v7 API.

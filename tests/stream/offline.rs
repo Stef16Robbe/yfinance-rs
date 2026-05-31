@@ -255,6 +255,63 @@ async fn stream_polling_explicitly_offline() {
 }
 
 #[tokio::test]
+async fn stream_polling_keeps_valid_quote_when_sibling_node_is_malformed() {
+    let server = crate::common::setup_server();
+
+    let body = r#"{
+        "quoteResponse": {
+            "result": [
+                {
+                    "symbol": "AAPL",
+                    "quoteType": "EQUITY",
+                    "regularMarketPrice": "not-a-number",
+                    "currency": "USD"
+                },
+                {
+                    "symbol": "MSFT",
+                    "quoteType": "EQUITY",
+                    "regularMarketPrice": 420.00,
+                    "regularMarketPreviousClose": 419.00,
+                    "regularMarketVolume": "1000",
+                    "currency": "USD"
+                }
+            ],
+            "error": null
+        }
+    }"#;
+
+    let mock = server.mock(|when, then| {
+        when.method(httpmock::Method::GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "AAPL,MSFT");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let client = yfinance_rs::YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+
+    let builder = yfinance_rs::StreamBuilder::new(&client)
+        .symbols(["AAPL", "MSFT"])
+        .method(StreamMethod::Polling)
+        .interval(Duration::from_millis(50));
+
+    let (handle, mut rx) = builder.start().await.unwrap();
+    let update = timeout(Duration::from_secs(3), rx.recv())
+        .await
+        .expect("timed out waiting for polling stream update")
+        .expect("stream closed without emitting an update");
+    handle.abort();
+    mock.assert();
+
+    assert_eq!(update.instrument.symbol.as_str(), "MSFT");
+    assert_eq!(update.volume, None);
+}
+
+#[tokio::test]
 async fn stream_polling_uses_regular_market_time_as_update_timestamp() {
     let server = crate::common::setup_server();
     let provider_time = 1_761_768_001;

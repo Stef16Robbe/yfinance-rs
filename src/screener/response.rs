@@ -12,7 +12,7 @@ use crate::{
         ProjectionContext,
         currency_resolver::ResolvedCurrencyUnit,
         diagnostics::optional_u32_from_i64,
-        wire::JsonDecimal,
+        wire::{JsonDecimal, de_u64_from_json},
         yahoo_vocab::{parse_yahoo_exchange, parse_yahoo_quote_type},
     },
 };
@@ -149,7 +149,7 @@ struct WireQuote {
     #[serde(default)]
     regular_market_change_percent: Option<f64>,
     #[serde(rename = "regularMarketVolume")]
-    #[serde(default)]
+    #[serde(default, deserialize_with = "de_u64_from_json")]
     regular_market_volume: Option<u64>,
     #[serde(rename = "marketCap")]
     #[serde(default)]

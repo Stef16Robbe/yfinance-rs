@@ -215,6 +215,61 @@ async fn option_chain_uses_response_underlying_identity() {
 }
 
 #[tokio::test]
+async fn option_contract_counter_fields_accept_numeric_strings() {
+    let server = crate::common::setup_server();
+    let date = 1_737_072_000_i64;
+
+    let body = r#"{
+      "optionChain": {
+        "result": [{
+          "underlyingSymbol":"AAPL",
+          "quote": {
+            "symbol":"AAPL",
+            "quoteType":"EQUITY",
+            "currency":"USD"
+          },
+          "options": [{
+            "expirationDate": 1737072000,
+            "calls": [{
+              "contractSymbol":"AAPL250117C00180000",
+              "strike":180.0,
+              "expiration":1737072000,
+              "volume":"15",
+              "openInterest":"2048"
+            }],
+            "puts": []
+          }]
+        }],
+        "error": null
+      }
+    }"#;
+
+    let mock = server.mock(|when, then| {
+        when.method(httpmock::Method::GET)
+            .path("/v7/finance/options/AAPL")
+            .query_param("date", date.to_string());
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let client = YfClient::builder()
+        .base_options_v7(Url::parse(&format!("{}/v7/finance/options/", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+
+    let chain = Ticker::new(&client, "AAPL")
+        .option_chain(Some(date))
+        .await
+        .unwrap();
+
+    mock.assert();
+    let contract = chain.calls().next().expect("call contract should survive");
+    assert_eq!(contract.volume, Some(15));
+    assert_eq!(contract.open_interest, Some(2_048));
+}
+
+#[tokio::test]
 async fn option_chain_with_diagnostics_drops_contract_when_direct_currency_is_invalid() {
     let server = crate::common::setup_server();
     let date = 1_737_072_000_i64;

@@ -60,7 +60,7 @@ where
         .map_err(serde::de::Error::custom)
 }
 
-fn de_u64_from_json<'de, D>(deserializer: D) -> Result<Option<u64>, D::Error>
+pub fn de_u64_from_json<'de, D>(deserializer: D) -> Result<Option<u64>, D::Error>
 where
     D: Deserializer<'de>,
 {

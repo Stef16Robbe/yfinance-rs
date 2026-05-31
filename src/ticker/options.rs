@@ -13,6 +13,7 @@ use crate::{
         },
         diagnostics::optional_decimal_f64,
         net,
+        wire::de_u64_from_json,
         yahoo_vocab::{first_parsed_yahoo_exchange, parse_yahoo_quote_type},
     },
 };
@@ -626,8 +627,13 @@ struct OptContractNode {
     last_price: Option<f64>,
     bid: Option<f64>,
     ask: Option<f64>,
+    #[serde(default, deserialize_with = "de_u64_from_json")]
     volume: Option<u64>,
-    #[serde(rename = "openInterest")]
+    #[serde(
+        rename = "openInterest",
+        default,
+        deserialize_with = "de_u64_from_json"
+    )]
     open_interest: Option<u64>,
     #[serde(rename = "impliedVolatility")]
     implied_volatility: Option<f64>,

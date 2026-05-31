@@ -162,6 +162,61 @@ async fn structurally_malformed_quote_node_is_dropped_from_batch() {
 }
 
 #[tokio::test]
+async fn quote_v7_counter_fields_accept_numeric_strings() {
+    let server = setup_server();
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "AAPL");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "quoteResponse": {
+                    "result": [{
+                      "symbol": "AAPL",
+                      "quoteType": "EQUITY",
+                      "regularMarketPrice": 190.0,
+                      "currency": "USD",
+                      "regularMarketVolume": "12345",
+                      "bid": 189.5,
+                      "bidSize": "7",
+                      "ask": 190.5,
+                      "askSize": "9"
+                    }]
+                  }
+                }"#,
+            );
+    });
+
+    let base = Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap();
+    let client = yfinance_rs::YfClient::builder()
+        .base_quote_v7(base)
+        .build()
+        .unwrap();
+
+    let quotes = yfinance_rs::QuotesBuilder::new(&client)
+        .symbols(["AAPL"])
+        .fetch()
+        .await
+        .unwrap();
+
+    mock.assert();
+    let quote = quotes
+        .first()
+        .expect("quote should survive numeric strings");
+    assert_eq!(quote.day_volume, Some(12_345));
+    assert_eq!(
+        quote.bid.as_ref().and_then(|level| level.size),
+        Some(paft::Decimal::from(7))
+    );
+    assert_eq!(
+        quote.ask.as_ref().and_then(|level| level.size),
+        Some(paft::Decimal::from(9))
+    );
+}
+
+#[tokio::test]
 async fn batch_quotes_with_diagnostics_reports_unresolved_currency_for_present_price() {
     let server = setup_server();
     let _mock = server.mock(|when, then| {
