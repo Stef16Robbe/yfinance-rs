@@ -1,7 +1,7 @@
 // Re-export types from paft without using prelude
 pub use paft::market::options::{OptionChain, OptionContract};
 
-use crate::profile::Profile;
+use crate::{core::MovingAverages, profile::Profile};
 use paft::aggregates::Snapshot;
 use paft::fundamentals::analysis::{PriceTarget, RecommendationSummary};
 use paft::fundamentals::statements::Calendar;
@@ -17,6 +17,8 @@ use serde::{Deserialize, Serialize};
 pub struct Info {
     /// Instant-in-time market snapshot data.
     pub snapshot: Snapshot,
+    /// Price moving averages exposed by Yahoo's quote surfaces.
+    pub moving_averages: MovingAverages,
     /// Valuation, dividend, volume, and risk statistics.
     pub key_statistics: KeyStatistics,
     /// Company or fund profile, when available.

@@ -47,5 +47,8 @@ pub use diagnostics::{
     YfEvidenceStrength, YfResponse, YfWarning,
 };
 pub use error::YfError;
-pub use models::{Action, Candle, HistoryMeta, HistoryResponse, Interval, Quote, Range};
+pub use models::{
+    Action, Candle, FastInfo, HistoryMeta, HistoryResponse, Interval, MovingAverages, Quote, Range,
+    Snapshot,
+};
 pub use services::{HistoryRequest, HistoryService};

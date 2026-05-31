@@ -306,20 +306,24 @@ async fn fast_info_derives_last_price() {
     let fi = ticker.fast_info().await.unwrap();
     mock.assert();
 
-    assert_eq!(fi.instrument.symbol.as_str(), "MSFT");
-    assert!(fi.last.is_none());
-    let previous_close = fi.previous_close.as_ref().unwrap();
+    assert_eq!(fi.snapshot.instrument.symbol.as_str(), "MSFT");
+    assert!(fi.snapshot.last.is_none());
+    let previous_close = fi.snapshot.previous_close.as_ref().unwrap();
     assert!(
         (money_to_f64(previous_close) - 421.00).abs() < 1e-9,
         "fallback to previous close"
     );
     assert_eq!(previous_close.currency().to_string(), "USD");
     assert_eq!(
-        fi.instrument.exchange.map(|e| e.to_string()).as_deref(),
+        fi.snapshot
+            .instrument
+            .exchange
+            .map(|e| e.to_string())
+            .as_deref(),
         Some("NASDAQ")
     );
     assert_eq!(
-        fi.market_state.map(|s| s.to_string()).as_deref(),
+        fi.snapshot.market_state.map(|s| s.to_string()).as_deref(),
         Some("CLOSED")
     );
 }
@@ -376,7 +380,7 @@ async fn live_quote_smoke() {
     let fi = ticker.fast_info().await.unwrap();
 
     if std::env::var("YF_RECORD").ok().as_deref() != Some("1") {
-        assert!(money_to_f64(&fi.last.unwrap()) > 0.0);
-        assert_eq!(fi.instrument.symbol.as_str(), "AAPL");
+        assert!(money_to_f64(&fi.snapshot.last.unwrap()) > 0.0);
+        assert_eq!(fi.snapshot.instrument.symbol.as_str(), "AAPL");
     }
 }

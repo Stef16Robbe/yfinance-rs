@@ -7,14 +7,19 @@ async fn check_fast_info(ticker: &Ticker, expected_currency: &str) {
     println!("  📈 Quote/Fast Info:");
     match ticker.fast_info().await {
         Ok(fi) => {
-            println!("    Instrument: {}", fi.instrument);
-            println!("    Last Price: {:?}", fi.last.as_ref().map(money_to_f64));
+            println!("    Instrument: {}", fi.snapshot.instrument);
+            println!(
+                "    Last Price: {:?}",
+                fi.snapshot.last.as_ref().map(money_to_f64)
+            );
             let currency = fi
+                .snapshot
                 .last
                 .as_ref()
-                .or(fi.previous_close.as_ref())
+                .or(fi.snapshot.previous_close.as_ref())
                 .map(|price| price.currency().to_string());
             let exchange = fi
+                .snapshot
                 .instrument
                 .exchange
                 .as_ref()

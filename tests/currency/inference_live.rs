@@ -78,9 +78,10 @@ async fn live_gs2c_dual_listing_currency() -> Result<(), Box<dyn std::error::Err
 
     let fast = ticker.fast_info().await?;
     assert_eq!(
-        fast.last
+        fast.snapshot
+            .last
             .as_ref()
-            .or(fast.previous_close.as_ref())
+            .or(fast.snapshot.previous_close.as_ref())
             .map(|price| price.currency().to_string())
             .as_deref(),
         Some("EUR")

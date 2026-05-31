@@ -65,86 +65,36 @@ pub(super) async fn fetch_info_with_diagnostics(
     let mut ctx = ProjectionContext::new("info", options.data_quality());
     let (quote, quote_summary_parts) =
         Box::pin(fetch_info_parts(client, &symbol, options, &mut ctx)).await?;
-    let (quote_summary_key_statistics, profile, price_target, rec_summary, calendar) =
-        match quote_summary_parts {
-            Ok(parts) => {
-                let quote_summary_key_statistics =
-                    match log_err_async(&mut ctx, parts.key_statistics, "key_statistics", &symbol)?
-                    {
-                        Some(key_statistics) => Some(
-                            key_statistics.into_key_statistics_with_context(&mut ctx, &symbol)?,
-                        ),
-                        None => None,
-                    };
-                let profile = log_err_async(&mut ctx, parts.profile, "profile", &symbol)?;
-                let (price_target, rec_summary) = match parts.analysis {
-                    Ok(analysis) => {
-                        let price_target = log_response_async(
-                            &mut ctx,
-                            analysis.price_target,
-                            "price_target",
-                            &symbol,
-                        )?;
-                        let rec_summary = log_response_async(
-                            &mut ctx,
-                            analysis.recommendation_summary,
-                            "recommendations_summary",
-                            &symbol,
-                        )?;
-                        (price_target, rec_summary)
-                    }
-                    Err(err) => {
-                        crate::core::logging::trace_debug!(
-                            symbol,
-                            module = "analysis",
-                            error = %err,
-                            "optional info module fetch failed"
-                        );
-                        ctx.suppressed_error("analysis", &err)?;
-                        (None, None)
-                    }
-                };
-                let calendar = log_response_async(&mut ctx, parts.calendar, "calendar", &symbol)?;
-                (
-                    quote_summary_key_statistics,
-                    profile,
-                    price_target,
-                    rec_summary,
-                    calendar,
-                )
-            }
-            Err(err) => {
-                crate::core::logging::trace_debug!(
-                    symbol,
-                    module = "quote_summary",
-                    error = %err,
-                    "optional info module fetch failed"
-                );
-                ctx.suppressed_error("quote_summary", &err)?;
-                (None, None, None, None, None)
-            }
-        };
+    let quote_summary = project_info_quote_summary_parts(&mut ctx, &symbol, quote_summary_parts)?;
 
     let key_statistics = quote.to_key_statistics_with_context(&mut ctx)?;
-    let key_statistics = match quote_summary_key_statistics {
+    let key_statistics = match quote_summary.key_statistics {
         Some(quote_summary) => {
             crate::core::quotes::merge_key_statistics(key_statistics, &quote_summary)
         }
         None => key_statistics,
     };
+    let moving_averages = quote.to_moving_averages_with_context(&mut ctx)?;
+    let moving_averages = match quote_summary.moving_averages {
+        Some(quote_summary) => {
+            crate::core::quotes::merge_moving_averages(moving_averages, &quote_summary)
+        }
+        None => moving_averages,
+    };
     let snapshot = quote.to_snapshot_with_context(&mut ctx)?;
-    let calendar = match calendar {
+    let calendar = match quote_summary.calendar {
         Some(calendar) => Some(calendar),
         None => quote.calendar_fallback_with_context(&mut ctx)?,
     };
 
     Ok(ctx.finish(Info {
         snapshot,
+        moving_averages,
         key_statistics,
-        profile,
+        profile: quote_summary.profile,
         calendar,
-        price_target,
-        recommendation_summary: rec_summary,
+        price_target: quote_summary.price_target,
+        recommendation_summary: quote_summary.recommendation_summary,
     }))
 }
 
@@ -153,6 +103,80 @@ struct InfoQuoteSummaryParts {
     profile: Result<Profile, YfError>,
     analysis: Result<analysis::InfoAnalysisParts, YfError>,
     calendar: Result<YfResponse<paft::fundamentals::statements::Calendar>, YfError>,
+}
+
+#[derive(Default)]
+struct ProjectedInfoQuoteSummaryParts {
+    key_statistics: Option<paft::fundamentals::statistics::KeyStatistics>,
+    moving_averages: Option<crate::core::MovingAverages>,
+    profile: Option<Profile>,
+    price_target: Option<paft::fundamentals::analysis::PriceTarget>,
+    recommendation_summary: Option<paft::fundamentals::analysis::RecommendationSummary>,
+    calendar: Option<paft::fundamentals::statements::Calendar>,
+}
+
+fn project_info_quote_summary_parts(
+    ctx: &mut ProjectionContext,
+    symbol: &str,
+    quote_summary_parts: Result<InfoQuoteSummaryParts, YfError>,
+) -> Result<ProjectedInfoQuoteSummaryParts, YfError> {
+    let parts = match quote_summary_parts {
+        Ok(parts) => parts,
+        Err(err) => {
+            crate::core::logging::trace_debug!(
+                symbol,
+                module = "quote_summary",
+                error = %err,
+                "optional info module fetch failed"
+            );
+            ctx.suppressed_error("quote_summary", &err)?;
+            return Ok(ProjectedInfoQuoteSummaryParts::default());
+        }
+    };
+
+    let (key_statistics, moving_averages) =
+        match log_err_async(ctx, parts.key_statistics, "key_statistics", symbol)? {
+            Some(key_statistics) => {
+                let (key_statistics, moving_averages) = key_statistics
+                    .into_key_statistics_and_moving_averages_with_context(ctx, symbol)?;
+                (Some(key_statistics), Some(moving_averages))
+            }
+            None => (None, None),
+        };
+    let profile = log_err_async(ctx, parts.profile, "profile", symbol)?;
+    let (price_target, recommendation_summary) = match parts.analysis {
+        Ok(analysis) => {
+            let price_target =
+                log_response_async(ctx, analysis.price_target, "price_target", symbol)?;
+            let recommendation_summary = log_response_async(
+                ctx,
+                analysis.recommendation_summary,
+                "recommendations_summary",
+                symbol,
+            )?;
+            (price_target, recommendation_summary)
+        }
+        Err(err) => {
+            crate::core::logging::trace_debug!(
+                symbol,
+                module = "analysis",
+                error = %err,
+                "optional info module fetch failed"
+            );
+            ctx.suppressed_error("analysis", &err)?;
+            (None, None)
+        }
+    };
+    let calendar = log_response_async(ctx, parts.calendar, "calendar", symbol)?;
+
+    Ok(ProjectedInfoQuoteSummaryParts {
+        key_statistics,
+        moving_averages,
+        profile,
+        price_target,
+        recommendation_summary,
+        calendar,
+    })
 }
 
 async fn fetch_info_parts(

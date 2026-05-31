@@ -4,8 +4,8 @@ mod model;
 mod options;
 mod quote;
 
+pub use crate::core::models::{FastInfo, MovingAverages};
 pub use model::{Info, OptionChain, OptionContract};
-pub use paft::aggregates::Snapshot as FastInfo;
 
 use crate::core::{Action, Candle, HistoryMeta, Interval, Quote, Range};
 use crate::fundamentals::{Calendar, ShareCount};
@@ -177,7 +177,7 @@ impl Ticker {
         quote::fetch_quote_with_diagnostics(&self.client, &self.symbol, &options).await
     }
 
-    /// Fetches a "fast" info quote, containing the most essential price and market data.
+    /// Fetches fast ticker information, including a quote snapshot and moving averages.
     ///
     /// # Errors
     ///
@@ -186,7 +186,7 @@ impl Ticker {
         quote::fetch_fast_info(&self.client, &self.symbol, &self.options).await
     }
 
-    /// Fetches a "fast" info quote with projection diagnostics.
+    /// Fetches fast ticker information with projection diagnostics.
     ///
     /// # Errors
     ///

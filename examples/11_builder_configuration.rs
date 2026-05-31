@@ -87,7 +87,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let goog_info = goog.fast_info().await?;
     println!(
         "  Fetched fast info for {} with a custom retry policy.",
-        goog_info.instrument
+        goog_info.snapshot.instrument
     );
 
     Ok(())

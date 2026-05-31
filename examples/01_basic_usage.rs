@@ -55,22 +55,24 @@ async fn section_fast_info(client: &YfClient) -> Result<(), YfError> {
     let nvda = Ticker::new(client, "NVDA");
     let fast_info = nvda.fast_info().await?;
     let price_money = fast_info
+        .snapshot
         .last
         .clone()
-        .or_else(|| fast_info.previous_close.clone())
+        .or_else(|| fast_info.snapshot.previous_close.clone())
         .expect("last or previous_close present");
     println!(
         "{} is trading at {} in {}",
-        fast_info.instrument,
+        fast_info.snapshot.instrument,
         price_money,
         fast_info
+            .snapshot
             .instrument
             .exchange
             .as_ref()
             .map(std::string::ToString::to_string)
             .unwrap_or_default()
     );
-    if let Some(v) = fast_info.volume {
+    if let Some(v) = fast_info.snapshot.volume {
         println!("Day volume: {v}");
     }
     println!();

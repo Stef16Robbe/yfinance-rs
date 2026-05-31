@@ -31,6 +31,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Removed the always-empty `Info::esg_scores` field. Yahoo no longer returns the backing `esgScores` module; use `Ticker::sustainability()` for explicit best-effort ESG requests.
 - Removed the legacy HTML scraping fallback for profile lookups. Profiles now load only from Yahoo's quoteSummary API.
 - Removed `YfClientBuilder::base_quote()`, which only configured the deleted Yahoo quote-page scraping path.
+- `Ticker::fast_info()` now returns yfinance-rs' own `FastInfo` struct with
+  instant quote data nested under `snapshot`; existing `fast_info.last`-style
+  reads should move to `fast_info.snapshot.last`.
 
 ### Added
 
@@ -41,6 +44,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Add explicit share-count windows through `Ticker::shares_between()`,
   `Ticker::quarterly_shares_between()`, and
   `FundamentalsBuilder::shares_between()`/`shares_between_with_diagnostics()`.
+- Add `FastInfo::moving_averages` with Yahoo's 50-day and 200-day average
+  prices, matching Python yfinance's `fast_info` placement without extending
+  `paft::Snapshot`.
+- Add `Info::moving_averages` as a sibling of `snapshot` and `key_statistics`,
+  so `Ticker::info()` also surfaces Yahoo's `summaryDetail` moving-average
+  fields without putting technical indicators in `paft::KeyStatistics`.
 
 ### Fixed
 

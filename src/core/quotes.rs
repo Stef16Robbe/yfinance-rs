@@ -12,6 +12,7 @@ use crate::{
         conversions::i64_to_datetime,
         currency_resolver::{CurrencyHints, ResolvedCurrencyUnit},
         diagnostics::optional_decimal_f64,
+        models::{FastInfo, MovingAverages},
         net, quotesummary,
         wire::{
             JsonDecimal, RawDate, RawDecimal, RawNum, RawNumU64, de_u64_from_json, from_raw,
@@ -88,6 +89,10 @@ pub struct V7QuoteNode {
         deserialize_with = "de_u64_from_json"
     )]
     pub(crate) average_daily_volume_3_month: Option<u64>,
+    #[serde(rename = "fiftyDayAverage")]
+    pub(crate) fifty_day_average: Option<f64>,
+    #[serde(rename = "twoHundredDayAverage")]
+    pub(crate) two_hundred_day_average: Option<f64>,
     #[serde(rename = "fiftyTwoWeekHigh")]
     pub(crate) fifty_two_week_high: Option<f64>,
     #[serde(rename = "fiftyTwoWeekLow")]
@@ -358,6 +363,41 @@ impl V7QuoteNode {
             )?,
             volume: self.regular_market_volume,
             provider: (),
+        })
+    }
+
+    pub(crate) fn to_fast_info_with_context(
+        &self,
+        ctx: &mut ProjectionContext,
+    ) -> Result<FastInfo, YfError> {
+        Ok(FastInfo {
+            snapshot: self.to_snapshot_with_context(ctx)?,
+            moving_averages: self.to_moving_averages_with_context(ctx)?,
+        })
+    }
+
+    pub(crate) fn to_moving_averages_with_context(
+        &self,
+        ctx: &mut ProjectionContext,
+    ) -> Result<MovingAverages, YfError> {
+        let key = self.symbol.clone();
+        let currencies = self.currency_units();
+
+        Ok(MovingAverages {
+            fifty_day: currencies.quote_price(
+                ctx,
+                "fiftyDayAverage",
+                key.clone(),
+                self.fifty_day_average,
+                "50-day moving average",
+            )?,
+            two_hundred_day: currencies.quote_price(
+                ctx,
+                "twoHundredDayAverage",
+                key,
+                self.two_hundred_day_average,
+                "200-day moving average",
+            )?,
         })
     }
 
@@ -701,6 +741,10 @@ struct SummaryDetailNode {
     trailing_annual_dividend_yield: Option<RawNum<f64>>,
     #[serde(rename = "exDividendDate")]
     ex_dividend_date: Option<RawDate>,
+    #[serde(rename = "fiftyDayAverage")]
+    fifty_day_average: Option<RawNum<f64>>,
+    #[serde(rename = "twoHundredDayAverage")]
+    two_hundred_day_average: Option<RawNum<f64>>,
     #[serde(rename = "fiftyTwoWeekHigh")]
     fifty_two_week_high: Option<RawNum<f64>>,
     #[serde(rename = "fiftyTwoWeekLow")]
@@ -719,19 +763,35 @@ struct DefaultKeyStatisticsNode {
 }
 
 impl QuoteSummaryKeyStatistics {
-    pub fn into_key_statistics_with_context(
+    pub fn into_key_statistics_and_moving_averages_with_context(
         self,
         ctx: &mut ProjectionContext,
         symbol: &str,
-    ) -> Result<KeyStatistics, YfError> {
+    ) -> Result<(KeyStatistics, MovingAverages), YfError> {
         let key = Some(symbol.to_string());
         let summary_detail = self.summary_detail.unwrap_or_default();
         let default_key_statistics = self.default_key_statistics.unwrap_or_default();
         let currencies =
             QuoteCurrencyUnits::from_quote_summary_currency(summary_detail.currency.as_deref());
         let beta = from_raw(summary_detail.beta).or_else(|| from_raw(default_key_statistics.beta));
+        let moving_averages = MovingAverages {
+            fifty_day: currencies.quote_price(
+                ctx,
+                "summaryDetail.fiftyDayAverage",
+                key.clone(),
+                from_raw(summary_detail.fifty_day_average),
+                "50-day moving average",
+            )?,
+            two_hundred_day: currencies.quote_price(
+                ctx,
+                "summaryDetail.twoHundredDayAverage",
+                key.clone(),
+                from_raw(summary_detail.two_hundred_day_average),
+                "200-day moving average",
+            )?,
+        };
 
-        Ok(KeyStatistics {
+        let key_statistics = KeyStatistics {
             market_cap: currencies.quote_money(
                 ctx,
                 "summaryDetail.marketCap",
@@ -798,7 +858,19 @@ impl QuoteSummaryKeyStatistics {
             average_daily_volume_3m: raw_u64(summary_detail.average_volume),
             beta: optional_decimal_f64(ctx, "beta", Some(symbol.to_string()), beta, "beta")?,
             as_of: None,
-        })
+        };
+
+        Ok((key_statistics, moving_averages))
+    }
+
+    pub fn into_key_statistics_with_context(
+        self,
+        ctx: &mut ProjectionContext,
+        symbol: &str,
+    ) -> Result<KeyStatistics, YfError> {
+        Ok(self
+            .into_key_statistics_and_moving_averages_with_context(ctx, symbol)?
+            .0)
     }
 }
 
@@ -885,6 +957,20 @@ pub fn merge_key_statistics(
     }
     if base.beta.is_none() {
         base.beta = quote_summary.beta;
+    }
+    base
+}
+
+pub fn merge_moving_averages(
+    mut base: MovingAverages,
+    quote_summary: &MovingAverages,
+) -> MovingAverages {
+    if base.fifty_day.is_none() {
+        base.fifty_day.clone_from(&quote_summary.fifty_day);
+    }
+    if base.two_hundred_day.is_none() {
+        base.two_hundred_day
+            .clone_from(&quote_summary.two_hundred_day);
     }
     base
 }

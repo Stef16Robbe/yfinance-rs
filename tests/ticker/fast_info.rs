@@ -40,13 +40,19 @@ async fn fast_info_uses_previous_close_when_price_missing() {
     let fi = t.fast_info().await.unwrap();
     mock.assert();
 
-    assert_eq!(fi.instrument.symbol.as_str(), "AAPL");
+    assert_eq!(fi.snapshot.instrument.symbol.as_str(), "AAPL");
     assert!(
-        (yfinance_rs::core::conversions::money_to_f64(&fi.previous_close.unwrap()) - 199.5).abs()
+        (yfinance_rs::core::conversions::money_to_f64(&fi.snapshot.previous_close.unwrap())
+            - 199.5)
+            .abs()
             < 1e-9
     );
     assert_eq!(
-        fi.instrument.exchange.map(|e| e.to_string()).as_deref(),
+        fi.snapshot
+            .instrument
+            .exchange
+            .map(|e| e.to_string())
+            .as_deref(),
         Some("NASDAQ")
     );
 }
@@ -86,8 +92,8 @@ async fn fast_info_with_diagnostics_reports_unresolved_currency_for_present_pric
     let response = ticker.fast_info_with_diagnostics().await.unwrap();
     mock.assert();
 
-    assert!(response.data.last.is_none());
-    assert!(response.data.previous_close.is_none());
+    assert!(response.data.snapshot.last.is_none());
+    assert!(response.data.snapshot.previous_close.is_none());
     assert!(response.diagnostics.warnings.iter().any(|warning| {
         matches!(
             warning,
@@ -126,9 +132,10 @@ async fn fast_info_maps_snapshot_session_fields_from_v7_quote() {
         .unwrap();
     let ticker = Ticker::new(&client, "AAPL");
 
-    let snapshot = ticker.fast_info().await.unwrap();
+    let fast_info = ticker.fast_info().await.unwrap();
     mock.assert();
 
+    let snapshot = &fast_info.snapshot;
     let open = money_to_f64(snapshot.open.as_ref().unwrap());
     let expected_open = raw_quote["regularMarketOpen"].as_f64().unwrap();
     assert!(
@@ -148,6 +155,19 @@ async fn fast_info_maps_snapshot_session_fields_from_v7_quote() {
             < 0.01
     );
     assert_eq!(snapshot.volume, raw_quote["regularMarketVolume"].as_u64());
+
+    assert!(
+        (money_to_f64(fast_info.moving_averages.fifty_day.as_ref().unwrap())
+            - raw_quote["fiftyDayAverage"].as_f64().unwrap())
+        .abs()
+            < 0.01
+    );
+    assert!(
+        (money_to_f64(fast_info.moving_averages.two_hundred_day.as_ref().unwrap())
+            - raw_quote["twoHundredDayAverage"].as_f64().unwrap())
+        .abs()
+            < 0.01
+    );
 
     #[cfg(feature = "dataframe")]
     {

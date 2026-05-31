@@ -334,9 +334,10 @@ async fn offline_gs2c_dual_listing_currency() {
 
     let fast = ticker.fast_info().await.unwrap();
     assert_eq!(
-        fast.last
+        fast.snapshot
+            .last
             .as_ref()
-            .or(fast.previous_close.as_ref())
+            .or(fast.snapshot.previous_close.as_ref())
             .map(|price| price.currency().to_string())
             .as_deref(),
         Some("EUR")

@@ -4,7 +4,10 @@ use std::time::Duration;
 use url::Url;
 use yfinance_rs::{
     Ticker, YfClient,
-    core::client::{Backoff, CacheMode, RetryConfig},
+    core::{
+        client::{Backoff, CacheMode, RetryConfig},
+        conversions::money_to_f64,
+    },
 };
 
 const INFO_QUOTE_SUMMARY_MODULES: &str = "summaryDetail,defaultKeyStatistics,assetProfile,quoteType,fundProfile,financialData,recommendationTrend,calendarEvents";
@@ -136,10 +139,96 @@ async fn offline_info_uses_recorded_fixtures() {
         ))
     );
     assert!(
+        (money_to_f64(info.moving_averages.fifty_day.as_ref().unwrap())
+            - raw_quote["fiftyDayAverage"].as_f64().unwrap())
+        .abs()
+            < 0.01
+    );
+    assert!(
+        (money_to_f64(info.moving_averages.two_hundred_day.as_ref().unwrap())
+            - raw_quote["twoHundredDayAverage"].as_f64().unwrap())
+        .abs()
+            < 0.01
+    );
+    assert!(
         info.calendar
             .and_then(|calendar| calendar.dividend_payment_date)
             .is_some(),
         "dividend payment date should fall back to v7 quote dividendDate"
+    );
+}
+
+#[tokio::test]
+async fn ticker_info_backfills_moving_averages_from_summary_detail() {
+    let server = MockServer::start();
+    let sym = "AAPL";
+    let crumb = "crumb";
+    let quote_body = serde_json::json!({
+        "quoteResponse": {
+            "result": [{
+                "symbol": sym,
+                "quoteType": "EQUITY",
+                "regularMarketPrice": 195.0,
+                "regularMarketPreviousClose": 194.0,
+                "currency": "USD",
+                "fullExchangeName": "NasdaqGS"
+            }],
+            "error": null
+        }
+    })
+    .to_string();
+
+    let quote_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", sym);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(quote_body);
+    });
+
+    let info_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", INFO_QUOTE_SUMMARY_MODULES)
+            .query_param("crumb", crumb);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                serde_json::json!({
+                    "quoteSummary": {
+                        "result": [{
+                            "summaryDetail": {
+                                "currency": "USD",
+                                "fiftyDayAverage": { "raw": 190.25, "fmt": "190.25" },
+                                "twoHundredDayAverage": { "raw": 180.75, "fmt": "180.75" }
+                            }
+                        }],
+                        "error": null
+                    }
+                })
+                .to_string(),
+            );
+    });
+
+    let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._preauth("cookie", crumb)
+        .retry_enabled(false)
+        .build()
+        .unwrap();
+
+    let info = Ticker::new(&client, sym).info().await.unwrap();
+
+    quote_mock.assert();
+    info_mock.assert();
+    assert!((money_to_f64(info.moving_averages.fifty_day.as_ref().unwrap()) - 190.25).abs() < 1e-9);
+    assert!(
+        (money_to_f64(info.moving_averages.two_hundred_day.as_ref().unwrap()) - 180.75).abs()
+            < 1e-9
     );
 }
 

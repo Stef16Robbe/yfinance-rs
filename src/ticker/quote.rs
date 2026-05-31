@@ -1,9 +1,9 @@
 use crate::core::{
-    CallOptions, ProjectionContext, YfClient, YfError, YfResponse,
-    models::{FastInfo, Quote},
-    quotes,
+    CallOptions, ProjectionContext, YfClient, YfError, YfResponse, models::Quote, quotes,
 };
 use paft::fundamentals::statistics::KeyStatistics;
+
+use super::FastInfo;
 
 fn log_err<T>(
     ctx: &mut ProjectionContext,
@@ -72,8 +72,8 @@ pub async fn fetch_fast_info_with_diagnostics(
     let results = quotes::fetch_v7_quote_values(client, &symbols, options).await?;
     let result = quotes::required_quote_node_from_values_with_context(results, symbol, &mut ctx)?;
 
-    let snapshot = result.to_snapshot_with_context(&mut ctx)?;
-    Ok(ctx.finish(snapshot))
+    let fast_info = result.to_fast_info_with_context(&mut ctx)?;
+    Ok(ctx.finish(fast_info))
 }
 
 pub async fn fetch_key_statistics(
