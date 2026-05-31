@@ -91,6 +91,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Screener projection now parses quote results item-by-item, so one structurally malformed screener quote no longer aborts valid sibling results in best-effort mode.
 - News projection now parses stream entries item-by-item, so one structurally malformed article no longer aborts valid sibling articles in best-effort mode.
 - Fundamentals timeseries projections now diagnose malformed values item-by-item instead of dropping every period for the affected field.
+- Fundamentals timeseries statement rows are no longer emitted when Yahoo sends present-but-empty `reportedValue` wrappers with no raw value.
 - Missing or invalid Yahoo timestamps no longer become Unix epoch/default datetimes in quote, history, news, holder, analyst, calendar, and fundamentals mappings.
 - Missing quote/search/screener/download instrument kinds no longer default to equity; provider asset-kind metadata is required where the public model needs an instrument.
 - Malformed raw OHLC rows are validated before auto-adjustment, so adjustment math cannot turn invalid Yahoo prices into emitted candles.

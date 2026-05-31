@@ -514,9 +514,9 @@ fn process_statement_money_values<T>(
     };
 
     for (idx, timestamp) in timestamps.iter().enumerate() {
-        if parsed_timeseries_value(&values, idx).is_none() {
+        let Some(value) = reported_decimal_at(&values, idx) else {
             continue;
-        }
+        };
 
         let row_key = format!("{field}@{timestamp}");
         let Some(row) = row_for_timestamp(ctx, rows_map, *timestamp, row_key.clone(), create_row)?
@@ -524,15 +524,12 @@ fn process_statement_money_values<T>(
             continue;
         };
 
-        let value = reported_decimal_at(&values, idx);
-        let currency_issue_for_value = value.and_then(|_| {
-            parsed_timeseries_value(&values, idx).and_then(|parsed| {
-                timeseries_value_currency_issue(
-                    parsed,
-                    expected_currency_code,
-                    ignore_value_currency_codes,
-                )
-            })
+        let currency_issue_for_value = parsed_timeseries_value(&values, idx).and_then(|parsed| {
+            timeseries_value_currency_issue(
+                parsed,
+                expected_currency_code,
+                ignore_value_currency_codes,
+            )
         });
         let money = match currency_issue_for_value {
             Some(issue) => {
@@ -545,7 +542,7 @@ fn process_statement_money_values<T>(
                 Some(row_key),
                 currency,
                 currency_issue,
-                value,
+                Some(value),
                 "statement monetary value",
             )?,
         };
@@ -580,9 +577,9 @@ fn process_statement_u64_values<T>(
     };
 
     for (idx, timestamp) in timestamps.iter().enumerate() {
-        if parsed_timeseries_value(&values, idx).is_none() {
+        let Some(value) = reported_u64_at(&values, idx) else {
             continue;
-        }
+        };
 
         let Some(row) = row_for_timestamp(
             ctx,
@@ -595,8 +592,7 @@ fn process_statement_u64_values<T>(
             continue;
         };
 
-        let value = reported_u64_at(&values, idx);
-        assign_value(row, field, value);
+        assign_value(row, field, Some(value));
     }
 
     Ok(())

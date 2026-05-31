@@ -193,6 +193,106 @@ async fn income_statement_processes_all_fields_in_grouped_timeseries_item() {
 }
 
 #[tokio::test]
+async fn statement_values_without_reported_raw_do_not_create_rows() {
+    let server = MockServer::start();
+    let symbol = "EMPTYRAW";
+
+    let income_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!(
+                "/ws/fundamentals-timeseries/v1/finance/timeseries/{symbol}"
+            ))
+            .query_param("symbol", symbol)
+            .query_param(
+                "type",
+                "annualTotalRevenue,annualGrossProfit,annualOperatingIncome,annualNetIncome,annualInterestExpense,annualTaxProvision,annualDepreciationAndAmortization",
+            )
+            .query_param("crumb", "crumb")
+            .query_param_exists("period1")
+            .query_param_exists("period2");
+        then.status(200).header("content-type", "application/json").body(
+            r#"{
+              "timeseries": {
+                "result": [{
+                  "meta": {},
+                  "timestamp": [1727654400],
+                  "annualTotalRevenue": [{ "reportedValue": {} }],
+                  "annualNetIncome": [{}]
+                }],
+                "error": null
+              }
+            }"#,
+        );
+    });
+
+    let balance_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!(
+                "/ws/fundamentals-timeseries/v1/finance/timeseries/{symbol}"
+            ))
+            .query_param("symbol", symbol)
+            .query_param(
+                "type",
+                "annualTotalAssets,annualTotalLiabilitiesNetMinorityInterest,annualStockholdersEquity,annualCashAndCashEquivalents,annualLongTermDebt,annualOrdinarySharesNumber,annualCurrentAssets,annualCurrentLiabilities,annualAccountsReceivable,annualInventory,annualAccountsPayable,annualNetPPE,annualGoodwill,annualOtherIntangibleAssets",
+            )
+            .query_param("crumb", "crumb")
+            .query_param_exists("period1")
+            .query_param_exists("period2");
+        then.status(200).header("content-type", "application/json").body(
+            r#"{
+              "timeseries": {
+                "result": [{
+                  "meta": {},
+                  "timestamp": [1727654400],
+                  "annualTotalAssets": [{ "reportedValue": {} }],
+                  "annualOrdinarySharesNumber": [{ "reportedValue": {} }]
+                }],
+                "error": null
+              }
+            }"#,
+        );
+    });
+
+    let cashflow_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!(
+                "/ws/fundamentals-timeseries/v1/finance/timeseries/{symbol}"
+            ))
+            .query_param("symbol", symbol)
+            .query_param(
+                "type",
+                "annualOperatingCashFlow,annualCapitalExpenditure,annualFreeCashFlow,annualNetIncome,annualDepreciationAndAmortization",
+            )
+            .query_param("crumb", "crumb")
+            .query_param_exists("period1")
+            .query_param_exists("period2");
+        then.status(200).header("content-type", "application/json").body(
+            r#"{
+              "timeseries": {
+                "result": [{
+                  "meta": {},
+                  "timestamp": [1727654400],
+                  "annualOperatingCashFlow": [{ "reportedValue": {} }],
+                  "annualCapitalExpenditure": [{}]
+                }],
+                "error": null
+              }
+            }"#,
+        );
+    });
+
+    let ticker = make_ticker(&server, symbol);
+
+    assert!(ticker.income_stmt(None).await.unwrap().is_empty());
+    assert!(ticker.balance_sheet(None).await.unwrap().is_empty());
+    assert!(ticker.cashflow(None).await.unwrap().is_empty());
+
+    income_mock.assert();
+    balance_mock.assert();
+    cashflow_mock.assert();
+}
+
+#[tokio::test]
 async fn balance_sheet_new_fields_are_mapped_to_paft_names() {
     let server = MockServer::start();
     let symbol = "MSFT";
