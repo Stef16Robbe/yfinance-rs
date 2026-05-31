@@ -1,7 +1,7 @@
 use httpmock::Method::GET;
 use httpmock::MockServer;
 use url::Url;
-use yfinance_rs::{ApiPreference, Ticker, YfClient};
+use yfinance_rs::{Ticker, YfClient};
 
 #[tokio::test]
 async fn upgrades_downgrades_are_sorted_by_ts() {
@@ -36,7 +36,6 @@ async fn upgrades_downgrades_are_sorted_by_ts() {
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", "crumb")
         .build()
         .unwrap();

@@ -13,8 +13,7 @@ pub use retry::{Backoff, CacheEndpoint, CacheMode, RetryConfig};
 pub(crate) use urls::{SymbolEndpoint, normalize_symbol, normalize_symbols};
 
 use constants::{
-    DEFAULT_BASE_CHART, DEFAULT_BASE_QUOTE, DEFAULT_BASE_QUOTE_API, DEFAULT_COOKIE_URL,
-    DEFAULT_CRUMB_URL, USER_AGENT,
+    DEFAULT_BASE_CHART, DEFAULT_BASE_QUOTE_API, DEFAULT_COOKIE_URL, DEFAULT_CRUMB_URL, USER_AGENT,
 };
 use reqwest::Client;
 use std::collections::HashMap;
@@ -28,20 +27,6 @@ use tokio::sync::RwLock;
 use url::Url;
 
 const DEFAULT_CACHE_MAX_ENTRIES: usize = 1024;
-
-/// Defines the preferred data source for profile lookups when testing.
-///
-/// This enum is always available for API compatibility, but only has effect when
-/// the `test-mode` feature is enabled.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ApiPreference {
-    /// Try the API first, then fall back to scraping if the API fails. (Default)
-    ApiThenScrape,
-    /// Use only the `quoteSummary` API.
-    ApiOnly,
-    /// Use only the HTML scraping method.
-    ScrapeOnly,
-}
 
 #[derive(Debug)]
 struct CacheEntry {
@@ -132,7 +117,6 @@ struct ClientState {
 pub struct YfClient {
     http: Client,
     base_chart: Url,
-    base_quote: Url,
     base_quote_api: Url,
     base_quote_v7: Url,
     base_options_v7: Url,
@@ -146,9 +130,6 @@ pub struct YfClient {
 
     state: Arc<RwLock<ClientState>>,
     credential_fetch_lock: Arc<tokio::sync::Mutex<()>>,
-
-    #[cfg(feature = "test-mode")]
-    api_preference: ApiPreference,
 
     retry: RetryConfig,
     pub(crate) currency_cache: Arc<RwLock<HashMap<CurrencyCacheKey, ResolvedCurrency>>>,
@@ -195,11 +176,6 @@ impl YfClient {
 
     pub(crate) const fn base_insider_search(&self) -> &Url {
         &self.base_insider_search
-    }
-
-    #[cfg(feature = "test-mode")]
-    pub(crate) const fn api_preference(&self) -> ApiPreference {
-        self.api_preference
     }
 
     /// Returns `true` if in-memory caching is enabled for this client.
@@ -429,7 +405,6 @@ impl YfClient {
 pub struct YfClientBuilder {
     user_agent: Option<String>,
     base_chart: Option<Url>,
-    base_quote: Option<Url>,
     base_quote_api: Option<Url>,
     base_quote_v7: Option<Url>,
     base_options_v7: Option<Url>,
@@ -440,8 +415,6 @@ pub struct YfClientBuilder {
     cookie_url: Option<Url>,
     crumb_url: Option<Url>,
 
-    #[allow(dead_code)]
-    api_preference: Option<ApiPreference>,
     #[allow(dead_code)]
     preauth_cookie: Option<String>,
     #[allow(dead_code)]
@@ -472,14 +445,6 @@ impl YfClientBuilder {
     #[must_use]
     pub fn user_agent(mut self, ua: impl Into<String>) -> Self {
         self.user_agent = Some(ua.into());
-        self
-    }
-
-    /// Overrides the base URL for quote HTML pages (used for scraping).
-    /// Default: `https://finance.yahoo.com/quote/`.
-    #[must_use]
-    pub fn base_quote(mut self, url: Url) -> Self {
-        self.base_quote = Some(url);
         self
     }
 
@@ -585,21 +550,6 @@ impl YfClientBuilder {
     pub fn no_cache(mut self) -> Self {
         self.cache_ttl = None;
         self.cache_ttls.clear();
-        self
-    }
-
-    /// (Internal testing only) Chooses which data source path to use for profile lookups.
-    ///
-    /// This setting only has effect when the `test-mode` feature is enabled.
-    /// In normal usage, this setting is ignored.
-    #[doc(hidden)]
-    #[must_use]
-    #[allow(unused_variables, unused_mut)]
-    pub const fn _api_preference(mut self, pref: ApiPreference) -> Self {
-        #[cfg(feature = "test-mode")]
-        {
-            self.api_preference = Some(pref);
-        }
         self
     }
 
@@ -836,7 +786,6 @@ impl YfClientBuilder {
     /// Returns an error if the base URLs are invalid or the HTTP client fails to build.
     pub fn build(self) -> Result<YfClient, YfError> {
         let base_chart = self.base_chart.unwrap_or(Url::parse(DEFAULT_BASE_CHART)?);
-        let base_quote = self.base_quote.unwrap_or(Url::parse(DEFAULT_BASE_QUOTE)?);
         let base_quote_api = self
             .base_quote_api
             .unwrap_or(Url::parse(DEFAULT_BASE_QUOTE_API)?);
@@ -912,7 +861,6 @@ impl YfClientBuilder {
         Ok(YfClient {
             http,
             base_chart,
-            base_quote,
             base_quote_api,
             base_quote_v7,
             base_options_v7,
@@ -925,8 +873,6 @@ impl YfClientBuilder {
             user_agent,
             state: Arc::new(RwLock::new(initial_state)),
             credential_fetch_lock: Arc::new(tokio::sync::Mutex::new(())),
-            #[cfg(feature = "test-mode")]
-            api_preference: self.api_preference.unwrap_or(ApiPreference::ApiThenScrape),
             retry,
             currency_cache: Arc::new(RwLock::new(HashMap::new())),
             currency_hints: Arc::new(RwLock::new(HashMap::new())),

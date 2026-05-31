@@ -3,7 +3,7 @@ use httpmock::MockServer;
 use paft::money::{Currency, IsoCurrency, Price};
 use url::Url;
 use yfinance_rs::core::conversions::price_from_f64;
-use yfinance_rs::{ApiPreference, Ticker, YfClient};
+use yfinance_rs::{Ticker, YfClient};
 
 fn usd_price(value: f64) -> Price {
     price_from_f64(value, Currency::Iso(IsoCurrency::USD)).expect("known-good USD price")
@@ -55,7 +55,6 @@ async fn offline_price_target_happy() {
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", "crumb")
         .build()
         .unwrap();
@@ -139,7 +138,6 @@ async fn price_target_invalid_crumb_then_retry_succeeds() {
         )
         .cookie_url(Url::parse(&format!("{}/consent", server.base_url())).unwrap())
         .crumb_url(Url::parse(&format!("{}/v1/test/getcrumb", server.base_url())).unwrap())
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", "stale")
         .build()
         .unwrap();

@@ -1,13 +1,10 @@
-//! Public profile types + loading strategy (API first, then scrape).
+//! Public profile types + loading strategy.
 //!
 //! Internals are split into:
-//! - `api`:    quoteSummary v10 API path
-//! - `scrape`: HTML scrape + JSON extraction path
-//! - `internal`: common utilities for both API and scrape
-//! - `debug`:  optional debug dump helpers (only in debug builds or with `debug-dumps` feature)
+//! - `api`: quoteSummary v10 API path
+//! - `debug`: optional debug dump helpers (only in debug builds or with `debug-dumps` feature)
 
 mod api;
-mod scrape;
 
 #[cfg(feature = "debug-dumps")]
 pub(crate) mod debug;
@@ -83,28 +80,6 @@ fn resolve_fund_kind(
     }
 }
 
-/// Helper to contain the API->Scrape fallback logic.
-#[cfg_attr(feature = "tracing", tracing::instrument(skip(client), err, fields(symbol = %symbol)))]
-async fn load_with_fallback(
-    client: &YfClient,
-    symbol: &str,
-    options: &CallOptions,
-) -> Result<Profile, YfError> {
-    match api::load_from_quote_summary_api(client, symbol, options).await {
-        Ok(p) => Ok(p),
-        Err(e @ YfError::Auth(_)) => Err(e),
-        Err(e) => {
-            crate::core::logging::trace_warn!(
-                error = %e,
-                "profile API failed; falling back to scrape"
-            );
-            #[cfg(not(feature = "tracing"))]
-            let _ = &e;
-            scrape::load_from_scrape(client, symbol, options).await
-        }
-    }
-}
-
 async fn load_from_quote_summary_value_api(
     client: &YfClient,
     symbol: &str,
@@ -114,51 +89,13 @@ async fn load_from_quote_summary_value_api(
     api::load_from_quote_summary_result(client, symbol, root).await
 }
 
-async fn load_value_with_fallback(
-    client: &YfClient,
-    symbol: &str,
-    value: serde_json::Value,
-    options: &CallOptions,
-) -> Result<Profile, YfError> {
-    match load_from_quote_summary_value_api(client, symbol, value).await {
-        Ok(p) => Ok(p),
-        Err(e @ YfError::Auth(_)) => Err(e),
-        Err(e) => {
-            crate::core::logging::trace_warn!(
-                error = %e,
-                "profile batched API data failed; falling back to scrape"
-            );
-            #[cfg(not(feature = "tracing"))]
-            let _ = &e;
-            scrape::load_from_scrape(client, symbol, options).await
-        }
-    }
-}
-
 pub(crate) async fn load_profile_from_quote_summary_value(
     client: &YfClient,
     symbol: &str,
     value: serde_json::Value,
-    options: &CallOptions,
+    _options: &CallOptions,
 ) -> Result<Profile, YfError> {
-    #[cfg(not(feature = "test-mode"))]
-    {
-        load_value_with_fallback(client, symbol, value, options).await
-    }
-
-    #[cfg(feature = "test-mode")]
-    {
-        use crate::core::client::ApiPreference;
-        match client.api_preference() {
-            ApiPreference::ApiThenScrape => {
-                load_value_with_fallback(client, symbol, value, options).await
-            }
-            ApiPreference::ApiOnly => {
-                load_from_quote_summary_value_api(client, symbol, value).await
-            }
-            ApiPreference::ScrapeOnly => scrape::load_from_scrape(client, symbol, options).await,
-        }
-    }
+    load_from_quote_summary_value_api(client, symbol, value).await
 }
 
 pub(crate) async fn load_profile_with_options(
@@ -167,29 +104,12 @@ pub(crate) async fn load_profile_with_options(
     options: &CallOptions,
 ) -> Result<Profile, YfError> {
     let symbol = crate::core::client::normalize_symbol(symbol)?;
-
-    #[cfg(not(feature = "test-mode"))]
-    {
-        load_with_fallback(client, &symbol, options).await
-    }
-
-    #[cfg(feature = "test-mode")]
-    {
-        use crate::core::client::ApiPreference;
-        match client.api_preference() {
-            ApiPreference::ApiThenScrape => load_with_fallback(client, &symbol, options).await,
-            ApiPreference::ApiOnly => {
-                api::load_from_quote_summary_api(client, &symbol, options).await
-            }
-            ApiPreference::ScrapeOnly => scrape::load_from_scrape(client, &symbol, options).await,
-        }
-    }
+    api::load_from_quote_summary_api(client, &symbol, options).await
 }
 
 /// Loads the profile for a given symbol.
 ///
-/// This function will try to load the profile from the quote summary API first,
-/// and fall back to scraping the quote page if the API fails.
+/// This function loads the profile from Yahoo's quoteSummary API.
 ///
 /// # Errors
 ///

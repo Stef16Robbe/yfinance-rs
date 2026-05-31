@@ -1,9 +1,7 @@
 use httpmock::{Method::GET, MockServer};
 use paft::money::{Currency, IsoCurrency};
 use url::Url;
-use yfinance_rs::{
-    ApiPreference, ProjectionIssue, YfClient, YfError, YfWarning, analysis::AnalysisBuilder,
-};
+use yfinance_rs::{ProjectionIssue, YfClient, YfError, YfWarning, analysis::AnalysisBuilder};
 
 #[tokio::test]
 async fn missing_recommendation_trend_module_is_provider_unavailable() {
@@ -24,7 +22,6 @@ async fn missing_recommendation_trend_module_is_provider_unavailable() {
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", "crumb")
         .build()
         .unwrap();
@@ -75,7 +72,6 @@ async fn missing_earnings_trend_module_is_provider_unavailable() {
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", "crumb")
         .build()
         .unwrap();
@@ -126,7 +122,6 @@ async fn missing_price_target_module_is_provider_unavailable() {
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", "crumb")
         .build()
         .unwrap();
@@ -195,7 +190,6 @@ async fn recommendation_trend_missing_period_reports_dropped_row() {
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", "crumb")
         .build()
         .unwrap();
@@ -262,7 +256,6 @@ async fn recommendation_counts_report_invalid_present_values() {
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", "crumb")
         .build()
         .unwrap();
@@ -332,7 +325,6 @@ async fn upgrades_downgrades_keep_rows_when_optional_fields_are_invalid() {
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", "crumb")
         .build()
         .unwrap();
@@ -412,7 +404,6 @@ async fn price_target_reports_present_prices_when_currency_cannot_be_resolved() 
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", "crumb")
         .build()
         .unwrap();
@@ -482,7 +473,6 @@ async fn earnings_trend_omits_values_when_enriched_currency_is_invalid() {
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", "crumb")
         .build()
         .unwrap();
@@ -536,7 +526,6 @@ async fn price_target_accepts_override_currency_in_strict_mode() {
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", "crumb")
         .build()
         .unwrap();
@@ -582,7 +571,6 @@ async fn analyst_count_fractional_rounding_is_diagnostic() {
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", "crumb")
         .build()
         .unwrap();

@@ -148,9 +148,7 @@ pub mod stream;
 /// A high-level interface for a single ticker, providing access to all data types.
 pub mod ticker;
 
-// --- re-exports (public API remains the same names as before) ---
 // Core types that are provider-specific
-pub use core::client::ApiPreference;
 pub use core::{
     CacheEndpoint, CacheMode, DataQuality, ProjectionIssue, RetryConfig, YfClient, YfClientBuilder,
     YfCurrencyKind, YfCurrencySource, YfDiagnostics, YfError, YfEvidenceStrength, YfResponse,

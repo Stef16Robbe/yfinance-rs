@@ -135,8 +135,6 @@ pub enum CacheEndpoint {
     QuoteSummary,
     /// The fundamentals-timeseries endpoint.
     Fundamentals,
-    /// Yahoo Finance profile HTML pages.
-    ProfileHtml,
     /// The v7 options endpoint.
     Options,
     /// The news endpoint.
@@ -158,11 +156,9 @@ impl CacheEndpoint {
     const fn default_mode(self) -> EffectiveCacheMode {
         match self {
             Self::Quote | Self::Options | Self::News | Self::Screener => EffectiveCacheMode::Bypass,
-            Self::Chart
-            | Self::QuoteSummary
-            | Self::Fundamentals
-            | Self::ProfileHtml
-            | Self::Search => EffectiveCacheMode::Use,
+            Self::Chart | Self::QuoteSummary | Self::Fundamentals | Self::Search => {
+                EffectiveCacheMode::Use
+            }
         }
     }
 }

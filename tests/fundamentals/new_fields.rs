@@ -3,7 +3,7 @@ use httpmock::MockServer;
 use paft::money::{Currency, IsoCurrency, Money};
 use url::Url;
 use yfinance_rs::core::conversions::money_from_f64;
-use yfinance_rs::{ApiPreference, Ticker, YfClient};
+use yfinance_rs::{Ticker, YfClient};
 
 fn make_ticker(server: &MockServer, symbol: &str) -> Ticker {
     let client = YfClient::builder()
@@ -53,7 +53,6 @@ async fn calendar_maps_dividend_dates_to_distinct_paft_fields() {
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", "crumb")
         .build()
         .unwrap();

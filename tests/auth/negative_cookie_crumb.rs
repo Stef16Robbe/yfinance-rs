@@ -2,7 +2,7 @@ use crate::common;
 use httpmock::Method::GET;
 use httpmock::MockServer;
 use url::Url;
-use yfinance_rs::{ApiPreference, YfClient, YfError};
+use yfinance_rs::{YfClient, YfError};
 
 #[tokio::test]
 async fn missing_set_cookie_header_is_an_error() {
@@ -35,7 +35,6 @@ async fn missing_set_cookie_header_is_an_error() {
         )
         .cookie_url(Url::parse(&format!("{}/consent", server.base_url())).unwrap())
         .crumb_url(Url::parse(&format!("{}/v1/test/getcrumb", server.base_url())).unwrap())
-        ._api_preference(ApiPreference::ApiOnly)
         .build()
         .unwrap();
 
@@ -83,7 +82,6 @@ async fn invalid_crumb_body_is_an_error() {
         )
         .cookie_url(Url::parse(&format!("{}/consent", server.base_url())).unwrap())
         .crumb_url(Url::parse(&format!("{}/v1/test/getcrumb", server.base_url())).unwrap())
-        ._api_preference(ApiPreference::ApiOnly)
         .build()
         .unwrap();
 
@@ -133,7 +131,6 @@ async fn non_success_crumb_response_is_not_stored() {
         )
         .cookie_url(Url::parse(&format!("{}/consent", server.base_url())).unwrap())
         .crumb_url(Url::parse(&format!("{}/v1/test/getcrumb", server.base_url())).unwrap())
-        ._api_preference(ApiPreference::ApiOnly)
         .build()
         .unwrap();
 
@@ -185,7 +182,6 @@ async fn successful_crumb_response_is_trimmed() {
         )
         .cookie_url(Url::parse(&format!("{}/consent", server.base_url())).unwrap())
         .crumb_url(Url::parse(&format!("{}/v1/test/getcrumb", server.base_url())).unwrap())
-        ._api_preference(ApiPreference::ApiOnly)
         .build()
         .unwrap();
 

@@ -7,7 +7,6 @@ use crate::core::YfError;
 pub enum SymbolEndpoint {
     Chart,
     OptionsV7,
-    Quote,
     QuoteSummary,
     Timeseries,
 }
@@ -21,7 +20,6 @@ impl YfClient {
         let base = match endpoint {
             SymbolEndpoint::Chart => &self.base_chart,
             SymbolEndpoint::OptionsV7 => &self.base_options_v7,
-            SymbolEndpoint::Quote => &self.base_quote,
             SymbolEndpoint::QuoteSummary => &self.base_quote_api,
             SymbolEndpoint::Timeseries => &self.base_timeseries,
         };

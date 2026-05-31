@@ -10,9 +10,6 @@ pub const USER_AGENT: &str = concat!(
 /// Yahoo chart API base (symbol is appended).
 pub const DEFAULT_BASE_CHART: &str = "https://query1.finance.yahoo.com/v8/finance/chart/";
 
-/// Yahoo quote HTML base (symbol is appended).
-pub const DEFAULT_BASE_QUOTE: &str = "https://finance.yahoo.com/quote/";
-
 /// Yahoo quoteSummary API base (symbol is appended).
 pub const DEFAULT_BASE_QUOTE_API: &str =
     "https://query1.finance.yahoo.com/v10/finance/quoteSummary/";

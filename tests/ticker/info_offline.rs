@@ -2,7 +2,7 @@ use httpmock::{Method::GET, Mock, MockServer};
 use std::time::Duration;
 use url::Url;
 use yfinance_rs::{
-    ApiPreference, Ticker, YfClient,
+    Ticker, YfClient,
     core::client::{Backoff, CacheMode, RetryConfig},
 };
 
@@ -101,7 +101,6 @@ async fn offline_info_uses_recorded_fixtures() {
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", crumb)
         .build()
         .unwrap();
@@ -167,7 +166,6 @@ async fn info_with_diagnostics_does_not_fetch_dead_esg_module() {
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", crumb)
         .retry_enabled(false)
         .build()
@@ -206,7 +204,6 @@ async fn ticker_info_profile_respects_ticker_cache_bypass() {
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", crumb)
         .cache_ttl(Duration::from_mins(1))
         .retry_enabled(false)
@@ -239,7 +236,6 @@ async fn ticker_info_profile_respects_ticker_retry_policy() {
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", crumb)
         .retry_enabled(false)
         .build()

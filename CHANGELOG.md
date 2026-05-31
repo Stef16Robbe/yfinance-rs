@@ -28,6 +28,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `CacheMode` now has a policy-driven `Default` mode. Volatile endpoints such as quotes, options, news, and screeners bypass the response cache by default; use `CacheMode::Use` to opt them into caching.
 - Removed lossy tuple-based `Ticker::dividends()`, `Ticker::splits()`, and `Ticker::capital_gains()` helpers. Use `Ticker::actions()` and match on typed `Action` variants instead.
 - Removed the always-empty `Info::esg_scores` field. Yahoo no longer returns the backing `esgScores` module; use `Ticker::sustainability()` for explicit best-effort ESG requests.
+- Removed the legacy HTML scraping fallback for profile lookups. Profiles now load only from Yahoo's quoteSummary API.
+- Removed `YfClientBuilder::base_quote()`, which only configured the deleted Yahoo quote-page scraping path.
 
 ### Added
 
@@ -105,7 +107,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Fundamentals timeseries statements now process every flattened field in each Yahoo result object instead of silently keeping only one field when Yahoo groups multiple requested fields together.
 - Analyst estimate row-level currency fields no longer poison symbol-level inferred caches, and optional holder monetary values are omitted when currency cannot be resolved.
 - Analyst revenue estimate currency now stays scoped to analyst estimate rows instead of overwriting reporting-currency cache entries.
-- Option chains now route missing contract currency through the trading-currency resolver, allowing v7 quote enrichment, listing/exchange inference, and profile fallback instead of depending on already-converted quote prices.
+- Option chains now route missing contract currency through the trading-currency resolver, allowing v7 quote enrichment, listing/exchange inference, and profile enrichment instead of depending on already-converted quote prices.
 - Currency projection policy is now shared by analysis, fundamentals, holders, and options: invalid caller overrides stay hard errors, while invalid direct provider currencies, failed enrichment, or unresolved heuristics omit affected best-effort values with diagnostics.
 - Currency resolution now lets valid lower-priority provider hints such as quoteSummary reporting currency recover from invalid enriched quote hints, while preserving diagnostics for the malformed hint.
 - Centralized Yahoo crumb-auth retries so optional- and required-crumb endpoints clear stale cached crumbs and reacquire credentials when authenticated responses return 401/403, including quote v7, options, search, screener, quoteSummary, and fundamentals-timeseries.

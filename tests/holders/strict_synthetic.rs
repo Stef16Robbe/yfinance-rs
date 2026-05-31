@@ -1,8 +1,6 @@
 use httpmock::{Method::GET, MockServer};
 use url::Url;
-use yfinance_rs::{
-    ApiPreference, HoldersBuilder, ProjectionIssue, Ticker, YfClient, YfError, YfWarning,
-};
+use yfinance_rs::{HoldersBuilder, ProjectionIssue, Ticker, YfClient, YfError, YfWarning};
 
 const INSTITUTION_OWNERSHIP: &str = "institutionOwnership";
 const MAJOR_HOLDERS: &str = "majorHoldersBreakdown";
@@ -275,7 +273,6 @@ async fn optional_holder_value_is_omitted_when_currency_cannot_be_resolved() {
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", "crumb")
         .build()
         .unwrap();
@@ -328,7 +325,6 @@ async fn holder_diagnostics_report_present_value_with_unresolved_currency() {
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", "crumb")
         .build()
         .unwrap();
@@ -397,7 +393,6 @@ async fn strict_holder_value_rejects_invalid_enriched_currency_as_data_quality()
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", "crumb")
         .build()
         .unwrap();

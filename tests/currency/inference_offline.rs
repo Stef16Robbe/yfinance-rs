@@ -3,7 +3,7 @@ use httpmock::MockServer;
 use paft::money::{Currency, IsoCurrency};
 use url::Url;
 use yfinance_rs::core::{Interval, Range};
-use yfinance_rs::{ApiPreference, Ticker, YfClient};
+use yfinance_rs::{Ticker, YfClient};
 
 fn fixture(endpoint: &str, symbol: &str) -> String {
     crate::common::fixture(endpoint, symbol, "json")
@@ -137,7 +137,7 @@ async fn offline_currency_inference_uses_timeseries_currency_code_first() {
     assert_eq!(
         profile_mock.calls(),
         0,
-        "timeseries currencyCode should avoid profile fallback"
+        "timeseries currencyCode should avoid profile enrichment"
     );
     assert_eq!(
         fundamentals_mock.calls(),
@@ -326,7 +326,6 @@ async fn offline_gs2c_dual_listing_currency() {
             .unwrap(),
         )
         .base_chart(Url::parse(&format!("{}/v8/finance/chart/", server.base_url())).unwrap())
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", "crumb")
         .build()
         .unwrap();

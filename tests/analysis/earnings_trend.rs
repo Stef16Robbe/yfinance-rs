@@ -2,8 +2,8 @@ use httpmock::{Method::GET, MockServer};
 use paft::money::{Currency, IsoCurrency};
 use url::Url;
 use yfinance_rs::{
-    ApiPreference, Ticker, YfClient, YfCurrencyKind, YfCurrencySource, YfEvidenceStrength,
-    YfWarning, analysis::AnalysisBuilder,
+    Ticker, YfClient, YfCurrencyKind, YfCurrencySource, YfEvidenceStrength, YfWarning,
+    analysis::AnalysisBuilder,
 };
 
 fn fixture(endpoint: &str, symbol: &str) -> String {
@@ -127,7 +127,6 @@ async fn earnings_trend_reports_inferred_analyst_currency_from_quote_enrichment(
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", "crumb")
         .build()
         .unwrap();
@@ -171,7 +170,6 @@ async fn offline_earnings_trend_uses_recorded_fixture() {
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", "crumb")
         .build()
         .unwrap();
@@ -261,7 +259,6 @@ async fn earnings_trend_revenue_currency_does_not_poison_reporting_currency_cach
             ))
             .unwrap(),
         )
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", "crumb")
         .build()
         .unwrap();

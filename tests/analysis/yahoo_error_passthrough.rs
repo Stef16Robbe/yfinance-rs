@@ -1,7 +1,7 @@
 use httpmock::Method::GET;
 use httpmock::MockServer;
 use url::Url;
-use yfinance_rs::{ApiPreference, Ticker, YfClient, YfError};
+use yfinance_rs::{Ticker, YfClient, YfError};
 
 #[tokio::test]
 async fn analysis_other_yahoo_errors_are_surfaced_without_retry() {
@@ -24,7 +24,6 @@ async fn analysis_other_yahoo_errors_are_surfaced_without_retry() {
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", "crumb")
         .build()
         .unwrap();

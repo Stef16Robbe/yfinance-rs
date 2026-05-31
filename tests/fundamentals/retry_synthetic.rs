@@ -1,7 +1,7 @@
 use httpmock::Method::GET;
 use httpmock::MockServer;
 use url::Url;
-use yfinance_rs::{ApiPreference, Ticker, YfClient};
+use yfinance_rs::{Ticker, YfClient};
 
 #[tokio::test]
 async fn fundamentals_invalid_crumb_then_retry_succeeds() {
@@ -66,7 +66,6 @@ async fn fundamentals_invalid_crumb_then_retry_succeeds() {
         )
         .cookie_url(Url::parse(&format!("{}/consent", server.base_url())).unwrap())
         .crumb_url(Url::parse(&format!("{}/v1/test/getcrumb", server.base_url())).unwrap())
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", "stale")
         .build()
         .unwrap();

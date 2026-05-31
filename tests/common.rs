@@ -119,18 +119,6 @@ pub fn mock_profile_api<'a>(server: &'a MockServer, symbol: &'a str, crumb: &'a 
 }
 
 #[must_use]
-pub fn mock_profile_scrape<'a>(server: &'a MockServer, symbol: &'a str) -> Mock<'a> {
-    server.mock(|when, then| {
-        when.method(GET)
-            .path(format!("/quote/{symbol}"))
-            .query_param("p", symbol);
-        then.status(200)
-            .header("content-type", "text/html")
-            .body(fixture("profile_html", symbol, "html"));
-    })
-}
-
-#[must_use]
 pub fn mock_quote_v7<'a>(server: &'a MockServer, symbol: &'a str) -> Mock<'a> {
     server.mock(|when, then| {
         when.method(GET)

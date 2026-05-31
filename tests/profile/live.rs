@@ -30,29 +30,3 @@ async fn live_profile_fund_for_record() {
     let _ = yfinance_rs::profile::load_profile(&client, "QQQ").await;
     let _ = yfinance_rs::profile::load_profile(&client, "VTSAX").await;
 }
-
-#[tokio::test]
-#[ignore = "exercise live Yahoo Finance API"]
-async fn live_profile_fund_scrape_for_record() {
-    if std::env::var("YF_RECORD").ok().as_deref() != Some("1") {
-        return;
-    }
-    let client = yfinance_rs::YfClient::builder()
-        ._api_preference(yfinance_rs::ApiPreference::ScrapeOnly)
-        .build()
-        .unwrap();
-    let _ = yfinance_rs::profile::load_profile(&client, "AAPL").await;
-}
-
-#[tokio::test]
-#[ignore = "exercise live Yahoo Finance API"]
-async fn live_profile_company_scrape_for_record() {
-    if std::env::var("YF_RECORD").ok().as_deref() != Some("1") {
-        return;
-    }
-    let client = yfinance_rs::YfClient::builder()
-        ._api_preference(yfinance_rs::ApiPreference::ScrapeOnly)
-        .build()
-        .unwrap();
-    let _ = yfinance_rs::profile::load_profile(&client, "QQQ").await;
-}

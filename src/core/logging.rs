@@ -48,16 +48,4 @@ macro_rules! trace_error {
     ($($tt:tt)*) => {};
 }
 
-#[cfg(feature = "tracing")]
-macro_rules! trace_only {
-    ($($tt:tt)*) => {
-        $($tt)*
-    };
-}
-
-#[cfg(not(feature = "tracing"))]
-macro_rules! trace_only {
-    ($($tt:tt)*) => {};
-}
-
-pub(crate) use {trace_debug, trace_error, trace_info, trace_only, trace_warn};
+pub(crate) use {trace_debug, trace_error, trace_info, trace_warn};

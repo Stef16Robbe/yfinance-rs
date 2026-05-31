@@ -2,7 +2,7 @@ use crate::common::setup_server;
 use httpmock::Method::GET;
 use paft::fundamentals::profile::Profile;
 use url::Url;
-use yfinance_rs::{ApiPreference, YfClient};
+use yfinance_rs::YfClient;
 
 #[tokio::test]
 async fn profile_api_company_happy() {
@@ -28,7 +28,6 @@ async fn profile_api_company_happy() {
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", crumb)
         .build()
         .unwrap();
@@ -73,7 +72,6 @@ async fn profile_api_fund_happy() {
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", crumb)
         .build()
         .unwrap();
@@ -117,7 +115,6 @@ async fn profile_api_mutual_fund_happy() {
         .base_quote_api(
             Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
         )
-        ._api_preference(ApiPreference::ApiOnly)
         ._preauth("cookie", crumb)
         .build()
         .unwrap();
