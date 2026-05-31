@@ -12,8 +12,9 @@ use crate::{
             TradingCurrencyEvidence, project_currency_resolution,
         },
         diagnostics::{
-            optional_decimal_f64, optional_money_i64, optional_price_f64, optional_u32_from_i64,
-            optional_u32_from_raw_f64,
+            diagnostic_key, nonempty, optional_decimal_f64, optional_money_i64_with_currency_issue,
+            optional_parsed, optional_price_f64_with_currency_issue, optional_u32_from_i64,
+            optional_u32_from_raw_f64, parse_optional, required_period,
         },
         wire::{RawNum, from_raw},
     },
@@ -31,65 +32,7 @@ use paft::fundamentals::analysis::{
     RevenueEstimate, RevisionPoint, TrendPoint,
 };
 use paft::money::Currency;
-// Period is available via prelude or directly; we use string_to_period for parsing, so import not needed
-
-fn nonempty(value: Option<&str>) -> Option<&str> {
-    value.map(str::trim).filter(|value| !value.is_empty())
-}
-
-fn parse_optional_projected<T>(
-    ctx: &mut ProjectionContext,
-    path: &'static str,
-    key: Option<String>,
-    field: &'static str,
-    value: Option<&str>,
-    parse: impl FnOnce(&str) -> Result<T, YfError>,
-) -> Result<Option<T>, YfError> {
-    let Some(value) = nonempty(value) else {
-        return Ok(None);
-    };
-    match parse(value) {
-        Ok(value) => Ok(Some(value)),
-        Err(err) => {
-            ctx.omitted_present_field(
-                path,
-                key,
-                ProjectionIssue::InvalidField {
-                    field,
-                    details: err.to_string(),
-                },
-            )?;
-            Ok(None)
-        }
-    }
-}
-
-fn required_period(
-    ctx: &mut ProjectionContext,
-    item: &'static str,
-    key: Option<String>,
-    field: &'static str,
-    value: Option<&str>,
-) -> Result<Option<Period>, YfError> {
-    let Some(value) = value.map(str::trim).filter(|value| !value.is_empty()) else {
-        ctx.dropped_item(item, key, ProjectionIssue::MissingRequiredField { field })?;
-        return Ok(None);
-    };
-    match string_to_period(value) {
-        Ok(period) => Ok(Some(period)),
-        Err(err) => {
-            ctx.dropped_item(
-                item,
-                key,
-                ProjectionIssue::InvalidField {
-                    field,
-                    details: err.to_string(),
-                },
-            )?;
-            Ok(None)
-        }
-    }
-}
+use std::collections::BTreeMap;
 
 #[derive(Clone, Copy)]
 struct RecommendationCountPaths {
@@ -231,30 +174,28 @@ fn map_recommendation_summary(
     let latest = trend.first();
 
     let (latest_period, sb, b, h, s, ss) = if let Some(t) = latest {
-        let latest_period =
-            if let Some(period) = t.period.as_deref().map(str::trim).filter(|v| !v.is_empty()) {
-                match string_to_period(period) {
-                    Ok(period) => Some(period),
-                    Err(err) => {
-                        ctx.omitted_present_field(
-                            "recommendationTrend.trend[0].period",
-                            t.period.clone(),
-                            ProjectionIssue::InvalidField {
-                                field: "period",
-                                details: err.to_string(),
-                            },
-                        )?;
-                        None
-                    }
-                }
-            } else {
+        let latest_period = match parse_optional(t.period.as_deref(), string_to_period) {
+            Ok(Some(period)) => Some(period),
+            Ok(None) => {
                 ctx.omitted_present_field(
                     "recommendationTrend.trend[0].period",
                     None,
                     ProjectionIssue::MissingRequiredField { field: "period" },
                 )?;
                 None
-            };
+            }
+            Err(err) => {
+                ctx.omitted_present_field(
+                    "recommendationTrend.trend[0].period",
+                    t.period.clone(),
+                    ProjectionIssue::InvalidField {
+                        field: "period",
+                        details: err.to_string(),
+                    },
+                )?;
+                None
+            }
+        };
         let (sb, b, h, s, ss) =
             recommendation_counts(&mut ctx, LATEST_COUNT_PATHS, t.period.clone(), t)?;
         (latest_period, sb, b, h, s, ss)
@@ -333,7 +274,7 @@ pub(super) async fn upgrades_downgrades(
                 continue;
             }
         };
-        let from_grade = parse_optional_projected::<RecommendationGrade>(
+        let from_grade = optional_parsed::<RecommendationGrade>(
             &mut ctx,
             "upgradeDowngradeHistory.history[].fromGrade",
             key.clone(),
@@ -341,7 +282,7 @@ pub(super) async fn upgrades_downgrades(
             h.from_grade.as_deref(),
             string_to_recommendation_grade,
         )?;
-        let to_grade = parse_optional_projected::<RecommendationGrade>(
+        let to_grade = optional_parsed::<RecommendationGrade>(
             &mut ctx,
             "upgradeDowngradeHistory.history[].toGrade",
             key.clone(),
@@ -361,7 +302,7 @@ pub(super) async fn upgrades_downgrades(
                 "gradeChange",
             ),
         };
-        let action = parse_optional_projected::<RecommendationAction>(
+        let action = optional_parsed::<RecommendationAction>(
             &mut ctx,
             action_path,
             key.clone(),
@@ -423,8 +364,8 @@ async fn map_analyst_price_target(
     let mean = from_raw(fd.target_mean_price);
     let high = from_raw(fd.target_high_price);
     let low = from_raw(fd.target_low_price);
-    let unit = if [mean, high, low].iter().any(Option::is_some) {
-        project_currency_resolution(
+    let (unit, currency_issue) = if [mean, high, low].iter().any(Option::is_some) {
+        let projected_currency = project_currency_resolution(
             &mut ctx,
             symbol,
             CurrencyKind::Trading,
@@ -437,33 +378,37 @@ async fn map_analyst_price_target(
                     options,
                 )
                 .await,
-        )?
-        .into_unit()
+        )?;
+        let currency_issue = projected_currency.issue().cloned();
+        (projected_currency.into_unit(), currency_issue)
     } else {
-        None
+        (None, None)
     };
 
-    let mean = optional_price_f64(
+    let mean = optional_price_f64_with_currency_issue(
         &mut ctx,
         "financialData.targetMeanPrice",
         Some(symbol.to_string()),
         unit.as_ref(),
+        currency_issue.as_ref(),
         mean,
         "analyst price value",
     )?;
-    let high = optional_price_f64(
+    let high = optional_price_f64_with_currency_issue(
         &mut ctx,
         "financialData.targetHighPrice",
         Some(symbol.to_string()),
         unit.as_ref(),
+        currency_issue.as_ref(),
         high,
         "analyst price value",
     )?;
-    let low = optional_price_f64(
+    let low = optional_price_f64_with_currency_issue(
         &mut ctx,
         "financialData.targetLowPrice",
         Some(symbol.to_string()),
         unit.as_ref(),
+        currency_issue.as_ref(),
         low,
         "analyst price value",
     )?;
@@ -538,23 +483,18 @@ struct AnalystCurrencyResolver<'a> {
 }
 
 impl AnalystCurrencyResolver<'_> {
-    async fn resolve_if_any<T: Sync>(
+    async fn resolve(
         &self,
         ctx: &mut ProjectionContext,
-        values: &[Option<T>],
         evidence: AnalystEstimateCurrencyEvidence<'_>,
-    ) -> Result<Option<ResolvedCurrencyUnit>, YfError> {
-        if !values.iter().any(Option::is_some) {
-            return Ok(None);
-        }
-
+    ) -> Result<ProjectedAnalystCurrency, YfError> {
         let direct_code = match evidence {
             AnalystEstimateCurrencyEvidence::Earnings(code)
             | AnalystEstimateCurrencyEvidence::Revenue(code)
             | AnalystEstimateCurrencyEvidence::EpsTrend(code) => code,
         };
 
-        Ok(project_currency_resolution(
+        let projected = project_currency_resolution(
             ctx,
             self.symbol,
             CurrencyKind::AnalystEstimate,
@@ -567,9 +507,117 @@ impl AnalystCurrencyResolver<'_> {
                     self.options,
                 )
                 .await,
-        )?
-        .into_unit())
+        )?;
+        let issue = projected.issue().cloned();
+        Ok(ProjectedAnalystCurrency {
+            unit: projected.into_unit(),
+            issue,
+        })
     }
+}
+
+#[derive(Default)]
+struct ProjectedAnalystCurrency {
+    unit: Option<ResolvedCurrencyUnit>,
+    issue: Option<ProjectionIssue>,
+}
+
+impl ProjectedAnalystCurrency {
+    const fn as_ref(&self) -> AnalystCurrencyRef<'_> {
+        AnalystCurrencyRef {
+            unit: self.unit.as_ref(),
+            issue: self.issue.as_ref(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Default)]
+struct AnalystCurrencyRef<'a> {
+    unit: Option<&'a ResolvedCurrencyUnit>,
+    issue: Option<&'a ProjectionIssue>,
+}
+
+#[derive(Clone, Copy)]
+enum AnalystCurrencyField {
+    Earnings,
+    Revenue,
+    EpsTrend,
+}
+
+impl AnalystCurrencyField {
+    const fn evidence(self, code: Option<&str>) -> AnalystEstimateCurrencyEvidence<'_> {
+        match self {
+            Self::Earnings => AnalystEstimateCurrencyEvidence::Earnings(code),
+            Self::Revenue => AnalystEstimateCurrencyEvidence::Revenue(code),
+            Self::EpsTrend => AnalystEstimateCurrencyEvidence::EpsTrend(code),
+        }
+    }
+
+    fn direct_code(self, raw: &RawEarningsTrendItem) -> Option<&str> {
+        match self {
+            Self::Earnings => raw.earnings.currency.as_deref(),
+            Self::Revenue => raw.revenue.currency.as_deref(),
+            Self::EpsTrend => raw.eps_trend.currency.as_deref(),
+        }
+    }
+
+    fn has_values(self, raw: &RawEarningsTrendItem) -> bool {
+        match self {
+            Self::Earnings => raw.earnings.price_values().iter().any(Option::is_some),
+            Self::Revenue => raw.revenue.money_values().iter().any(Option::is_some),
+            Self::EpsTrend => raw.eps_trend.price_values().iter().any(Option::is_some),
+        }
+    }
+}
+
+#[derive(Default)]
+struct AnalystCurrencyGroups {
+    currencies: BTreeMap<Option<String>, ProjectedAnalystCurrency>,
+}
+
+impl AnalystCurrencyGroups {
+    fn currency_for(&self, code: Option<&str>) -> AnalystCurrencyRef<'_> {
+        self.currencies.get(&currency_group_key(code)).map_or_else(
+            AnalystCurrencyRef::default,
+            ProjectedAnalystCurrency::as_ref,
+        )
+    }
+}
+
+struct ValidEarningsTrendItem {
+    period: Period,
+    raw: RawEarningsTrendItem,
+}
+
+async fn resolve_analyst_currency_groups(
+    resolver: &AnalystCurrencyResolver<'_>,
+    ctx: &mut ProjectionContext,
+    rows: &[ValidEarningsTrendItem],
+    field: AnalystCurrencyField,
+) -> Result<AnalystCurrencyGroups, YfError> {
+    let mut groups = AnalystCurrencyGroups::default();
+
+    for row in rows {
+        if !field.has_values(&row.raw) {
+            continue;
+        }
+
+        let key = currency_group_key(field.direct_code(&row.raw));
+        if groups.currencies.contains_key(&key) {
+            continue;
+        }
+
+        let currency = resolver
+            .resolve(ctx, field.evidence(key.as_deref()))
+            .await?;
+        groups.currencies.insert(key, currency);
+    }
+
+    Ok(groups)
+}
+
+fn currency_group_key(code: Option<&str>) -> Option<String> {
+    nonempty(code).map(str::to_owned)
 }
 
 #[derive(Default)]
@@ -704,10 +752,6 @@ impl From<Option<EpsRevisionsNode>> for RawEpsRevisions {
     }
 }
 
-fn diagnostic_key(key: Option<&str>) -> Option<String> {
-    key.map(str::to_owned)
-}
-
 struct RawEarningsTrendItem {
     period_key: Option<String>,
     growth: Option<f64>,
@@ -732,47 +776,51 @@ impl From<EarningsTrendItemNode> for RawEarningsTrendItem {
 
 #[derive(Clone, Copy)]
 struct EarningsTrendUnits<'a> {
-    earnings: Option<&'a ResolvedCurrencyUnit>,
-    revenue: Option<&'a ResolvedCurrencyUnit>,
-    eps: Option<&'a ResolvedCurrencyUnit>,
+    earnings: AnalystCurrencyRef<'a>,
+    revenue: AnalystCurrencyRef<'a>,
+    eps: AnalystCurrencyRef<'a>,
 }
 
 fn project_earnings_estimate(
     ctx: &mut ProjectionContext,
     period_key: Option<&str>,
     raw: &RawEarningsEstimate,
-    unit: Option<&ResolvedCurrencyUnit>,
+    currency: AnalystCurrencyRef<'_>,
 ) -> Result<EarningsEstimate, YfError> {
     Ok(EarningsEstimate {
-        avg: optional_price_f64(
+        avg: optional_price_f64_with_currency_issue(
             ctx,
             "earningsTrend[].earningsEstimate.avg",
             diagnostic_key(period_key),
-            unit,
+            currency.unit,
+            currency.issue,
             raw.avg,
             "analyst price value",
         )?,
-        low: optional_price_f64(
+        low: optional_price_f64_with_currency_issue(
             ctx,
             "earningsTrend[].earningsEstimate.low",
             diagnostic_key(period_key),
-            unit,
+            currency.unit,
+            currency.issue,
             raw.low,
             "analyst price value",
         )?,
-        high: optional_price_f64(
+        high: optional_price_f64_with_currency_issue(
             ctx,
             "earningsTrend[].earningsEstimate.high",
             diagnostic_key(period_key),
-            unit,
+            currency.unit,
+            currency.issue,
             raw.high,
             "analyst price value",
         )?,
-        year_ago_eps: optional_price_f64(
+        year_ago_eps: optional_price_f64_with_currency_issue(
             ctx,
             "earningsTrend[].earningsEstimate.yearAgoEps",
             diagnostic_key(period_key),
-            unit,
+            currency.unit,
+            currency.issue,
             raw.year_ago_eps,
             "analyst price value",
         )?,
@@ -797,38 +845,42 @@ fn project_revenue_estimate(
     ctx: &mut ProjectionContext,
     period_key: Option<&str>,
     raw: &RawRevenueEstimate,
-    unit: Option<&ResolvedCurrencyUnit>,
+    currency: AnalystCurrencyRef<'_>,
 ) -> Result<RevenueEstimate, YfError> {
     Ok(RevenueEstimate {
-        avg: optional_money_i64(
+        avg: optional_money_i64_with_currency_issue(
             ctx,
             "earningsTrend[].revenueEstimate.avg",
             diagnostic_key(period_key),
-            unit,
+            currency.unit,
+            currency.issue,
             raw.avg,
             "analyst monetary value",
         )?,
-        low: optional_money_i64(
+        low: optional_money_i64_with_currency_issue(
             ctx,
             "earningsTrend[].revenueEstimate.low",
             diagnostic_key(period_key),
-            unit,
+            currency.unit,
+            currency.issue,
             raw.low,
             "analyst monetary value",
         )?,
-        high: optional_money_i64(
+        high: optional_money_i64_with_currency_issue(
             ctx,
             "earningsTrend[].revenueEstimate.high",
             diagnostic_key(period_key),
-            unit,
+            currency.unit,
+            currency.issue,
             raw.high,
             "analyst monetary value",
         )?,
-        year_ago_revenue: optional_money_i64(
+        year_ago_revenue: optional_money_i64_with_currency_issue(
             ctx,
             "earningsTrend[].revenueEstimate.yearAgoRevenue",
             diagnostic_key(period_key),
-            unit,
+            currency.unit,
+            currency.issue,
             raw.year_ago_revenue,
             "analyst monetary value",
         )?,
@@ -853,16 +905,17 @@ fn push_eps_trend_point(
     ctx: &mut ProjectionContext,
     historical: &mut Vec<TrendPoint>,
     period_key: Option<&str>,
-    unit: Option<&ResolvedCurrencyUnit>,
+    currency: AnalystCurrencyRef<'_>,
     period: &str,
     path: &'static str,
     value: Option<f64>,
 ) -> Result<(), YfError> {
-    if let Some(value) = optional_price_f64(
+    if let Some(value) = optional_price_f64_with_currency_issue(
         ctx,
         path,
         diagnostic_key(period_key),
-        unit,
+        currency.unit,
+        currency.issue,
         value,
         "analyst price value",
     )? && let Ok(point) = TrendPoint::try_new_str(period, value)
@@ -877,13 +930,14 @@ fn project_eps_trend(
     ctx: &mut ProjectionContext,
     period_key: Option<&str>,
     raw: &RawEpsTrend,
-    unit: Option<&ResolvedCurrencyUnit>,
+    currency: AnalystCurrencyRef<'_>,
 ) -> Result<EpsTrend, YfError> {
-    let current = optional_price_f64(
+    let current = optional_price_f64_with_currency_issue(
         ctx,
         "earningsTrend[].epsTrend.current",
         diagnostic_key(period_key),
-        unit,
+        currency.unit,
+        currency.issue,
         raw.current,
         "analyst price value",
     )?;
@@ -893,7 +947,7 @@ fn project_eps_trend(
         ctx,
         &mut historical,
         period_key,
-        unit,
+        currency,
         "7d",
         "earningsTrend[].epsTrend.7daysAgo",
         raw.seven_days_ago,
@@ -902,7 +956,7 @@ fn project_eps_trend(
         ctx,
         &mut historical,
         period_key,
-        unit,
+        currency,
         "30d",
         "earningsTrend[].epsTrend.30daysAgo",
         raw.thirty_days_ago,
@@ -911,7 +965,7 @@ fn project_eps_trend(
         ctx,
         &mut historical,
         period_key,
-        unit,
+        currency,
         "60d",
         "earningsTrend[].epsTrend.60daysAgo",
         raw.sixty_days_ago,
@@ -920,7 +974,7 @@ fn project_eps_trend(
         ctx,
         &mut historical,
         period_key,
-        unit,
+        currency,
         "90d",
         "earningsTrend[].epsTrend.90daysAgo",
         raw.ninety_days_ago,
@@ -1094,7 +1148,7 @@ pub(super) async fn earnings_trend(
         options,
     };
 
-    let mut rows = Vec::with_capacity(trend.len());
+    let mut valid_rows = Vec::with_capacity(trend.len());
     for item in trend {
         let raw = RawEarningsTrendItem::from(item);
 
@@ -1109,41 +1163,43 @@ pub(super) async fn earnings_trend(
             continue;
         };
 
-        let earnings_values = raw.earnings.price_values();
-        let earnings_unit = currency_resolver
-            .resolve_if_any(
-                &mut ctx,
-                &earnings_values,
-                AnalystEstimateCurrencyEvidence::Earnings(raw.earnings.currency.as_deref()),
-            )
-            .await?;
+        valid_rows.push(ValidEarningsTrendItem { period, raw });
+    }
 
-        let revenue_values = raw.revenue.money_values();
-        let revenue_unit = currency_resolver
-            .resolve_if_any(
-                &mut ctx,
-                &revenue_values,
-                AnalystEstimateCurrencyEvidence::Revenue(raw.revenue.currency.as_deref()),
-            )
-            .await?;
+    let earnings_currencies = resolve_analyst_currency_groups(
+        &currency_resolver,
+        &mut ctx,
+        &valid_rows,
+        AnalystCurrencyField::Earnings,
+    )
+    .await?;
+    let revenue_currencies = resolve_analyst_currency_groups(
+        &currency_resolver,
+        &mut ctx,
+        &valid_rows,
+        AnalystCurrencyField::Revenue,
+    )
+    .await?;
+    let eps_currencies = resolve_analyst_currency_groups(
+        &currency_resolver,
+        &mut ctx,
+        &valid_rows,
+        AnalystCurrencyField::EpsTrend,
+    )
+    .await?;
 
-        let eps_values = raw.eps_trend.price_values();
-        let eps_unit = currency_resolver
-            .resolve_if_any(
-                &mut ctx,
-                &eps_values,
-                AnalystEstimateCurrencyEvidence::EpsTrend(raw.eps_trend.currency.as_deref()),
-            )
-            .await?;
+    let mut rows = Vec::with_capacity(valid_rows.len());
+    for item in valid_rows {
+        let raw = item.raw;
 
         rows.push(project_earnings_trend_row(
             &mut ctx,
-            period,
+            item.period,
             &raw,
             EarningsTrendUnits {
-                earnings: earnings_unit.as_ref(),
-                revenue: revenue_unit.as_ref(),
-                eps: eps_unit.as_ref(),
+                earnings: earnings_currencies.currency_for(raw.earnings.currency.as_deref()),
+                revenue: revenue_currencies.currency_for(raw.revenue.currency.as_deref()),
+                eps: eps_currencies.currency_for(raw.eps_trend.currency.as_deref()),
             },
         )?);
     }

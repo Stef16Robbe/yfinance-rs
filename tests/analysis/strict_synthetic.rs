@@ -490,9 +490,9 @@ async fn earnings_trend_omits_values_when_enriched_currency_is_invalid() {
         warning,
         YfWarning::OmittedPresentField {
             path: "earningsTrend[].revenueEstimate.avg",
-            reason: ProjectionIssue::CurrencyUnresolved,
+            reason: ProjectionIssue::InvalidCurrency { code },
             ..
-        }
+        } if code == "!!!"
     )));
 }
 

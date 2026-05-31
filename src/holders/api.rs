@@ -6,14 +6,17 @@ use super::wire::{
     InsiderRosterHolderNode, InsiderTransactionNode, InstitutionalHolderNode, OwnershipNode,
     V10Result,
 };
-use crate::core::wire::{from_raw, from_raw_date};
+use crate::core::wire::from_raw;
 use crate::core::{
     CallOptions, ProjectionContext, ProjectionIssue, YfClient, YfError, YfResponse,
-    conversions::{i64_to_datetime, string_to_insider_position, string_to_transaction_type},
+    conversions::{string_to_insider_position, string_to_transaction_type},
     currency_resolver::{
         CurrencyKind, ResolvedCurrencyUnit, TradingCurrencyEvidence, project_currency_resolution,
     },
-    diagnostics::{optional_decimal_f64, optional_money_u64},
+    diagnostics::{
+        nonempty_string, optional_decimal_f64, optional_money_u64_with_currency_issue,
+        required_date, required_parsed,
+    },
     quotesummary,
 };
 use paft::Decimal;
@@ -109,10 +112,6 @@ pub(super) async fn major_holders(
     Ok(ctx.finish(result))
 }
 
-fn nonempty(value: Option<String>) -> Option<String> {
-    value.filter(|value| !value.trim().is_empty())
-}
-
 fn holder_diag_key(
     value: &serde_json::Value,
     key_field: &'static str,
@@ -132,83 +131,6 @@ fn raw_field_present(value: &serde_json::Value, field: &'static str) -> bool {
         .get(field)
         .and_then(|value| value.get("raw"))
         .is_some_and(|value| !value.is_null())
-}
-
-fn parse_optional<T>(
-    value: Option<&str>,
-    parse: impl FnOnce(&str) -> Result<T, YfError>,
-) -> Result<Option<T>, YfError> {
-    value
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(parse)
-        .transpose()
-}
-
-fn required_row_value<T>(
-    value: Option<&str>,
-    parse: impl FnOnce(&str) -> Result<T, YfError>,
-) -> Option<Result<T, YfError>> {
-    match parse_optional(value, parse) {
-        Ok(Some(parsed)) => Some(Ok(parsed)),
-        Ok(None) => None,
-        Err(err) => Some(Err(err)),
-    }
-}
-
-fn required_parsed_row_value<T>(
-    ctx: &mut ProjectionContext,
-    item: &'static str,
-    key: Option<String>,
-    field: &'static str,
-    value: Option<&str>,
-    parse: impl FnOnce(&str) -> Result<T, YfError>,
-) -> Result<Option<T>, YfError> {
-    match required_row_value(value, parse) {
-        Some(Ok(value)) => Ok(Some(value)),
-        Some(Err(err)) => {
-            ctx.dropped_item(
-                item,
-                key,
-                ProjectionIssue::InvalidField {
-                    field,
-                    details: err.to_string(),
-                },
-            )?;
-            Ok(None)
-        }
-        None => {
-            ctx.dropped_item(item, key, ProjectionIssue::MissingRequiredField { field })?;
-            Ok(None)
-        }
-    }
-}
-
-fn required_date(
-    ctx: &mut ProjectionContext,
-    item: &'static str,
-    key: Option<String>,
-    field: &'static str,
-    value: Option<crate::core::wire::RawDate>,
-) -> Result<Option<chrono::DateTime<chrono::Utc>>, YfError> {
-    let Some(raw) = from_raw_date(value) else {
-        ctx.dropped_item(item, key, ProjectionIssue::MissingRequiredField { field })?;
-        return Ok(None);
-    };
-    match i64_to_datetime(raw) {
-        Ok(value) => Ok(Some(value)),
-        Err(err) => {
-            ctx.dropped_item(
-                item,
-                key,
-                ProjectionIssue::InvalidField {
-                    field,
-                    details: err.to_string(),
-                },
-            )?;
-            Ok(None)
-        }
-    }
 }
 
 async fn map_ownership_list(
@@ -250,7 +172,7 @@ async fn map_ownership_list(
             }
         };
         let key = h.organization.as_deref().map(str::to_string);
-        let Some(holder) = nonempty(h.organization) else {
+        let Some(holder) = nonempty_string(h.organization) else {
             ctx.dropped_item(
                 "institutional_holder",
                 key,
@@ -270,11 +192,12 @@ async fn map_ownership_list(
         else {
             continue;
         };
-        let value = optional_money_u64(
+        let value = optional_money_u64_with_currency_issue(
             ctx,
             "ownershipList[].value",
             Some(holder.clone()),
-            currency.as_ref(),
+            currency.unit.as_ref(),
+            currency.issue.as_ref(),
             from_raw(h.value),
             "holder monetary value",
         )?;
@@ -331,20 +254,29 @@ async fn optional_holder_value_currency(
     needed: bool,
     options: &CallOptions,
     ctx: &mut ProjectionContext,
-) -> Result<Option<ResolvedCurrencyUnit>, YfError> {
+) -> Result<ProjectedHolderCurrency, YfError> {
     if !needed {
-        return Ok(None);
+        return Ok(ProjectedHolderCurrency::default());
     }
 
-    Ok(project_currency_resolution(
+    let projected = project_currency_resolution(
         ctx,
         symbol,
         CurrencyKind::Trading,
         None,
         resolve_trading_currency(client, symbol, options).await,
-    )?
-    .into_unit()
-    .map(|unit| unit.major_unit()))
+    )?;
+    let issue = projected.issue().cloned();
+    Ok(ProjectedHolderCurrency {
+        unit: projected.into_unit().map(|unit| unit.major_unit()),
+        issue,
+    })
+}
+
+#[derive(Default)]
+struct ProjectedHolderCurrency {
+    unit: Option<ResolvedCurrencyUnit>,
+    issue: Option<ProjectionIssue>,
 }
 
 pub(super) async fn institutional_holders(
@@ -429,7 +361,7 @@ pub(super) async fn insider_transactions(
             }
         };
         let key = t.insider.as_deref().map(str::to_string);
-        let Some(insider) = nonempty(t.insider) else {
+        let Some(insider) = nonempty_string(t.insider) else {
             ctx.dropped_item(
                 "insider_transaction",
                 key,
@@ -437,7 +369,7 @@ pub(super) async fn insider_transactions(
             )?;
             continue;
         };
-        let Some(position) = required_parsed_row_value::<InsiderPosition>(
+        let Some(position) = required_parsed::<InsiderPosition>(
             &mut ctx,
             "insider_transaction",
             Some(insider.clone()),
@@ -448,7 +380,7 @@ pub(super) async fn insider_transactions(
         else {
             continue;
         };
-        let Some(transaction_type) = required_parsed_row_value::<TransactionType>(
+        let Some(transaction_type) = required_parsed::<TransactionType>(
             &mut ctx,
             "insider_transaction",
             Some(insider.clone()),
@@ -469,11 +401,12 @@ pub(super) async fn insider_transactions(
         else {
             continue;
         };
-        let value = optional_money_u64(
+        let value = optional_money_u64_with_currency_issue(
             &mut ctx,
             "insiderTransactions.transactions[].value",
             Some(insider.clone()),
-            currency.as_ref(),
+            currency.unit.as_ref(),
+            currency.issue.as_ref(),
             from_raw(t.value),
             "holder monetary value",
         )?;
@@ -526,7 +459,7 @@ pub(super) async fn insider_roster_holders(
             }
         };
         let key = h.name.as_deref().map(str::to_string);
-        let Some(name) = nonempty(h.name) else {
+        let Some(name) = nonempty_string(h.name) else {
             ctx.dropped_item(
                 "insider_roster_holder",
                 key,
@@ -534,7 +467,7 @@ pub(super) async fn insider_roster_holders(
             )?;
             continue;
         };
-        let Some(position) = required_parsed_row_value::<InsiderPosition>(
+        let Some(position) = required_parsed::<InsiderPosition>(
             &mut ctx,
             "insider_roster_holder",
             Some(name.clone()),
@@ -545,7 +478,7 @@ pub(super) async fn insider_roster_holders(
         else {
             continue;
         };
-        let Some(most_recent_transaction) = required_parsed_row_value::<TransactionType>(
+        let Some(most_recent_transaction) = required_parsed::<TransactionType>(
             &mut ctx,
             "insider_roster_holder",
             Some(name.clone()),
@@ -604,7 +537,7 @@ pub(super) async fn net_share_purchase_activity(
     };
 
     let period_key = n.period.clone();
-    let Some(period) = required_parsed_row_value(
+    let Some(period) = required_parsed(
         &mut ctx,
         "net_share_purchase_activity",
         period_key.clone(),

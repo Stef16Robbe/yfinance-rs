@@ -173,6 +173,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `YfClient::clear_cache()` now clears URL response cache, currency hint cache, resolved currency cache, and instrument cache; `invalidate_cache_entry()` remains URL-cache only.
 - In-memory response caching now has per-endpoint TTL overrides through `YfClientBuilder::cache_ttl_for`, a default 1024-entry cap, and least-recently-used eviction via `YfClientBuilder::cache_max_entries`.
 - Simplify fundamentals statement and analyst earnings-trend projection internals without changing the public API.
+- Extract shared internal projection helpers for required fields, optional parser diagnostics, and optional value projection; analyst estimate currencies are now resolved once per direct-code group instead of per row.
 - CI now covers `main` and `develop` with separate MSRV, formatting, lint, offline-test, and package dry-run jobs, while Yahoo live smoke testing runs in a separate non-required workflow.
 - The crates.io publish job now requires the protected `crates-io` GitHub Actions environment, and CI action pins have been refreshed.
 - Published crate packages now exclude repository workflow metadata and tracked macOS editor artifacts.

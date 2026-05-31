@@ -12,7 +12,8 @@ use crate::{
             project_currency_resolution,
         },
         diagnostics::{
-            optional_money_decimal, optional_money_decimal_with_currency_issue, optional_price_f64,
+            diagnostic_key, optional_money_decimal_with_currency_issue,
+            optional_price_f64_with_currency_issue, required_date, required_period,
         },
         wire::{RawDate, RawDecimal, RawNumU64},
     },
@@ -917,8 +918,8 @@ pub(super) async fn earnings(
             CurrencyHints::from_quote_summary_financial(e.financial_currency.as_deref()),
         )
         .await;
-    let currency = if earnings_has_monetary_values(&e) {
-        project_currency_resolution(
+    let (currency, currency_issue) = if earnings_has_monetary_values(&e) {
+        let projected_currency = project_currency_resolution(
             &mut ctx,
             symbol,
             CurrencyKind::Reporting,
@@ -931,10 +932,11 @@ pub(super) async fn earnings(
                     options,
                 )
                 .await,
-        )?
-        .into_unit()
+        )?;
+        let currency_issue = projected_currency.issue().cloned();
+        (projected_currency.into_unit(), currency_issue)
     } else {
-        None
+        (None, None)
     };
 
     let mut yearly = Vec::new();
@@ -965,19 +967,21 @@ pub(super) async fn earnings(
             };
             yearly.push(EarningsYear {
                 year,
-                revenue: optional_money_decimal(
+                revenue: optional_money_decimal_with_currency_issue(
                     &mut ctx,
                     "financialsChart.yearly[].revenue",
                     Some(year.to_string()),
                     currency.as_ref(),
+                    currency_issue.as_ref(),
                     y.revenue.as_ref().and_then(|x| x.raw),
                     "earnings monetary value",
                 )?,
-                earnings: optional_money_decimal(
+                earnings: optional_money_decimal_with_currency_issue(
                     &mut ctx,
                     "financialsChart.yearly[].earnings",
                     Some(year.to_string()),
                     currency.as_ref(),
+                    currency_issue.as_ref(),
                     y.earnings.as_ref().and_then(|x| x.raw),
                     "earnings monetary value",
                 )?,
@@ -992,43 +996,34 @@ pub(super) async fn earnings(
         .and_then(|fc| fc.quarterly.as_ref())
     {
         for q in rows {
-            let Some(period_raw) = q.date.as_deref() else {
-                ctx.dropped_item(
-                    "earnings_quarter",
-                    None,
-                    ProjectionIssue::MissingRequiredField { field: "date" },
-                )?;
+            let Some(period) = required_period(
+                &mut ctx,
+                "earnings_quarter",
+                q.date.clone(),
+                "date",
+                q.date.as_deref(),
+            )?
+            else {
                 continue;
             };
-            let period = match string_to_period(period_raw) {
-                Ok(period) => period,
-                Err(err) => {
-                    ctx.dropped_item(
-                        "earnings_quarter",
-                        Some(period_raw.to_string()),
-                        ProjectionIssue::InvalidField {
-                            field: "date",
-                            details: err.to_string(),
-                        },
-                    )?;
-                    continue;
-                }
-            };
+            let period_key = diagnostic_key(q.date.as_deref());
             quarterly.push(EarningsQuarter {
                 period,
-                revenue: optional_money_decimal(
+                revenue: optional_money_decimal_with_currency_issue(
                     &mut ctx,
                     "financialsChart.quarterly[].revenue",
-                    Some(period_raw.to_string()),
+                    period_key.clone(),
                     currency.as_ref(),
+                    currency_issue.as_ref(),
                     q.revenue.as_ref().and_then(|x| x.raw),
                     "earnings monetary value",
                 )?,
-                earnings: optional_money_decimal(
+                earnings: optional_money_decimal_with_currency_issue(
                     &mut ctx,
                     "financialsChart.quarterly[].earnings",
-                    Some(period_raw.to_string()),
+                    period_key,
                     currency.as_ref(),
+                    currency_issue.as_ref(),
                     q.earnings.as_ref().and_then(|x| x.raw),
                     "earnings monetary value",
                 )?,
@@ -1043,43 +1038,34 @@ pub(super) async fn earnings(
         .and_then(|ec| ec.quarterly.as_ref())
     {
         for q in rows {
-            let Some(period_raw) = q.date.as_deref() else {
-                ctx.dropped_item(
-                    "earnings_quarter_eps",
-                    None,
-                    ProjectionIssue::MissingRequiredField { field: "date" },
-                )?;
+            let Some(period) = required_period(
+                &mut ctx,
+                "earnings_quarter_eps",
+                q.date.clone(),
+                "date",
+                q.date.as_deref(),
+            )?
+            else {
                 continue;
             };
-            let period = match string_to_period(period_raw) {
-                Ok(period) => period,
-                Err(err) => {
-                    ctx.dropped_item(
-                        "earnings_quarter_eps",
-                        Some(period_raw.to_string()),
-                        ProjectionIssue::InvalidField {
-                            field: "date",
-                            details: err.to_string(),
-                        },
-                    )?;
-                    continue;
-                }
-            };
+            let period_key = diagnostic_key(q.date.as_deref());
             quarterly_eps.push(EarningsQuarterEps {
                 period,
-                actual: optional_price_f64(
+                actual: optional_price_f64_with_currency_issue(
                     &mut ctx,
                     "earningsChart.quarterly[].actual",
-                    Some(period_raw.to_string()),
+                    period_key.clone(),
                     currency.as_ref(),
+                    currency_issue.as_ref(),
                     q.actual.as_ref().and_then(|x| x.raw),
                     "earnings price value",
                 )?,
-                estimate: optional_price_f64(
+                estimate: optional_price_f64_with_currency_issue(
                     &mut ctx,
                     "earningsChart.quarterly[].estimate",
-                    Some(period_raw.to_string()),
+                    period_key,
                     currency.as_ref(),
+                    currency_issue.as_ref(),
                     q.estimate.as_ref().and_then(|x| x.raw),
                     "earnings price value",
                 )?,
@@ -1156,28 +1142,14 @@ fn calendar_earnings_dates(
     let mut out = Vec::new();
     for (idx, date) in dates.unwrap_or_default().into_iter().enumerate() {
         let key = Some(idx.to_string());
-        let Some(raw) = date.raw else {
-            ctx.dropped_item(
-                "calendar_earnings_date",
-                key,
-                ProjectionIssue::MissingRequiredField {
-                    field: "earningsDate",
-                },
-            )?;
-            continue;
-        };
-        match i64_to_datetime(raw) {
-            Ok(date) => out.push(date),
-            Err(err) => {
-                ctx.dropped_item(
-                    "calendar_earnings_date",
-                    key,
-                    ProjectionIssue::InvalidField {
-                        field: "earningsDate",
-                        details: err.to_string(),
-                    },
-                )?;
-            }
+        if let Some(date) = required_date(
+            ctx,
+            "calendar_earnings_date",
+            key,
+            "earningsDate",
+            Some(date),
+        )? {
+            out.push(date);
         }
     }
     Ok(out)

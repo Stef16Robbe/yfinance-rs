@@ -1,4 +1,6 @@
-use crate::core::{ProjectionContext, ProjectionIssue, YfError, wire::RawNum};
+use crate::core::{
+    ProjectionContext, ProjectionIssue, YfError, diagnostics::optional_projected, wire::RawNum,
+};
 
 pub fn optional_u32_from_i64(
     ctx: &mut ProjectionContext,
@@ -7,16 +9,9 @@ pub fn optional_u32_from_i64(
     field: &'static str,
     value: Option<i64>,
 ) -> Result<Option<u32>, YfError> {
-    let Some(value) = value else {
-        return Ok(None);
-    };
-
-    if let Ok(value) = u32::try_from(value) {
-        Ok(Some(value))
-    } else {
-        ctx.omitted_present_field(path, key, invalid_u32_count(field, value))?;
-        Ok(None)
-    }
+    optional_projected(ctx, path, key, value, |value| {
+        u32::try_from(value).map_err(|_| invalid_u32_count(field, value))
+    })
 }
 
 pub fn optional_u32_from_raw_f64(
