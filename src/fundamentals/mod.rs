@@ -13,6 +13,7 @@ use crate::core::{
     CallOptions, DataQuality, YfClient, YfError, YfResponse,
     client::{CacheMode, RetryConfig},
 };
+use chrono::{DateTime, Utc};
 use paft::money::Currency;
 
 /// A builder for fetching fundamental financial data (statements, earnings, etc.).
@@ -224,6 +225,9 @@ impl FundamentalsBuilder {
     /// Fetches the historical number of shares outstanding.
     ///
     /// If `quarterly` is true, fetches quarterly data, otherwise annual data is fetched.
+    /// The default request uses Yahoo's rolling 548-day share-count window, matching
+    /// Python yfinance's `get_shares_full(start=None, end=None)`. Use
+    /// [`Self::shares_between`] to request an explicit wider window.
     ///
     /// # Errors
     ///
@@ -234,6 +238,9 @@ impl FundamentalsBuilder {
 
     /// Fetches historical shares outstanding with projection diagnostics.
     ///
+    /// The default request uses Yahoo's rolling 548-day share-count window. Use
+    /// [`Self::shares_between_with_diagnostics`] to request an explicit wider window.
+    ///
     /// # Errors
     ///
     /// Returns a `YfError` if the request fails or strict data-quality mode rejects a projection issue.
@@ -241,11 +248,59 @@ impl FundamentalsBuilder {
         &self,
         quarterly: bool,
     ) -> Result<YfResponse<Vec<ShareCount>>, YfError> {
+        self.shares_window_with_diagnostics(quarterly, None, None)
+            .await
+    }
+
+    /// Fetches historical shares outstanding within an explicit UTC time window.
+    ///
+    /// If `quarterly` is true, fetches quarterly data, otherwise annual data is fetched.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `YfError` if the date range is invalid, the network request fails,
+    /// or the API response cannot be parsed.
+    pub async fn shares_between(
+        &self,
+        quarterly: bool,
+        start: DateTime<Utc>,
+        end: DateTime<Utc>,
+    ) -> Result<Vec<ShareCount>, YfError> {
+        Ok(self
+            .shares_between_with_diagnostics(quarterly, start, end)
+            .await?
+            .into_data())
+    }
+
+    /// Fetches historical shares outstanding within an explicit UTC time window with diagnostics.
+    ///
+    /// If `quarterly` is true, fetches quarterly data, otherwise annual data is fetched.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `YfError` if the date range is invalid, the request fails,
+    /// or strict data-quality mode rejects a projection issue.
+    pub async fn shares_between_with_diagnostics(
+        &self,
+        quarterly: bool,
+        start: DateTime<Utc>,
+        end: DateTime<Utc>,
+    ) -> Result<YfResponse<Vec<ShareCount>>, YfError> {
+        self.shares_window_with_diagnostics(quarterly, Some(start), Some(end))
+            .await
+    }
+
+    async fn shares_window_with_diagnostics(
+        &self,
+        quarterly: bool,
+        start: Option<DateTime<Utc>>,
+        end: Option<DateTime<Utc>>,
+    ) -> Result<YfResponse<Vec<ShareCount>>, YfError> {
         api::shares(
             &self.client,
             &self.symbol,
-            None,
-            None,
+            start,
+            end,
             quarterly,
             &self.options,
         )

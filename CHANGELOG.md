@@ -37,6 +37,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - History, holders, fundamentals, analysis, ESG, news, search, download, and aggregate info calls can now distinguish absent optional provider data from present Yahoo data that was dropped or omitted while projecting into strict `paft` values.
 - Add `YfWarning::CoercedPresentField` for present provider fields that are represented only after a lossy coercion such as rounding.
 - Add projection diagnostics entry points for quotes, fast info, key statistics, option chains, and screeners, including `Ticker::*_with_diagnostics()` methods and `QuotesBuilder::fetch_with_diagnostics()`.
+- Add explicit share-count windows through `Ticker::shares_between()`,
+  `Ticker::quarterly_shares_between()`, and
+  `FundamentalsBuilder::shares_between()`/`shares_between_with_diagnostics()`.
 
 ### Fixed
 

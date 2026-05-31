@@ -31,6 +31,7 @@ use super::{
 
 const SECONDS_PER_DAY: i64 = 24 * 60 * 60;
 const STATEMENT_LOOKBACK_DAYS: i64 = 365 * 5;
+// Matches Python yfinance's get_shares_full(start=None, end=None) default.
 const SHARE_COUNT_LOOKBACK_DAYS: i64 = 548;
 
 #[derive(serde::Deserialize)]
@@ -267,7 +268,10 @@ fn timeseries_window() -> (i64, i64) {
     window_ending_at_next_utc_midnight(Utc::now(), STATEMENT_LOOKBACK_DAYS)
 }
 
-fn shares_window(start: Option<DateTime<Utc>>, end: Option<DateTime<Utc>>) -> (i64, i64) {
+fn shares_window(
+    start: Option<DateTime<Utc>>,
+    end: Option<DateTime<Utc>>,
+) -> Result<(i64, i64), YfError> {
     let end_ts = end.map_or_else(
         || next_utc_midnight_timestamp(Utc::now()),
         |dt| dt.timestamp(),
@@ -277,7 +281,11 @@ fn shares_window(start: Option<DateTime<Utc>>, end: Option<DateTime<Utc>>) -> (i
         |dt| dt.timestamp(),
     );
 
-    (start_ts, end_ts)
+    if start_ts >= end_ts {
+        return Err(YfError::InvalidDates);
+    }
+
+    Ok((start_ts, end_ts))
 }
 
 fn window_ending_at_next_utc_midnight(now: DateTime<Utc>, lookback_days: i64) -> (i64, i64) {
@@ -1214,7 +1222,7 @@ pub(super) async fn shares(
 ) -> Result<YfResponse<Vec<ShareCount>>, YfError> {
     let symbol = normalize_symbol(symbol)?;
     let mut ctx = ProjectionContext::new("shares", options.data_quality());
-    let (start_ts, end_ts) = shares_window(start, end);
+    let (start_ts, end_ts) = shares_window(start, end)?;
 
     let type_key = if quarterly {
         "quarterlyOrdinarySharesNumber"
@@ -1303,7 +1311,7 @@ mod tests {
     use chrono::{Duration, TimeZone, Utc};
 
     use super::{
-        SECONDS_PER_DAY, SHARE_COUNT_LOOKBACK_DAYS, STATEMENT_LOOKBACK_DAYS,
+        SECONDS_PER_DAY, SHARE_COUNT_LOOKBACK_DAYS, STATEMENT_LOOKBACK_DAYS, YfError,
         next_utc_midnight_timestamp, shares_window, window_ending_at_next_utc_midnight,
     };
 
@@ -1346,7 +1354,7 @@ mod tests {
         let end = Utc.with_ymd_and_hms(2026, 5, 28, 12, 34, 56).unwrap();
         let expected_start = end - Duration::days(SHARE_COUNT_LOOKBACK_DAYS);
 
-        let (start_ts, end_ts) = shares_window(None, Some(end));
+        let (start_ts, end_ts) = shares_window(None, Some(end)).unwrap();
 
         assert_eq!(end_ts, end.timestamp());
         assert_eq!(start_ts, expected_start.timestamp());
@@ -1357,9 +1365,19 @@ mod tests {
         let start = Utc.with_ymd_and_hms(2024, 1, 2, 3, 4, 5).unwrap();
         let end = Utc.with_ymd_and_hms(2026, 5, 28, 12, 34, 56).unwrap();
 
-        let (start_ts, end_ts) = shares_window(Some(start), Some(end));
+        let (start_ts, end_ts) = shares_window(Some(start), Some(end)).unwrap();
 
         assert_eq!(start_ts, start.timestamp());
         assert_eq!(end_ts, end.timestamp());
+    }
+
+    #[test]
+    fn shares_window_rejects_inverted_range() {
+        let start = Utc.with_ymd_and_hms(2026, 5, 28, 12, 34, 56).unwrap();
+        let end = Utc.with_ymd_and_hms(2024, 1, 2, 3, 4, 5).unwrap();
+
+        let err = shares_window(Some(start), Some(end)).unwrap_err();
+
+        assert!(matches!(err, YfError::InvalidDates));
     }
 }

@@ -24,6 +24,7 @@ use crate::{
 use crate::{
     analysis::AnalysisBuilder, fundamentals::FundamentalsBuilder, history::HistoryBuilder,
 };
+use chrono::{DateTime, Utc};
 use paft::fundamentals::analysis::{
     Earnings, EarningsTrendRow, PriceTarget, RecommendationRow, RecommendationSummary,
     UpgradeDowngradeRow,
@@ -677,6 +678,10 @@ impl Ticker {
 
     /// Fetches historical annual shares outstanding.
     ///
+    /// This convenience method uses Yahoo's rolling 548-day share-count window, matching
+    /// Python yfinance's `get_shares_full(start=None, end=None)`. Use
+    /// [`Self::shares_between`] to request an explicit wider window.
+    ///
     /// # Errors
     ///
     /// This method will return an error if the request fails or the response cannot be parsed.
@@ -684,12 +689,48 @@ impl Ticker {
         self.fundamentals_builder().shares(false).await
     }
 
+    /// Fetches historical annual shares outstanding within an explicit UTC time window.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the date range is invalid, the request fails,
+    /// or the response cannot be parsed.
+    pub async fn shares_between(
+        &self,
+        start: DateTime<Utc>,
+        end: DateTime<Utc>,
+    ) -> Result<Vec<ShareCount>, YfError> {
+        self.fundamentals_builder()
+            .shares_between(false, start, end)
+            .await
+    }
+
     /// Fetches historical quarterly shares outstanding.
+    ///
+    /// This convenience method uses Yahoo's rolling 548-day share-count window, matching
+    /// Python yfinance's `get_shares_full(start=None, end=None)`. Use
+    /// [`Self::quarterly_shares_between`] to request an explicit wider window.
     ///
     /// # Errors
     ///
     /// This method will return an error if the request fails or the response cannot be parsed.
     pub async fn quarterly_shares(&self) -> Result<Vec<ShareCount>, YfError> {
         self.fundamentals_builder().shares(true).await
+    }
+
+    /// Fetches historical quarterly shares outstanding within an explicit UTC time window.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the date range is invalid, the request fails,
+    /// or the response cannot be parsed.
+    pub async fn quarterly_shares_between(
+        &self,
+        start: DateTime<Utc>,
+        end: DateTime<Utc>,
+    ) -> Result<Vec<ShareCount>, YfError> {
+        self.fundamentals_builder()
+            .shares_between(true, start, end)
+            .await
     }
 }

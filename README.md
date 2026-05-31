@@ -346,6 +346,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+`ticker.shares()` and `ticker.quarterly_shares()` use Yahoo's rolling 548-day
+share-count window, matching Python yfinance's `get_shares_full(start=None,
+end=None)` default. Use `shares_between(start, end)` or
+`quarterly_shares_between(start, end)` when you need older points.
+
 > 💡 Need to force a specific reporting currency? Pass `Some(paft::money::Currency::USD)` (or another currency) instead of `None` when calling the fundamentals/analysis helpers.
 
 ### Options Trading
