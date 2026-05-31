@@ -154,6 +154,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   `currencyCode` and compares parsed currency units, so invalid earlier codes or
   equivalent Yahoo unit aliases do not cause valid statement values to be omitted
   as conflicts.
+- Country/currency inference rules are now covered by an invariant test that
+  parses every configured currency code and forces both lazy lookup tables.
 
 ### Changed
 

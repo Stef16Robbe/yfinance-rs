@@ -340,10 +340,60 @@ fn is_word_boundary(bytes: &[u8], index: usize) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::currency_for_country;
+    use super::{
+        COUNTRY_CURRENCY_RULES, COUNTRY_TO_CURRENCY, FUZZY_COUNTRY_TO_CURRENCY,
+        currency_for_country,
+    };
+    use paft::money::Currency;
 
     fn currency_code(country: &str) -> Option<String> {
         currency_for_country(country).map(|currency| currency.to_string())
+    }
+
+    #[test]
+    fn country_currency_rules_are_well_formed() {
+        for &(country, code) in COUNTRY_CURRENCY_RULES {
+            assert!(!country.is_empty(), "empty country currency rule key");
+            assert_eq!(
+                country.trim(),
+                country,
+                "country currency rule key has surrounding whitespace: {country:?}"
+            );
+            assert!(
+                country.is_ascii(),
+                "country currency rule key must be ASCII: {country:?}"
+            );
+            assert!(
+                !country.bytes().any(|byte| byte.is_ascii_lowercase()),
+                "country currency rule key must be uppercase: {country:?}"
+            );
+            assert!(
+                code.parse::<Currency>().is_ok(),
+                "invalid currency code {code} for country currency rule {country}"
+            );
+        }
+
+        assert_eq!(COUNTRY_TO_CURRENCY.len(), COUNTRY_CURRENCY_RULES.len());
+        assert_eq!(
+            FUZZY_COUNTRY_TO_CURRENCY.len(),
+            COUNTRY_CURRENCY_RULES.len()
+        );
+
+        for &(country, code) in COUNTRY_CURRENCY_RULES {
+            let currency = code
+                .parse::<Currency>()
+                .expect("country currency rule code was already validated");
+
+            assert_eq!(COUNTRY_TO_CURRENCY.get(country), Some(&currency));
+            assert!(
+                FUZZY_COUNTRY_TO_CURRENCY
+                    .iter()
+                    .any(|(rule_country, rule_currency)| {
+                        *rule_country == country && rule_currency == &currency
+                    }),
+                "fuzzy country currency table is missing rule {country:?} -> {code}"
+            );
+        }
     }
 
     #[test]
