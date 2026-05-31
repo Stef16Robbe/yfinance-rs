@@ -132,6 +132,16 @@ impl DownloadBuilder {
         }
     }
 
+    fn validate_adjustment_flags(&self) -> Result<(), YfError> {
+        if self.auto_adjust && self.back_adjust {
+            return Err(YfError::InvalidParams(
+                "auto_adjust and back_adjust are mutually exclusive; use auto_adjust(false) with back_adjust(true)"
+                    .into(),
+            ));
+        }
+        Ok(())
+    }
+
     fn apply_rounding_if_enabled(&self, rows: &mut [Candle]) {
         if !self.rounding {
             return;
@@ -309,6 +319,9 @@ impl DownloadBuilder {
     }
 
     /// Sets whether to automatically adjust prices for splits and dividends. (Default: `true`)
+    ///
+    /// This is mutually exclusive with [`Self::back_adjust`]. If both are enabled, execution
+    /// returns [`YfError::InvalidParams`].
     #[must_use]
     pub const fn auto_adjust(mut self, yes: bool) -> Self {
         self.auto_adjust = yes;
@@ -318,7 +331,10 @@ impl DownloadBuilder {
     /// Sets whether to back-adjust prices.
     ///
     /// Back-adjustment adjusts the Open, High, and Low prices, but keeps the Close price as the
-    /// raw, unadjusted close. This forces an internal adjustment even if `auto_adjust` is false.
+    /// raw, unadjusted close. Call `.auto_adjust(false).back_adjust(true)` to request this mode.
+    ///
+    /// This is mutually exclusive with [`Self::auto_adjust`]. If both are enabled, execution
+    /// returns [`YfError::InvalidParams`].
     #[must_use]
     pub const fn back_adjust(mut self, yes: bool) -> Self {
         self.back_adjust = yes;
@@ -368,6 +384,8 @@ impl DownloadBuilder {
     ///
     /// Returns an error if any history request fails or strict data-quality mode rejects a projection issue.
     pub async fn run_with_diagnostics(&self) -> Result<YfResponse<DownloadResponse>, YfError> {
+        self.validate_adjustment_flags()?;
+
         if self.symbols.is_empty() {
             return Err(YfError::InvalidParams("no symbols specified".into()));
         }

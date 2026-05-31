@@ -278,6 +278,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+For back-adjusted downloads, use `.auto_adjust(false).back_adjust(true)`;
+`auto_adjust` and `back_adjust` are mutually exclusive modes.
+
 ### Real-time Streaming
 
 ```rust

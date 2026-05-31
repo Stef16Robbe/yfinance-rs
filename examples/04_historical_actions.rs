@@ -47,7 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // --- Part 2: Advanced Multi-Symbol Download with Customization ---
     let symbols = vec!["AAPL", "GOOGL", "MSFT", "AMZN"];
     println!("--- Downloading Custom Historical Data for Multiple Symbols ---");
-    println!("Fetching 1-week, auto-adjusted data for the last 30 days...");
+    println!("Fetching 1-week, back-adjusted data for the last 30 days...");
 
     let thirty_days_ago = Utc::now() - Duration::days(30);
     let now = Utc::now();
@@ -56,7 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .symbols(symbols)
         .between(thirty_days_ago, now)
         .interval(Interval::W1)
-        .auto_adjust(true) // default, but explicit here
+        .auto_adjust(false) // back_adjust is mutually exclusive with auto_adjust
         .back_adjust(true) // show back-adjustment
         .repair(true) // show outlier repair
         .rounding(true) // show rounding

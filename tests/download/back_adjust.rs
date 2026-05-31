@@ -1,8 +1,8 @@
 use httpmock::Method::GET;
 use httpmock::MockServer;
 use url::Url;
-use yfinance_rs::YfClient;
 use yfinance_rs::core::conversions::*;
+use yfinance_rs::{YfClient, YfError};
 
 #[tokio::test]
 async fn download_back_adjust_sets_close_to_raw() {
@@ -38,6 +38,7 @@ async fn download_back_adjust_sets_close_to_raw() {
 
     let res = yfinance_rs::DownloadBuilder::new(&client)
         .symbols([sym])
+        .auto_adjust(false)
         .back_adjust(true)
         .run()
         .await
@@ -59,4 +60,25 @@ async fn download_back_adjust_sets_close_to_raw() {
     // second bar unchanged
     assert!((money_to_f64(&s[1].open) - 100.0).abs() < 1e-9);
     assert!((money_to_f64(&s[1].close) - 100.0).abs() < 1e-9);
+}
+
+#[tokio::test]
+async fn download_rejects_auto_adjust_with_back_adjust() {
+    let client = YfClient::default();
+
+    let result = yfinance_rs::DownloadBuilder::new(&client)
+        .symbols(["TEST"])
+        .auto_adjust(true)
+        .back_adjust(true)
+        .run()
+        .await;
+
+    match result {
+        Err(YfError::InvalidParams(msg)) => {
+            assert!(msg.contains("auto_adjust"));
+            assert!(msg.contains("back_adjust"));
+        }
+        Err(err) => panic!("expected InvalidParams, got {err}"),
+        Ok(_) => panic!("expected InvalidParams"),
+    }
 }

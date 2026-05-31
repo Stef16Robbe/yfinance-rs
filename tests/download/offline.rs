@@ -429,7 +429,7 @@ async fn download_back_adjust_offline() {
 
     let back = DownloadBuilder::new(&client2)
         .symbols(["AAPL"])
-        .auto_adjust(false) // ignored internally when back_adjust(true)
+        .auto_adjust(false) // back_adjust uses an internal adjusted fetch for OHL
         .back_adjust(true)
         .run()
         .await
