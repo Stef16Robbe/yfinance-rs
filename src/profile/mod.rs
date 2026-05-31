@@ -70,14 +70,7 @@ fn resolve_fund_kind(
     legal_type: Option<String>,
     quote_kind: FundQuoteKind,
 ) -> Result<FundKind, YfError> {
-    if let Some(kind) = string_to_fund_kind(legal_type)? {
-        return Ok(kind);
-    }
-
-    match quote_kind {
-        FundQuoteKind::MutualFund => Ok(quote_kind.fund_kind()),
-        FundQuoteKind::Etf => Err(YfError::MissingData("fundProfile.legalType missing".into())),
-    }
+    Ok(string_to_fund_kind(legal_type)?.unwrap_or_else(|| quote_kind.fund_kind()))
 }
 
 async fn load_from_quote_summary_value_api(

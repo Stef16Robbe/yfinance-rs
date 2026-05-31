@@ -1,4 +1,5 @@
 use httpmock::{Method::GET, Mock, MockServer};
+use paft::fundamentals::profile::Profile;
 use std::time::Duration;
 use url::Url;
 use yfinance_rs::{
@@ -140,6 +141,66 @@ async fn offline_info_uses_recorded_fixtures() {
             .is_some(),
         "dividend payment date should fall back to v7 quote dividendDate"
     );
+}
+
+#[tokio::test]
+async fn ticker_info_synthetic_etf_missing_legal_type_keeps_profile() {
+    let server = MockServer::start();
+    let sym = "SPY";
+    let crumb = "crumb";
+    let _quote_mock = mock_info_quote(&server, sym);
+    let info_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", INFO_QUOTE_SUMMARY_MODULES)
+            .query_param("crumb", crumb);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                serde_json::json!({
+                    "quoteSummary": {
+                        "error": null,
+                        "result": [{
+                            "fundProfile": {
+                                "family": "State Street Investment Management"
+                            },
+                            "quoteType": {
+                                "exchange": "PCX",
+                                "quoteType": "ETF",
+                                "longName": "State Street SPDR S&P 500 ETF Trust",
+                                "symbol": sym
+                            }
+                        }]
+                    }
+                })
+                .to_string(),
+            );
+    });
+
+    let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._preauth("cookie", crumb)
+        .retry_enabled(false)
+        .build()
+        .unwrap();
+
+    let info = Ticker::new(&client, sym).info().await.unwrap();
+
+    info_mock.assert();
+    match info.profile {
+        Some(Profile::Fund(fund)) => {
+            assert_eq!(fund.name, "State Street SPDR S&P 500 ETF Trust");
+            assert_eq!(
+                fund.family.as_deref(),
+                Some("State Street Investment Management")
+            );
+            assert_eq!(fund.kind.to_string(), "ETF");
+        }
+        other => panic!("expected ETF profile, got {other:?}"),
+    }
 }
 
 #[tokio::test]

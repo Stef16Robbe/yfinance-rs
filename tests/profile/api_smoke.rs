@@ -92,6 +92,62 @@ async fn profile_api_fund_happy() {
 }
 
 #[tokio::test]
+async fn profile_api_synthetic_etf_missing_legal_type_uses_quote_type() {
+    let server = setup_server();
+    let sym = "SYNTH_ETF";
+    let crumb = "test-crumb";
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "assetProfile,quoteType,fundProfile")
+            .query_param("crumb", crumb);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                serde_json::json!({
+                    "quoteSummary": {
+                        "error": null,
+                        "result": [{
+                            "fundProfile": {
+                                "family": "Synthetic Family"
+                            },
+                            "quoteType": {
+                                "quoteType": "ETF",
+                                "longName": "Synthetic ETF",
+                                "symbol": sym
+                            }
+                        }]
+                    }
+                })
+                .to_string(),
+            );
+    });
+
+    let client = YfClient::builder()
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._preauth("cookie", crumb)
+        .build()
+        .unwrap();
+
+    let prof = yfinance_rs::profile::load_profile(&client, sym)
+        .await
+        .unwrap();
+    mock.assert();
+
+    match prof {
+        Profile::Fund(f) => {
+            assert_eq!(f.name, "Synthetic ETF");
+            assert_eq!(f.family.as_deref(), Some("Synthetic Family"));
+            assert_eq!(f.kind.to_string(), "ETF");
+        }
+        _ => panic!("expected Fund"),
+    }
+}
+
+#[tokio::test]
 async fn profile_api_mutual_fund_happy() {
     let server = setup_server();
     let sym = "VTSAX";
