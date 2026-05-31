@@ -1,10 +1,229 @@
-use httpmock::Method::GET;
-use httpmock::MockServer;
+use httpmock::{Method::GET, Mock, MockServer};
+use paft::Decimal;
 use paft::fundamentals::statistics::KeyStatistics;
 use paft::money::{Currency, IsoCurrency};
+use serde_json::Value;
 use url::Url;
-use yfinance_rs::core::conversions::money_to_f64;
+use yfinance_rs::core::conversions::{CurrencyValue, money_to_f64};
 use yfinance_rs::{ProjectionIssue, Ticker, YfClient, YfWarning};
+
+struct CurrencyScaleCase {
+    symbol: &'static str,
+    quote_currency: &'static str,
+    requires_market_cap: bool,
+    requires_eps: bool,
+    requires_dividend: bool,
+}
+
+const RECORDED_CURRENCY_SCALE_CASES: &[CurrencyScaleCase] = &[
+    CurrencyScaleCase {
+        symbol: "TSCO.L",
+        quote_currency: "GBp",
+        requires_market_cap: true,
+        requires_eps: true,
+        requires_dividend: true,
+    },
+    CurrencyScaleCase {
+        symbol: "SBK.JO",
+        quote_currency: "ZAc",
+        requires_market_cap: true,
+        requires_eps: true,
+        requires_dividend: true,
+    },
+    CurrencyScaleCase {
+        symbol: "MSFT",
+        quote_currency: "USD",
+        requires_market_cap: true,
+        requires_eps: true,
+        requires_dividend: true,
+    },
+    CurrencyScaleCase {
+        symbol: "SPY",
+        quote_currency: "USD",
+        requires_market_cap: false,
+        requires_eps: false,
+        requires_dividend: false,
+    },
+];
+
+fn recorded_quote(symbol: &str) -> (String, Value) {
+    let fixture = crate::common::fixture("quote_v7", symbol, "json");
+    let raw: Value = serde_json::from_str(&fixture).unwrap();
+    (fixture, raw)
+}
+
+fn recorded_key_statistics(symbol: &str) -> (String, Value) {
+    let fixture = crate::common::fixture(
+        crate::common::KEY_STATISTICS_FIXTURE_ENDPOINT,
+        symbol,
+        "json",
+    );
+    let raw: Value = serde_json::from_str(&fixture).unwrap();
+    (fixture, raw)
+}
+
+fn first_quote<'a>(raw: &'a Value, symbol: &str) -> &'a Value {
+    raw["quoteResponse"]["result"]
+        .as_array()
+        .and_then(|quotes| quotes.first())
+        .unwrap_or_else(|| panic!("quote_v7 fixture should contain {symbol}"))
+}
+
+fn quote_summary_result<'a>(raw: &'a Value, symbol: &str) -> &'a Value {
+    raw["quoteSummary"]["result"]
+        .as_array()
+        .and_then(|results| results.first())
+        .unwrap_or_else(|| panic!("key statistics fixture should contain {symbol}"))
+}
+
+fn major_currency_code(code: &str) -> &str {
+    match code {
+        "GBp" | "GBX" => "GBP",
+        "ZAc" => "ZAR",
+        "ILA" => "ILS",
+        _ => code,
+    }
+}
+
+fn quote_unit_scale(code: &str) -> f64 {
+    match code {
+        "GBp" | "GBX" | "ZAc" | "ILA" => 0.01,
+        _ => 1.0,
+    }
+}
+
+fn raw_decimal(raw: &Value) -> Option<Decimal> {
+    raw.as_i64()
+        .map(Decimal::from)
+        .or_else(|| raw.as_u64().map(Decimal::from))
+        .or_else(|| raw.as_f64().and_then(|value| Decimal::try_from(value).ok()))
+}
+
+fn raw_summary_f64(module: &Value, field: &str) -> Option<f64> {
+    module[field]["raw"].as_f64()
+}
+
+fn raw_summary_decimal(module: &Value, field: &str) -> Option<Decimal> {
+    raw_decimal(&module[field]["raw"])
+}
+
+fn mock_quote_v7_body<'a>(server: &'a MockServer, symbol: &'a str, body: String) -> Mock<'a> {
+    server.mock(move |when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", symbol);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    })
+}
+
+fn mock_key_statistics_body<'a>(
+    server: &'a MockServer,
+    symbol: &'a str,
+    crumb: &'a str,
+    body: String,
+) -> Mock<'a> {
+    server.mock(move |when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{symbol}"))
+            .query_param("modules", crate::common::KEY_STATISTICS_MODULES)
+            .query_param("crumb", crumb);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    })
+}
+
+fn key_statistics_client(server: &MockServer, crumb: &str) -> YfClient {
+    YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._preauth("cookie", crumb)
+        .build()
+        .unwrap()
+}
+
+fn assert_currency_value<T: CurrencyValue>(
+    value: &T,
+    expected_amount: f64,
+    expected_currency: &str,
+    symbol: &str,
+    field: &str,
+) {
+    assert_eq!(
+        value.currency().to_string(),
+        expected_currency,
+        "{symbol} {field} currency"
+    );
+    let actual = money_to_f64(value);
+    let tolerance = (expected_amount.abs() * 1e-9).max(1e-9);
+    assert!(
+        (actual - expected_amount).abs() <= tolerance,
+        "{symbol} {field} expected {expected_amount}, got {actual}"
+    );
+}
+
+fn assert_quote_price<T: CurrencyValue>(
+    value: Option<&T>,
+    raw: Option<f64>,
+    currency: &str,
+    symbol: &str,
+    field: &str,
+    required: bool,
+) {
+    let Some(raw) = raw else {
+        assert!(!required, "{symbol} fixture missing {field}");
+        return;
+    };
+    let value = value.unwrap_or_else(|| panic!("{symbol} {field} should map"));
+    assert_currency_value(
+        value,
+        raw * quote_unit_scale(currency),
+        major_currency_code(currency),
+        symbol,
+        field,
+    );
+}
+
+fn assert_major_price<T: CurrencyValue>(
+    value: Option<&T>,
+    raw: Option<f64>,
+    currency: &str,
+    symbol: &str,
+    field: &str,
+    required: bool,
+) {
+    let Some(raw) = raw else {
+        assert!(!required, "{symbol} fixture missing {field}");
+        return;
+    };
+    let value = value.unwrap_or_else(|| panic!("{symbol} {field} should map"));
+    assert_currency_value(value, raw, major_currency_code(currency), symbol, field);
+}
+
+fn assert_major_money<T: CurrencyValue>(
+    value: Option<&T>,
+    raw: Option<Decimal>,
+    currency: &str,
+    symbol: &str,
+    field: &str,
+    required: bool,
+) {
+    let Some(raw) = raw else {
+        assert!(!required, "{symbol} fixture missing {field}");
+        return;
+    };
+    let value = value.unwrap_or_else(|| panic!("{symbol} {field} should map"));
+    assert_eq!(
+        value.currency().to_string(),
+        major_currency_code(currency),
+        "{symbol} {field} currency"
+    );
+    assert_eq!(value.amount(), raw, "{symbol} {field} amount");
+}
 
 fn assert_v7_key_statistics(stats: &KeyStatistics, raw_quote: &serde_json::Value) {
     assert_eq!(
@@ -435,6 +654,171 @@ async fn key_statistics_market_cap_preserves_large_integer_precision() {
     let market_cap = stats.market_cap.as_ref().expect("market cap should map");
     assert_eq!(market_cap.amount(), paft::Decimal::from(exact));
     assert_eq!(market_cap.currency(), &Currency::Iso(IsoCurrency::USD));
+}
+
+#[tokio::test]
+async fn key_statistics_recorded_v7_currency_units_are_field_scoped() {
+    for case in RECORDED_CURRENCY_SCALE_CASES {
+        let server = MockServer::start();
+        let crumb = "test-crumb";
+        let (quote_fixture, raw_quote_fixture) = recorded_quote(case.symbol);
+        let (key_statistics_fixture, _) = recorded_key_statistics(case.symbol);
+        let raw_quote = first_quote(&raw_quote_fixture, case.symbol);
+        let quote_currency = raw_quote["currency"]
+            .as_str()
+            .unwrap_or_else(|| panic!("{} quote fixture missing currency", case.symbol));
+        let financial_currency = raw_quote["financialCurrency"]
+            .as_str()
+            .unwrap_or(quote_currency);
+        assert_eq!(quote_currency, case.quote_currency);
+
+        let quote_mock = mock_quote_v7_body(&server, case.symbol, quote_fixture);
+        let key_statistics_mock =
+            mock_key_statistics_body(&server, case.symbol, crumb, key_statistics_fixture);
+        let client = key_statistics_client(&server, crumb);
+
+        let stats = Ticker::new(&client, case.symbol)
+            .key_statistics()
+            .await
+            .unwrap();
+
+        quote_mock.assert();
+        key_statistics_mock.assert();
+
+        assert_major_money(
+            stats.market_cap.as_ref(),
+            raw_decimal(&raw_quote["marketCap"]),
+            quote_currency,
+            case.symbol,
+            "marketCap",
+            case.requires_market_cap,
+        );
+        assert_major_price(
+            stats.eps_trailing_twelve_months.as_ref(),
+            raw_quote["epsTrailingTwelveMonths"].as_f64(),
+            financial_currency,
+            case.symbol,
+            "epsTrailingTwelveMonths",
+            case.requires_eps,
+        );
+        assert_major_price(
+            stats.dividend_per_share_forward.as_ref(),
+            raw_quote["dividendRate"].as_f64(),
+            financial_currency,
+            case.symbol,
+            "dividendRate",
+            case.requires_dividend,
+        );
+        assert_quote_price(
+            stats.fifty_two_week_high.as_ref(),
+            raw_quote["fiftyTwoWeekHigh"].as_f64(),
+            quote_currency,
+            case.symbol,
+            "fiftyTwoWeekHigh",
+            true,
+        );
+        assert_quote_price(
+            stats.fifty_two_week_low.as_ref(),
+            raw_quote["fiftyTwoWeekLow"].as_f64(),
+            quote_currency,
+            case.symbol,
+            "fiftyTwoWeekLow",
+            true,
+        );
+    }
+}
+
+#[tokio::test]
+async fn key_statistics_recorded_quote_summary_currency_units_are_field_scoped() {
+    for case in RECORDED_CURRENCY_SCALE_CASES {
+        let server = MockServer::start();
+        let crumb = "test-crumb";
+        let (_, raw_quote_fixture) = recorded_quote(case.symbol);
+        let raw_quote = first_quote(&raw_quote_fixture, case.symbol);
+        let quote_type = raw_quote["quoteType"]
+            .as_str()
+            .unwrap_or_else(|| panic!("{} quote fixture missing quoteType", case.symbol));
+        let quote_currency = raw_quote["currency"]
+            .as_str()
+            .unwrap_or_else(|| panic!("{} quote fixture missing currency", case.symbol));
+        assert_eq!(quote_currency, case.quote_currency);
+
+        let (key_statistics_fixture, raw_key_statistics_fixture) =
+            recorded_key_statistics(case.symbol);
+        let quote_summary = quote_summary_result(&raw_key_statistics_fixture, case.symbol);
+        let summary_detail = &quote_summary["summaryDetail"];
+        let default_key_statistics = &quote_summary["defaultKeyStatistics"];
+        let summary_currency = summary_detail["currency"]
+            .as_str()
+            .unwrap_or_else(|| panic!("{} key statistics fixture missing currency", case.symbol));
+
+        let quote_body = serde_json::json!({
+            "quoteResponse": {
+                "result": [{
+                    "symbol": case.symbol,
+                    "quoteType": quote_type,
+                    "currency": quote_currency,
+                    "financialCurrency": raw_quote["financialCurrency"].as_str()
+                }],
+                "error": null
+            }
+        })
+        .to_string();
+
+        let quote_mock = mock_quote_v7_body(&server, case.symbol, quote_body);
+        let key_statistics_mock =
+            mock_key_statistics_body(&server, case.symbol, crumb, key_statistics_fixture);
+        let client = key_statistics_client(&server, crumb);
+
+        let stats = Ticker::new(&client, case.symbol)
+            .key_statistics()
+            .await
+            .unwrap();
+
+        quote_mock.assert();
+        key_statistics_mock.assert();
+
+        assert_major_money(
+            stats.market_cap.as_ref(),
+            raw_summary_decimal(summary_detail, "marketCap"),
+            summary_currency,
+            case.symbol,
+            "summaryDetail.marketCap",
+            case.requires_market_cap,
+        );
+        assert_major_price(
+            stats.eps_trailing_twelve_months.as_ref(),
+            raw_summary_f64(default_key_statistics, "trailingEps"),
+            summary_currency,
+            case.symbol,
+            "defaultKeyStatistics.trailingEps",
+            case.requires_eps,
+        );
+        assert_major_price(
+            stats.dividend_per_share_forward.as_ref(),
+            raw_summary_f64(summary_detail, "dividendRate"),
+            summary_currency,
+            case.symbol,
+            "summaryDetail.dividendRate",
+            case.requires_dividend,
+        );
+        assert_quote_price(
+            stats.fifty_two_week_high.as_ref(),
+            raw_summary_f64(summary_detail, "fiftyTwoWeekHigh"),
+            summary_currency,
+            case.symbol,
+            "summaryDetail.fiftyTwoWeekHigh",
+            true,
+        );
+        assert_quote_price(
+            stats.fifty_two_week_low.as_ref(),
+            raw_summary_f64(summary_detail, "fiftyTwoWeekLow"),
+            summary_currency,
+            case.symbol,
+            "summaryDetail.fiftyTwoWeekLow",
+            true,
+        );
+    }
 }
 
 #[tokio::test]

@@ -15,7 +15,7 @@ pub fn from_raw<T>(raw: Option<RawNum<T>>) -> Option<T> {
 
 #[derive(Deserialize, Clone, Copy, Debug)]
 pub struct RawDecimal {
-    #[serde(deserialize_with = "de_decimal_from_json")]
+    #[serde(default, deserialize_with = "de_decimal_from_json")]
     pub(crate) raw: Option<Decimal>,
 }
 
@@ -111,6 +111,6 @@ fn u64_from_json_value(value: Value) -> Result<u64, String> {
 
 #[derive(Deserialize, Clone, Copy)]
 pub struct RawNumU64 {
-    #[serde(deserialize_with = "de_u64_from_json")]
+    #[serde(default, deserialize_with = "de_u64_from_json")]
     pub(crate) raw: Option<u64>,
 }
