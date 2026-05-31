@@ -4,10 +4,10 @@ use serde::Deserialize;
 use serde_json::Value;
 use url::Url;
 
-use crate::core::client::{CacheEndpoint, CacheMode, RetryConfig};
+use crate::core::client::CacheEndpoint;
 use crate::core::yahoo_vocab::{parse_yahoo_exchange, parse_yahoo_quote_type};
 use crate::core::{CallOptions, ProjectionContext};
-use crate::{DataQuality, ProjectionIssue, YfClient, YfError, YfResponse};
+use crate::{ProjectionIssue, YfClient, YfError, YfResponse};
 
 #[allow(clippy::too_many_lines)]
 fn parse_search_body(body: &str, ctx: &mut ProjectionContext) -> Result<SearchResponse, YfError> {
@@ -184,32 +184,7 @@ impl SearchBuilder {
         }
     }
 
-    /// Sets the cache mode for this specific API call.
-    #[must_use]
-    pub const fn cache_mode(mut self, mode: CacheMode) -> Self {
-        self.options.cache_mode = mode;
-        self
-    }
-
-    /// Overrides the default retry policy for this specific API call.
-    #[must_use]
-    pub fn retry_policy(mut self, cfg: Option<RetryConfig>) -> Self {
-        self.options = self.options.with_retry_policy(cfg);
-        self
-    }
-
-    /// Sets how provider projection issues are handled.
-    #[must_use]
-    pub const fn data_quality(mut self, policy: DataQuality) -> Self {
-        self.options.data_quality = policy;
-        self
-    }
-
-    /// Fails when Yahoo data cannot be projected losslessly.
-    #[must_use]
-    pub const fn strict(self) -> Self {
-        self.data_quality(DataQuality::Strict)
-    }
+    crate::core::impl_call_option_setters!();
 
     /// (For testing) Overrides the base URL for the search API.
     #[must_use]

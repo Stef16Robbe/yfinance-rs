@@ -39,7 +39,7 @@ pub mod conversions;
 pub(crate) mod net;
 
 // convenient re-exports so most code can just `use crate::core::YfClient`
-pub(crate) use call_options::CallOptions;
+pub(crate) use call_options::{CallOptions, impl_call_option_setters};
 pub use client::{CacheEndpoint, CacheMode, RetryConfig, YfClient, YfClientBuilder};
 pub(crate) use diagnostics::ProjectionContext;
 pub use diagnostics::{

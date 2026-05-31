@@ -8,10 +8,7 @@ pub use model::{
     EarningsTrendRow, PriceTarget, RecommendationRow, RecommendationSummary, UpgradeDowngradeRow,
 };
 
-use crate::core::{
-    CallOptions, DataQuality, YfClient, YfError, YfResponse,
-    client::{CacheMode, RetryConfig},
-};
+use crate::core::{CallOptions, YfClient, YfError, YfResponse};
 use paft::money::Currency;
 
 pub(crate) struct InfoAnalysisParts {
@@ -36,32 +33,7 @@ impl AnalysisBuilder {
         }
     }
 
-    /// Sets the cache mode for this specific API call.
-    #[must_use]
-    pub const fn cache_mode(mut self, mode: CacheMode) -> Self {
-        self.options.cache_mode = mode;
-        self
-    }
-
-    /// Overrides the default retry policy for this specific API call.
-    #[must_use]
-    pub fn retry_policy(mut self, cfg: Option<RetryConfig>) -> Self {
-        self.options = self.options.with_retry_policy(cfg);
-        self
-    }
-
-    /// Sets how provider projection issues are handled.
-    #[must_use]
-    pub const fn data_quality(mut self, policy: DataQuality) -> Self {
-        self.options.data_quality = policy;
-        self
-    }
-
-    /// Fails when Yahoo data cannot be projected losslessly.
-    #[must_use]
-    pub const fn strict(self) -> Self {
-        self.data_quality(DataQuality::Strict)
-    }
+    crate::core::impl_call_option_setters!();
 
     /// Fetches the analyst recommendation trend over time.
     ///

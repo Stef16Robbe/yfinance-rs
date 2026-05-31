@@ -10,9 +10,9 @@ use super::query::{
     ScreenerQuery, SortDirection, SortField, YahooQuoteType,
 };
 use super::response::{ScreenerResponse, parse_screener_body_with_diagnostics};
+use crate::YfResponse;
 use crate::core::CallOptions;
-use crate::core::client::{CacheEndpoint, CacheMode, RetryConfig};
-use crate::{DataQuality, YfResponse};
+use crate::core::client::{CacheEndpoint, CacheMode};
 use crate::{YfClient, YfError};
 
 const DEFAULT_SCREENER_BASE: &str = "https://query1.finance.yahoo.com/v1/finance/screener";
@@ -226,32 +226,9 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
         self
     }
 
-    /// Sets the cache mode for this request.
-    #[must_use]
-    pub const fn cache_mode(mut self, mode: CacheMode) -> Self {
-        self.options.cache_mode = mode;
-        self
-    }
-
-    /// Overrides the retry policy for this request.
-    #[must_use]
-    pub fn retry_policy(mut self, cfg: Option<RetryConfig>) -> Self {
-        self.options = self.options.with_retry_policy(cfg);
-        self
-    }
-
-    /// Sets how provider projection issues are handled.
-    #[must_use]
-    pub const fn data_quality(mut self, policy: DataQuality) -> Self {
-        self.options.data_quality = policy;
-        self
-    }
-
-    /// Fails when Yahoo screener data cannot be projected losslessly.
-    #[must_use]
-    pub const fn strict(self) -> Self {
-        self.data_quality(DataQuality::Strict)
-    }
+    crate::core::impl_call_option_setters!(
+        strict_doc = "Fails when Yahoo screener data cannot be projected losslessly."
+    );
 
     /// Sets the requested row count.
     #[must_use]

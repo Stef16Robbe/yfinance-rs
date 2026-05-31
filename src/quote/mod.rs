@@ -1,7 +1,5 @@
 use crate::core::{
-    CallOptions, DataQuality, ProjectionContext, Quote, YfClient, YfError, YfResponse,
-    client::{CacheMode, RetryConfig},
-    quotes as core_quotes,
+    CallOptions, ProjectionContext, Quote, YfClient, YfError, YfResponse, quotes as core_quotes,
 };
 
 /// Fetches quotes for multiple symbols.
@@ -56,32 +54,9 @@ impl QuotesBuilder {
         }
     }
 
-    /// Sets the cache mode for this specific API call.
-    #[must_use]
-    pub const fn cache_mode(mut self, mode: CacheMode) -> Self {
-        self.options.cache_mode = mode;
-        self
-    }
-
-    /// Overrides the default retry policy for this specific API call.
-    #[must_use]
-    pub fn retry_policy(mut self, cfg: Option<RetryConfig>) -> Self {
-        self.options = self.options.with_retry_policy(cfg);
-        self
-    }
-
-    /// Sets how provider projection issues are handled.
-    #[must_use]
-    pub const fn data_quality(mut self, policy: DataQuality) -> Self {
-        self.options.data_quality = policy;
-        self
-    }
-
-    /// Fails when Yahoo quote data cannot be projected losslessly.
-    #[must_use]
-    pub const fn strict(self) -> Self {
-        self.data_quality(DataQuality::Strict)
-    }
+    crate::core::impl_call_option_setters!(
+        strict_doc = "Fails when Yahoo quote data cannot be projected losslessly."
+    );
 
     /// Replaces the current list of symbols with a new list.
     #[must_use]

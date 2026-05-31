@@ -1,11 +1,11 @@
 use futures::{StreamExt, TryStreamExt, stream};
 
 use crate::{
-    core::client::{CacheMode, RetryConfig, normalize_symbols},
+    core::client::normalize_symbols,
     core::conversions::f64_from_currency_value,
     core::{
-        CallOptions, Candle, DataQuality, HistoryResponse, Interval, ProjectionContext,
-        ProjectionIssue, Range, YfClient, YfError, YfResponse,
+        CallOptions, Candle, HistoryResponse, Interval, ProjectionContext, ProjectionIssue, Range,
+        YfClient, YfError, YfResponse,
     },
     history::HistoryBuilder,
 };
@@ -239,32 +239,7 @@ impl DownloadBuilder {
         }
     }
 
-    /// Sets the cache mode for all API calls made by this builder.
-    #[must_use]
-    pub const fn cache_mode(mut self, mode: CacheMode) -> Self {
-        self.options.cache_mode = mode;
-        self
-    }
-
-    /// Overrides the default retry policy for all API calls made by this builder.
-    #[must_use]
-    pub fn retry_policy(mut self, cfg: Option<RetryConfig>) -> Self {
-        self.options = self.options.with_retry_policy(cfg);
-        self
-    }
-
-    /// Sets how provider projection issues are handled.
-    #[must_use]
-    pub const fn data_quality(mut self, policy: DataQuality) -> Self {
-        self.options.data_quality = policy;
-        self
-    }
-
-    /// Fails when Yahoo data cannot be projected losslessly.
-    #[must_use]
-    pub const fn strict(self) -> Self {
-        self.data_quality(DataQuality::Strict)
-    }
+    crate::core::impl_call_option_setters!();
 
     /// Sets the maximum number of per-symbol history requests to run at once. (Default: `8`)
     #[must_use]
