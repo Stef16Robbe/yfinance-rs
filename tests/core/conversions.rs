@@ -97,6 +97,13 @@ fn yahoo_exchange_codes_normalize_to_provider_agnostic_exchanges() {
 }
 
 #[test]
+fn yahoo_exchange_listing_currency_uses_unparsed_aliases() {
+    assert_eq!(yahoo_exchange_to_listing_currency("NASDAQ"), Some("USD"));
+    assert_eq!(yahoo_exchange_to_listing_currency("LONDON"), Some("GBp"));
+    assert_eq!(yahoo_exchange_to_listing_currency("FRA"), Some("EUR"));
+}
+
+#[test]
 fn integer_money_conversions_return_errors_for_missing_currency_metadata() {
     let currency = Currency::from_str("ZZZ").unwrap();
 

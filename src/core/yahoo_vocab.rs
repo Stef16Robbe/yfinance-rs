@@ -109,6 +109,10 @@ pub fn parse_yahoo_quote_type(s: &str) -> Result<AssetKind, YfError> {
 /// Infer Yahoo listing currency from a Yahoo exchange token or display name.
 #[must_use]
 pub fn yahoo_exchange_to_listing_currency(exchange: &str) -> Option<&'static str> {
+    if let Some(currency) = yahoo_exchange_code_to_listing_currency(exchange) {
+        return Some(currency);
+    }
+
     let parsed = parse_yahoo_exchange(exchange).ok()?;
     match parsed {
         Exchange::NASDAQ | Exchange::NYSE | Exchange::AMEX | Exchange::BATS | Exchange::OTC => {
@@ -131,7 +135,7 @@ pub fn yahoo_exchange_to_listing_currency(exchange: &str) -> Option<&'static str
         Exchange::KRX => Some("KRW"),
         Exchange::SGX => Some("SGD"),
         Exchange::Other(code) if code.as_ref() == "NYSE_ARCA" => Some("USD"),
-        _ => yahoo_exchange_code_to_listing_currency(exchange),
+        _ => None,
     }
 }
 

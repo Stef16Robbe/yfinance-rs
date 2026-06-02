@@ -62,6 +62,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Listing-currency inference now reaches Yahoo exchange alias fallbacks such as
+  `NASDAQ`, `LONDON`, and `FRA` before strict exchange parsing can reject them.
 - WebSocket quote updates now preserve equity prices when Yahoo omits the
   currency field but includes an exchange code, and they no longer project
   protobuf default zero prices as real monetary values.
