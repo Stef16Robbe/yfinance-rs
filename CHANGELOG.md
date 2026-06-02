@@ -55,6 +55,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Fundamentals timeseries and share-count parsing no longer rejects Yahoo result items that
   omit the unused `meta` object.
+- Normal Yahoo diagnostics are reduced for current live responses by preferring chart
+  `exchangeTimezoneName`, accepting EPS revision `downLast*Days` casing, skipping
+  metadata-only timeseries items, and preserving blank-text no-cash insider exercise rows.
 - ETF profile loading now falls back to Yahoo `quoteType: ETF` when
   `fundProfile.legalType` is absent, matching the existing mutual-fund fallback.
 - General proxy configuration through `YfClientBuilder::proxy()` and

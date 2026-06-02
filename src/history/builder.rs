@@ -419,33 +419,46 @@ fn map_meta(
         return Ok(None);
     };
 
-    let timezone = match meta
-        .timezone
-        .as_deref()
-        .map(str::trim)
-        .filter(|timezone| !timezone.is_empty())
-    {
-        Some(timezone) => match timezone.parse::<Tz>() {
-            Ok(timezone) => Some(timezone),
-            Err(err) => {
-                ctx.omitted_present_field(
-                    "chart.meta.timezone",
-                    meta.symbol.clone(),
-                    ProjectionIssue::InvalidField {
-                        field: "timezone",
-                        details: err.to_string(),
-                    },
-                )?;
-                None
-            }
-        },
-        None => None,
-    };
+    let timezone = parse_history_timezone(meta, ctx)?;
 
     Ok(Some(HistoryMeta {
         timezone,
         utc_offset_seconds: meta.gmtoffset,
     }))
+}
+
+fn parse_history_timezone(
+    meta: &MetaNode,
+    ctx: &mut ProjectionContext,
+) -> Result<Option<Tz>, YfError> {
+    for (path, field, value) in [
+        (
+            "chart.meta.exchangeTimezoneName",
+            "exchangeTimezoneName",
+            meta.exchange_timezone_name.as_deref(),
+        ),
+        ("chart.meta.timezone", "timezone", meta.timezone.as_deref()),
+    ] {
+        let Some(timezone) = value.map(str::trim).filter(|timezone| !timezone.is_empty()) else {
+            continue;
+        };
+
+        match timezone.parse::<Tz>() {
+            Ok(timezone) => return Ok(Some(timezone)),
+            Err(err) => {
+                ctx.omitted_present_field(
+                    path,
+                    meta.symbol.clone(),
+                    ProjectionIssue::InvalidField {
+                        field,
+                        details: err.to_string(),
+                    },
+                )?;
+            }
+        }
+    }
+
+    Ok(None)
 }
 
 async fn cache_history_instrument(

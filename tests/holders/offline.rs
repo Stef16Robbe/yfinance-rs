@@ -1,9 +1,10 @@
 use httpmock::{Method::GET, Mock, MockServer};
 use paft::Decimal;
+use paft::fundamentals::holders::TransactionType;
 use serde_json::Value;
 use url::Url;
 use yfinance_rs::core::conversions::*;
-use yfinance_rs::{Ticker, YfClient};
+use yfinance_rs::{HoldersBuilder, ProjectionIssue, Ticker, YfClient, YfWarning};
 
 const INSTITUTION_OWNERSHIP: &str = "institutionOwnership";
 const FUND_OWNERSHIP: &str = "fundOwnership";
@@ -88,6 +89,28 @@ fn first_insider_transaction_value(raw: &str) -> u64 {
         .and_then(|result| result["insiderTransactions"]["transactions"].as_array())
         .and_then(|rows| rows.iter().find_map(|row| row["value"]["raw"].as_u64()))
         .expect("insider transaction fixture should contain a raw value")
+}
+
+fn insider_transaction_row_count(raw: &str) -> usize {
+    let raw: Value = serde_json::from_str(raw).unwrap();
+    raw["quoteSummary"]["result"]
+        .as_array()
+        .and_then(|results| results.first())
+        .and_then(|result| result["insiderTransactions"]["transactions"].as_array())
+        .map_or(0, Vec::len)
+}
+
+fn blank_insider_transaction_count(raw: &str) -> usize {
+    let raw: Value = serde_json::from_str(raw).unwrap();
+    raw["quoteSummary"]["result"]
+        .as_array()
+        .and_then(|results| results.first())
+        .and_then(|result| result["insiderTransactions"]["transactions"].as_array())
+        .map_or(0, |rows| {
+            rows.iter()
+                .filter(|row| row["transactionText"].as_str().is_some_and(str::is_empty))
+                .count()
+        })
 }
 
 #[tokio::test]
@@ -224,4 +247,46 @@ async fn recorded_insider_transaction_values_use_trading_major_currency() {
         .expect("AAPL fixture should map at least one insider transaction value");
     assert_eq!(value.currency().to_string(), "USD");
     assert_eq!(value.amount(), Decimal::from(expected_value));
+}
+
+#[tokio::test]
+async fn recorded_blank_insider_transactions_are_preserved_without_drop_diagnostics() {
+    let sym = "AAPL";
+    let server = MockServer::start();
+    let transactions_fixture = fixture("holders_api_insiderTransactions", sym);
+    let expected_rows = insider_transaction_row_count(&transactions_fixture);
+    let blank_rows = blank_insider_transaction_count(&transactions_fixture);
+    let transactions_mock = setup_holders_mock(&server, sym, INSIDER_TRANSACTIONS);
+    let quote_mock = crate::common::mock_quote_v7(&server, sym);
+    let client = holders_client(&server);
+
+    let response = HoldersBuilder::new(&client, sym)
+        .insider_transactions_with_diagnostics()
+        .await
+        .unwrap();
+
+    transactions_mock.assert();
+    quote_mock.assert();
+    assert!(blank_rows > 0, "fixture should contain Yahoo blank rows");
+    assert!(
+        !response.diagnostics.warnings.iter().any(|warning| matches!(
+            warning,
+            YfWarning::DroppedItem {
+                item: "insider_transaction",
+                reason: ProjectionIssue::MissingRequiredField {
+                    field: "transaction"
+                },
+                ..
+            }
+        )),
+        "{:#?}",
+        response.diagnostics.warnings
+    );
+    assert_eq!(response.data.len(), expected_rows);
+    let inferred_exercises = response
+        .data
+        .iter()
+        .filter(|row| row.transaction_type == TransactionType::Exercise && row.value.is_none())
+        .count();
+    assert!(inferred_exercises >= blank_rows);
 }

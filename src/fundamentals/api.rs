@@ -131,6 +131,9 @@ where
     let mut rows_map = BTreeMap::<i64, T>::new();
 
     for item in result_vec {
+        if item_is_empty_metadata(&item) {
+            continue;
+        }
         let Some(timestamps) = item.timestamp else {
             ctx.dropped_item(
                 "timeseries_item",
@@ -165,6 +168,10 @@ where
     }
 
     Ok(ctx.finish(rows_map.into_values().rev().collect()))
+}
+
+fn item_is_empty_metadata(item: &TimeseriesData) -> bool {
+    !item.meta.is_null() && item.timestamp.is_none() && item.values.is_empty()
 }
 
 async fn fetch_timeseries_body(

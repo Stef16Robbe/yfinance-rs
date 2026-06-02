@@ -360,6 +360,7 @@ pub(super) async fn insider_transactions(
                 continue;
             }
         };
+        let inferred_transaction_type = infer_blank_insider_transaction_type(&t);
         let key = t.insider.as_deref().map(str::to_string);
         let Some(insider) = nonempty_string(t.insider) else {
             ctx.dropped_item(
@@ -380,16 +381,21 @@ pub(super) async fn insider_transactions(
         else {
             continue;
         };
-        let Some(transaction_type) = required_parsed::<TransactionType>(
-            &mut ctx,
-            "insider_transaction",
-            Some(insider.clone()),
-            "transaction",
-            t.transaction.as_deref(),
-            string_to_transaction_type,
-        )?
-        else {
-            continue;
+        let transaction_type = if let Some(transaction_type) = inferred_transaction_type {
+            transaction_type
+        } else {
+            let Some(transaction_type) = required_parsed::<TransactionType>(
+                &mut ctx,
+                "insider_transaction",
+                Some(insider.clone()),
+                "transaction",
+                t.transaction.as_deref(),
+                string_to_transaction_type,
+            )?
+            else {
+                continue;
+            };
+            transaction_type
         };
         let Some(transaction_date) = required_date(
             &mut ctx,
@@ -423,6 +429,21 @@ pub(super) async fn insider_transactions(
     }
 
     Ok(ctx.finish(rows))
+}
+
+fn infer_blank_insider_transaction_type(t: &InsiderTransactionNode) -> Option<TransactionType> {
+    let blank_text = t
+        .transaction
+        .as_deref()
+        .is_none_or(|transaction| transaction.trim().is_empty());
+    let positive_shares = from_raw(t.shares).is_some_and(|shares| shares > 0);
+    let no_value = from_raw(t.value).is_none();
+
+    if blank_text && positive_shares && no_value {
+        Some(TransactionType::Exercise)
+    } else {
+        None
+    }
 }
 
 pub(super) async fn insider_roster_holders(

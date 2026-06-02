@@ -3,7 +3,7 @@ use httpmock::MockServer;
 use paft::money::{Currency, IsoCurrency, Money};
 use url::Url;
 use yfinance_rs::core::conversions::money_from_f64;
-use yfinance_rs::{Ticker, YfClient};
+use yfinance_rs::{FundamentalsBuilder, Ticker, YfClient};
 
 fn make_ticker(server: &MockServer, symbol: &str) -> Ticker {
     let client = YfClient::builder()
@@ -106,6 +106,60 @@ async fn income_statement_accepts_timeseries_items_without_meta() {
 
     mock.assert();
     let row = rows.first().expect("statement row should be present");
+    assert_eq!(row.total_revenue, Some(usd_i64(1000)));
+}
+
+#[tokio::test]
+async fn income_statement_skips_metadata_only_timeseries_items_losslessly() {
+    let server = MockServer::start();
+    let symbol = "METADATAONLY";
+    let body = r#"{
+      "timeseries": {
+        "result": [
+          { "meta": { "symbol": ["AAPL"], "type": ["quarterlyInterestExpense"] } },
+          {
+            "timestamp": [1727654400],
+            "annualTotalRevenue": [{"reportedValue": {"raw": 1000}}]
+          }
+        ],
+        "error": null
+      }
+    }"#;
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!(
+                "/ws/fundamentals-timeseries/v1/finance/timeseries/{symbol}"
+            ))
+            .query_param_exists("type");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let client = YfClient::builder()
+        .base_timeseries(
+            Url::parse(&format!(
+                "{}/ws/fundamentals-timeseries/v1/finance/timeseries/",
+                server.base_url()
+            ))
+            .unwrap(),
+        )
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let response = FundamentalsBuilder::new(&client, symbol)
+        .income_statement_with_diagnostics(false, Some(Currency::Iso(IsoCurrency::USD)))
+        .await
+        .unwrap();
+
+    mock.assert();
+    assert!(response.diagnostics.is_empty());
+    let row = response
+        .data
+        .first()
+        .expect("statement row should be present");
     assert_eq!(row.total_revenue, Some(usd_i64(1000)));
 }
 

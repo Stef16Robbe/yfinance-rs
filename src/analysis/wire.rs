@@ -154,8 +154,8 @@ pub struct EpsRevisionsNode {
     pub(crate) up_last_7_days: Option<RawNum<f64>>,
     #[serde(rename = "upLast30days")]
     pub(crate) up_last_30_days: Option<RawNum<f64>>,
-    #[serde(rename = "downLast7days")]
+    #[serde(rename = "downLast7days", alias = "downLast7Days")]
     pub(crate) down_last_7_days: Option<RawNum<f64>>,
-    #[serde(rename = "downLast30days")]
+    #[serde(rename = "downLast30days", alias = "downLast30Days")]
     pub(crate) down_last_30_days: Option<RawNum<f64>>,
 }

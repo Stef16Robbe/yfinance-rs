@@ -1,7 +1,7 @@
 use httpmock::Method::GET;
 use httpmock::MockServer;
 use url::Url;
-use yfinance_rs::{Ticker, YfClient};
+use yfinance_rs::{FundamentalsBuilder, Ticker, YfClient};
 
 fn fixture(endpoint: &str, symbol: &str) -> String {
     crate::common::fixture(endpoint, symbol, "json")
@@ -39,10 +39,14 @@ async fn offline_income_quarterly_uses_recorded_fixture() {
         .build()
         .unwrap();
 
-    let t = Ticker::new(&client, sym);
-    let rows = t.quarterly_income_stmt(None).await.unwrap();
+    let response = FundamentalsBuilder::new(&client, sym)
+        .income_statement_with_diagnostics(true, None)
+        .await
+        .unwrap();
 
     mock.assert();
+    assert!(response.diagnostics.is_empty());
+    let rows = response.data;
     assert!(!rows.is_empty(), "record with YF_RECORD=1 first");
 }
 

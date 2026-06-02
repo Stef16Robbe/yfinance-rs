@@ -1,4 +1,5 @@
 use httpmock::{Method::GET, MockServer};
+use paft::fundamentals::holders::TransactionType;
 use url::Url;
 use yfinance_rs::{HoldersBuilder, ProjectionIssue, Ticker, YfClient, YfError, YfWarning};
 
@@ -472,6 +473,61 @@ async fn insider_transaction_value_uses_trading_currency_when_financial_currency
     let value = rows[0].value.as_ref().expect("value should map");
     assert_eq!(value.currency().to_string(), "USD");
     assert_eq!(value.amount(), paft::Decimal::from(1234u64));
+}
+
+#[tokio::test]
+async fn blank_no_cash_insider_transaction_is_inferred_as_exercise() {
+    let sym = "AAPL";
+    let server = MockServer::start();
+
+    let holders_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "insiderTransactions")
+            .query_param("crumb", "crumb");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "quoteSummary": {
+                    "result": [{
+                      "insiderTransactions": {
+                        "transactions": [{
+                          "filerName": "COOK TIMOTHY D",
+                          "filerRelation": "Officer",
+                          "transactionText": "",
+                          "shares": { "raw": 131576 },
+                          "value": null,
+                          "startDate": { "raw": 1775001600 },
+                          "filerUrl": ""
+                        }]
+                      }
+                    }],
+                    "error": null
+                  }
+                }"#,
+            );
+    });
+
+    let client = YfClient::builder()
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let response = HoldersBuilder::new(&client, sym)
+        .insider_transactions_with_diagnostics()
+        .await
+        .unwrap();
+
+    holders_mock.assert();
+    assert!(response.diagnostics.is_empty());
+    assert_eq!(response.data.len(), 1);
+    assert_eq!(response.data[0].transaction_type, TransactionType::Exercise);
+    assert_eq!(response.data[0].shares, Some(131_576));
+    assert!(response.data[0].value.is_none());
 }
 
 #[tokio::test]

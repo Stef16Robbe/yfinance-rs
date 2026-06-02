@@ -89,6 +89,25 @@ const EARNINGS_TREND_HALF_PRESENT_REVISIONS: &str = r#"{
   }
 }"#;
 
+const EARNINGS_TREND_WITH_YAHOO_REVISION_CASING: &str = r#"{
+  "quoteSummary": {
+    "result": [{
+      "earningsTrend": {
+        "trend": [{
+          "period": "0q",
+          "epsRevisions": {
+            "upLast7days": { "raw": 2 },
+            "downLast7Days": { "raw": 1 },
+            "upLast30days": { "raw": 4 },
+            "downLast30Days": { "raw": 3 }
+          }
+        }]
+      }
+    }],
+    "error": null
+  }
+}"#;
+
 #[tokio::test]
 async fn earnings_trend_reports_inferred_analyst_currency_from_quote_enrichment() {
     let sym = "AAPL";
@@ -351,6 +370,53 @@ async fn earnings_trend_reports_half_present_eps_revision_fields() {
 }
 
 #[tokio::test]
+async fn earnings_trend_accepts_yahoo_eps_revision_down_days_casing() {
+    let sym = "REVCASING";
+    let server = MockServer::start();
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "earningsTrend")
+            .query_param("crumb", "crumb");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(EARNINGS_TREND_WITH_YAHOO_REVISION_CASING);
+    });
+
+    let client = YfClient::builder()
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let response = AnalysisBuilder::new(&client, sym)
+        .earnings_trend_with_diagnostics(None)
+        .await
+        .unwrap();
+
+    mock.assert();
+    assert!(response.diagnostics.is_empty());
+    assert_eq!(response.data.len(), 1);
+    let revisions = &response.data[0].eps_revisions;
+    assert_eq!(revisions.historical.len(), 2);
+    let seven_days = revisions
+        .find_by_period_str("7d")
+        .unwrap()
+        .expect("7d revision point should map");
+    assert_eq!(seven_days.up_count, 2);
+    assert_eq!(seven_days.down_count, 1);
+    let thirty_days = revisions
+        .find_by_period_str("30d")
+        .unwrap()
+        .expect("30d revision point should map");
+    assert_eq!(thirty_days.up_count, 4);
+    assert_eq!(thirty_days.down_count, 3);
+}
+
+#[tokio::test]
 async fn offline_earnings_trend_uses_recorded_fixture() {
     let sym = "AAPL";
     let server = MockServer::start();
@@ -373,10 +439,14 @@ async fn offline_earnings_trend_uses_recorded_fixture() {
         .build()
         .unwrap();
 
-    let t = Ticker::new(&client, sym);
-    let rows = t.earnings_trend(None).await.unwrap();
+    let response = AnalysisBuilder::new(&client, sym)
+        .earnings_trend_with_diagnostics(None)
+        .await
+        .unwrap();
 
     mock.assert();
+    assert!(response.diagnostics.is_empty());
+    let rows = response.data;
     assert_eq!(rows.len(), 4, "record with YF_RECORD=1 first");
 
     // Find any row with earnings estimate data

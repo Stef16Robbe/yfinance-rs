@@ -42,6 +42,8 @@ pub struct MetaNode {
     pub(crate) full_exchange_name: Option<String>,
     #[serde(default)]
     pub(crate) timezone: Option<String>,
+    #[serde(default, rename = "exchangeTimezoneName")]
+    pub(crate) exchange_timezone_name: Option<String>,
     #[serde(default)]
     pub(crate) gmtoffset: Option<i64>,
     #[serde(default)]

@@ -9,7 +9,11 @@ fn meta_body() -> String {
       "chart":{
         "result":[
           {
-            "meta": { "timezone":"America/New_York", "gmtoffset": -14400 },
+            "meta": {
+              "timezone":"EDT",
+              "exchangeTimezoneName":"America/New_York",
+              "gmtoffset": -14400
+            },
             "timestamp": [],
             "indicators": {
               "quote":[{ "open":[], "high":[], "low":[], "close":[], "volume":[] }],
@@ -72,6 +76,46 @@ async fn get_history_metadata_returns_timezone() {
         Some("America/New_York".to_string())
     );
     assert_eq!(m.utc_offset_seconds, Some(-14400));
+}
+
+#[tokio::test]
+async fn history_metadata_uses_exchange_timezone_name_without_warning() {
+    let server = MockServer::start();
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v8/finance/chart/MSFT")
+            .query_param("range", "1d")
+            .query_param("interval", "1d")
+            .query_param("events", "div|split|capitalGains");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(meta_body());
+    });
+
+    let client = YfClient::builder()
+        .base_chart(Url::parse(&format!("{}/v8/finance/chart/", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+
+    let response = Ticker::new(&client, "MSFT")
+        .history_builder()
+        .range(Range::D1)
+        .fetch_full_with_diagnostics()
+        .await
+        .unwrap();
+
+    mock.assert();
+    assert!(response.diagnostics.is_empty());
+    assert_eq!(
+        response
+            .data
+            .meta
+            .as_ref()
+            .and_then(|meta| meta.timezone.as_ref())
+            .map(std::string::ToString::to_string),
+        Some("America/New_York".to_string())
+    );
 }
 
 #[tokio::test]
