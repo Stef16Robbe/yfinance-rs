@@ -1756,9 +1756,8 @@ checksum = "d05e27ee213611ffe7d6348b942e8f942b37114c00cc03cec254295a4a17852e"
 
 [[package]]
 name = "paft"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a3995b75c63ac2c9291e97b958ef52e42af3b0a48589b8139d8176535cb17b8"
+version = "0.9.0"
+source = "git+https://github.com/paft-rs/paft?branch=develop#83cf9c00a21ff0c5c6a9fc1b66ff2c6c18649fe7"
 dependencies = [
  "iso_currency",
  "paft-aggregates",
@@ -1775,9 +1774,8 @@ dependencies = [
 
 [[package]]
 name = "paft-aggregates"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e56199dd75535a86e54086d9cebc96573ce089f3200509195b5d1baa59746103"
+version = "0.9.0"
+source = "git+https://github.com/paft-rs/paft?branch=develop#83cf9c00a21ff0c5c6a9fc1b66ff2c6c18649fe7"
 dependencies = [
  "chrono",
  "df-derive-macros",
@@ -1790,9 +1788,8 @@ dependencies = [
 
 [[package]]
 name = "paft-core"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bec022386ad00b0934e1de3d0658ad77ad88da78e25a8c1504a7d469e890958b"
+version = "0.9.0"
+source = "git+https://github.com/paft-rs/paft?branch=develop#83cf9c00a21ff0c5c6a9fc1b66ff2c6c18649fe7"
 dependencies = [
  "chrono",
  "paft-utils",
@@ -1802,18 +1799,16 @@ dependencies = [
 
 [[package]]
 name = "paft-decimal"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b83a121e6f3c0c041b833fb448e7d31c5edecb6d2758cea2246e88c9f3cba42"
+version = "0.9.0"
+source = "git+https://github.com/paft-rs/paft?branch=develop#83cf9c00a21ff0c5c6a9fc1b66ff2c6c18649fe7"
 dependencies = [
  "rust_decimal",
 ]
 
 [[package]]
 name = "paft-domain"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "020e7c645f64a8eaf5553443030577c40bf75c4d36be57a991a806c92baa4ea8"
+version = "0.9.0"
+source = "git+https://github.com/paft-rs/paft?branch=develop#83cf9c00a21ff0c5c6a9fc1b66ff2c6c18649fe7"
 dependencies = [
  "chrono",
  "df-derive-macros",
@@ -1828,9 +1823,8 @@ dependencies = [
 
 [[package]]
 name = "paft-fundamentals"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5562b5687159518fa7066c00faaf805d160e65a6c0189367844bb020d527cd0f"
+version = "0.9.0"
+source = "git+https://github.com/paft-rs/paft?branch=develop#83cf9c00a21ff0c5c6a9fc1b66ff2c6c18649fe7"
 dependencies = [
  "chrono",
  "df-derive-macros",
@@ -1845,9 +1839,8 @@ dependencies = [
 
 [[package]]
 name = "paft-market"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95acda9df87959a08dbce715ada0008adb80dd9e8d28b8b27f7b48efd6381b44"
+version = "0.9.0"
+source = "git+https://github.com/paft-rs/paft?branch=develop#83cf9c00a21ff0c5c6a9fc1b66ff2c6c18649fe7"
 dependencies = [
  "bitflags",
  "chrono",
@@ -1864,9 +1857,8 @@ dependencies = [
 
 [[package]]
 name = "paft-money"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0b5b85391fd26062d6d27f7d12911dbfc74c17ff7e99a95fd87aad81230f582"
+version = "0.9.0"
+source = "git+https://github.com/paft-rs/paft?branch=develop#83cf9c00a21ff0c5c6a9fc1b66ff2c6c18649fe7"
 dependencies = [
  "df-derive-macros",
  "iso_currency",
@@ -1879,9 +1871,8 @@ dependencies = [
 
 [[package]]
 name = "paft-prediction"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "27f7e5c7fe7010ed1b938aa8b4ba993a84243a35ac63799257d6f3e25ef4f045"
+version = "0.9.0"
+source = "git+https://github.com/paft-rs/paft?branch=develop#83cf9c00a21ff0c5c6a9fc1b66ff2c6c18649fe7"
 dependencies = [
  "chrono",
  "df-derive-macros",
@@ -1894,9 +1885,8 @@ dependencies = [
 
 [[package]]
 name = "paft-utils"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8dcdd035fcd9e6a264fd37b128010e783bfd33531580a0a3fe6d66d16570033e"
+version = "0.9.0"
+source = "git+https://github.com/paft-rs/paft?branch=develop#83cf9c00a21ff0c5c6a9fc1b66ff2c6c18649fe7"
 dependencies = [
  "df-derive-core",
  "polars",
@@ -2854,7 +2844,7 @@ dependencies = [
  "once_cell",
  "socket2 0.5.10",
  "tracing",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3606,7 +3596,7 @@ dependencies = [
  "cfg-if",
  "libc",
  "psm",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]

@@ -1615,9 +1615,9 @@ fn summary_candles(candles: &[Candle]) -> Result<String, String> {
 fn summary_history(history: &HistoryResponse) -> Result<String, String> {
     let candles = summary_candles(&history.candles)?;
     Ok(format!(
-        "{candles}; actions={} adjusted={} timezone={} offset={:?}",
+        "{candles}; actions={} price_basis={:?} timezone={} offset={:?}",
         history.actions.len(),
-        history.adjusted,
+        history.price_basis,
         history
             .meta
             .as_ref()
@@ -1937,7 +1937,7 @@ fn summary_insider_transactions(rows: &[InsiderTransaction]) -> Result<String, S
         ));
     }
     let sample = &rows[0];
-    let missing_urls = rows.iter().filter(|row| row.url.trim().is_empty()).count();
+    let missing_urls = rows.iter().filter(|row| row.url.is_none()).count();
     Ok(format!(
         "{} rows; missing_urls={missing_urls}; sample insider={} type={} shares={:?} value={} date={}",
         rows.len(),

@@ -19,7 +19,9 @@ use chrono_tz::Tz;
 use paft::domain::Instrument;
 use paft::market::action::Action;
 use paft::market::requests::history::{Interval, Range};
-use paft::market::responses::history::{Candle, HistoryMeta, HistoryResponse};
+use paft::market::responses::history::{
+    Candle, HistoryMeta, HistoryResponse, OhlcPriceBasis, PriceBasis,
+};
 
 use actions::extract_actions;
 use adjust::cumulative_split_after;
@@ -278,11 +280,13 @@ impl HistoryBuilder {
 
         // 5) Map metadata
         let meta_out = map_meta(fetched.meta.as_ref(), &mut ctx)?;
+        let price_basis =
+            history_price_basis(self.auto_adjust, &fetched.adjclose, &cum_split_after);
 
         Ok(ctx.finish(HistoryResponse {
             candles,
             actions: actions_out,
-            adjusted: self.auto_adjust,
+            price_basis,
             meta: meta_out,
             provider: (),
         }))
@@ -307,6 +311,27 @@ fn has_any_ohlc_value(quote: &crate::history::wire::QuoteBlock, len: usize) -> b
             || quote.low.get(idx).and_then(|value| *value).is_some()
             || quote.close.get(idx).and_then(|value| *value).is_some()
     })
+}
+
+fn history_price_basis(
+    auto_adjust: bool,
+    adjclose: &[Option<f64>],
+    cum_split_after: &[f64],
+) -> OhlcPriceBasis {
+    if !auto_adjust {
+        return OhlcPriceBasis::raw();
+    }
+
+    if adjclose.iter().any(Option::is_some) {
+        OhlcPriceBasis::uniform(PriceBasis::provider_latest_adjusted())
+    } else if cum_split_after
+        .iter()
+        .any(|factor| (*factor - 1.0).abs() > f64::EPSILON)
+    {
+        OhlcPriceBasis::uniform(PriceBasis::split_adjusted_latest())
+    } else {
+        OhlcPriceBasis::raw()
+    }
 }
 
 async fn history_trading_currency(

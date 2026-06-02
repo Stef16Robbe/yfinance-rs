@@ -424,7 +424,7 @@ pub(super) async fn insider_transactions(
             shares: from_raw(t.shares),
             value,
             transaction_date,
-            url: t.url.unwrap_or_default(),
+            url: nonempty_string(t.url),
         });
     }
 

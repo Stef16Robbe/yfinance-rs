@@ -23,6 +23,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `YfError` has new variants for provider-data and retry failures: `InvalidData`, `RequestNotCloneable`, `Money`, and `OptionUnderlyingTypeUnavailable`.
 - Removed `HistoryBuilder::keepna` and `DownloadBuilder::keepna`. `paft::Candle` requires valid OHLC prices, so malformed history rows are always dropped instead of fabricating placeholder prices.
 - `DownloadBuilder` now rejects simultaneous `auto_adjust(true)` and `back_adjust(true)` with `YfError::InvalidParams`; call `.auto_adjust(false).back_adjust(true)` for back-adjusted downloads.
+- History responses now use `paft`'s `price_basis` metadata instead of the old
+  `adjusted` boolean. Back-adjusted downloads report adjusted open/high/low and
+  raw close as per-field OHLC bases instead of ambiguous adjusted metadata.
 - Replaced the old lossy float-to-money/price/decimal helpers with checked conversion helpers. `core::conversions` is now hidden from public docs and remains internal Yahoo-to-`paft` adapter plumbing with no stability guarantee.
 - Missing or malformed provider classification/date fields now fail or drop the affected row instead of being coerced into plausible values such as epoch timestamps, `Hold`, `Maintain`, `Buy`, `Officer`, `Equity`, or `1970` periods.
 - Missing or unparseable Yahoo currency metadata no longer silently falls back to USD. Required monetary responses now return typed data errors when no valid currency can be resolved, and optional monetary fields/actions are omitted instead of fabricated.

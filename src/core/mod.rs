@@ -48,7 +48,8 @@ pub use diagnostics::{
 };
 pub use error::YfError;
 pub use models::{
-    Action, Candle, FastInfo, HistoryMeta, HistoryResponse, Interval, MovingAverages, Quote, Range,
-    Snapshot,
+    Action, AdjustmentAnchor, AdjustmentMethod, Candle, CorporateActionAdjustmentCause,
+    CorporateActionAdjustmentCauses, FastInfo, HistoryMeta, HistoryResponse, Interval,
+    MovingAverages, OhlcPriceBasis, PriceBasis, Quote, Range, Snapshot,
 };
 pub use services::{HistoryRequest, HistoryService};

@@ -3,7 +3,7 @@ use httpmock::MockServer;
 use url::Url;
 use yfinance_rs::core::Interval;
 use yfinance_rs::core::conversions::*;
-use yfinance_rs::{Action, HistoryBuilder, YfClient};
+use yfinance_rs::{Action, HistoryBuilder, OhlcPriceBasis, PriceBasis, YfClient};
 
 #[tokio::test]
 async fn history_auto_adjust_and_actions() {
@@ -63,7 +63,10 @@ async fn history_auto_adjust_and_actions() {
 
     mock.assert();
 
-    assert!(resp.adjusted);
+    assert_eq!(
+        resp.price_basis,
+        OhlcPriceBasis::uniform(PriceBasis::provider_latest_adjusted())
+    );
     assert_eq!(resp.candles.len(), 3);
 
     // t1 (1000): prices halved, volume stays as reported by Yahoo.

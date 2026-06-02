@@ -192,6 +192,10 @@ pub fn init_tracing_for_tests() {
 }
 
 // Explicitly re-export selected paft core types commonly used by users of this crate
-pub use crate::core::{Action, Candle, HistoryMeta, HistoryResponse, Quote};
+pub use crate::core::{
+    Action, AdjustmentAnchor, AdjustmentMethod, Candle, CorporateActionAdjustmentCause,
+    CorporateActionAdjustmentCauses, HistoryMeta, HistoryResponse, OhlcPriceBasis, PriceBasis,
+    Quote,
+};
 pub use crate::core::{Interval, Range};
 pub use paft::domain::{AssetKind, Exchange, Instrument, MarketState, Period, Symbol};

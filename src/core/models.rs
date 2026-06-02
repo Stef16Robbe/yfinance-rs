@@ -3,7 +3,10 @@ pub use paft::aggregates::Snapshot;
 pub use paft::market::action::Action;
 pub use paft::market::quote::Quote;
 pub use paft::market::requests::history::{Interval, Range};
-pub use paft::market::responses::history::{Candle, HistoryMeta, HistoryResponse};
+pub use paft::market::responses::history::{
+    AdjustmentAnchor, AdjustmentMethod, Candle, CorporateActionAdjustmentCause,
+    CorporateActionAdjustmentCauses, HistoryMeta, HistoryResponse, OhlcPriceBasis, PriceBasis,
+};
 use paft::money::Price;
 use serde::{Deserialize, Serialize};
 

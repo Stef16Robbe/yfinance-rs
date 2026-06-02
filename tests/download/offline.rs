@@ -438,20 +438,35 @@ async fn download_back_adjust_offline() {
     m1_aapl.assert(); // exactly 1
     m2_aapl.assert(); // exactly 1
 
-    let a = &adj
+    let adj_history = &adj
         .entries
         .iter()
         .find(|e| e.instrument.symbol.as_str() == "AAPL")
         .unwrap()
-        .history
-        .candles;
-    let b = &back
+        .history;
+    let back_history = &back
         .entries
         .iter()
         .find(|e| e.instrument.symbol.as_str() == "AAPL")
         .unwrap()
-        .history
-        .candles;
+        .history;
+    let adjusted = yfinance_rs::PriceBasis::provider_latest_adjusted();
+    assert_eq!(
+        adj_history.price_basis,
+        yfinance_rs::OhlcPriceBasis::uniform(adjusted)
+    );
+    assert_eq!(
+        back_history.price_basis,
+        yfinance_rs::OhlcPriceBasis::per_field(
+            adjusted,
+            adjusted,
+            adjusted,
+            yfinance_rs::PriceBasis::raw()
+        )
+    );
+
+    let a = &adj_history.candles;
+    let b = &back_history.candles;
 
     assert_eq!(a.len(), b.len(), "same number of bars");
     for (ca, cb) in a.iter().zip(b.iter()) {

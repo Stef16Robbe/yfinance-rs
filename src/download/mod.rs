@@ -9,7 +9,10 @@ use crate::{
     },
     history::HistoryBuilder,
 };
-use paft::market::responses::download::{DownloadEntry, DownloadResponse};
+use paft::market::responses::{
+    download::{DownloadEntry, DownloadResponse},
+    history::{OhlcPriceBasis, PriceBasis},
+};
 use paft::money::Price;
 use rust_decimal::prelude::FromPrimitive;
 type DateRange = (chrono::DateTime<chrono::Utc>, chrono::DateTime<chrono::Utc>);
@@ -132,6 +135,15 @@ impl DownloadBuilder {
         }
     }
 
+    const fn back_adjust_price_basis(&self, fetched_basis: OhlcPriceBasis) -> OhlcPriceBasis {
+        if !self.back_adjust {
+            return fetched_basis;
+        }
+
+        let (open, high, low, _) = fetched_basis.fields();
+        OhlcPriceBasis::per_field(*open, *high, *low, PriceBasis::raw())
+    }
+
     fn validate_adjustment_flags(&self) -> Result<(), YfError> {
         if self.auto_adjust && self.back_adjust {
             return Err(YfError::InvalidParams(
@@ -193,6 +205,7 @@ impl DownloadBuilder {
             let mut resp = response.data;
             // apply transforms to candles
             self.apply_back_adjust(&mut resp.candles);
+            resp.price_basis = self.back_adjust_price_basis(resp.price_basis);
             self.maybe_repair(&mut resp.candles, &sym, ctx)?;
             self.apply_rounding_if_enabled(&mut resp.candles);
 
@@ -526,5 +539,5 @@ fn scaled_price(price: &Price, scale: rust_decimal::Decimal) -> Option<Price> {
         return None;
     }
 
-    price.try_mul(scale).ok()
+    price.try_mul(&scale).ok()
 }

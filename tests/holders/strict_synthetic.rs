@@ -473,6 +473,7 @@ async fn insider_transaction_value_uses_trading_currency_when_financial_currency
     let value = rows[0].value.as_ref().expect("value should map");
     assert_eq!(value.currency().to_string(), "USD");
     assert_eq!(value.amount(), paft::Decimal::from(1234u64));
+    assert!(rows[0].url.is_none());
 }
 
 #[tokio::test]
@@ -528,6 +529,7 @@ async fn blank_no_cash_insider_transaction_is_inferred_as_exercise() {
     assert_eq!(response.data[0].transaction_type, TransactionType::Exercise);
     assert_eq!(response.data[0].shares, Some(131_576));
     assert!(response.data[0].value.is_none());
+    assert!(response.data[0].url.is_none());
 }
 
 #[tokio::test]
