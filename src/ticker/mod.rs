@@ -14,6 +14,7 @@ use crate::holders::{
     NetSharePurchaseActivity,
 };
 use crate::news::NewsArticle;
+use crate::profile::Profile;
 use crate::{
     EsgBuilder,
     core::client::RetryConfig,
@@ -150,6 +151,20 @@ impl Ticker {
         ))
         .await?
         .into_data())
+    }
+
+    /// Fetches the company, ETF, or mutual-fund profile for the ticker.
+    ///
+    /// This is the high-level convenience equivalent of [`crate::profile::load_profile`],
+    /// using this ticker's configured cache mode and retry policy.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails, the response cannot be parsed,
+    /// or Yahoo does not provide a supported profile for the symbol.
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), err, fields(symbol = %self.symbol)))]
+    pub async fn profile(&self) -> Result<Profile, YfError> {
+        crate::profile::load_profile_with_options(&self.client, &self.symbol, &self.options).await
     }
 
     /* ---------------- Quotes ---------------- */

@@ -54,6 +54,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Add `Info::moving_averages` as a sibling of `snapshot` and `key_statistics`,
   so `Ticker::info()` also surfaces Yahoo's `summaryDetail` moving-average
   fields without putting technical indicators in `paft::KeyStatistics`.
+- Add `Ticker::profile()` as a high-level convenience method for company, ETF,
+  and mutual-fund profiles.
 - Add `examples/16_diagnostics_audit.rs`, a live public-surface audit that
   demonstrates checking projection diagnostics and sanity-validating parsed
   Yahoo data across the crate.

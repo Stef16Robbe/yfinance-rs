@@ -26,6 +26,8 @@ mod offline;
 mod options;
 #[path = "ticker/options_expiry_from_url_fallback.rs"]
 mod options_expiry_from_url_fallback;
+#[path = "ticker/profile.rs"]
+mod profile;
 #[path = "ticker/quote.rs"]
 mod quote;
 #[path = "ticker/shares.rs"]
