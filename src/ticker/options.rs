@@ -8,7 +8,7 @@ use crate::{
         CallOptions, ProjectionContext,
         client::{CacheEndpoint, SymbolEndpoint, normalize_symbol},
         currency_resolver::{
-            CurrencyHints, CurrencyKind, ResolvedCurrencyUnit, TradingCurrencyEvidence,
+            CurrencyHints, CurrencyPurpose, ResolvedCurrencyUnit, TradingCurrencyEvidence,
             project_currency_resolution,
         },
         diagnostics::optional_decimal_f64,
@@ -107,7 +107,7 @@ pub async fn option_chain_with_diagnostics(
     let currency = project_currency_resolution(
         &mut ctx,
         &symbol,
-        CurrencyKind::Trading,
+        CurrencyPurpose::Trading,
         currency_from_response.as_deref(),
         client
             .resolve_trading_currency(

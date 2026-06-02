@@ -2,8 +2,7 @@ use httpmock::{Method::GET, MockServer};
 use paft::money::{Currency, IsoCurrency};
 use url::Url;
 use yfinance_rs::{
-    ProjectionIssue, Ticker, YfClient, YfCurrencyKind, YfCurrencySource, YfError,
-    YfEvidenceStrength, YfWarning, analysis::AnalysisBuilder,
+    ProjectionIssue, Ticker, YfClient, YfError, YfWarning, analysis::AnalysisBuilder,
 };
 
 fn fixture(endpoint: &str, symbol: &str) -> String {
@@ -109,7 +108,7 @@ const EARNINGS_TREND_WITH_YAHOO_REVISION_CASING: &str = r#"{
 }"#;
 
 #[tokio::test]
-async fn earnings_trend_reports_inferred_analyst_currency_from_quote_enrichment() {
+async fn earnings_trend_uses_quote_enrichment_without_currency_diagnostic() {
     let sym = "AAPL";
     let server = MockServer::start();
 
@@ -175,16 +174,17 @@ async fn earnings_trend_reports_inferred_analyst_currency_from_quote_enrichment(
     trend_mock.assert();
     quote_mock.assert();
     assert!(response.data[0].earnings_estimate.avg.is_some());
-    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
-        warning,
-        YfWarning::CurrencyInferred {
-            symbol,
-            kind: YfCurrencyKind::AnalystEstimate,
-            source: YfCurrencySource::QuoteEnrichment,
-            strength: YfEvidenceStrength::EnrichedProvider,
-            ..
-        } if symbol == sym
-    )));
+    assert!(response.diagnostics.is_empty());
+
+    let strict_rows = AnalysisBuilder::new(&client, sym)
+        .strict()
+        .earnings_trend(None)
+        .await
+        .unwrap();
+
+    assert!(strict_rows[0].earnings_estimate.avg.is_some());
+    trend_mock.assert_calls(2);
+    quote_mock.assert_calls(1);
 }
 
 #[tokio::test]

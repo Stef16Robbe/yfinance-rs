@@ -11,7 +11,7 @@ use crate::core::{
     CallOptions, ProjectionContext, ProjectionIssue, YfClient, YfError, YfResponse,
     conversions::{string_to_insider_position, string_to_transaction_type},
     currency_resolver::{
-        CurrencyKind, ResolvedCurrencyUnit, TradingCurrencyEvidence, project_currency_resolution,
+        CurrencyPurpose, ResolvedCurrencyUnit, TradingCurrencyEvidence, project_currency_resolution,
     },
     diagnostics::{
         nonempty_string, optional_decimal_f64, optional_money_u64_with_currency_issue,
@@ -262,7 +262,7 @@ async fn optional_holder_value_currency(
     let projected = project_currency_resolution(
         ctx,
         symbol,
-        CurrencyKind::Trading,
+        CurrencyPurpose::Trading,
         None,
         resolve_trading_currency(client, symbol, options).await,
     )?;

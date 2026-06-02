@@ -16,6 +16,9 @@ pub use evidence::{
 };
 pub use hints::CurrencyHints;
 pub use policy::project_currency_resolution;
-pub use types::{CurrencyCacheKey, CurrencyKind, ResolvedCurrency};
-pub use types::{CurrencySource, EvidenceStrength};
+pub use types::{
+    CurrencyCacheKey, CurrencyCacheKind, CurrencyInference, CurrencyPurpose,
+    CurrencyResolutionMode, CurrencyResolutionSpec, DirectCurrencyCache, DirectCurrencyField,
+    ResolvedCurrency,
+};
 pub use unit::ResolvedCurrencyUnit;

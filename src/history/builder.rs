@@ -10,7 +10,7 @@ use crate::core::{
 use crate::core::{
     client::normalize_symbol,
     currency_resolver::{
-        CorporateActionCurrencyEvidence, CurrencyHints, CurrencyKind, ResolvedCurrencyUnit,
+        CorporateActionCurrencyEvidence, CurrencyHints, CurrencyPurpose, ResolvedCurrencyUnit,
         TradingCurrencyEvidence, project_currency_resolution,
     },
 };
@@ -319,7 +319,7 @@ async fn history_trading_currency(
     let projected = project_currency_resolution(
         ctx,
         symbol,
-        CurrencyKind::Trading,
+        CurrencyPurpose::Trading,
         chart_currency,
         client
             .resolve_trading_currency(
@@ -371,7 +371,7 @@ async fn action_default_currency(
         .await
     {
         Ok(currency) => {
-            ctx.currency_resolution(symbol, CurrencyKind::CorporateAction, &currency)?;
+            ctx.currency_resolution(symbol, CurrencyPurpose::CorporateAction, &currency)?;
             Ok(Some(currency.into_unit()))
         }
         Err(err) => {

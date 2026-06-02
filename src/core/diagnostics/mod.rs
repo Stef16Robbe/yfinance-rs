@@ -14,7 +14,7 @@ mod response;
 mod warning;
 
 pub(crate) use context::ProjectionContext;
-pub use currency::{YfCurrencyKind, YfCurrencySource, YfEvidenceStrength};
+pub use currency::{YfCurrencyInference, YfCurrencyPurpose};
 pub use issue::ProjectionIssue;
 pub(crate) use monetary::{
     optional_decimal_f64, optional_money_decimal_with_currency_issue,

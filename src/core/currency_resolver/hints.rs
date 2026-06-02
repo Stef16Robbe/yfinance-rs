@@ -1,4 +1,4 @@
-use super::unit::ResolvedCurrencyUnit;
+use super::{DirectCurrencyField, ResolvedCurrency, unit::ResolvedCurrencyUnit};
 use crate::core::currency::currency_for_country;
 
 #[derive(Clone, Debug, Default)]
@@ -34,16 +34,55 @@ impl<T> Hint<T> {
     }
 }
 
-impl Hint<ResolvedCurrencyUnit> {
-    fn set_from_code(&mut self, code: Option<&str>) {
+impl Hint<CurrencyHintValue> {
+    fn set_from_code(&mut self, code: Option<&str>, provenance: CurrencyHintProvenance) {
         let Some(code) = code.map(str::trim).filter(|code| !code.is_empty()) else {
             *self = Self::Missing;
             return;
         };
 
         *self = ResolvedCurrencyUnit::from_code(code)
+            .map(|unit| CurrencyHintValue { unit, provenance })
             .map_or_else(|| Self::Invalid(code.to_string()), Self::Present);
     }
+}
+
+#[derive(Clone, Debug)]
+pub(super) struct CurrencyHintValue {
+    unit: ResolvedCurrencyUnit,
+    provenance: CurrencyHintProvenance,
+}
+
+impl CurrencyHintValue {
+    pub(super) fn resolved_currency(&self) -> ResolvedCurrency {
+        match self.provenance {
+            CurrencyHintProvenance::QuoteV7 => {
+                ResolvedCurrency::quote_enrichment(self.unit.clone())
+            }
+            CurrencyHintProvenance::QuoteSummary => {
+                ResolvedCurrency::quote_summary_enrichment(self.unit.clone())
+            }
+            CurrencyHintProvenance::ChartMeta => {
+                ResolvedCurrency::direct_provider(self.unit.clone(), DirectCurrencyField::ChartMeta)
+            }
+            CurrencyHintProvenance::OptionsQuote => ResolvedCurrency::direct_provider(
+                self.unit.clone(),
+                DirectCurrencyField::OptionsQuote,
+            ),
+            CurrencyHintProvenance::ProfileCountry => {
+                ResolvedCurrency::profile_country_heuristic(self.unit.clone())
+            }
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+enum CurrencyHintProvenance {
+    QuoteV7,
+    QuoteSummary,
+    ChartMeta,
+    OptionsQuote,
+    ProfileCountry,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -78,7 +117,7 @@ impl CurrencyHintField {
 
 #[derive(Clone, Debug, Default)]
 pub struct CurrencyHints {
-    currencies: [Hint<ResolvedCurrencyUnit>; CurrencyHintField::COUNT],
+    currencies: [Hint<CurrencyHintValue>; CurrencyHintField::COUNT],
     pub(super) exchange: Option<String>,
     pub(super) full_exchange_name: Option<String>,
     pub(super) quote_type: Option<String>,
@@ -94,8 +133,16 @@ impl CurrencyHints {
         quote_type: Option<&str>,
     ) -> Self {
         let mut hints = Self::default();
-        hints.set_currency(CurrencyHintField::Quote, quote_currency);
-        hints.set_currency(CurrencyHintField::Financial, financial_currency);
+        hints.set_currency(
+            CurrencyHintField::Quote,
+            quote_currency,
+            CurrencyHintProvenance::QuoteV7,
+        );
+        hints.set_currency(
+            CurrencyHintField::Financial,
+            financial_currency,
+            CurrencyHintProvenance::QuoteV7,
+        );
         hints.exchange = nonempty_owned(exchange);
         hints.full_exchange_name = nonempty_owned(full_exchange_name);
         hints.quote_type = nonempty_owned(quote_type);
@@ -109,7 +156,11 @@ impl CurrencyHints {
         quote_type: Option<&str>,
     ) -> Self {
         let mut hints = Self::default();
-        hints.set_currency(CurrencyHintField::Quote, quote_currency);
+        hints.set_currency(
+            CurrencyHintField::Quote,
+            quote_currency,
+            CurrencyHintProvenance::ChartMeta,
+        );
         hints.exchange = nonempty_owned(exchange);
         hints.full_exchange_name = nonempty_owned(full_exchange_name);
         hints.quote_type = nonempty_owned(quote_type);
@@ -127,7 +178,11 @@ impl CurrencyHints {
             .map(str::trim)
             .is_some_and(|code| !code.is_empty())
         {
-            hints.set_currency(CurrencyHintField::Quote, quote_currency);
+            hints.set_currency(
+                CurrencyHintField::Quote,
+                quote_currency,
+                CurrencyHintProvenance::OptionsQuote,
+            );
         }
         hints.exchange = nonempty_owned(exchange);
         hints.full_exchange_name = nonempty_owned(full_exchange_name);
@@ -148,30 +203,42 @@ impl CurrencyHints {
         };
         *hints.hint_mut(CurrencyHintField::ProfileCountry) = country
             .and_then(currency_for_country)
-            .map(ResolvedCurrencyUnit::from_currency)
+            .map(|currency| CurrencyHintValue {
+                unit: ResolvedCurrencyUnit::from_currency(currency),
+                provenance: CurrencyHintProvenance::ProfileCountry,
+            })
             .map_or(Hint::Missing, Hint::Present);
         hints
     }
 
     pub fn from_quote_summary_financial(financial_currency: Option<&str>) -> Self {
         let mut hints = Self::default();
-        hints.set_currency(CurrencyHintField::QuoteSummaryFinancial, financial_currency);
+        hints.set_currency(
+            CurrencyHintField::QuoteSummaryFinancial,
+            financial_currency,
+            CurrencyHintProvenance::QuoteSummary,
+        );
         hints
     }
 
-    pub(super) const fn hint(&self, field: CurrencyHintField) -> &Hint<ResolvedCurrencyUnit> {
+    pub(super) const fn hint(&self, field: CurrencyHintField) -> &Hint<CurrencyHintValue> {
         &self.currencies[field.index()]
     }
 
-    const fn hint_mut(&mut self, field: CurrencyHintField) -> &mut Hint<ResolvedCurrencyUnit> {
+    const fn hint_mut(&mut self, field: CurrencyHintField) -> &mut Hint<CurrencyHintValue> {
         &mut self.currencies[field.index()]
     }
 
-    fn set_currency(&mut self, field: CurrencyHintField, code: Option<&str>) {
-        self.hint_mut(field).set_from_code(code);
+    fn set_currency(
+        &mut self,
+        field: CurrencyHintField,
+        code: Option<&str>,
+        provenance: CurrencyHintProvenance,
+    ) {
+        self.hint_mut(field).set_from_code(code, provenance);
     }
 
-    pub(super) const fn unit(&self, field: CurrencyHintField) -> Option<&ResolvedCurrencyUnit> {
+    pub(super) const fn value(&self, field: CurrencyHintField) -> Option<&CurrencyHintValue> {
         self.hint(field).present()
     }
 

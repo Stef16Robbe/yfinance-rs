@@ -1,13 +1,17 @@
 use super::{
-    AnalystEstimateCurrencyEvidence, CorporateActionCurrencyEvidence, CurrencyHints, CurrencyKind,
+    AnalystEstimateCurrencyEvidence, CorporateActionCurrencyEvidence, CurrencyCacheKind,
+    CurrencyHints, CurrencyInference, CurrencyPurpose, DirectCurrencyField,
     ReportingCurrencyEvidence, ResolvedCurrency, ResolvedCurrencyUnit, TradingCurrencyEvidence,
     hints::CurrencyHintField,
     project_currency_resolution,
-    types::{CurrencySource, EvidenceStrength},
+    types::{
+        CurrencyAcquisition, CurrencyEnrichmentSource, CurrencyEvidence, ProviderCurrencySource,
+        TrustedCurrencyEvidence,
+    },
 };
 use crate::core::{
-    CallOptions, DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfWarning,
-    client::CacheMode,
+    CallOptions, DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfCurrencyInference,
+    YfCurrencyPurpose, YfError, YfWarning, client::CacheMode,
 };
 use httpmock::{Method::GET, MockServer};
 use paft::Decimal;
@@ -29,12 +33,47 @@ fn test_options() -> CallOptions {
     CallOptions::default().with_cache_mode(CacheMode::Use)
 }
 
-#[test]
-fn evidence_strength_orders_override_as_strongest() {
-    assert!(EvidenceStrength::Override > EvidenceStrength::DirectProvider);
-    assert!(EvidenceStrength::DirectProvider > EvidenceStrength::EnrichedProvider);
-    assert!(EvidenceStrength::EnrichedProvider > EvidenceStrength::ListingHeuristic);
-    assert!(EvidenceStrength::ListingHeuristic > EvidenceStrength::ProfileHeuristic);
+fn assert_inferred_currency_projection(
+    symbol: &str,
+    purpose: CurrencyPurpose,
+    expected_purpose: YfCurrencyPurpose,
+    expected_inference: YfCurrencyInference,
+    resolved: ResolvedCurrency,
+) {
+    let mut ctx = ProjectionContext::new("currency_test", DataQuality::BestEffort);
+    let projected =
+        project_currency_resolution(&mut ctx, symbol, purpose, None, Ok(resolved.clone()))
+            .expect("best-effort projection should keep inferred currency");
+    assert!(projected.into_unit().is_some());
+
+    let response = ctx.finish(());
+    assert_eq!(
+        response.diagnostics.warnings,
+        vec![YfWarning::CurrencyInferred {
+            endpoint: "currency_test",
+            symbol: symbol.to_string(),
+            purpose: expected_purpose,
+            inference: expected_inference,
+        }]
+    );
+
+    let mut strict_ctx = ProjectionContext::new("currency_test", DataQuality::Strict);
+    let err = project_currency_resolution(&mut strict_ctx, symbol, purpose, None, Ok(resolved))
+        .expect_err("strict projection should reject inferred currency");
+    assert!(matches!(
+        err,
+        YfError::DataQuality(warning) if matches!(
+            warning.as_ref(),
+            YfWarning::CurrencyInferred {
+                endpoint: "currency_test",
+                symbol: warning_symbol,
+                purpose,
+                inference,
+            } if warning_symbol == symbol
+                && *purpose == expected_purpose
+                && *inference == expected_inference
+        )
+    ));
 }
 
 #[tokio::test]
@@ -43,39 +82,59 @@ async fn direct_provider_replaces_weaker_profile_cache() {
     client
         .store_resolved_currency(
             "TEST",
-            CurrencyKind::Reporting,
-            ResolvedCurrency::new(
-                unit("GBP"),
-                CurrencySource::ProfileCountryHeuristic,
-                EvidenceStrength::ProfileHeuristic,
-            ),
+            CurrencyCacheKind::Reporting,
+            ResolvedCurrency::profile_country_heuristic(unit("GBP")),
         )
         .await;
     client
         .store_resolved_currency(
             "TEST",
-            CurrencyKind::Reporting,
-            ResolvedCurrency::new(
-                unit("USD"),
-                CurrencySource::DirectProvider,
-                EvidenceStrength::DirectProvider,
-            ),
+            CurrencyCacheKind::Reporting,
+            ResolvedCurrency::direct_provider(unit("USD"), DirectCurrencyField::FinancialCurrency),
         )
         .await;
     client
         .store_resolved_currency(
             "TEST",
-            CurrencyKind::Reporting,
-            ResolvedCurrency::new(
-                unit("GBP"),
-                CurrencySource::ProfileCountryHeuristic,
-                EvidenceStrength::ProfileHeuristic,
-            ),
+            CurrencyCacheKind::Reporting,
+            ResolvedCurrency::profile_country_heuristic(unit("GBP")),
         )
         .await;
 
     let resolved = client
-        .cached_resolved_currency("TEST", CurrencyKind::Reporting)
+        .cached_resolved_currency("TEST", CurrencyCacheKind::Reporting)
+        .await
+        .expect("cached currency");
+    assert_eq!(currency(&resolved.unit), Currency::Iso(IsoCurrency::USD));
+}
+
+#[tokio::test]
+async fn direct_provider_replaces_weaker_enriched_cache() {
+    let client = YfClient::default();
+    client
+        .store_resolved_currency(
+            "TEST",
+            CurrencyCacheKind::Trading,
+            ResolvedCurrency::quote_enrichment(unit("GBP")),
+        )
+        .await;
+    client
+        .store_resolved_currency(
+            "TEST",
+            CurrencyCacheKind::Trading,
+            ResolvedCurrency::direct_provider(unit("USD"), DirectCurrencyField::ChartMeta),
+        )
+        .await;
+    client
+        .store_resolved_currency(
+            "TEST",
+            CurrencyCacheKind::Trading,
+            ResolvedCurrency::quote_enrichment(unit("GBP")),
+        )
+        .await;
+
+    let resolved = client
+        .cached_resolved_currency("TEST", CurrencyCacheKind::Trading)
         .await
         .expect("cached currency");
     assert_eq!(currency(&resolved.unit), Currency::Iso(IsoCurrency::USD));
@@ -87,28 +146,20 @@ async fn direct_provider_does_not_replace_stronger_override_cache_entry() {
     client
         .store_resolved_currency(
             "TEST",
-            CurrencyKind::Reporting,
-            ResolvedCurrency::new(
-                unit("GBP"),
-                CurrencySource::Override,
-                EvidenceStrength::Override,
-            ),
+            CurrencyCacheKind::Reporting,
+            ResolvedCurrency::override_currency(unit("GBP")),
         )
         .await;
     client
         .store_resolved_currency(
             "TEST",
-            CurrencyKind::Reporting,
-            ResolvedCurrency::new(
-                unit("USD"),
-                CurrencySource::DirectProvider,
-                EvidenceStrength::DirectProvider,
-            ),
+            CurrencyCacheKind::Reporting,
+            ResolvedCurrency::direct_provider(unit("USD"), DirectCurrencyField::FinancialCurrency),
         )
         .await;
 
     let resolved = client
-        .cached_resolved_currency("TEST", CurrencyKind::Reporting)
+        .cached_resolved_currency("TEST", CurrencyCacheKind::Reporting)
         .await
         .expect("cached currency");
     assert_eq!(currency(&resolved.unit), Currency::Iso(IsoCurrency::GBP));
@@ -120,12 +171,8 @@ async fn override_resolution_does_not_poison_inferred_cache() {
     client
         .store_resolved_currency(
             "TEST",
-            CurrencyKind::Reporting,
-            ResolvedCurrency::new(
-                unit("GBP"),
-                CurrencySource::ProfileCountryHeuristic,
-                EvidenceStrength::ProfileHeuristic,
-            ),
+            CurrencyCacheKind::Reporting,
+            ResolvedCurrency::profile_country_heuristic(unit("GBP")),
         )
         .await;
 
@@ -174,12 +221,8 @@ async fn provider_hint_replaces_cached_listing_heuristic() {
     client
         .store_resolved_currency(
             "TEST",
-            CurrencyKind::Trading,
-            ResolvedCurrency::new(
-                unit("GBP"),
-                CurrencySource::ListingHeuristic,
-                EvidenceStrength::ListingHeuristic,
-            ),
+            CurrencyCacheKind::Trading,
+            ResolvedCurrency::listing_heuristic(unit("GBP")),
         )
         .await;
     client
@@ -217,12 +260,8 @@ async fn cached_reporting_profile_heuristic_retries_unknown_enrichment() {
     client
         .store_resolved_currency(
             "TEST",
-            CurrencyKind::Reporting,
-            ResolvedCurrency::new(
-                unit("GBP"),
-                CurrencySource::ProfileCountryHeuristic,
-                EvidenceStrength::ProfileHeuristic,
-            ),
+            CurrencyCacheKind::Reporting,
+            ResolvedCurrency::profile_country_heuristic(unit("GBP")),
         )
         .await;
 
@@ -241,28 +280,20 @@ async fn cached_reporting_profile_heuristic_retries_unknown_enrichment() {
 }
 
 #[tokio::test]
-async fn contextual_currency_kinds_use_typed_cache() {
+async fn purpose_and_resolution_mode_use_their_own_cache_semantics() {
     let client = YfClient::default();
     client
         .store_resolved_currency(
             "TEST",
-            CurrencyKind::AnalystEstimate,
-            ResolvedCurrency::new(
-                unit("EUR"),
-                CurrencySource::DirectProvider,
-                EvidenceStrength::DirectProvider,
-            ),
+            CurrencyCacheKind::Reporting,
+            ResolvedCurrency::direct_provider(unit("EUR"), DirectCurrencyField::FinancialCurrency),
         )
         .await;
     client
         .store_resolved_currency(
             "TEST",
-            CurrencyKind::CorporateAction,
-            ResolvedCurrency::new(
-                unit("GBP"),
-                CurrencySource::DirectProvider,
-                EvidenceStrength::DirectProvider,
-            ),
+            CurrencyCacheKind::Trading,
+            ResolvedCurrency::direct_provider(unit("GBP"), DirectCurrencyField::ChartMeta),
         )
         .await;
 
@@ -276,6 +307,15 @@ async fn contextual_currency_kinds_use_typed_cache() {
         .await
         .expect("cached analyst estimate currency");
     assert_eq!(currency(&analyst_unit), Currency::Iso(IsoCurrency::EUR));
+
+    let price_target_unit = client
+        .resolve_analyst_price_target_currency("TEST", None, &test_options())
+        .await
+        .expect("cached analyst price target currency");
+    assert_eq!(
+        currency(&price_target_unit.unit),
+        Currency::Iso(IsoCurrency::GBP)
+    );
 
     let action_unit = client
         .resolve_corporate_action_currency_unit(
@@ -295,12 +335,8 @@ async fn analyst_direct_currency_does_not_poison_symbol_cache() {
     client
         .store_resolved_currency(
             "TEST",
-            CurrencyKind::Reporting,
-            ResolvedCurrency::new(
-                unit("GBP"),
-                CurrencySource::DirectProvider,
-                EvidenceStrength::DirectProvider,
-            ),
+            CurrencyCacheKind::Reporting,
+            ResolvedCurrency::direct_provider(unit("GBP"), DirectCurrencyField::FinancialCurrency),
         )
         .await;
 
@@ -316,9 +352,9 @@ async fn analyst_direct_currency_does_not_poison_symbol_cache() {
     assert_eq!(currency(&direct), Currency::Iso(IsoCurrency::USD));
     assert!(
         client
-            .cached_resolved_currency("TEST", CurrencyKind::AnalystEstimate)
+            .cached_resolved_currency("TEST", CurrencyCacheKind::Reporting)
             .await
-            .is_none()
+            .is_some_and(|resolved| currency(&resolved.unit) == Currency::Iso(IsoCurrency::GBP))
     );
 
     let fallback = client
@@ -331,8 +367,15 @@ async fn analyst_direct_currency_does_not_poison_symbol_cache() {
         .await
         .expect("reporting fallback");
     assert_eq!(currency(&fallback.unit), Currency::Iso(IsoCurrency::GBP));
-    assert_eq!(fallback.source(), CurrencySource::CachedProvider);
-    assert_eq!(fallback.strength(), EvidenceStrength::DirectProvider);
+    assert!(matches!(
+        fallback.evidence(),
+        CurrencyEvidence::Trusted(TrustedCurrencyEvidence::Provider {
+            source: ProviderCurrencySource::Direct(DirectCurrencyField::FinancialCurrency),
+            acquisition: CurrencyAcquisition::Cached {
+                from: CurrencyCacheKind::Reporting,
+            },
+        })
+    ));
 }
 
 #[tokio::test]
@@ -431,7 +474,13 @@ async fn invalid_reporting_quote_hint_falls_back_to_quote_summary_hint() {
     assert_eq!(quote_mock.calls(), 1);
     assert_eq!(quote_summary_mock.calls(), 1);
     assert_eq!(currency(&resolved.unit), Currency::Iso(IsoCurrency::USD));
-    assert_eq!(resolved.source(), CurrencySource::QuoteSummaryEnrichment);
+    assert!(matches!(
+        resolved.evidence(),
+        CurrencyEvidence::Trusted(TrustedCurrencyEvidence::Provider {
+            source: ProviderCurrencySource::Enriched(CurrencyEnrichmentSource::QuoteSummary),
+            acquisition: CurrencyAcquisition::Fresh,
+        })
+    ));
     assert_eq!(
         resolved
             .invalid_evidence()
@@ -442,9 +491,14 @@ async fn invalid_reporting_quote_hint_falls_back_to_quote_summary_hint() {
     );
 
     let mut ctx = ProjectionContext::new("currency_test", DataQuality::BestEffort);
-    let projected =
-        project_currency_resolution(&mut ctx, "BAD", CurrencyKind::Reporting, None, Ok(resolved))
-            .expect("best-effort projection should keep valid fallback currency");
+    let projected = project_currency_resolution(
+        &mut ctx,
+        "BAD",
+        CurrencyPurpose::Reporting,
+        None,
+        Ok(resolved),
+    )
+    .expect("best-effort projection should keep valid fallback currency");
     assert!(projected.into_unit().is_some());
 
     let response = ctx.finish(());
@@ -468,7 +522,7 @@ async fn invalid_direct_currency_projects_as_omitted_data() {
     let projected = project_currency_resolution(
         &mut ctx,
         "TEST",
-        CurrencyKind::Reporting,
+        CurrencyPurpose::Reporting,
         Some("!!!"),
         Err(crate::core::YfError::InvalidData(
             "invalid reporting currency code for TEST from financialCurrency: !!!".to_string(),
@@ -483,6 +537,80 @@ async fn invalid_direct_currency_projects_as_omitted_data() {
         })
     );
     assert!(projected.into_unit().is_none());
+}
+
+#[tokio::test]
+async fn listing_heuristic_emits_currency_inferred_and_fails_strict() {
+    let symbol = "TSCO.L";
+    let client = YfClient::default();
+    client
+        .store_currency_hints(
+            symbol,
+            CurrencyHints::from_quote(None, None, None, None, None),
+        )
+        .await;
+
+    let resolved = client
+        .resolve_trading_currency(symbol, None, TradingCurrencyEvidence::None, &test_options())
+        .await
+        .expect("listing heuristic should resolve currency");
+
+    assert_eq!(currency(&resolved.unit), Currency::Iso(IsoCurrency::GBP));
+    assert!(matches!(
+        resolved.evidence(),
+        CurrencyEvidence::Inferred(CurrencyInference::ListingHeuristic)
+    ));
+    assert_inferred_currency_projection(
+        symbol,
+        CurrencyPurpose::Trading,
+        YfCurrencyPurpose::Trading,
+        YfCurrencyInference::ListingHeuristic,
+        resolved,
+    );
+}
+
+#[tokio::test]
+async fn profile_country_heuristic_emits_currency_inferred_and_fails_strict() {
+    let symbol = "PROFILEONLY";
+    let client = YfClient::default();
+    client
+        .store_currency_hints(
+            symbol,
+            CurrencyHints::from_quote(None, None, None, None, None),
+        )
+        .await;
+    client
+        .store_currency_hints(symbol, CurrencyHints::from_quote_summary_financial(None))
+        .await;
+    client
+        .store_currency_hints(
+            symbol,
+            CurrencyHints::from_profile(Some("United Kingdom"), None, None),
+        )
+        .await;
+
+    let resolved = client
+        .resolve_reporting_currency(
+            symbol,
+            None,
+            ReportingCurrencyEvidence::FinancialCurrency(None),
+            &test_options(),
+        )
+        .await
+        .expect("profile-country heuristic should resolve currency");
+
+    assert_eq!(currency(&resolved.unit), Currency::Iso(IsoCurrency::GBP));
+    assert!(matches!(
+        resolved.evidence(),
+        CurrencyEvidence::Inferred(CurrencyInference::ProfileCountryHeuristic)
+    ));
+    assert_inferred_currency_projection(
+        symbol,
+        CurrencyPurpose::Reporting,
+        YfCurrencyPurpose::Reporting,
+        YfCurrencyInference::ProfileCountryHeuristic,
+        resolved,
+    );
 }
 
 #[tokio::test]

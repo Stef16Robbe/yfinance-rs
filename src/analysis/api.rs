@@ -8,8 +8,8 @@ use crate::{
             string_to_recommendation_grade,
         },
         currency_resolver::{
-            AnalystEstimateCurrencyEvidence, CurrencyHints, CurrencyKind, ResolvedCurrencyUnit,
-            TradingCurrencyEvidence, project_currency_resolution,
+            AnalystEstimateCurrencyEvidence, CurrencyHints, CurrencyPurpose, ResolvedCurrencyUnit,
+            project_currency_resolution,
         },
         diagnostics::{
             diagnostic_key, nonempty, optional_decimal_f64, optional_money_i64_with_currency_issue,
@@ -368,15 +368,10 @@ async fn map_analyst_price_target(
         let projected_currency = project_currency_resolution(
             &mut ctx,
             symbol,
-            CurrencyKind::Trading,
+            CurrencyPurpose::AnalystEstimate,
             None,
             client
-                .resolve_trading_currency(
-                    symbol,
-                    override_currency,
-                    TradingCurrencyEvidence::None,
-                    options,
-                )
+                .resolve_analyst_price_target_currency(symbol, override_currency, options)
                 .await,
         )?;
         let currency_issue = projected_currency.issue().cloned();
@@ -497,7 +492,7 @@ impl AnalystCurrencyResolver<'_> {
         let projected = project_currency_resolution(
             ctx,
             self.symbol,
-            CurrencyKind::AnalystEstimate,
+            CurrencyPurpose::AnalystEstimate,
             direct_code,
             self.client
                 .resolve_analyst_estimate_currency(

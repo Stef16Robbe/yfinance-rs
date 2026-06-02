@@ -1,7 +1,7 @@
 use crate::core::{
     ProjectionIssue, YfDiagnostics, YfError, YfResponse, YfWarning,
-    currency_resolver::{CurrencyKind, ResolvedCurrency},
-    diagnostics::{DataQuality, YfCurrencyKind, YfCurrencySource, YfEvidenceStrength},
+    currency_resolver::{CurrencyPurpose, ResolvedCurrency},
+    diagnostics::{DataQuality, YfCurrencyInference, YfCurrencyPurpose},
 };
 
 #[derive(Debug, Clone)]
@@ -121,19 +121,18 @@ impl ProjectionContext {
     pub(crate) fn currency_resolution(
         &mut self,
         symbol: &str,
-        kind: CurrencyKind,
+        purpose: CurrencyPurpose,
         resolved: &ResolvedCurrency,
     ) -> Result<(), YfError> {
-        if resolved.source().is_explicit() {
-            return Ok(());
+        match resolved.evidence().inference() {
+            Some(inference) => self.record(YfWarning::CurrencyInferred {
+                endpoint: self.endpoint,
+                symbol: symbol.to_string(),
+                purpose: YfCurrencyPurpose::from(purpose),
+                inference: YfCurrencyInference::from(inference),
+            }),
+            None => Ok(()),
         }
-        self.record(YfWarning::CurrencyInferred {
-            endpoint: self.endpoint,
-            symbol: symbol.to_string(),
-            kind: YfCurrencyKind::from(kind),
-            source: YfCurrencySource::from(resolved.source()),
-            strength: YfEvidenceStrength::from(resolved.strength()),
-        })
     }
 
     pub(crate) fn extend(&mut self, diagnostics: YfDiagnostics) {

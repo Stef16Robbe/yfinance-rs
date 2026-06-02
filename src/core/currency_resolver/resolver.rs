@@ -1,9 +1,8 @@
 use super::{
-    AnalystEstimateCurrencyEvidence, CorporateActionCurrencyEvidence, CurrencyKind,
-    ReportingCurrencyEvidence, ResolvedCurrency, ResolvedCurrencyUnit, TradingCurrencyEvidence,
-    hints::CurrencyHintField,
-    inference,
-    types::{CurrencySource, EvidenceStrength, InvalidCurrencyEvidence},
+    AnalystEstimateCurrencyEvidence, CorporateActionCurrencyEvidence, CurrencyCacheKind,
+    CurrencyPurpose, CurrencyResolutionMode, CurrencyResolutionSpec, DirectCurrencyCache,
+    DirectCurrencyField, ReportingCurrencyEvidence, ResolvedCurrency, ResolvedCurrencyUnit,
+    TradingCurrencyEvidence, hints::CurrencyHintField, inference, types::InvalidCurrencyEvidence,
 };
 use crate::core::{CallOptions, YfClient, YfError};
 use paft::money::Currency;
@@ -11,21 +10,11 @@ use paft::money::Currency;
 #[derive(Clone, Copy)]
 struct HintEvidence {
     field: CurrencyHintField,
-    source: CurrencySource,
-    strength: EvidenceStrength,
 }
 
 impl HintEvidence {
-    const fn new(
-        field: CurrencyHintField,
-        source: CurrencySource,
-        strength: EvidenceStrength,
-    ) -> Self {
-        Self {
-            field,
-            source,
-            strength,
-        }
+    const fn new(field: CurrencyHintField) -> Self {
+        Self { field }
     }
 }
 
@@ -33,56 +22,31 @@ impl HintEvidence {
 struct DirectCurrencyEvidence<'a> {
     code: Option<&'a str>,
     label: &'static str,
+    field: Option<DirectCurrencyField>,
 }
 
 impl<'a> DirectCurrencyEvidence<'a> {
-    const fn new(code: Option<&'a str>, label: &'static str) -> Self {
-        Self { code, label }
+    const fn new(
+        code: Option<&'a str>,
+        label: &'static str,
+        field: Option<DirectCurrencyField>,
+    ) -> Self {
+        Self { code, label, field }
     }
 }
 
-const TRADING_CACHED_HINTS: [HintEvidence; 1] = [HintEvidence::new(
-    CurrencyHintField::Quote,
-    CurrencySource::CachedProvider,
-    EvidenceStrength::EnrichedProvider,
-)];
-const TRADING_QUOTE_HINTS: [HintEvidence; 1] = [HintEvidence::new(
-    CurrencyHintField::Quote,
-    CurrencySource::QuoteEnrichment,
-    EvidenceStrength::EnrichedProvider,
-)];
-const TRADING_PROFILE_HINTS: [HintEvidence; 1] = [HintEvidence::new(
-    CurrencyHintField::ProfileCountry,
-    CurrencySource::ProfileCountryHeuristic,
-    EvidenceStrength::ProfileHeuristic,
-)];
+const TRADING_QUOTE_HINTS: [HintEvidence; 1] = [HintEvidence::new(CurrencyHintField::Quote)];
+const TRADING_PROFILE_HINTS: [HintEvidence; 1] =
+    [HintEvidence::new(CurrencyHintField::ProfileCountry)];
 const REPORTING_CACHED_HINTS: [HintEvidence; 2] = [
-    HintEvidence::new(
-        CurrencyHintField::Financial,
-        CurrencySource::CachedProvider,
-        EvidenceStrength::EnrichedProvider,
-    ),
-    HintEvidence::new(
-        CurrencyHintField::QuoteSummaryFinancial,
-        CurrencySource::CachedProvider,
-        EvidenceStrength::EnrichedProvider,
-    ),
+    HintEvidence::new(CurrencyHintField::Financial),
+    HintEvidence::new(CurrencyHintField::QuoteSummaryFinancial),
 ];
-const REPORTING_QUOTE_HINTS: [HintEvidence; 1] = [HintEvidence::new(
-    CurrencyHintField::Financial,
-    CurrencySource::QuoteEnrichment,
-    EvidenceStrength::EnrichedProvider,
-)];
-const REPORTING_QUOTE_SUMMARY_HINTS: [HintEvidence; 1] = [HintEvidence::new(
-    CurrencyHintField::QuoteSummaryFinancial,
-    CurrencySource::QuoteSummaryEnrichment,
-    EvidenceStrength::EnrichedProvider,
-)];
-const REPORTING_PROFILE_HINTS: [HintEvidence; 1] = [HintEvidence::new(
-    CurrencyHintField::ProfileCountry,
-    CurrencySource::ProfileCountryHeuristic,
-    EvidenceStrength::ProfileHeuristic,
-)];
+const REPORTING_QUOTE_HINTS: [HintEvidence; 1] = [HintEvidence::new(CurrencyHintField::Financial)];
+const REPORTING_QUOTE_SUMMARY_HINTS: [HintEvidence; 1] =
+    [HintEvidence::new(CurrencyHintField::QuoteSummaryFinancial)];
+const REPORTING_PROFILE_HINTS: [HintEvidence; 1] =
+    [HintEvidence::new(CurrencyHintField::ProfileCountry)];
 
 impl YfClient {
     pub(crate) async fn resolve_trading_currency(
@@ -94,9 +58,9 @@ impl YfClient {
     ) -> Result<ResolvedCurrency, YfError> {
         self.resolve_currency_from_evidence(
             symbol,
-            CurrencyKind::Trading,
+            CurrencyResolutionSpec::trading(),
             override_currency,
-            DirectCurrencyEvidence::new(evidence.direct_code(), evidence.label()),
+            DirectCurrencyEvidence::new(evidence.direct_code(), evidence.label(), evidence.field()),
             options,
         )
         .await
@@ -124,9 +88,13 @@ impl YfClient {
     ) -> Result<ResolvedCurrency, YfError> {
         self.resolve_currency_from_evidence(
             symbol,
-            CurrencyKind::Reporting,
+            CurrencyResolutionSpec::reporting(),
             override_currency,
-            DirectCurrencyEvidence::new(evidence.direct_code(), evidence.label()),
+            DirectCurrencyEvidence::new(
+                evidence.direct_code(),
+                evidence.label(),
+                Some(evidence.field()),
+            ),
             options,
         )
         .await
@@ -154,9 +122,13 @@ impl YfClient {
     ) -> Result<ResolvedCurrency, YfError> {
         self.resolve_currency_from_evidence(
             symbol,
-            CurrencyKind::CorporateAction,
+            CurrencyResolutionSpec::corporate_action(),
             override_currency,
-            DirectCurrencyEvidence::new(evidence.direct_code(), evidence.label()),
+            DirectCurrencyEvidence::new(
+                evidence.direct_code(),
+                evidence.label(),
+                Some(evidence.field()),
+            ),
             options,
         )
         .await
@@ -184,9 +156,29 @@ impl YfClient {
     ) -> Result<ResolvedCurrency, YfError> {
         self.resolve_currency_from_evidence(
             symbol,
-            CurrencyKind::AnalystEstimate,
+            CurrencyResolutionSpec::analyst_estimate(),
             override_currency,
-            DirectCurrencyEvidence::new(evidence.direct_code(), evidence.label()),
+            DirectCurrencyEvidence::new(
+                evidence.direct_code(),
+                evidence.label(),
+                Some(evidence.field()),
+            ),
+            options,
+        )
+        .await
+    }
+
+    pub(crate) async fn resolve_analyst_price_target_currency(
+        &self,
+        symbol: &str,
+        override_currency: Option<Currency>,
+        options: &CallOptions,
+    ) -> Result<ResolvedCurrency, YfError> {
+        self.resolve_currency_from_evidence(
+            symbol,
+            CurrencyResolutionSpec::analyst_price_target(),
+            override_currency,
+            DirectCurrencyEvidence::new(None, "none", None),
             options,
         )
         .await
@@ -208,83 +200,51 @@ impl YfClient {
     async fn resolve_currency_from_evidence(
         &self,
         symbol: &str,
-        kind: CurrencyKind,
+        spec: CurrencyResolutionSpec,
         override_currency: Option<Currency>,
         direct_evidence: DirectCurrencyEvidence<'_>,
         options: &CallOptions,
     ) -> Result<ResolvedCurrency, YfError> {
         if let Some(currency) = override_currency {
-            return Ok(ResolvedCurrency::new(
-                override_currency_unit(symbol, kind, currency)?,
-                CurrencySource::Override,
-                EvidenceStrength::Override,
-            ));
+            return Ok(ResolvedCurrency::override_currency(override_currency_unit(
+                symbol,
+                spec.purpose(),
+                currency,
+            )?));
         }
 
-        if let Some(unit) = direct_currency_unit(symbol, kind, direct_evidence)? {
-            let resolved = ResolvedCurrency::new(
-                unit,
-                CurrencySource::DirectProvider,
-                EvidenceStrength::DirectProvider,
-            );
-            if kind.caches_direct_provider() {
-                self.store_resolved_currency(symbol, kind, resolved.clone())
+        if let Some(unit) = direct_currency_unit(symbol, spec.purpose(), direct_evidence)? {
+            let field = direct_evidence.field.ok_or_else(|| {
+                YfError::InvalidData(format!(
+                    "direct {:?} currency for {symbol} has no provider field",
+                    spec.purpose()
+                ))
+            })?;
+            let resolved = ResolvedCurrency::direct_provider(unit, field);
+            if let DirectCurrencyCache::Store(cache_kind) = spec.direct_cache() {
+                self.store_resolved_currency(symbol, cache_kind, resolved.clone())
                     .await;
             }
             return Ok(resolved);
         }
 
-        let cached = self.cached_resolved_currency(symbol, kind).await;
+        let cache_kind = spec.mode().cache_kind();
+        let cached = self.cached_resolved_currency(symbol, cache_kind).await;
         if let Some(resolved) = cached.as_ref()
             && self
-                .cached_resolution_is_final(symbol, kind, resolved)
+                .cached_resolution_is_final(symbol, spec.mode(), resolved)
                 .await
         {
             return Ok(resolved.clone());
         }
 
-        match kind {
-            CurrencyKind::Trading => {
-                self.resolve_trading_currency_from_hints(symbol, options, cached.as_ref())
+        match spec.mode() {
+            CurrencyResolutionMode::TradingLike => {
+                self.resolve_trading_currency_from_hints(symbol, spec, options, cached.as_ref())
                     .await
             }
-            CurrencyKind::Reporting | CurrencyKind::AnalystEstimate => {
-                let reporting_cached = if matches!(kind, CurrencyKind::AnalystEstimate) {
-                    self.cached_resolved_currency(symbol, CurrencyKind::Reporting)
-                        .await
-                } else {
-                    cached
-                };
-                if let Some(resolved) = reporting_cached.as_ref()
-                    && self
-                        .cached_resolution_is_final(symbol, CurrencyKind::Reporting, resolved)
-                        .await
-                {
-                    return Ok(if matches!(kind, CurrencyKind::AnalystEstimate) {
-                        cross_kind_cached_resolution(resolved)
-                    } else {
-                        resolved.clone()
-                    });
-                }
-                self.resolve_reporting_currency_from_hints(
-                    symbol,
-                    options,
-                    reporting_cached.as_ref(),
-                )
-                .await
-            }
-            CurrencyKind::CorporateAction => {
-                let trading_cached = self
-                    .cached_resolved_currency(symbol, CurrencyKind::Trading)
-                    .await;
-                if let Some(resolved) = trading_cached.as_ref()
-                    && self
-                        .cached_resolution_is_final(symbol, CurrencyKind::Trading, resolved)
-                        .await
-                {
-                    return Ok(cross_kind_cached_resolution(resolved));
-                }
-                self.resolve_trading_currency_from_hints(symbol, options, trading_cached.as_ref())
+            CurrencyResolutionMode::ReportingLike => {
+                self.resolve_reporting_currency_from_hints(symbol, spec, options, cached.as_ref())
                     .await
             }
         }
@@ -293,6 +253,7 @@ impl YfClient {
     async fn resolve_trading_currency_from_hints(
         &self,
         symbol: &str,
+        spec: CurrencyResolutionSpec,
         options: &CallOptions,
         provisional: Option<&ResolvedCurrency>,
     ) -> Result<ResolvedCurrency, YfError> {
@@ -301,8 +262,8 @@ impl YfClient {
         if let Some(resolved) = self
             .resolve_first_hint(
                 symbol,
-                CurrencyKind::Trading,
-                &TRADING_CACHED_HINTS,
+                spec.mode().cache_kind(),
+                &TRADING_QUOTE_HINTS,
                 &mut invalid_evidence,
             )
             .await
@@ -314,7 +275,7 @@ impl YfClient {
         if let Some(resolved) = self
             .resolve_first_hint(
                 symbol,
-                CurrencyKind::Trading,
+                spec.mode().cache_kind(),
                 &TRADING_QUOTE_HINTS,
                 &mut invalid_evidence,
             )
@@ -325,13 +286,9 @@ impl YfClient {
 
         let hints = self.cached_currency_hints(symbol).await;
         if let Some(unit) = inference::infer_listing_currency(symbol, &hints) {
-            let resolved = ResolvedCurrency::new(
-                unit,
-                CurrencySource::ListingHeuristic,
-                EvidenceStrength::ListingHeuristic,
-            )
-            .with_invalid_evidence(std::mem::take(&mut invalid_evidence));
-            self.store_resolved_currency(symbol, CurrencyKind::Trading, resolved.clone())
+            let resolved = ResolvedCurrency::listing_heuristic(unit)
+                .with_invalid_evidence(std::mem::take(&mut invalid_evidence));
+            self.store_resolved_currency(symbol, spec.mode().cache_kind(), resolved.clone())
                 .await;
             return Ok(resolved);
         }
@@ -340,7 +297,7 @@ impl YfClient {
         if let Some(resolved) = self
             .resolve_first_hint(
                 symbol,
-                CurrencyKind::Trading,
+                spec.mode().cache_kind(),
                 &TRADING_PROFILE_HINTS,
                 &mut invalid_evidence,
             )
@@ -358,7 +315,7 @@ impl YfClient {
         if let Some(invalid) = invalid_evidence.first() {
             return Err(invalid_currency_evidence_error(
                 symbol,
-                CurrencyKind::Trading,
+                spec.purpose(),
                 invalid,
             ));
         }
@@ -371,6 +328,7 @@ impl YfClient {
     async fn resolve_reporting_currency_from_hints(
         &self,
         symbol: &str,
+        spec: CurrencyResolutionSpec,
         options: &CallOptions,
         provisional: Option<&ResolvedCurrency>,
     ) -> Result<ResolvedCurrency, YfError> {
@@ -379,7 +337,7 @@ impl YfClient {
         if let Some(resolved) = self
             .resolve_first_hint(
                 symbol,
-                CurrencyKind::Reporting,
+                spec.mode().cache_kind(),
                 &REPORTING_CACHED_HINTS,
                 &mut invalid_evidence,
             )
@@ -392,7 +350,7 @@ impl YfClient {
         if let Some(resolved) = self
             .resolve_first_hint(
                 symbol,
-                CurrencyKind::Reporting,
+                spec.mode().cache_kind(),
                 &REPORTING_QUOTE_HINTS,
                 &mut invalid_evidence,
             )
@@ -406,7 +364,7 @@ impl YfClient {
         if let Some(resolved) = self
             .resolve_first_hint(
                 symbol,
-                CurrencyKind::Reporting,
+                spec.mode().cache_kind(),
                 &REPORTING_QUOTE_SUMMARY_HINTS,
                 &mut invalid_evidence,
             )
@@ -419,7 +377,7 @@ impl YfClient {
         if let Some(resolved) = self
             .resolve_first_hint(
                 symbol,
-                CurrencyKind::Reporting,
+                spec.mode().cache_kind(),
                 &REPORTING_PROFILE_HINTS,
                 &mut invalid_evidence,
             )
@@ -437,7 +395,7 @@ impl YfClient {
         if let Some(invalid) = invalid_evidence.first() {
             return Err(invalid_currency_evidence_error(
                 symbol,
-                CurrencyKind::Reporting,
+                spec.purpose(),
                 invalid,
             ));
         }
@@ -450,7 +408,7 @@ impl YfClient {
     async fn resolve_first_hint(
         &self,
         symbol: &str,
-        kind: CurrencyKind,
+        cache_kind: CurrencyCacheKind,
         evidence: &[HintEvidence],
         invalid_evidence: &mut Vec<InvalidCurrencyEvidence>,
     ) -> Option<ResolvedCurrency> {
@@ -461,12 +419,13 @@ impl YfClient {
                 continue;
             }
 
-            let unit = hints.unit(hint.field).cloned();
+            let value = hints.value(hint.field);
 
-            if let Some(unit) = unit {
-                let resolved = ResolvedCurrency::new(unit, hint.source, hint.strength)
+            if let Some(value) = value {
+                let resolved = value
+                    .resolved_currency()
                     .with_invalid_evidence(std::mem::take(invalid_evidence));
-                self.store_resolved_currency(symbol, kind, resolved.clone())
+                self.store_resolved_currency(symbol, cache_kind, resolved.clone())
                     .await;
                 return Some(resolved);
             }
@@ -478,19 +437,17 @@ impl YfClient {
     async fn cached_resolution_is_final(
         &self,
         symbol: &str,
-        kind: CurrencyKind,
+        mode: CurrencyResolutionMode,
         resolved: &ResolvedCurrency,
     ) -> bool {
-        if resolved.strength.is_provider() {
+        if resolved.is_trusted() {
             return true;
         }
 
         let hints = self.cached_currency_hints(symbol).await;
-        match kind {
-            CurrencyKind::Trading | CurrencyKind::CorporateAction => {
-                hints.is_missing(CurrencyHintField::Quote)
-            }
-            CurrencyKind::Reporting | CurrencyKind::AnalystEstimate => {
+        match mode {
+            CurrencyResolutionMode::TradingLike => hints.is_missing(CurrencyHintField::Quote),
+            CurrencyResolutionMode::ReportingLike => {
                 hints.is_missing(CurrencyHintField::Financial)
                     && hints.is_missing(CurrencyHintField::QuoteSummaryFinancial)
             }
@@ -500,7 +457,7 @@ impl YfClient {
 
 fn direct_currency_unit(
     symbol: &str,
-    kind: CurrencyKind,
+    purpose: CurrencyPurpose,
     evidence: DirectCurrencyEvidence<'_>,
 ) -> Result<Option<ResolvedCurrencyUnit>, YfError> {
     let Some(code) = evidence.code.map(str::trim).filter(|code| !code.is_empty()) else {
@@ -511,7 +468,7 @@ fn direct_currency_unit(
         .map(Some)
         .ok_or_else(|| {
             YfError::InvalidData(format!(
-                "invalid {kind:?} currency code for {symbol} from {}: {code}",
+                "invalid {purpose:?} currency code for {symbol} from {}: {code}",
                 evidence.label
             ))
         })
@@ -519,12 +476,12 @@ fn direct_currency_unit(
 
 fn override_currency_unit(
     symbol: &str,
-    kind: CurrencyKind,
+    purpose: CurrencyPurpose,
     currency: Currency,
 ) -> Result<ResolvedCurrencyUnit, YfError> {
     currency.decimal_places().map_err(|err| {
         YfError::InvalidParams(format!(
-            "invalid {kind:?} currency override for {symbol}: {err}"
+            "invalid {purpose:?} currency override for {symbol}: {err}"
         ))
     })?;
     Ok(ResolvedCurrencyUnit::from_currency(currency))
@@ -532,11 +489,11 @@ fn override_currency_unit(
 
 fn invalid_currency_evidence_error(
     symbol: &str,
-    kind: CurrencyKind,
+    purpose: CurrencyPurpose,
     invalid: &InvalidCurrencyEvidence,
 ) -> YfError {
     YfError::InvalidData(format!(
-        "invalid {kind:?} currency code for {symbol} in {}: {}",
+        "invalid {purpose:?} currency code for {symbol} in {}: {}",
         invalid.path(),
         invalid.code()
     ))
@@ -556,17 +513,4 @@ fn push_invalid_currency_evidence(
     }
 
     invalid_evidence.push(InvalidCurrencyEvidence::new(path, code));
-}
-
-fn cross_kind_cached_resolution(resolved: &ResolvedCurrency) -> ResolvedCurrency {
-    if resolved.source() == CurrencySource::DirectProvider {
-        ResolvedCurrency::new(
-            resolved.unit.clone(),
-            CurrencySource::CachedProvider,
-            resolved.strength(),
-        )
-        .with_invalid_evidence(resolved.invalid_evidence().iter().cloned())
-    } else {
-        resolved.clone()
-    }
 }

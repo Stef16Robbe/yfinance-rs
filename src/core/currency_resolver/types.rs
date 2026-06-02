@@ -1,64 +1,190 @@
 use super::unit::ResolvedCurrencyUnit;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum CurrencyKind {
+pub enum CurrencyPurpose {
     Trading,
     Reporting,
     CorporateAction,
     AnalystEstimate,
 }
 
-impl CurrencyKind {
-    pub(super) const fn caches_direct_provider(self) -> bool {
-        !matches!(self, Self::AnalystEstimate)
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum CurrencyCacheKind {
+    Trading,
+    Reporting,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CurrencyResolutionMode {
+    TradingLike,
+    ReportingLike,
+}
+
+impl CurrencyResolutionMode {
+    pub(super) const fn cache_kind(self) -> CurrencyCacheKind {
+        match self {
+            Self::TradingLike => CurrencyCacheKind::Trading,
+            Self::ReportingLike => CurrencyCacheKind::Reporting,
+        }
     }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum CurrencySource {
+pub enum DirectCurrencyCache {
+    Store(CurrencyCacheKind),
+    Skip,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CurrencyResolutionSpec {
+    purpose: CurrencyPurpose,
+    mode: CurrencyResolutionMode,
+    direct_cache: DirectCurrencyCache,
+}
+
+impl CurrencyResolutionSpec {
+    pub(super) const fn trading() -> Self {
+        Self {
+            purpose: CurrencyPurpose::Trading,
+            mode: CurrencyResolutionMode::TradingLike,
+            direct_cache: DirectCurrencyCache::Store(CurrencyCacheKind::Trading),
+        }
+    }
+
+    pub(super) const fn reporting() -> Self {
+        Self {
+            purpose: CurrencyPurpose::Reporting,
+            mode: CurrencyResolutionMode::ReportingLike,
+            direct_cache: DirectCurrencyCache::Store(CurrencyCacheKind::Reporting),
+        }
+    }
+
+    pub(super) const fn corporate_action() -> Self {
+        Self {
+            purpose: CurrencyPurpose::CorporateAction,
+            mode: CurrencyResolutionMode::TradingLike,
+            direct_cache: DirectCurrencyCache::Store(CurrencyCacheKind::Trading),
+        }
+    }
+
+    pub(super) const fn analyst_estimate() -> Self {
+        Self {
+            purpose: CurrencyPurpose::AnalystEstimate,
+            mode: CurrencyResolutionMode::ReportingLike,
+            direct_cache: DirectCurrencyCache::Skip,
+        }
+    }
+
+    pub(super) const fn analyst_price_target() -> Self {
+        Self {
+            purpose: CurrencyPurpose::AnalystEstimate,
+            mode: CurrencyResolutionMode::TradingLike,
+            direct_cache: DirectCurrencyCache::Skip,
+        }
+    }
+
+    pub(crate) const fn purpose(self) -> CurrencyPurpose {
+        self.purpose
+    }
+
+    pub(super) const fn mode(self) -> CurrencyResolutionMode {
+        self.mode
+    }
+
+    pub(super) const fn direct_cache(self) -> DirectCurrencyCache {
+        self.direct_cache
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CurrencyEvidence {
+    Trusted(TrustedCurrencyEvidence),
+    Inferred(CurrencyInference),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TrustedCurrencyEvidence {
     Override,
-    DirectProvider,
-    CachedProvider,
-    QuoteEnrichment,
-    QuoteSummaryEnrichment,
+    Provider {
+        source: ProviderCurrencySource,
+        acquisition: CurrencyAcquisition,
+    },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ProviderCurrencySource {
+    Direct(DirectCurrencyField),
+    Enriched(CurrencyEnrichmentSource),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DirectCurrencyField {
+    ChartMeta,
+    OptionsQuote,
+    FinancialCurrency,
+    TimeseriesCurrencyCode,
+    EarningsCurrency,
+    RevenueCurrency,
+    EpsTrendCurrency,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CurrencyEnrichmentSource {
+    QuoteV7,
+    QuoteSummary,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CurrencyAcquisition {
+    Fresh,
+    Cached { from: CurrencyCacheKind },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CurrencyInference {
     ListingHeuristic,
     ProfileCountryHeuristic,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum EvidenceStrength {
-    Override,
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum CurrencyCacheRank {
     ProfileHeuristic,
     ListingHeuristic,
     EnrichedProvider,
     DirectProvider,
+    Override,
 }
 
-impl EvidenceStrength {
-    const fn rank(self) -> u8 {
+impl CurrencyEvidence {
+    const fn cache_rank(self) -> CurrencyCacheRank {
         match self {
-            Self::ProfileHeuristic => 0,
-            Self::ListingHeuristic => 1,
-            Self::EnrichedProvider => 2,
-            Self::DirectProvider => 3,
-            Self::Override => 4,
+            Self::Inferred(CurrencyInference::ProfileCountryHeuristic) => {
+                CurrencyCacheRank::ProfileHeuristic
+            }
+            Self::Inferred(CurrencyInference::ListingHeuristic) => {
+                CurrencyCacheRank::ListingHeuristic
+            }
+            Self::Trusted(TrustedCurrencyEvidence::Provider {
+                source: ProviderCurrencySource::Enriched(_),
+                ..
+            }) => CurrencyCacheRank::EnrichedProvider,
+            Self::Trusted(TrustedCurrencyEvidence::Provider {
+                source: ProviderCurrencySource::Direct(_),
+                ..
+            }) => CurrencyCacheRank::DirectProvider,
+            Self::Trusted(TrustedCurrencyEvidence::Override) => CurrencyCacheRank::Override,
         }
     }
 
-    pub(super) const fn is_provider(self) -> bool {
-        matches!(self, Self::EnrichedProvider | Self::DirectProvider)
+    pub(super) const fn is_trusted(self) -> bool {
+        matches!(self, Self::Trusted(_))
     }
-}
 
-impl PartialOrd for EvidenceStrength {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for EvidenceStrength {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.rank().cmp(&other.rank())
+    pub(crate) const fn inference(self) -> Option<CurrencyInference> {
+        match self {
+            Self::Trusted(_) => None,
+            Self::Inferred(inference) => Some(inference),
+        }
     }
 }
 
@@ -88,23 +214,72 @@ impl InvalidCurrencyEvidence {
 #[derive(Clone, Debug)]
 pub struct ResolvedCurrency {
     pub(super) unit: ResolvedCurrencyUnit,
-    pub(super) source: CurrencySource,
-    pub(super) strength: EvidenceStrength,
+    evidence: CurrencyEvidence,
     invalid_evidence: Vec<InvalidCurrencyEvidence>,
 }
 
 impl ResolvedCurrency {
-    pub(super) const fn new(
-        unit: ResolvedCurrencyUnit,
-        source: CurrencySource,
-        strength: EvidenceStrength,
-    ) -> Self {
+    const fn new(unit: ResolvedCurrencyUnit, evidence: CurrencyEvidence) -> Self {
         Self {
             unit,
-            source,
-            strength,
+            evidence,
             invalid_evidence: Vec::new(),
         }
+    }
+
+    pub(super) const fn override_currency(unit: ResolvedCurrencyUnit) -> Self {
+        Self::new(
+            unit,
+            CurrencyEvidence::Trusted(TrustedCurrencyEvidence::Override),
+        )
+    }
+
+    pub(super) const fn direct_provider(
+        unit: ResolvedCurrencyUnit,
+        field: DirectCurrencyField,
+    ) -> Self {
+        Self::new(
+            unit,
+            CurrencyEvidence::Trusted(TrustedCurrencyEvidence::Provider {
+                source: ProviderCurrencySource::Direct(field),
+                acquisition: CurrencyAcquisition::Fresh,
+            }),
+        )
+    }
+
+    pub(super) const fn quote_enrichment(unit: ResolvedCurrencyUnit) -> Self {
+        Self::provider_enrichment(unit, CurrencyEnrichmentSource::QuoteV7)
+    }
+
+    pub(super) const fn quote_summary_enrichment(unit: ResolvedCurrencyUnit) -> Self {
+        Self::provider_enrichment(unit, CurrencyEnrichmentSource::QuoteSummary)
+    }
+
+    const fn provider_enrichment(
+        unit: ResolvedCurrencyUnit,
+        source: CurrencyEnrichmentSource,
+    ) -> Self {
+        Self::new(
+            unit,
+            CurrencyEvidence::Trusted(TrustedCurrencyEvidence::Provider {
+                source: ProviderCurrencySource::Enriched(source),
+                acquisition: CurrencyAcquisition::Fresh,
+            }),
+        )
+    }
+
+    pub(super) const fn listing_heuristic(unit: ResolvedCurrencyUnit) -> Self {
+        Self::new(
+            unit,
+            CurrencyEvidence::Inferred(CurrencyInference::ListingHeuristic),
+        )
+    }
+
+    pub(super) const fn profile_country_heuristic(unit: ResolvedCurrencyUnit) -> Self {
+        Self::new(
+            unit,
+            CurrencyEvidence::Inferred(CurrencyInference::ProfileCountryHeuristic),
+        )
     }
 
     pub(super) fn with_invalid_evidence(
@@ -115,12 +290,26 @@ impl ResolvedCurrency {
         self
     }
 
-    pub(crate) const fn source(&self) -> CurrencySource {
-        self.source
+    pub(crate) const fn evidence(&self) -> CurrencyEvidence {
+        self.evidence
     }
 
-    pub(crate) const fn strength(&self) -> EvidenceStrength {
-        self.strength
+    pub(super) const fn is_trusted(&self) -> bool {
+        self.evidence.is_trusted()
+    }
+
+    pub(super) fn cache_rank_ge(&self, other: &Self) -> bool {
+        self.evidence.cache_rank() >= other.evidence.cache_rank()
+    }
+
+    pub(super) const fn with_cached_acquisition(mut self, from: CurrencyCacheKind) -> Self {
+        if let CurrencyEvidence::Trusted(TrustedCurrencyEvidence::Provider {
+            acquisition, ..
+        }) = &mut self.evidence
+        {
+            *acquisition = CurrencyAcquisition::Cached { from };
+        }
+        self
     }
 
     pub(super) fn invalid_evidence(&self) -> &[InvalidCurrencyEvidence] {
@@ -132,20 +321,14 @@ impl ResolvedCurrency {
     }
 }
 
-impl CurrencySource {
-    pub(crate) const fn is_explicit(self) -> bool {
-        matches!(self, Self::Override | Self::DirectProvider)
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct CurrencyCacheKey {
     symbol: String,
-    kind: CurrencyKind,
+    kind: CurrencyCacheKind,
 }
 
 impl CurrencyCacheKey {
-    pub(super) fn new(symbol: &str, kind: CurrencyKind) -> Self {
+    pub(super) fn new(symbol: &str, kind: CurrencyCacheKind) -> Self {
         Self {
             symbol: symbol.to_string(),
             kind,

@@ -12,9 +12,9 @@ use std::{
 
 use httpmock::Method::GET;
 use url::Url;
-use yfinance_rs::YfEvidenceStrength;
 use yfinance_rs::{
-    QuotesBuilder, StreamBuilder, StreamMethod, YfClient, YfError,
+    QuotesBuilder, StreamBuilder, StreamMethod, YfClient, YfCurrencyInference, YfCurrencyPurpose,
+    YfError,
     core::client::{Backoff, RetryConfig},
 };
 
@@ -41,11 +41,15 @@ fn assert_invalid_params(err: YfError, expected: &str) {
 }
 
 #[test]
-fn public_evidence_strength_orders_override_as_strongest() {
-    assert!(YfEvidenceStrength::Override > YfEvidenceStrength::DirectProvider);
-    assert!(YfEvidenceStrength::DirectProvider > YfEvidenceStrength::EnrichedProvider);
-    assert!(YfEvidenceStrength::EnrichedProvider > YfEvidenceStrength::ListingHeuristic);
-    assert!(YfEvidenceStrength::ListingHeuristic > YfEvidenceStrength::ProfileHeuristic);
+fn public_currency_diagnostics_expose_purpose_and_inference() {
+    assert_eq!(
+        YfCurrencyPurpose::AnalystEstimate.to_string(),
+        "analyst-estimate"
+    );
+    assert_eq!(
+        YfCurrencyInference::ProfileCountryHeuristic.to_string(),
+        "profile-country heuristic"
+    );
 }
 
 struct CaptureServer {

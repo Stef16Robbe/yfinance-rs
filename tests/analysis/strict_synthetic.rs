@@ -427,6 +427,81 @@ async fn price_target_reports_present_prices_when_currency_cannot_be_resolved() 
 }
 
 #[tokio::test]
+async fn price_target_uses_quote_currency_enrichment_in_strict_mode() {
+    let sym = "PRICEFX";
+    let server = MockServer::start();
+
+    let target_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "financialData")
+            .query_param("crumb", "crumb");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "quoteSummary": {
+                    "result": [{
+                      "financialData": {
+                        "targetMeanPrice": { "raw": 10.0 },
+                        "targetHighPrice": { "raw": 12.0 },
+                        "targetLowPrice": { "raw": 8.0 }
+                      }
+                    }],
+                    "error": null
+                  }
+                }"#,
+            );
+    });
+    let quote_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", sym);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "quoteResponse": {
+                    "result": [{
+                      "symbol": "PRICEFX",
+                      "quoteType": "EQUITY",
+                      "currency": "USD"
+                    }],
+                    "error": null
+                  }
+                }"#,
+            );
+    });
+
+    let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let response = AnalysisBuilder::new(&client, sym)
+        .strict()
+        .analyst_price_target_with_diagnostics(None)
+        .await
+        .unwrap();
+
+    target_mock.assert();
+    quote_mock.assert();
+    assert!(response.diagnostics.is_empty());
+    assert_eq!(
+        response
+            .data
+            .mean
+            .as_ref()
+            .map(|price| price.currency().clone()),
+        Some(Currency::Iso(IsoCurrency::USD))
+    );
+}
+
+#[tokio::test]
 async fn earnings_trend_omits_values_when_enriched_currency_is_invalid() {
     let sym = "BADENRICH";
     let server = MockServer::start();

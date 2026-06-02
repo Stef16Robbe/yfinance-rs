@@ -8,7 +8,7 @@ use crate::{
         client::{CacheEndpoint, SymbolEndpoint, normalize_symbol},
         conversions::{i64_to_datetime, string_to_period},
         currency_resolver::{
-            CurrencyHints, CurrencyKind, ReportingCurrencyEvidence, ResolvedCurrencyUnit,
+            CurrencyHints, CurrencyPurpose, ReportingCurrencyEvidence, ResolvedCurrencyUnit,
             project_currency_resolution,
         },
         diagnostics::{
@@ -111,7 +111,7 @@ where
         let projected_currency = project_currency_resolution(
             &mut ctx,
             &symbol,
-            CurrencyKind::Reporting,
+            CurrencyPurpose::Reporting,
             direct_currency.as_deref(),
             client
                 .resolve_reporting_currency(
@@ -929,7 +929,7 @@ pub(super) async fn earnings(
         let projected_currency = project_currency_resolution(
             &mut ctx,
             symbol,
-            CurrencyKind::Reporting,
+            CurrencyPurpose::Reporting,
             e.financial_currency.as_deref(),
             client
                 .resolve_reporting_currency(

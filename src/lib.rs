@@ -151,8 +151,7 @@ pub mod ticker;
 // Core types that are provider-specific
 pub use core::{
     CacheEndpoint, CacheMode, DataQuality, ProjectionIssue, RetryConfig, YfClient, YfClientBuilder,
-    YfCurrencyKind, YfCurrencySource, YfDiagnostics, YfError, YfEvidenceStrength, YfResponse,
-    YfWarning,
+    YfCurrencyInference, YfCurrencyPurpose, YfDiagnostics, YfError, YfResponse, YfWarning,
 };
 
 // Provider-specific builders and utilities

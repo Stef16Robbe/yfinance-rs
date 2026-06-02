@@ -1,3 +1,5 @@
+use super::DirectCurrencyField;
+
 #[derive(Clone, Copy, Debug)]
 pub enum TradingCurrencyEvidence<'a> {
     None,
@@ -18,6 +20,14 @@ impl<'a> TradingCurrencyEvidence<'a> {
             Self::None => "none",
             Self::ChartMeta(_) => "chart.meta.currency",
             Self::OptionsQuote(_) => "options quote currency",
+        }
+    }
+
+    pub(super) const fn field(self) -> Option<DirectCurrencyField> {
+        match self {
+            Self::None => None,
+            Self::ChartMeta(_) => Some(DirectCurrencyField::ChartMeta),
+            Self::OptionsQuote(_) => Some(DirectCurrencyField::OptionsQuote),
         }
     }
 }
@@ -41,6 +51,13 @@ impl<'a> ReportingCurrencyEvidence<'a> {
             Self::TimeseriesCurrencyCode(_) => "timeseries currencyCode",
         }
     }
+
+    pub(super) const fn field(self) -> DirectCurrencyField {
+        match self {
+            Self::FinancialCurrency(_) => DirectCurrencyField::FinancialCurrency,
+            Self::TimeseriesCurrencyCode(_) => DirectCurrencyField::TimeseriesCurrencyCode,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -58,6 +75,12 @@ impl<'a> CorporateActionCurrencyEvidence<'a> {
     pub(super) const fn label(self) -> &'static str {
         match self {
             Self::ChartMeta(_) => "chart.meta.currency",
+        }
+    }
+
+    pub(super) const fn field(self) -> DirectCurrencyField {
+        match self {
+            Self::ChartMeta(_) => DirectCurrencyField::ChartMeta,
         }
     }
 }
@@ -81,6 +104,14 @@ impl<'a> AnalystEstimateCurrencyEvidence<'a> {
             Self::Earnings(_) => "earningsCurrency",
             Self::Revenue(_) => "revenueCurrency",
             Self::EpsTrend(_) => "epsTrendCurrency",
+        }
+    }
+
+    pub(super) const fn field(self) -> DirectCurrencyField {
+        match self {
+            Self::Earnings(_) => DirectCurrencyField::EarningsCurrency,
+            Self::Revenue(_) => DirectCurrencyField::RevenueCurrency,
+            Self::EpsTrend(_) => DirectCurrencyField::EpsTrendCurrency,
         }
     }
 }

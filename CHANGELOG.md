@@ -34,6 +34,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `Ticker::fast_info()` now returns yfinance-rs' own `FastInfo` struct with
   instant quote data nested under `snapshot`; existing `fast_info.last`-style
   reads should move to `fast_info.snapshot.last`.
+- `YfWarning::CurrencyInferred` now reports only diagnostic purpose and
+  heuristic inference through `YfCurrencyPurpose` and `YfCurrencyInference`.
+  Removed the public `YfCurrencySource` and `YfEvidenceStrength` provenance
+  types; provider-backed currency provenance is now an internal resolver detail.
 
 ### Added
 
@@ -156,7 +160,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Crumb refresh now relies on exact response-cache key eviction instead of an unreachable sweep for crumb-bearing cache keys.
 - `Ticker`-level cache and retry settings now propagate consistently through history builders, action helpers, and profile loading inside `Ticker::info()`.
 - Caller-supplied currency overrides no longer emit `CurrencyInferred` diagnostics or fail strict-mode projection.
-- Currency evidence strength ordering now treats caller-supplied overrides as stronger than provider and heuristic evidence.
+- Provider-backed quote, quoteSummary, direct, override, and cached currency
+  evidence no longer emits `CurrencyInferred` diagnostics or fails strict-mode
+  projection; only listing/profile-country heuristics are diagnostic inferred
+  currency fallbacks.
+- Currency evidence ranking now treats caller-supplied overrides as stronger
+  than provider and heuristic evidence.
 - POST endpoints with `cache_mode(CacheMode::Use)`, including news and custom screeners, now use body-aware response cache keys instead of effectively bypassing or colliding on URL-only keys.
 - Fundamentals timeseries and share-count default windows now round their implicit end to the next UTC midnight, keeping response-cache keys stable within a day.
 - Profile loading now maps Yahoo `MUTUALFUND` quote types into `FundProfile` instead of rejecting them despite fund support being documented.

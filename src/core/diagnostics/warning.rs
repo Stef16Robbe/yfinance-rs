@@ -1,6 +1,6 @@
 use std::fmt;
 
-use super::{ProjectionIssue, YfCurrencyKind, YfCurrencySource, YfEvidenceStrength};
+use super::{ProjectionIssue, YfCurrencyInference, YfCurrencyPurpose};
 
 /// A warning emitted by the Yahoo projection layer.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -58,18 +58,16 @@ pub enum YfWarning {
         /// Description of the repair.
         repair: &'static str,
     },
-    /// Currency was resolved from an override or non-direct provider evidence.
+    /// Currency was inferred from a heuristic because Yahoo did not provide a usable currency field.
     CurrencyInferred {
         /// Stable endpoint or mapper name.
         endpoint: &'static str,
         /// Symbol whose currency was resolved.
         symbol: String,
         /// Currency purpose.
-        kind: YfCurrencyKind,
-        /// Evidence source.
-        source: YfCurrencySource,
-        /// Evidence strength.
-        strength: YfEvidenceStrength,
+        purpose: YfCurrencyPurpose,
+        /// Heuristic used to infer the currency.
+        inference: YfCurrencyInference,
     },
     /// An aggregate endpoint suppressed a subcall error and returned partial data.
     SuppressedError {
@@ -136,22 +134,11 @@ impl fmt::Display for YfWarning {
             Self::CurrencyInferred {
                 endpoint,
                 symbol,
-                kind,
-                source: YfCurrencySource::Override,
-                strength,
+                purpose,
+                inference,
             } => write!(
                 f,
-                "{endpoint}: used override {kind:?} currency for {symbol} ({strength:?})"
-            ),
-            Self::CurrencyInferred {
-                endpoint,
-                symbol,
-                kind,
-                source,
-                strength,
-            } => write!(
-                f,
-                "{endpoint}: inferred {kind:?} currency for {symbol} from {source:?} ({strength:?})"
+                "{endpoint}: inferred {purpose} currency for {symbol} from {inference} (no usable provider currency)"
             ),
             Self::SuppressedError {
                 endpoint,

@@ -1,4 +1,4 @@
-use super::{CurrencyKind, ResolvedCurrency, ResolvedCurrencyUnit};
+use super::{CurrencyPurpose, ResolvedCurrency, ResolvedCurrencyUnit};
 use crate::core::{ProjectionContext, ProjectionIssue, YfError};
 
 #[derive(Debug)]
@@ -34,7 +34,7 @@ impl ProjectedCurrency {
 pub fn project_currency_resolution(
     ctx: &mut ProjectionContext,
     symbol: &str,
-    kind: CurrencyKind,
+    purpose: CurrencyPurpose,
     direct_code: Option<&str>,
     resolution: Result<ResolvedCurrency, YfError>,
 ) -> Result<ProjectedCurrency, YfError> {
@@ -49,7 +49,7 @@ pub fn project_currency_resolution(
                     },
                 )?;
             }
-            ctx.currency_resolution(symbol, kind, &resolved)?;
+            ctx.currency_resolution(symbol, purpose, &resolved)?;
             Ok(ProjectedCurrency::resolved(resolved.into_unit()))
         }
         Err(err) => Ok(ProjectedCurrency::omitted(currency_resolution_issue(

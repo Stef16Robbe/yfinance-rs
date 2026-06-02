@@ -1,122 +1,72 @@
+use std::fmt;
+
 /// Currency purpose used by diagnostics.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum YfCurrencyKind {
+pub enum YfCurrencyPurpose {
     /// Trading currency for quoted prices.
     Trading,
     /// Reporting currency for statements and ownership totals.
     Reporting,
     /// Currency for dividends and capital gains.
     CorporateAction,
-    /// Currency for analyst estimates.
+    /// Currency for analyst estimates and price targets.
     AnalystEstimate,
 }
 
-/// Currency evidence source used by diagnostics.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum YfCurrencySource {
-    /// Explicit caller override.
-    Override,
-    /// Direct field in the endpoint payload.
-    DirectProvider,
-    /// Previously cached provider evidence.
-    CachedProvider,
-    /// v7 quote enrichment.
-    QuoteEnrichment,
-    /// quoteSummary enrichment.
-    QuoteSummaryEnrichment,
-    /// Symbol/listing heuristic.
+impl fmt::Display for YfCurrencyPurpose {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let value = match self {
+            Self::Trading => "trading",
+            Self::Reporting => "reporting",
+            Self::CorporateAction => "corporate-action",
+            Self::AnalystEstimate => "analyst-estimate",
+        };
+        f.write_str(value)
+    }
+}
+
+/// Heuristic used to infer a currency when Yahoo did not provide a usable currency field.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum YfCurrencyInference {
+    /// Currency inferred from Yahoo symbol/listing or exchange metadata.
     ListingHeuristic,
-    /// Profile country heuristic.
+    /// Currency inferred from a profile country mapping.
     ProfileCountryHeuristic,
 }
 
-/// Currency evidence strength used by diagnostics.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum YfEvidenceStrength {
-    /// Caller-supplied override.
-    Override,
-    /// Profile-country heuristic.
-    ProfileHeuristic,
-    /// Listing/exchange heuristic.
-    ListingHeuristic,
-    /// Provider evidence obtained through enrichment.
-    EnrichedProvider,
-    /// Direct provider evidence from the requested payload.
-    DirectProvider,
+impl fmt::Display for YfCurrencyInference {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let value = match self {
+            Self::ListingHeuristic => "listing heuristic",
+            Self::ProfileCountryHeuristic => "profile-country heuristic",
+        };
+        f.write_str(value)
+    }
 }
 
-impl YfEvidenceStrength {
-    const fn rank(self) -> u8 {
-        match self {
-            Self::ProfileHeuristic => 0,
-            Self::ListingHeuristic => 1,
-            Self::EnrichedProvider => 2,
-            Self::DirectProvider => 3,
-            Self::Override => 4,
+impl From<crate::core::currency_resolver::CurrencyPurpose> for YfCurrencyPurpose {
+    fn from(value: crate::core::currency_resolver::CurrencyPurpose) -> Self {
+        match value {
+            crate::core::currency_resolver::CurrencyPurpose::Trading => Self::Trading,
+            crate::core::currency_resolver::CurrencyPurpose::Reporting => Self::Reporting,
+            crate::core::currency_resolver::CurrencyPurpose::CorporateAction => {
+                Self::CorporateAction
+            }
+            crate::core::currency_resolver::CurrencyPurpose::AnalystEstimate => {
+                Self::AnalystEstimate
+            }
         }
     }
 }
 
-impl PartialOrd for YfEvidenceStrength {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for YfEvidenceStrength {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.rank().cmp(&other.rank())
-    }
-}
-
-impl From<crate::core::currency_resolver::CurrencyKind> for YfCurrencyKind {
-    fn from(value: crate::core::currency_resolver::CurrencyKind) -> Self {
+impl From<crate::core::currency_resolver::CurrencyInference> for YfCurrencyInference {
+    fn from(value: crate::core::currency_resolver::CurrencyInference) -> Self {
         match value {
-            crate::core::currency_resolver::CurrencyKind::Trading => Self::Trading,
-            crate::core::currency_resolver::CurrencyKind::Reporting => Self::Reporting,
-            crate::core::currency_resolver::CurrencyKind::CorporateAction => Self::CorporateAction,
-            crate::core::currency_resolver::CurrencyKind::AnalystEstimate => Self::AnalystEstimate,
-        }
-    }
-}
-
-impl From<crate::core::currency_resolver::CurrencySource> for YfCurrencySource {
-    fn from(value: crate::core::currency_resolver::CurrencySource) -> Self {
-        match value {
-            crate::core::currency_resolver::CurrencySource::Override => Self::Override,
-            crate::core::currency_resolver::CurrencySource::DirectProvider => Self::DirectProvider,
-            crate::core::currency_resolver::CurrencySource::CachedProvider => Self::CachedProvider,
-            crate::core::currency_resolver::CurrencySource::QuoteEnrichment => {
-                Self::QuoteEnrichment
-            }
-            crate::core::currency_resolver::CurrencySource::QuoteSummaryEnrichment => {
-                Self::QuoteSummaryEnrichment
-            }
-            crate::core::currency_resolver::CurrencySource::ListingHeuristic => {
+            crate::core::currency_resolver::CurrencyInference::ListingHeuristic => {
                 Self::ListingHeuristic
             }
-            crate::core::currency_resolver::CurrencySource::ProfileCountryHeuristic => {
+            crate::core::currency_resolver::CurrencyInference::ProfileCountryHeuristic => {
                 Self::ProfileCountryHeuristic
-            }
-        }
-    }
-}
-
-impl From<crate::core::currency_resolver::EvidenceStrength> for YfEvidenceStrength {
-    fn from(value: crate::core::currency_resolver::EvidenceStrength) -> Self {
-        match value {
-            crate::core::currency_resolver::EvidenceStrength::Override => Self::Override,
-            crate::core::currency_resolver::EvidenceStrength::ProfileHeuristic => {
-                Self::ProfileHeuristic
-            }
-            crate::core::currency_resolver::EvidenceStrength::ListingHeuristic => {
-                Self::ListingHeuristic
-            }
-            crate::core::currency_resolver::EvidenceStrength::EnrichedProvider => {
-                Self::EnrichedProvider
-            }
-            crate::core::currency_resolver::EvidenceStrength::DirectProvider => {
-                Self::DirectProvider
             }
         }
     }

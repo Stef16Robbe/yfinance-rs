@@ -43,8 +43,8 @@ pub(crate) use call_options::{CallOptions, impl_call_option_setters};
 pub use client::{CacheEndpoint, CacheMode, RetryConfig, YfClient, YfClientBuilder};
 pub(crate) use diagnostics::ProjectionContext;
 pub use diagnostics::{
-    DataQuality, ProjectionIssue, YfCurrencyKind, YfCurrencySource, YfDiagnostics,
-    YfEvidenceStrength, YfResponse, YfWarning,
+    DataQuality, ProjectionIssue, YfCurrencyInference, YfCurrencyPurpose, YfDiagnostics,
+    YfResponse, YfWarning,
 };
 pub use error::YfError;
 pub use models::{
