@@ -23,7 +23,7 @@ use crate::{
     core::CallOptions,
     core::client::{CacheMode, RetryConfig, normalize_symbols},
     core::conversions::price_from_f64_with_currency_str,
-    core::yahoo_vocab::parse_yahoo_quote_type,
+    core::yahoo_vocab::{parse_yahoo_quote_type, yahoo_exchange_to_listing_currency},
 };
 use paft::domain::{AssetKind, Canonical, Instrument};
 use paft::market::quote::QuoteUpdate;
@@ -580,19 +580,34 @@ fn ws_pricing_to_update(
     timestamp: DateTime<Utc>,
     volume: Option<u64>,
 ) -> QuoteUpdate {
-    let currency_str = Some(ticker.currency.as_str());
+    let currency_str = ws_currency_str(ticker);
 
     QuoteUpdate {
         instrument,
-        price: price_from_f64_with_currency_str(f64::from(ticker.price), currency_str),
-        previous_close: price_from_f64_with_currency_str(
-            f64::from(ticker.previous_close),
-            currency_str,
-        ),
+        price: ws_price_from_f32(ticker.price, currency_str),
+        previous_close: ws_price_from_f32(ticker.previous_close, currency_str),
         ts: timestamp,
         volume,
         provider: (),
     }
+}
+
+fn ws_currency_str(ticker: &wire_ws::PricingData) -> Option<&str> {
+    nonempty_str(&ticker.currency)
+        .or_else(|| nonempty_str(&ticker.exchange).and_then(yahoo_exchange_to_listing_currency))
+}
+
+fn nonempty_str(value: &str) -> Option<&str> {
+    let value = value.trim();
+    (!value.is_empty()).then_some(value)
+}
+
+fn ws_price_from_f32(value: f32, currency_str: Option<&str>) -> Option<paft::money::Price> {
+    let value = f64::from(value);
+    if !value.is_finite() || value <= 0.0 {
+        return None;
+    }
+    price_from_f64_with_currency_str(value, currency_str)
 }
 
 async fn map_ws_pricing_to_update_with_delta(
