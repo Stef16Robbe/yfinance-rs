@@ -53,9 +53,10 @@ fn untyped_stream_asset_kind() -> AssetKind {
 //   reading as the first delta of the new session: `volume = Some(current)`.
 // - This applies to both WebSocket and Polling streams. The JSON/base64 decoder helper
 //   (`decode_and_map_message`) is stateless and always returns `volume = None`.
-// - When Yahoo omits instrument type data and no typed instrument is cached, the emitted
-//   update uses `AssetKind::Other("YAHOO_STREAM_UNTYPED")`. That fallback is deliberately
-//   not cached, so later typed quote data can replace it.
+// - When Yahoo omits instrument type data, or sends an unknown stream quote type, and no
+//   typed instrument is cached, the emitted update uses
+//   `AssetKind::Other("YAHOO_STREAM_UNTYPED")`. That fallback is deliberately not cached,
+//   so later typed quote data can replace it.
 //
 // Implications:
 // - If you need cumulative volume, accumulate the per-update `volume` values yourself or
@@ -602,6 +603,22 @@ fn nonempty_str(value: &str) -> Option<&str> {
     (!value.is_empty()).then_some(value)
 }
 
+const fn stream_quote_type_to_asset_kind(quote_type: i32) -> Option<AssetKind> {
+    match quote_type {
+        8 => Some(AssetKind::Equity),
+        9 => Some(AssetKind::Index),
+        11 | 12 | 20 => Some(AssetKind::Fund),
+        13 => Some(AssetKind::Option),
+        14 => Some(AssetKind::Forex),
+        15 => Some(AssetKind::Warrant),
+        17 => Some(AssetKind::Bond),
+        18 => Some(AssetKind::Future),
+        23 => Some(AssetKind::Commodity),
+        41 => Some(AssetKind::Crypto),
+        _ => None,
+    }
+}
+
 fn ws_price_from_f32(value: f32, currency_str: Option<&str>) -> Option<paft::money::Price> {
     let value = f64::from(value);
     if !value.is_finite() || value <= 0.0 {
@@ -616,7 +633,12 @@ async fn map_ws_pricing_to_update_with_delta(
     last_vol: &mut HashMap<String, u64>,
     last_ts: &mut HashMap<String, DateTime<Utc>>,
 ) -> Option<QuoteUpdate> {
-    let instrument = resolve_stream_instrument(client, &ticker.id, None).await?;
+    let instrument = resolve_stream_instrument(
+        client,
+        &ticker.id,
+        stream_quote_type_to_asset_kind(ticker.quote_type),
+    )
+    .await?;
     let timestamp = match ws_pricing_timestamp(ticker) {
         Ok(timestamp) => timestamp,
         Err(error) => {
@@ -657,7 +679,9 @@ async fn map_ws_pricing_to_update_with_delta(
 #[doc(hidden)]
 pub fn decode_and_map_message(text: &str) -> Result<QuoteUpdate, YfError> {
     let ticker = decode_ws_pricing(text)?;
-    let instrument = Instrument::from_symbol(&ticker.id, untyped_stream_asset_kind())
+    let kind = stream_quote_type_to_asset_kind(ticker.quote_type)
+        .unwrap_or_else(untyped_stream_asset_kind);
+    let instrument = Instrument::from_symbol(&ticker.id, kind)
         .map_err(|_| YfError::InvalidParams(format!("ws symbol invalid: {}", ticker.id)))?;
 
     let timestamp = match ws_pricing_timestamp(&ticker) {
@@ -766,8 +790,37 @@ async fn run_polling_stream(
 
 #[cfg(test)]
 mod tests {
-    use super::{VolumeDelta, volume_delta_from_cumulative};
+    use super::{VolumeDelta, stream_quote_type_to_asset_kind, volume_delta_from_cumulative};
+    use paft::domain::AssetKind;
     use std::collections::HashMap;
+
+    #[test]
+    fn stream_quote_type_to_asset_kind_maps_known_yahoo_codes() {
+        for (code, expected) in [
+            (8, AssetKind::Equity),
+            (9, AssetKind::Index),
+            (11, AssetKind::Fund),
+            (12, AssetKind::Fund),
+            (13, AssetKind::Option),
+            (14, AssetKind::Forex),
+            (15, AssetKind::Warrant),
+            (17, AssetKind::Bond),
+            (18, AssetKind::Future),
+            (20, AssetKind::Fund),
+            (23, AssetKind::Commodity),
+            (41, AssetKind::Crypto),
+        ] {
+            assert_eq!(stream_quote_type_to_asset_kind(code), Some(expected));
+        }
+    }
+
+    #[test]
+    fn stream_quote_type_to_asset_kind_rejects_non_instrument_codes() {
+        assert_eq!(stream_quote_type_to_asset_kind(0), None);
+        assert_eq!(stream_quote_type_to_asset_kind(7), None);
+        assert_eq!(stream_quote_type_to_asset_kind(1000), None);
+        assert_eq!(stream_quote_type_to_asset_kind(i32::MAX), None);
+    }
 
     #[test]
     fn volume_delta_from_cumulative_tracks_first_delta_reset_and_missing_values() {

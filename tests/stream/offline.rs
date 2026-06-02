@@ -1,4 +1,6 @@
+use base64::{Engine as _, engine::general_purpose};
 use chrono::{DateTime, Utc};
+use prost::Message;
 use std::{
     io::ErrorKind,
     net::{TcpListener, TcpStream},
@@ -10,6 +12,34 @@ use tokio_tungstenite::tungstenite::{Message as TestWsMessage, WebSocket, accept
 use url::Url;
 use yfinance_rs::core::client::CacheMode;
 use yfinance_rs::{AssetKind, StreamMethod};
+
+#[derive(Clone, PartialEq, Message)]
+struct TestPricingData {
+    #[prost(string, tag = "1")]
+    pub id: String,
+    #[prost(float, tag = "2")]
+    pub price: f32,
+    #[prost(sint64, tag = "3")]
+    pub time: i64,
+    #[prost(string, tag = "4")]
+    pub currency: String,
+    #[prost(string, tag = "5")]
+    pub exchange: String,
+    #[prost(int32, tag = "6")]
+    pub quote_type: i32,
+    #[prost(sint64, tag = "9")]
+    pub day_volume: i64,
+    #[prost(float, tag = "16")]
+    pub previous_close: f32,
+    #[prost(sint64, tag = "27")]
+    pub price_hint: i64,
+}
+
+fn encode_test_pricing_data(message: &TestPricingData) -> String {
+    let mut bytes = Vec::new();
+    message.encode(&mut bytes).unwrap();
+    general_purpose::STANDARD.encode(bytes)
+}
 
 fn spawn_websocket_server(
     handler: impl FnOnce(&mut WebSocket<TcpStream>) + Send + 'static,
@@ -65,6 +95,54 @@ fn assert_subscription(message: TestWsMessage, symbols: &[&str]) {
     let subscription: serde_json::Value =
         serde_json::from_str(text.as_str()).expect("subscription should be valid JSON");
     assert_eq!(subscription["subscribe"], serde_json::json!(symbols));
+}
+
+#[tokio::test]
+async fn stream_websocket_maps_numeric_quote_type_without_cached_instrument() {
+    let (stream_url, websocket_thread) = spawn_websocket_server(|websocket| {
+        let subscription = websocket
+            .read()
+            .expect("server should receive websocket subscription");
+        assert_subscription(subscription, &["AAPL"]);
+
+        let payload = encode_test_pricing_data(&TestPricingData {
+            id: "AAPL".to_string(),
+            price: 314.6,
+            time: 1_780_426_509_000,
+            currency: "USD".to_string(),
+            exchange: "NMS".to_string(),
+            quote_type: 8,
+            day_volume: 26_248_990,
+            previous_close: 313.0,
+            price_hint: 2,
+        });
+        let frame = serde_json::json!({ "message": payload }).to_string();
+        websocket
+            .send(TestWsMessage::Text(frame.into()))
+            .expect("server should send pricing update");
+    });
+
+    let client = yfinance_rs::YfClient::builder()
+        .base_stream(stream_url)
+        .build()
+        .unwrap();
+
+    let builder = yfinance_rs::StreamBuilder::new(&client)
+        .symbols(["AAPL"])
+        .method(StreamMethod::Websocket);
+
+    let (handle, mut rx) = builder.start().await.unwrap();
+    let update = timeout(Duration::from_secs(3), rx.recv())
+        .await
+        .expect("timed out waiting for websocket update")
+        .expect("stream closed before websocket update");
+    handle.abort();
+    websocket_thread
+        .join()
+        .expect("websocket server thread panicked");
+
+    assert_eq!(update.instrument.symbol.as_str(), "AAPL");
+    assert!(matches!(update.instrument.kind, AssetKind::Equity));
 }
 
 #[tokio::test]

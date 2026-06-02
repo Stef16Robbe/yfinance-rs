@@ -14,6 +14,8 @@ struct TestPricingData {
     pub currency: String,
     #[prost(string, tag = "5")]
     pub exchange: String,
+    #[prost(int32, tag = "6")]
+    pub quote_type: i32,
     #[prost(sint64, tag = "9")]
     pub day_volume: i64,
     #[prost(float, tag = "16")]
@@ -54,6 +56,7 @@ fn decode_equity_websocket_message_infers_currency_from_exchange() {
         time: 1_780_426_509_000,
         currency: String::new(),
         exchange: "NMS".to_string(),
+        quote_type: 8,
         day_volume: 26_248_990,
         previous_close: 0.0,
         price_hint: 2,
@@ -62,6 +65,10 @@ fn decode_equity_websocket_message_infers_currency_from_exchange() {
     let update = yfinance_rs::stream::decode_and_map_message(&base64_msg).unwrap();
 
     assert_eq!(update.instrument.symbol.as_str(), "AAPL");
+    assert!(matches!(
+        update.instrument.kind,
+        yfinance_rs::AssetKind::Equity
+    ));
     let price = update.price.as_ref().expect("price should be present");
     assert_eq!(price.currency().to_string(), "USD");
     assert!(
@@ -71,6 +78,30 @@ fn decode_equity_websocket_message_infers_currency_from_exchange() {
     assert!(
         update.previous_close.is_none(),
         "protobuf default zero should not be projected as a real previous close"
+    );
+}
+
+#[test]
+fn decode_unknown_websocket_quote_type_uses_untyped_fallback() {
+    let base64_msg = encode_test_pricing_data(&TestPricingData {
+        id: "AAPL".to_string(),
+        price: 314.6,
+        time: 1_780_426_509_000,
+        currency: "USD".to_string(),
+        exchange: "NMS".to_string(),
+        quote_type: 1001,
+        day_volume: 26_248_990,
+        previous_close: 313.0,
+        price_hint: 2,
+    });
+
+    let update = yfinance_rs::stream::decode_and_map_message(&base64_msg).unwrap();
+
+    assert_eq!(update.instrument.symbol.as_str(), "AAPL");
+    assert_eq!(
+        update.instrument.kind.to_string(),
+        "YAHOO_STREAM_UNTYPED",
+        "unknown stream quote types should keep using the explicit fallback"
     );
 }
 

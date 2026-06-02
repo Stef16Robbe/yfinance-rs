@@ -67,6 +67,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - WebSocket quote updates now preserve equity prices when Yahoo omits the
   currency field but includes an exchange code, and they no longer project
   protobuf default zero prices as real monetary values.
+- WebSocket quote updates now map known Yahoo numeric stream quote types into
+  typed `AssetKind`s instead of using the untyped stream fallback whenever the
+  instrument cache is cold.
 - Fundamentals timeseries and share-count parsing no longer rejects Yahoo result items that
   omit the unused `meta` object.
 - Normal Yahoo diagnostics are reduced for current live responses by preferring chart
