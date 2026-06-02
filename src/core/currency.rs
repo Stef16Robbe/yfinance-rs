@@ -1,6 +1,9 @@
 //! Helpers for inferring currencies from country information.
 
-use std::{collections::HashMap, sync::LazyLock};
+use std::{
+    collections::{HashMap, hash_map::Entry},
+    sync::LazyLock,
+};
 
 use paft::money::Currency;
 
@@ -232,20 +235,39 @@ const COUNTRY_CURRENCY_RULES: &[(&str, &str)] = &[
     ("SAINT KITTS AND NEVIS", "XCD"),
 ];
 
-/// Precomputed exact lookup table using `COUNTRY_CURRENCY_RULES`.
-static COUNTRY_TO_CURRENCY: LazyLock<HashMap<&'static str, Currency>> = LazyLock::new(|| {
-    let mut map = HashMap::new();
+/// Precomputed exact lookup table using normalized `COUNTRY_CURRENCY_RULES`.
+static COUNTRY_TO_CURRENCY: LazyLock<HashMap<String, Currency>> = LazyLock::new(|| {
+    let mut map = HashMap::with_capacity(COUNTRY_CURRENCY_RULES.len());
     for (country, code) in COUNTRY_CURRENCY_RULES {
-        map.insert(*country, parse_currency_code(code));
+        let country = normalize_country_rule_key(country);
+        let currency = parse_currency_code(code);
+
+        match map.entry(country) {
+            Entry::Vacant(entry) => {
+                entry.insert(currency);
+            }
+            Entry::Occupied(entry) => {
+                assert!(
+                    entry.get() == &currency,
+                    "conflicting currency rules normalize to the same country key: {:?}",
+                    entry.key()
+                );
+            }
+        }
     }
     map
 });
 
-/// Precomputed fuzzy lookup table using `COUNTRY_CURRENCY_RULES`.
-static FUZZY_COUNTRY_TO_CURRENCY: LazyLock<Vec<(&'static str, Currency)>> = LazyLock::new(|| {
+/// Precomputed fuzzy lookup table using normalized `COUNTRY_CURRENCY_RULES`.
+static FUZZY_COUNTRY_TO_CURRENCY: LazyLock<Vec<(String, Currency)>> = LazyLock::new(|| {
     let mut rules = COUNTRY_CURRENCY_RULES
         .iter()
-        .map(|(country, code)| (*country, parse_currency_code(code)))
+        .map(|(country, code)| {
+            (
+                normalize_country_rule_key(country),
+                parse_currency_code(code),
+            )
+        })
         .collect::<Vec<_>>();
 
     rules.sort_unstable_by(|(left, _), (right, _)| {
@@ -258,6 +280,11 @@ static FUZZY_COUNTRY_TO_CURRENCY: LazyLock<Vec<(&'static str, Currency)>> = Lazy
 fn parse_currency_code(code: &str) -> Currency {
     code.parse()
         .unwrap_or_else(|_| panic!("invalid currency code {code} in country currency table"))
+}
+
+fn normalize_country_rule_key(country: &str) -> String {
+    normalize_country(country)
+        .unwrap_or_else(|| panic!("country currency rule key normalizes to empty: {country:?}"))
 }
 
 /// Normalize a country string to an uppercase ASCII key.
@@ -342,9 +369,10 @@ fn is_word_boundary(bytes: &[u8], index: usize) -> bool {
 mod tests {
     use super::{
         COUNTRY_CURRENCY_RULES, COUNTRY_TO_CURRENCY, FUZZY_COUNTRY_TO_CURRENCY,
-        currency_for_country,
+        currency_for_country, normalize_country,
     };
     use paft::money::Currency;
+    use std::collections::HashMap;
 
     fn currency_code(country: &str) -> Option<String> {
         currency_for_country(country).map(|currency| currency.to_string())
@@ -373,23 +401,45 @@ mod tests {
             );
         }
 
-        assert_eq!(COUNTRY_TO_CURRENCY.len(), COUNTRY_CURRENCY_RULES.len());
+        let mut exact_keys = HashMap::new();
+
+        for &(country, code) in COUNTRY_CURRENCY_RULES {
+            let normalized = normalize_country(country)
+                .unwrap_or_else(|| panic!("country currency rule key normalizes empty: {country}"));
+            let currency = code
+                .parse::<Currency>()
+                .expect("country currency rule code was already validated");
+
+            if let Some(previous) = exact_keys.insert(normalized.clone(), currency.clone()) {
+                assert!(
+                    previous == currency,
+                    "country currency rule {country:?} normalizes to conflicting key {normalized:?}"
+                );
+            }
+        }
+
+        assert_eq!(COUNTRY_TO_CURRENCY.len(), exact_keys.len());
         assert_eq!(
             FUZZY_COUNTRY_TO_CURRENCY.len(),
             COUNTRY_CURRENCY_RULES.len()
         );
 
         for &(country, code) in COUNTRY_CURRENCY_RULES {
+            let normalized = normalize_country(country)
+                .unwrap_or_else(|| panic!("country currency rule key normalizes empty: {country}"));
             let currency = code
                 .parse::<Currency>()
                 .expect("country currency rule code was already validated");
 
-            assert_eq!(COUNTRY_TO_CURRENCY.get(country), Some(&currency));
+            assert_eq!(
+                COUNTRY_TO_CURRENCY.get(normalized.as_str()),
+                Some(&currency)
+            );
             assert!(
                 FUZZY_COUNTRY_TO_CURRENCY
                     .iter()
                     .any(|(rule_country, rule_currency)| {
-                        *rule_country == country && rule_currency == &currency
+                        rule_country == &normalized && rule_currency == &currency
                     }),
                 "fuzzy country currency table is missing rule {country:?} -> {code}"
             );
@@ -401,6 +451,7 @@ mod tests {
         assert_eq!(currency_code("Italy").as_deref(), Some("EUR"));
         assert_eq!(currency_code("United States").as_deref(), Some("USD"));
         assert_eq!(currency_code("Cote d'Ivoire").as_deref(), Some("XOF"));
+        assert_eq!(currency_code("Timor-Leste").as_deref(), Some("USD"));
     }
 
     #[test]
@@ -414,6 +465,10 @@ mod tests {
         assert_eq!(
             currency_code("Republic of South Korea").as_deref(),
             Some("KRW")
+        );
+        assert_eq!(
+            currency_code("Issuer incorporated in Timor-Leste").as_deref(),
+            Some("USD")
         );
     }
 

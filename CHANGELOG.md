@@ -187,6 +187,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   as conflicts.
 - Country/currency inference rules are now covered by an invariant test that
   parses every configured currency code and forces both lazy lookup tables.
+- Profile-country currency inference now normalizes configured country aliases
+  before exact and fuzzy lookup table construction, so punctuated country names
+  such as `Timor-Leste` resolve correctly.
 
 ### Changed
 
