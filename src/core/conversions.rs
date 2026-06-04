@@ -33,6 +33,18 @@ pub fn decimal_from_f64(value: f64) -> Option<Decimal> {
         .and_then(|value| Decimal::try_from(value).ok())
 }
 
+/// Converts a finite `f32` value to `Decimal`.
+///
+/// Keep this path for Yahoo protobuf `float` fields. Widening the `f32` to `f64`
+/// first preserves binary artifacts such as `314.6000061035156`.
+#[must_use]
+pub fn decimal_from_f32(value: f32) -> Option<Decimal> {
+    value
+        .is_finite()
+        .then_some(value)
+        .and_then(|value| Decimal::try_from(value).ok())
+}
+
 /// Convert a finite `f64` to `Money` with specified currency.
 ///
 /// Returns `None` if the value is non-finite, does not fit in the decimal
@@ -89,6 +101,12 @@ pub fn price_from_f64(value: f64, currency: Currency) -> Option<Price> {
 #[must_use]
 pub fn price_amount_from_f64(value: f64) -> Option<PriceAmount> {
     decimal_from_f64(value).map(PriceAmount::new)
+}
+
+/// Convert a finite `f32` to a contextual price amount.
+#[must_use]
+pub fn price_amount_from_f32(value: f32) -> Option<PriceAmount> {
+    decimal_from_f32(value).map(PriceAmount::new)
 }
 
 /// Convert a finite `f64` to `Price` with a parsed currency string.

@@ -53,6 +53,7 @@ const SECONDARY: &str = "MSFT";
 const TERTIARY: &str = "META";
 const FUND: &str = "VFINX";
 const CRYPTO: &str = "BTC-USD";
+const LOW_PRICE_CRYPTO: &str = "XRP-USD";
 
 #[tokio::main]
 async fn main() -> Result<(), YfError> {
@@ -60,7 +61,9 @@ async fn main() -> Result<(), YfError> {
     let mut audit = Audit::default();
 
     println!("Live diagnostics audit started at {}", Utc::now());
-    println!("Primary symbols: {PRIMARY}, {SECONDARY}, {TERTIARY}, {FUND}, {CRYPTO}");
+    println!(
+        "Primary symbols: {PRIMARY}, {SECONDARY}, {TERTIARY}, {FUND}, {CRYPTO}, {LOW_PRICE_CRYPTO}"
+    );
     println!("A 429 response is retried once after five minutes.\n");
 
     audit_quote_surfaces(&client, &mut audit).await;
@@ -97,6 +100,14 @@ async fn audit_quote_surfaces(client: &YfClient, audit: &mut Audit) {
                 .await
         },
         coerce_slice(summary_quotes),
+    )
+    .await;
+
+    audit_response(
+        audit,
+        "quote::quotes_with_diagnostics(BTC-USD,XRP-USD)",
+        || quotes_with_diagnostics(client, [CRYPTO, LOW_PRICE_CRYPTO]),
+        coerce_slice(summary_low_price_crypto_quotes),
     )
     .await;
 }
@@ -171,6 +182,17 @@ async fn audit_ticker_diagnostic_surfaces(client: &YfClient, audit: &mut Audit) 
             ticker.quote_with_diagnostics().await
         },
         summary_quote,
+    )
+    .await;
+
+    audit_response(
+        audit,
+        "Ticker::quote_with_diagnostics(XRP-USD)",
+        || async {
+            let ticker = Ticker::new(client, LOW_PRICE_CRYPTO).cache_mode(CacheMode::Use);
+            ticker.quote_with_diagnostics().await
+        },
+        summary_low_price_crypto_quote,
     )
     .await;
 
@@ -629,6 +651,14 @@ async fn audit_public_surfaces_without_diagnostics(client: &YfClient, audit: &mu
 
     audit_plain(
         audit,
+        "quote::quotes(BTC-USD,XRP-USD)",
+        || quotes(client, [CRYPTO, LOW_PRICE_CRYPTO]),
+        coerce_slice(summary_low_price_crypto_quotes),
+    )
+    .await;
+
+    audit_plain(
+        audit,
         "HistoryBuilder::fetch(AAPL,1mo,1d)",
         || async {
             HistoryBuilder::new(client, PRIMARY)
@@ -811,6 +841,17 @@ async fn audit_ticker_market_convenience_surfaces(client: &YfClient, audit: &mut
             ticker.quote().await
         },
         summary_quote,
+    )
+    .await;
+
+    audit_plain(
+        audit,
+        "Ticker::quote(XRP-USD)",
+        || async {
+            let ticker = Ticker::new(client, LOW_PRICE_CRYPTO).cache_mode(CacheMode::Use);
+            ticker.quote().await
+        },
+        summary_low_price_crypto_quote,
     )
     .await;
 
@@ -1200,7 +1241,7 @@ async fn audit_stream_surfaces(client: &YfClient, audit: &mut Audit) {
     ] {
         audit_plain(
             audit,
-            &format!("StreamBuilder::start({method:?},AAPL,BTC-USD)"),
+            &format!("StreamBuilder::start({method:?},AAPL,BTC-USD,XRP-USD)"),
             || collect_stream_updates(client, method),
             coerce_slice(summary_stream_updates),
         )
@@ -1213,7 +1254,7 @@ async fn collect_stream_updates(
     method: StreamMethod,
 ) -> Result<Vec<QuoteUpdate>, YfError> {
     let (handle, mut receiver) = StreamBuilder::new(client)
-        .symbols([PRIMARY, CRYPTO])
+        .symbols([PRIMARY, CRYPTO, LOW_PRICE_CRYPTO])
         .method(method)
         .interval(Duration::from_secs(2))
         .diff_only(false)
@@ -1221,9 +1262,9 @@ async fn collect_stream_updates(
         .start()
         .await?;
 
-    let deadline = Instant::now() + Duration::from_secs(30);
+    let deadline = Instant::now() + Duration::from_secs(45);
     let mut updates = Vec::new();
-    while updates.len() < 8 {
+    while updates.len() < 12 {
         let now = Instant::now();
         if now >= deadline {
             break;
@@ -1496,6 +1537,37 @@ fn summary_quotes(quotes: &[yfinance_rs::Quote]) -> Result<String, String> {
         display_opt(sample.price.as_ref()),
         sample.day_volume,
         sample.market_state
+    ))
+}
+
+fn summary_low_price_crypto_quotes(quotes: &[yfinance_rs::Quote]) -> Result<String, String> {
+    require_non_empty("crypto quotes", quotes)?;
+    let quote = find_quote(quotes, LOW_PRICE_CRYPTO)?;
+    summary_low_price_crypto_quote(quote)
+        .map(|summary| format!("{} quotes; {summary}", quotes.len()))
+}
+
+fn summary_low_price_crypto_quote(quote: &yfinance_rs::Quote) -> Result<String, String> {
+    if quote.instrument.symbol.as_str() != LOW_PRICE_CRYPTO {
+        return Err(format!(
+            "expected {LOW_PRICE_CRYPTO}, got {}",
+            quote.instrument.symbol
+        ));
+    }
+    let price = quote
+        .price
+        .as_ref()
+        .ok_or_else(|| format!("{LOW_PRICE_CRYPTO} quote had no price"))?;
+    validate_low_price_crypto_price("quote", price.as_decimal())?;
+    Ok(format!(
+        "{} name={} price={} scale={} previous_close={} volume={:?} state={:?}",
+        quote.instrument,
+        display_opt(quote.name.as_deref()),
+        price,
+        price.as_decimal().scale(),
+        display_opt(quote.previous_close.as_ref()),
+        quote.day_volume,
+        quote.market_state
     ))
 }
 
@@ -2075,15 +2147,52 @@ fn summary_stream_updates(updates: &[QuoteUpdate]) -> Result<String, String> {
         .iter()
         .find(|update| update.price.is_some())
         .expect("priced count checked");
+    let crypto = updates
+        .iter()
+        .find(|update| {
+            update.instrument.symbol.as_str() == LOW_PRICE_CRYPTO && update.price.is_some()
+        })
+        .ok_or_else(|| format!("no priced {LOW_PRICE_CRYPTO} stream update was received"))?;
+    let crypto_price = crypto.price.as_ref().expect("filter checked");
+    validate_low_price_crypto_price("stream", crypto_price.as_decimal())?;
     Ok(format!(
-        "{} updates; priced={priced}; sample {} price={} previous_close={} volume={:?} ts={}",
+        "{} updates; priced={priced}; sample {} price={} previous_close={} volume={:?} ts={}; {} price={} scale={} volume={:?}",
         updates.len(),
         sample.instrument,
         display_opt(sample.price.as_ref()),
         display_opt(sample.previous_close.as_ref()),
         sample.volume,
-        sample.ts
+        sample.ts,
+        crypto.instrument,
+        crypto_price,
+        crypto_price.as_decimal().scale(),
+        crypto.volume
     ))
+}
+
+fn find_quote<'a>(
+    quotes: &'a [yfinance_rs::Quote],
+    symbol: &str,
+) -> Result<&'a yfinance_rs::Quote, String> {
+    quotes
+        .iter()
+        .find(|quote| quote.instrument.symbol.as_str() == symbol)
+        .ok_or_else(|| format!("missing {symbol} quote"))
+}
+
+fn validate_low_price_crypto_price(source: &str, price: &Decimal) -> Result<(), String> {
+    if price <= &Decimal::ZERO {
+        return Err(format!(
+            "{source} {LOW_PRICE_CRYPTO} price is not positive: {price}"
+        ));
+    }
+    if price.scale() < 3 {
+        return Err(format!(
+            "{source} {LOW_PRICE_CRYPTO} price scale was {}, expected at least 3 decimal places: {price}",
+            price.scale()
+        ));
+    }
+    Ok(())
 }
 
 fn require_non_empty<T>(label: &str, values: &[T]) -> Result<(), String> {

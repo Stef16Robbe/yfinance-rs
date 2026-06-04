@@ -577,11 +577,10 @@ const fn stream_quote_type_to_asset_kind(quote_type: i32) -> Option<AssetKind> {
 }
 
 fn ws_price_from_f32(value: f32, currency_unit: &ResolvedCurrencyUnit) -> Option<PriceAmount> {
-    let value = f64::from(value);
     if !value.is_finite() || value <= 0.0 {
         return None;
     }
-    currency_unit.price_amount_from_f64(value)
+    currency_unit.price_amount_from_f32(value)
 }
 
 async fn map_ws_pricing_to_update(

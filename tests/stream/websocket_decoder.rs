@@ -73,6 +73,7 @@ fn decode_equity_websocket_message_infers_currency_from_exchange() {
     ));
     let price = update.price.as_ref().expect("price should be present");
     assert_eq!(update.currency.to_string(), "USD");
+    assert_eq!(price.to_string(), "314.6");
     assert!(
         yfinance_rs::core::conversions::money_to_f64(price) > 0.0,
         "price should be positive"
@@ -104,6 +105,14 @@ fn decode_unknown_websocket_quote_type_uses_untyped_fallback() {
     let update = yfinance_rs::stream::decode_and_map_message(&base64_msg).unwrap();
 
     assert_eq!(update.instrument.symbol.as_str(), "AAPL");
+    assert_eq!(
+        update
+            .previous_close
+            .as_ref()
+            .map(ToString::to_string)
+            .as_deref(),
+        Some("313")
+    );
     assert_eq!(
         update.instrument.kind.to_string(),
         "YAHOO_STREAM_UNTYPED",

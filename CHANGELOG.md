@@ -73,6 +73,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Add `examples/16_diagnostics_audit.rs`, a live public-surface audit that
   demonstrates checking projection diagnostics and sanity-validating parsed
   Yahoo data across the crate.
+- The live diagnostics audit now includes `XRP-USD` quote and stream checks to
+  exercise low-price crypto decimal precision.
 
 ### Fixed
 
@@ -118,6 +120,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Streaming quote updates now pass Yahoo cumulative volume through directly
   across WebSocket and polling streams, and untyped stream instrument fallbacks
   no longer poison the client instrument cache.
+- WebSocket price conversion now converts Yahoo protobuf `float` values directly
+  into decimals, avoiding widened `f64` artifacts such as
+  `311.5799865722656`.
 - Half-present EPS revision pairs now emit projection diagnostics instead of being silently
   omitted from earnings-trend responses.
 - Exponential retry backoff now uses real random jitter instead of a deterministic

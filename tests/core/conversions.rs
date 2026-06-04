@@ -8,11 +8,11 @@ use paft::money::{Currency, IsoCurrency};
 use std::str::FromStr;
 use yfinance_rs::YfError;
 use yfinance_rs::core::conversions::{
-    decimal_from_f64, i64_to_datetime, i64_to_money_with_currency, money_from_f64,
-    money_from_f64_with_currency_str, price_from_f64, price_from_f64_with_currency_str,
-    string_to_asset_kind, string_to_fund_kind, string_to_insider_position, string_to_period,
-    string_to_recommendation_action, string_to_recommendation_grade, string_to_transaction_type,
-    u64_to_money_with_currency,
+    decimal_from_f32, decimal_from_f64, i64_to_datetime, i64_to_money_with_currency,
+    money_from_f64, money_from_f64_with_currency_str, price_from_f64,
+    price_from_f64_with_currency_str, string_to_asset_kind, string_to_fund_kind,
+    string_to_insider_position, string_to_period, string_to_recommendation_action,
+    string_to_recommendation_grade, string_to_transaction_type, u64_to_money_with_currency,
 };
 use yfinance_rs::core::yahoo_vocab::{parse_yahoo_exchange, yahoo_exchange_to_listing_currency};
 
@@ -22,11 +22,26 @@ const fn usd() -> Currency {
 
 #[test]
 fn invalid_float_conversions_return_none() {
+    for value in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+        assert!(decimal_from_f32(value).is_none());
+    }
+
     for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, 1e100] {
         assert!(decimal_from_f64(value).is_none());
         assert!(money_from_f64(value, usd()).is_none());
         assert!(price_from_f64(value, usd()).is_none());
     }
+}
+
+#[test]
+fn f32_decimal_conversion_does_not_widen_binary_float_artifacts() {
+    assert_eq!(decimal_from_f32(314.6_f32).unwrap().to_string(), "314.6");
+
+    let widened = f64::from(314.6_f32);
+    assert_eq!(
+        decimal_from_f64(widened).unwrap().to_string(),
+        "314.6000061035156"
+    );
 }
 
 #[test]
