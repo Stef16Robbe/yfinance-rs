@@ -52,8 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(latest) = shares.first() {
         println!(
             "Latest quarterly shares outstanding: {} (from {})",
-            latest.shares,
-            latest.date.date_naive()
+            latest.shares, latest.date
         );
     } else {
         println!("No quarterly shares outstanding found.");

@@ -22,11 +22,13 @@ use crate::{
     YfClient, YfError,
     core::CallOptions,
     core::client::{CacheMode, RetryConfig, normalize_symbols},
-    core::conversions::price_from_f64_with_currency_str,
+    core::conversions::{quantity_from_i64, quantity_from_u64},
+    core::currency_resolver::ResolvedCurrencyUnit,
     core::yahoo_vocab::{parse_yahoo_quote_type, yahoo_exchange_to_listing_currency},
 };
-use paft::domain::{AssetKind, Canonical, Instrument};
+use paft::domain::{AssetKind, Instrument};
 use paft::market::quote::QuoteUpdate;
+use paft::money::{PriceAmount, QuantityAmount};
 
 const UNTYPED_STREAM_ASSET_KIND: &str = "YAHOO_STREAM_UNTYPED";
 
@@ -36,33 +38,21 @@ mod wire_ws {
 }
 
 fn untyped_stream_asset_kind() -> AssetKind {
-    AssetKind::Other(Canonical::try_new(UNTYPED_STREAM_ASSET_KIND).expect("valid canonical token"))
+    AssetKind::other(UNTYPED_STREAM_ASSET_KIND).expect("valid stream fallback asset kind")
 }
-
-// Use paft's QuoteUpdate which carries Price and DateTime<Utc>
-// pub use paft::market::quote::QuoteUpdate; (imported above)
 
 // Streaming quotes
 //
 // Volume semantics:
-// - Yahoo sends cumulative intraday volume (`day_volume`). This crate converts it into
-//   per-update deltas when producing `QuoteUpdate`s.
-// - For each symbol, the first observed tick has `volume = None` (no delta yet).
-// - On normal progression, `volume = Some(current - last)`.
-// - On a detected reset (e.g., midnight rollover where `current < last`), emit the current
-//   reading as the first delta of the new session: `volume = Some(current)`.
-// - This applies to both WebSocket and Polling streams. The JSON/base64 decoder helper
-//   (`decode_and_map_message`) is stateless and always returns `volume = None`.
+// - Yahoo sends cumulative volume (`day_volume` / `regularMarketVolume`).
+//   `QuoteUpdate::volume` exposes that latest cumulative value directly.
+// - This crate deliberately does not infer per-update deltas, session boundaries,
+//   resets, or provider-side adjustments. Callers that need those semantics can
+//   derive them from successive cumulative values with their own boundary policy.
 // - When Yahoo omits instrument type data, or sends an unknown stream quote type, and no
 //   typed instrument is cached, the emitted update uses
 //   `AssetKind::Other("YAHOO_STREAM_UNTYPED")`. That fallback is deliberately not cached,
 //   so later typed quote data can replace it.
-//
-// Implications:
-// - If you need cumulative volume, accumulate the per-update `volume` values yourself or
-//   use the `day_volume` from quote endpoints.
-// - Expect `None` for only the first message per symbol; reset/rollover ticks emit
-//   the current cumulative volume as the first delta of the new session.
 /// Configuration for a polling-based quote stream.
 #[derive(Debug, Clone)]
 pub struct StreamConfig {
@@ -391,9 +381,6 @@ async fn run_websocket_stream(
     #[cfg(feature = "test-mode")]
     let mut recorded = false;
 
-    let mut last_day_volume: HashMap<String, u64> = HashMap::new();
-    let mut last_ts: HashMap<String, DateTime<Utc>> = HashMap::new();
-
     loop {
         select! {
             msg = read.next() => {
@@ -416,7 +403,7 @@ async fn run_websocket_stream(
 
                         match decode_ws_pricing(&text) {
                             Ok(ticker) => {
-                                if let Some(update) = map_ws_pricing_to_update_with_delta(client, &ticker, &mut last_day_volume, &mut last_ts).await
+                                if let Some(update) = map_ws_pricing_to_update(client, &ticker).await
                                     && tx.send(update).await.is_err() { return Ok(()); }
                             },
                             Err(e) => {
@@ -434,7 +421,7 @@ async fn run_websocket_stream(
                         // Try to interpret as UTF-8 JSON-wrapped base64 first
                         let handled = if let Ok(as_text) = std::str::from_utf8(&bin) {
                             if let Ok(ticker) = decode_ws_pricing(as_text) {
-                                if let Some(update) = map_ws_pricing_to_update_with_delta(client, &ticker, &mut last_day_volume, &mut last_ts).await
+                                if let Some(update) = map_ws_pricing_to_update(client, &ticker).await
                                     && tx.send(update).await.is_err() { return Ok(()); }
                                 true
                             } else { false }
@@ -443,7 +430,7 @@ async fn run_websocket_stream(
                         if !handled {
                             match wire_ws::PricingData::decode(&*bin) {
                                 Ok(ticker) => {
-                                    if let Some(update) = map_ws_pricing_to_update_with_delta(client, &ticker, &mut last_day_volume, &mut last_ts).await
+                                    if let Some(update) = map_ws_pricing_to_update(client, &ticker).await
                                         && tx.send(update).await.is_err() { return Ok(()); }
                                 }
                                 Err(e) => {
@@ -507,37 +494,6 @@ fn decode_ws_pricing(text: &str) -> Result<wire_ws::PricingData, YfError> {
     Ok(ticker)
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct VolumeDelta {
-    value: Option<u64>,
-    changed: bool,
-}
-
-fn volume_delta_from_cumulative(
-    last_by_symbol: &mut HashMap<String, u64>,
-    symbol: &str,
-    current: Option<u64>,
-) -> VolumeDelta {
-    let Some(current) = current else {
-        return VolumeDelta {
-            value: None,
-            changed: false,
-        };
-    };
-
-    let previous = last_by_symbol.insert(symbol.to_string(), current);
-    let value = match previous {
-        Some(previous) if current >= previous => Some(current - previous),
-        Some(_) => Some(current),
-        None => None,
-    };
-
-    VolumeDelta {
-        value,
-        changed: value.is_some_and(|delta| delta > 0),
-    }
-}
-
 async fn resolve_stream_instrument(
     client: &YfClient,
     symbol: &str,
@@ -579,23 +535,24 @@ fn ws_pricing_to_update(
     ticker: &wire_ws::PricingData,
     instrument: Instrument,
     timestamp: DateTime<Utc>,
-    volume: Option<u64>,
+    currency_unit: &ResolvedCurrencyUnit,
+    volume: Option<QuantityAmount>,
 ) -> QuoteUpdate {
-    let currency_str = ws_currency_str(ticker);
-
     QuoteUpdate {
         instrument,
-        price: ws_price_from_f32(ticker.price, currency_str),
-        previous_close: ws_price_from_f32(ticker.previous_close, currency_str),
-        ts: timestamp,
+        currency: currency_unit.currency().clone(),
+        price: ws_price_from_f32(ticker.price, currency_unit),
+        previous_close: ws_price_from_f32(ticker.previous_close, currency_unit),
         volume,
+        ts: timestamp,
         provider: (),
     }
 }
 
-fn ws_currency_str(ticker: &wire_ws::PricingData) -> Option<&str> {
-    nonempty_str(&ticker.currency)
-        .or_else(|| nonempty_str(&ticker.exchange).and_then(yahoo_exchange_to_listing_currency))
+fn ws_currency_unit(ticker: &wire_ws::PricingData) -> Option<ResolvedCurrencyUnit> {
+    let code = nonempty_str(&ticker.currency)
+        .or_else(|| nonempty_str(&ticker.exchange).and_then(yahoo_exchange_to_listing_currency))?;
+    ResolvedCurrencyUnit::from_code(code)
 }
 
 fn nonempty_str(value: &str) -> Option<&str> {
@@ -619,19 +576,17 @@ const fn stream_quote_type_to_asset_kind(quote_type: i32) -> Option<AssetKind> {
     }
 }
 
-fn ws_price_from_f32(value: f32, currency_str: Option<&str>) -> Option<paft::money::Price> {
+fn ws_price_from_f32(value: f32, currency_unit: &ResolvedCurrencyUnit) -> Option<PriceAmount> {
     let value = f64::from(value);
     if !value.is_finite() || value <= 0.0 {
         return None;
     }
-    price_from_f64_with_currency_str(value, currency_str)
+    currency_unit.price_amount_from_f64(value)
 }
 
-async fn map_ws_pricing_to_update_with_delta(
+async fn map_ws_pricing_to_update(
     client: &YfClient,
     ticker: &wire_ws::PricingData,
-    last_vol: &mut HashMap<String, u64>,
-    last_ts: &mut HashMap<String, DateTime<Utc>>,
 ) -> Option<QuoteUpdate> {
     let instrument = resolve_stream_instrument(
         client,
@@ -653,25 +608,21 @@ async fn map_ws_pricing_to_update_with_delta(
             return None;
         }
     };
-
-    // If out-of-order, emit but don't mutate state; volume=None
-    if let Some(prev_ts) = last_ts.get(&ticker.id)
-        && timestamp < *prev_ts
-    {
-        return Some(ws_pricing_to_update(ticker, instrument, timestamp, None));
-    }
-
-    let cur_vol = u64::try_from(ticker.day_volume).unwrap_or(0);
-    let volume = volume_delta_from_cumulative(last_vol, &ticker.id, Some(cur_vol));
-
-    // Update state only for in-order ticks
-    last_ts.insert(ticker.id.clone(), timestamp);
+    let Some(currency_unit) = ws_currency_unit(ticker) else {
+        crate::core::logging::trace_debug!(
+            symbol = %ticker.id,
+            "skipping websocket update without usable currency"
+        );
+        return None;
+    };
+    let volume = quantity_from_i64(ticker.day_volume);
 
     Some(ws_pricing_to_update(
         ticker,
         instrument,
         timestamp,
-        volume.value,
+        &currency_unit,
+        volume,
     ))
 }
 
@@ -699,7 +650,20 @@ pub fn decode_and_map_message(text: &str) -> Result<QuoteUpdate, YfError> {
         }
     };
 
-    Ok(ws_pricing_to_update(&ticker, instrument, timestamp, None))
+    let currency_unit = ws_currency_unit(&ticker).ok_or_else(|| {
+        YfError::InvalidData(format!(
+            "websocket update missing usable currency for {}",
+            ticker.id
+        ))
+    })?;
+
+    Ok(ws_pricing_to_update(
+        &ticker,
+        instrument,
+        timestamp,
+        &currency_unit,
+        quantity_from_i64(ticker.day_volume),
+    ))
 }
 
 async fn run_polling_stream(
@@ -712,7 +676,6 @@ async fn run_polling_stream(
 ) {
     let mut ticker = tokio::time::interval(cfg.interval);
     let mut last_price: HashMap<String, Option<f64>> = HashMap::new();
-    let mut last_day_volume: HashMap<String, u64> = HashMap::new();
 
     let symbol_slices: Vec<&str> = symbols.iter().map(AsRef::as_ref).collect();
 
@@ -738,18 +701,19 @@ async fn run_polling_stream(
                                 true
                             };
 
-                            let volume = volume_delta_from_cumulative(
-                                &mut last_day_volume,
-                                &sym_s,
-                                q.regular_market_volume,
-                            );
-
-                            // With diff_only, emit if either price OR volume changed
-                            if cfg.diff_only && !price_changed && !volume.changed {
+                            if cfg.diff_only && !price_changed {
                                 continue;
                             }
 
-                            let currency_str = q.currency.as_deref();
+                            let Some(currency_unit) =
+                                q.currency.as_deref().and_then(ResolvedCurrencyUnit::from_code)
+                            else {
+                                crate::core::logging::trace_debug!(
+                                    symbol = %sym_s,
+                                    "skipping polling stream update without usable currency"
+                                );
+                                continue;
+                            };
                             let kind = q
                                 .quote_type
                                 .as_deref()
@@ -761,10 +725,11 @@ async fn run_polling_stream(
                             };
                             if tx.send(QuoteUpdate {
                                 instrument,
-                                price: lp.and_then(|v| price_from_f64_with_currency_str(v, currency_str)),
-                                previous_close: q.regular_market_previous_close.and_then(|v| price_from_f64_with_currency_str(v, currency_str)),
+                                currency: currency_unit.currency().clone(),
+                                price: lp.and_then(|v| currency_unit.price_amount_from_f64(v)),
+                                previous_close: q.regular_market_previous_close.and_then(|v| currency_unit.price_amount_from_f64(v)),
+                                volume: q.regular_market_volume.and_then(quantity_from_u64),
                                 ts,
-                                volume: volume.value,
                                 provider: (),
                             }).await.is_err() {
                                 // Break outer loop if receiver is dropped
@@ -790,9 +755,8 @@ async fn run_polling_stream(
 
 #[cfg(test)]
 mod tests {
-    use super::{VolumeDelta, stream_quote_type_to_asset_kind, volume_delta_from_cumulative};
+    use super::stream_quote_type_to_asset_kind;
     use paft::domain::AssetKind;
-    use std::collections::HashMap;
 
     #[test]
     fn stream_quote_type_to_asset_kind_maps_known_yahoo_codes() {
@@ -820,46 +784,5 @@ mod tests {
         assert_eq!(stream_quote_type_to_asset_kind(7), None);
         assert_eq!(stream_quote_type_to_asset_kind(1000), None);
         assert_eq!(stream_quote_type_to_asset_kind(i32::MAX), None);
-    }
-
-    #[test]
-    fn volume_delta_from_cumulative_tracks_first_delta_reset_and_missing_values() {
-        let mut last_by_symbol = HashMap::new();
-
-        assert_eq!(
-            volume_delta_from_cumulative(&mut last_by_symbol, "MSFT", None),
-            VolumeDelta {
-                value: None,
-                changed: false
-            }
-        );
-        assert_eq!(
-            volume_delta_from_cumulative(&mut last_by_symbol, "MSFT", Some(100)),
-            VolumeDelta {
-                value: None,
-                changed: false
-            }
-        );
-        assert_eq!(
-            volume_delta_from_cumulative(&mut last_by_symbol, "MSFT", Some(125)),
-            VolumeDelta {
-                value: Some(25),
-                changed: true
-            }
-        );
-        assert_eq!(
-            volume_delta_from_cumulative(&mut last_by_symbol, "MSFT", Some(125)),
-            VolumeDelta {
-                value: Some(0),
-                changed: false
-            }
-        );
-        assert_eq!(
-            volume_delta_from_cumulative(&mut last_by_symbol, "MSFT", Some(10)),
-            VolumeDelta {
-                value: Some(10),
-                changed: true
-            }
-        );
     }
 }

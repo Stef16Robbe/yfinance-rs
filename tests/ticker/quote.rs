@@ -62,7 +62,7 @@ async fn quote_v7_happy_path() {
 }
 
 #[tokio::test]
-async fn quote_with_diagnostics_reports_invalid_currency_for_present_price() {
+async fn quote_with_diagnostics_errors_on_invalid_required_currency() {
     let server = MockServer::start();
 
     let body = r#"{
@@ -95,22 +95,14 @@ async fn quote_with_diagnostics_reports_invalid_currency_for_present_price() {
         .unwrap();
     let ticker = Ticker::new(&client, "AAPL");
 
-    let response = ticker.quote_with_diagnostics().await.unwrap();
+    let err = ticker.quote_with_diagnostics().await;
     mock.assert();
 
-    assert!(response.data.price.is_none());
-    assert!(response.data.previous_close.is_none());
-    assert!(response.diagnostics.warnings.iter().any(|warning| {
-        matches!(
-            warning,
-            YfWarning::OmittedPresentField {
-                endpoint: "quote",
-                path: "regularMarketPrice",
-                key: Some(key),
-                reason: ProjectionIssue::InvalidCurrency { code },
-            } if key == "AAPL" && code == "!!!"
-        )
-    }));
+    assert!(matches!(
+        err,
+        Err(YfError::InvalidData(message))
+            if message.contains("invalid quote currency: invalid currency code !!!")
+    ));
 }
 
 #[tokio::test]
@@ -263,8 +255,8 @@ async fn quote_v7_usd_crypto_price_keeps_provider_precision() {
     mock.assert();
 
     let price = q.price.as_ref().unwrap();
-    assert_eq!(price.amount().to_string(), "0.612345");
-    assert_eq!(price.currency().to_string(), "USD");
+    assert_eq!(price.as_decimal().to_string(), "0.612345");
+    assert_eq!(q.currency.to_string(), "USD");
 }
 
 #[tokio::test]
@@ -313,7 +305,7 @@ async fn fast_info_derives_last_price() {
         (money_to_f64(previous_close) - 421.00).abs() < 1e-9,
         "fallback to previous close"
     );
-    assert_eq!(previous_close.currency().to_string(), "USD");
+    assert_eq!(fi.snapshot.currency.to_string(), "USD");
     assert_eq!(
         fi.snapshot
             .instrument

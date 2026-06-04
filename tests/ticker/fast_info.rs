@@ -2,7 +2,7 @@ use httpmock::Method::GET;
 use httpmock::MockServer;
 use url::Url;
 use yfinance_rs::core::conversions::money_to_f64;
-use yfinance_rs::{ProjectionIssue, Ticker, YfClient, YfWarning};
+use yfinance_rs::{Ticker, YfClient, YfError};
 
 #[tokio::test]
 async fn fast_info_uses_previous_close_when_price_missing() {
@@ -58,7 +58,7 @@ async fn fast_info_uses_previous_close_when_price_missing() {
 }
 
 #[tokio::test]
-async fn fast_info_with_diagnostics_reports_unresolved_currency_for_present_price() {
+async fn fast_info_with_diagnostics_errors_without_required_currency() {
     let server = MockServer::start();
 
     let body = r#"{
@@ -89,22 +89,14 @@ async fn fast_info_with_diagnostics_reports_unresolved_currency_for_present_pric
         .unwrap();
     let ticker = Ticker::new(&client, "AAPL");
 
-    let response = ticker.fast_info_with_diagnostics().await.unwrap();
+    let err = ticker.fast_info_with_diagnostics().await;
     mock.assert();
 
-    assert!(response.data.snapshot.last.is_none());
-    assert!(response.data.snapshot.previous_close.is_none());
-    assert!(response.diagnostics.warnings.iter().any(|warning| {
-        matches!(
-            warning,
-            YfWarning::OmittedPresentField {
-                endpoint: "fast_info",
-                path: "regularMarketPrice",
-                key: Some(key),
-                reason: ProjectionIssue::CurrencyUnresolved,
-            } if key == "AAPL"
-        )
-    }));
+    assert!(matches!(
+        err,
+        Err(YfError::InvalidData(message))
+            if message.contains("invalid snapshot currency: currency unresolved")
+    ));
 }
 
 #[tokio::test]
@@ -154,7 +146,12 @@ async fn fast_info_maps_snapshot_session_fields_from_v7_quote() {
         .abs()
             < 0.01
     );
-    assert_eq!(snapshot.volume, raw_quote["regularMarketVolume"].as_u64());
+    assert_eq!(
+        snapshot.volume.as_ref().map(ToString::to_string),
+        raw_quote["regularMarketVolume"]
+            .as_u64()
+            .map(|value| value.to_string())
+    );
 
     assert!(
         (money_to_f64(fast_info.moving_averages.fifty_day.as_ref().unwrap())

@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// This mirrors Python yfinance's `Ticker.fast_info` surface while keeping
 /// instant-in-time quote data separate from derived moving-average metrics.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FastInfo {
     /// Instant-in-time market snapshot data.
     pub snapshot: Snapshot,

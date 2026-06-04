@@ -16,12 +16,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .filter(|action| matches!(action, Action::Dividend { .. }))
         .count();
     println!("Found {dividends} dividends in the last 5 years.");
-    if let Some(Action::Dividend { ts, amount }) = actions
+    if let Some(Action::Dividend { date, amount }) = actions
         .iter()
         .rev()
         .find(|action| matches!(action, Action::Dividend { .. }))
     {
-        println!("  Latest dividend: {amount} on {}", ts.date_naive());
+        println!("  Latest dividend: {amount} on {date}");
     }
 
     let splits = actions
@@ -31,15 +31,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\nFound {splits} splits in the last 5 years.");
     for action in &actions {
         if let Action::Split {
-            ts,
+            date,
             numerator,
             denominator,
         } = action
         {
-            println!(
-                "  - Split of {numerator}:{denominator} on {}",
-                ts.date_naive()
-            );
+            println!("  - Split of {numerator}:{denominator} on {date}");
         }
     }
     println!("--------------------------------------\n");
@@ -68,10 +65,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let candles = &entry.history.candles;
         println!("- {symbol} ({} candles)", candles.len());
         if let Some(first_candle) = candles.first() {
-            println!("  First Open: {}", first_candle.open);
+            println!("  First Open: {}", first_candle.ohlc.open);
         }
         if let Some(last_candle) = candles.last() {
-            println!("  Last Close: {}", last_candle.close);
+            println!("  Last Close: {}", last_candle.ohlc.close);
         }
     }
     println!("--------------------------------------");

@@ -24,10 +24,10 @@ async fn history_happy_path() {
     mock.assert();
     // The recorded fixture has many data points, not just 2.
     assert!(bars.len() > 100, "Expected a significant number of bars");
-    assert!(money_to_f64(&bars[0].open) > 0.0);
-    assert!(money_to_f64(&bars[0].high) > 0.0);
-    assert!(money_to_f64(&bars[0].low) > 0.0);
-    assert!(money_to_f64(&bars[0].close) > 0.0);
+    assert!(money_to_f64(&bars[0].ohlc.open) > 0.0);
+    assert!(money_to_f64(&bars[0].ohlc.high) > 0.0);
+    assert!(money_to_f64(&bars[0].ohlc.low) > 0.0);
+    assert!(money_to_f64(&bars[0].ohlc.close) > 0.0);
 }
 
 #[tokio::test]
@@ -80,7 +80,7 @@ async fn history_absolute_range_happy() {
     // The mock serves the full 6-month fixture regardless of the date range,
     // so we expect the full data set to be parsed.
     assert!(bars.len() > 100, "Expected a significant number of bars");
-    assert!(money_to_f64(&bars[0].open) > 0.0);
+    assert!(money_to_f64(&bars[0].ohlc.open) > 0.0);
 }
 
 #[tokio::test]

@@ -37,6 +37,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `Ticker::fast_info()` now returns yfinance-rs' own `FastInfo` struct with
   instant quote data nested under `snapshot`; existing `fast_info.last`-style
   reads should move to `fast_info.snapshot.last`.
+- The public model now follows the `paft` 0.9 shape: quote, snapshot, stream,
+  history, option, and book-level price fields use currency-less
+  `PriceAmount` values with currency carried by the containing model; stream,
+  quote, and history volumes plus book-level sizes use `QuantityAmount`;
+  `Candle` prices live under `candle.ohlc`; actions and share/calendar dates
+  are calendar dates; and `ReportingPeriod` replaces the old period type.
+- `QuoteUpdate::volume` now exposes Yahoo's latest cumulative session volume as
+  a `QuantityAmount` instead of a computed per-update delta. The first update is
+  no longer forced to `None` when Yahoo sends volume, and streams no longer keep
+  reset/rollover state; callers that need deltas or session-boundary policy can
+  derive them from successive cumulative values.
 - `YfWarning::CurrencyInferred` now reports only diagnostic purpose and
   heuristic inference through `YfCurrencyPurpose` and `YfCurrencyInference`.
   Removed the public `YfCurrencySource` and `YfEvidenceStrength` provenance
@@ -104,9 +115,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   failures, allowing `WebsocketWithFallback` to fall back to polling unless the caller stopped it.
 - Polling streams now timestamp quote updates with Yahoo's `regularMarketTime` when available
   instead of always using the local polling receive time.
-- Streaming quote volume deltas now use one shared cumulative-volume state transition across
-  WebSocket and polling streams, and untyped stream instrument fallbacks no longer poison the
-  client instrument cache.
+- Streaming quote updates now pass Yahoo cumulative volume through directly
+  across WebSocket and polling streams, and untyped stream instrument fallbacks
+  no longer poison the client instrument cache.
 - Half-present EPS revision pairs now emit projection diagnostics instead of being silently
   omitted from earnings-trend responses.
 - Exponential retry backoff now uses real random jitter instead of a deterministic

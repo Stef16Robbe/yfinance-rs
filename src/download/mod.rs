@@ -2,7 +2,7 @@ use futures::{StreamExt, TryStreamExt, stream};
 
 use crate::{
     core::client::normalize_symbols,
-    core::conversions::f64_from_currency_value,
+    core::conversions::f64_from_price_amount,
     core::{
         CallOptions, Candle, HistoryResponse, Interval, ProjectionContext, ProjectionIssue, Range,
         YfClient, YfError, YfResponse,
@@ -13,7 +13,7 @@ use paft::market::responses::{
     download::{DownloadEntry, DownloadResponse},
     history::{OhlcPriceBasis, PriceBasis},
 };
-use paft::money::Price;
+use paft::money::PriceAmount;
 use rust_decimal::prelude::FromPrimitive;
 type DateRange = (chrono::DateTime<chrono::Utc>, chrono::DateTime<chrono::Utc>);
 type MaybeDateRange = Option<DateRange>;
@@ -128,9 +128,9 @@ impl DownloadBuilder {
         }
         for c in rows.iter_mut() {
             if let Some(rc) = c.close_unadj.as_ref()
-                && f64_from_currency_value(rc).is_some_and(f64::is_finite)
+                && f64_from_price_amount(rc).is_some_and(f64::is_finite)
             {
-                c.close = rc.clone();
+                c.ohlc.close = rc.clone();
             }
         }
     }
@@ -159,17 +159,17 @@ impl DownloadBuilder {
             return;
         }
         for c in rows {
-            if let Some(open) = rounded_price(&c.open) {
-                c.open = open;
+            if let Some(open) = rounded_price(&c.ohlc.open) {
+                c.ohlc.open = open;
             }
-            if let Some(high) = rounded_price(&c.high) {
-                c.high = high;
+            if let Some(high) = rounded_price(&c.ohlc.high) {
+                c.ohlc.high = high;
             }
-            if let Some(low) = rounded_price(&c.low) {
-                c.low = low;
+            if let Some(low) = rounded_price(&c.ohlc.low) {
+                c.ohlc.low = low;
             }
-            if let Some(close) = rounded_price(&c.close) {
-                c.close = close;
+            if let Some(close) = rounded_price(&c.ohlc.close) {
+                c.ohlc.close = close;
             }
         }
     }
@@ -418,10 +418,10 @@ fn round2(x: f64) -> f64 {
     (x * 100.0).round() / 100.0
 }
 
-fn rounded_price(price: &Price) -> Option<Price> {
-    let value = f64_from_currency_value(price)?;
+fn rounded_price(price: &PriceAmount) -> Option<PriceAmount> {
+    let value = f64_from_price_amount(price)?;
     let decimal = rust_decimal::Decimal::from_f64(round2(value))?;
-    Some(Price::new(decimal, price.currency().clone()))
+    Some(PriceAmount::new(decimal))
 }
 
 /// Very lightweight "repair" pass:
@@ -450,17 +450,17 @@ fn repair_scale_outliers(rows: &mut [Candle]) -> Vec<String> {
         };
         let next = &rem[0]; // safe because len >= 2 overall ⇒ rem has at least one
 
-        let p = &prev.close;
-        let n = &next.close;
-        let c = &cur.close;
+        let p = &prev.ohlc.close;
+        let n = &next.ohlc.close;
+        let c = &cur.ohlc.close;
 
-        let Some(p_val) = f64_from_currency_value(p).filter(|v| v.is_finite()) else {
+        let Some(p_val) = f64_from_price_amount(p).filter(|v| v.is_finite()) else {
             continue;
         };
-        let Some(n_val) = f64_from_currency_value(n).filter(|v| v.is_finite()) else {
+        let Some(n_val) = f64_from_price_amount(n).filter(|v| v.is_finite()) else {
             continue;
         };
-        let Some(c_val) = f64_from_currency_value(c).filter(|v| v.is_finite()) else {
+        let Some(c_val) = f64_from_price_amount(c).filter(|v| v.is_finite()) else {
             continue;
         };
 
@@ -504,16 +504,16 @@ fn scale_row_prices(c: &mut Candle, scale: f64) -> bool {
         return false;
     };
 
-    let Some(open) = scaled_price(&c.open, scale) else {
+    let Some(open) = scaled_price(&c.ohlc.open, scale) else {
         return false;
     };
-    let Some(high) = scaled_price(&c.high, scale) else {
+    let Some(high) = scaled_price(&c.ohlc.high, scale) else {
         return false;
     };
-    let Some(low) = scaled_price(&c.low, scale) else {
+    let Some(low) = scaled_price(&c.ohlc.low, scale) else {
         return false;
     };
-    let Some(close) = scaled_price(&c.close, scale) else {
+    let Some(close) = scaled_price(&c.ohlc.close, scale) else {
         return false;
     };
     let close_unadj = match c.close_unadj.as_ref() {
@@ -526,18 +526,18 @@ fn scale_row_prices(c: &mut Candle, scale: f64) -> bool {
         None => None,
     };
 
-    c.open = open;
-    c.high = high;
-    c.low = low;
-    c.close = close;
+    c.ohlc.open = open;
+    c.ohlc.high = high;
+    c.ohlc.low = low;
+    c.ohlc.close = close;
     c.close_unadj = close_unadj;
     true
 }
 
-fn scaled_price(price: &Price, scale: rust_decimal::Decimal) -> Option<Price> {
-    if !f64_from_currency_value(price).is_some_and(f64::is_finite) {
+fn scaled_price(price: &PriceAmount, scale: rust_decimal::Decimal) -> Option<PriceAmount> {
+    if !f64_from_price_amount(price).is_some_and(f64::is_finite) {
         return None;
     }
 
-    price.try_mul(&scale).ok()
+    price.as_decimal().checked_mul(scale).map(PriceAmount::new)
 }

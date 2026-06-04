@@ -271,12 +271,7 @@ impl HistoryBuilder {
         };
 
         // ensure actions sorted (extract_actions already sorts, keep consistent)
-        actions_out.sort_by_key(|a| match a {
-            Action::Dividend { ts, .. }
-            | Action::Split { ts, .. }
-            | Action::CapitalGain { ts, .. } => ts.timestamp(),
-            _ => i64::MAX,
-        });
+        actions_out.sort_by_key(action_sort_key);
 
         // 5) Map metadata
         let meta_out = map_meta(fetched.meta.as_ref(), &mut ctx)?;
@@ -311,6 +306,15 @@ fn has_any_ohlc_value(quote: &crate::history::wire::QuoteBlock, len: usize) -> b
             || quote.low.get(idx).and_then(|value| *value).is_some()
             || quote.close.get(idx).and_then(|value| *value).is_some()
     })
+}
+
+const fn action_sort_key(action: &Action) -> (bool, chrono::NaiveDate) {
+    match action {
+        Action::Dividend { date, .. }
+        | Action::Split { date, .. }
+        | Action::CapitalGain { date, .. } => (false, *date),
+        _ => (true, chrono::NaiveDate::MAX),
+    }
 }
 
 fn history_price_basis(

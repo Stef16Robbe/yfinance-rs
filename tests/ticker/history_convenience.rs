@@ -53,7 +53,7 @@ async fn ticker_history_convenience_builds_expected_query() {
 
     mock.assert();
     assert_eq!(bars.len(), 1);
-    assert!((money_to_f64(&bars[0].close) - 100.5).abs() < 1e-9);
+    assert!((money_to_f64(&bars[0].ohlc.close) - 100.5).abs() < 1e-9);
 }
 
 #[tokio::test]

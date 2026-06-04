@@ -103,7 +103,7 @@
 //!     // Get historical data for the last 6 months
 //!     let history = ticker.history(Some(Range::M6), Some(Interval::D1), false).await?;
 //!     if let Some(last_bar) = history.last() {
-//!         println!("Last closing price: {} on timestamp {}", last_bar.close, last_bar.ts);
+//!         println!("Last closing price: {} on timestamp {}", last_bar.ohlc.close, last_bar.ts);
 //!     }
 //!
 //!     // Get analyst recommendations
@@ -198,4 +198,6 @@ pub use crate::core::{
     Quote,
 };
 pub use crate::core::{Interval, Range};
-pub use paft::domain::{AssetKind, Exchange, Instrument, MarketState, Period, Symbol};
+pub use paft::domain::{
+    AssetKind, Exchange, Instrument, MarketState, PeriodYear, ReportingPeriod, Symbol,
+};

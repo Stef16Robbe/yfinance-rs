@@ -1,5 +1,5 @@
 use crate::core::{
-    ProjectionContext, ProjectionIssue, YfError, conversions::i64_to_datetime,
+    ProjectionContext, ProjectionIssue, YfError, conversions::i64_to_date,
     currency_resolver::ResolvedCurrencyUnit,
 };
 use crate::history::wire::Events;
@@ -33,8 +33,8 @@ pub fn extract_actions(
                 )?;
                 continue;
             };
-            let dt = match i64_to_datetime(ts) {
-                Ok(dt) => dt,
+            let date = match i64_to_date(ts) {
+                Ok(date) => date,
                 Err(err) => {
                     ctx.dropped_item(
                         "dividend",
@@ -80,7 +80,7 @@ pub fn extract_actions(
                 )?;
                 continue;
             };
-            out.push(Action::Dividend { ts: dt, amount });
+            out.push(Action::Dividend { date, amount });
         }
     }
 
@@ -94,8 +94,8 @@ pub fn extract_actions(
                 )?;
                 continue;
             };
-            let dt = match i64_to_datetime(ts) {
-                Ok(dt) => dt,
+            let date = match i64_to_date(ts) {
+                Ok(date) => date,
                 Err(err) => {
                     ctx.dropped_item(
                         "capital_gain",
@@ -141,7 +141,7 @@ pub fn extract_actions(
                 )?;
                 continue;
             };
-            out.push(Action::CapitalGain { ts: dt, gain });
+            out.push(Action::CapitalGain { date, gain });
         }
     }
 
@@ -155,8 +155,8 @@ pub fn extract_actions(
                 )?;
                 continue;
             };
-            let dt = match i64_to_datetime(ts) {
-                Ok(dt) => dt,
+            let date = match i64_to_date(ts) {
+                Ok(date) => date,
                 Err(err) => {
                     ctx.dropped_item(
                         "split",
@@ -182,7 +182,7 @@ pub fn extract_actions(
             };
 
             out.push(Action::Split {
-                ts: dt,
+                date,
                 numerator: num,
                 denominator: den,
             });
@@ -192,15 +192,19 @@ pub fn extract_actions(
         }
     }
 
-    out.sort_by_key(|a| match a {
-        Action::Dividend { ts, .. } | Action::Split { ts, .. } | Action::CapitalGain { ts, .. } => {
-            ts.timestamp()
-        }
-        _ => i64::MAX,
-    });
+    out.sort_by_key(action_sort_key);
     split_events.sort_by_key(|(ts, _)| *ts);
 
     Ok((out, split_events))
+}
+
+const fn action_sort_key(action: &Action) -> (bool, chrono::NaiveDate) {
+    match action {
+        Action::Dividend { date, .. }
+        | Action::Split { date, .. }
+        | Action::CapitalGain { date, .. } => (false, *date),
+        _ => (true, chrono::NaiveDate::MAX),
+    }
 }
 
 fn event_currency(

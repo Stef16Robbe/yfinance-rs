@@ -110,9 +110,7 @@ async fn option_chain_for_specific_date() {
     assert_eq!(c.expiration_at.unwrap().timestamp(), date);
 
     let p = puts[0];
-    if let Some(price) = p.price.as_ref() {
-        assert_eq!(money_to_currency_str(price).as_deref(), Some("USD"));
-    }
+    assert_eq!(p.currency.to_string(), "USD");
     assert_eq!(p.expiration_at.unwrap().timestamp(), date);
 }
 

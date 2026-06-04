@@ -63,8 +63,11 @@ async fn history_auto_adjust_uses_splits_when_adjclose_missing() {
     );
     assert_eq!(resp.candles.len(), 2);
     // First bar should be split-adjusted (0.5x); second bar unchanged.
-    assert!((money_to_f64(&resp.candles[0].close) - 50.0).abs() < 1e-9);
-    assert!((money_to_f64(&resp.candles[1].close) - 100.0).abs() < 1e-9);
+    assert!((money_to_f64(&resp.candles[0].ohlc.close) - 50.0).abs() < 1e-9);
+    assert!((money_to_f64(&resp.candles[1].ohlc.close) - 100.0).abs() < 1e-9);
     // Volume stays as reported by Yahoo; auto_adjust only changes prices.
-    assert_eq!(resp.candles[0].volume, Some(10));
+    assert_eq!(
+        resp.candles[0].volume.as_ref().map(ToString::to_string),
+        Some("10".into())
+    );
 }

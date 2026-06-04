@@ -9,7 +9,7 @@ use crate::{
     core::{
         CallOptions, DataQuality, ProjectionContext, ProjectionIssue,
         client::{CacheEndpoint, normalize_symbols},
-        conversions::i64_to_datetime,
+        conversions::{i64_to_date, i64_to_datetime, quantity_from_u64},
         currency_resolver::{CurrencyHints, ResolvedCurrencyUnit},
         diagnostics::optional_decimal_f64,
         models::{FastInfo, MovingAverages},
@@ -28,6 +28,7 @@ use paft::fundamentals::statements::Calendar;
 use paft::fundamentals::statistics::KeyStatistics;
 use paft::market::orderbook::BookLevel;
 use paft::market::quote::Quote;
+use paft::money::{Currency, PriceAmount};
 
 const KEY_STATISTICS_MODULES: &str = "summaryDetail,defaultKeyStatistics";
 
@@ -255,14 +256,14 @@ impl V7QuoteNode {
         let Some(price) = price.filter(|p| p.is_finite() && *p > 0.0) else {
             return Ok(None);
         };
-        let price = self.currency_units().quote_price(
+        let price = self.currency_units().quote_price_amount(
             ctx,
             path,
             key,
             Some(price),
             "quote book level price",
         )?;
-        Ok(price.map(|price| BookLevel::new(price, size.map(Decimal::from))))
+        Ok(price.map(|price| BookLevel::new(price, size.and_then(quantity_from_u64))))
     }
 
     fn market_state_with_context(
@@ -320,48 +321,52 @@ impl V7QuoteNode {
         let key = self.symbol.clone();
         let exchange = self.exchange_with_context(ctx, key.as_deref())?;
         let currencies = self.currency_units();
+        let currency = currencies
+            .quote_currency()
+            .map_err(|issue| YfError::InvalidData(format!("invalid snapshot currency: {issue}")))?;
 
         Ok(Snapshot {
             instrument: self.instrument(exchange)?,
             name: self.long_name.clone().or_else(|| self.short_name.clone()),
             market_state: self.market_state_with_context(ctx, key.clone())?,
             as_of: self.as_of_with_context(ctx, key.clone())?,
-            last: currencies.quote_price(
+            currency,
+            last: currencies.quote_price_amount(
                 ctx,
                 "regularMarketPrice",
                 key.clone(),
                 self.regular_market_price,
                 "snapshot last price",
             )?,
-            previous_close: currencies.quote_price(
+            previous_close: currencies.quote_price_amount(
                 ctx,
                 "regularMarketPreviousClose",
                 key.clone(),
                 self.regular_market_previous_close,
                 "snapshot previous close",
             )?,
-            open: currencies.quote_price(
+            open: currencies.quote_price_amount(
                 ctx,
                 "regularMarketOpen",
                 key.clone(),
                 self.regular_market_open,
                 "snapshot open",
             )?,
-            day_high: currencies.quote_price(
+            day_high: currencies.quote_price_amount(
                 ctx,
                 "regularMarketDayHigh",
                 key.clone(),
                 self.regular_market_day_high,
                 "snapshot day high",
             )?,
-            day_low: currencies.quote_price(
+            day_low: currencies.quote_price_amount(
                 ctx,
                 "regularMarketDayLow",
                 key,
                 self.regular_market_day_low,
                 "snapshot day low",
             )?,
-            volume: self.regular_market_volume,
+            volume: self.regular_market_volume.and_then(quantity_from_u64),
             provider: (),
         })
     }
@@ -483,11 +488,11 @@ impl V7QuoteNode {
         let Some(timestamp) = self.dividend_date else {
             return Ok(None);
         };
-        match i64_to_datetime(timestamp) {
-            Ok(timestamp) => Ok(Some(Calendar {
+        match i64_to_date(timestamp) {
+            Ok(date) => Ok(Some(Calendar {
                 earnings_dates: Vec::new(),
                 ex_dividend_date: None,
-                dividend_payment_date: Some(timestamp),
+                dividend_payment_date: Some(date),
             })),
             Err(err) => {
                 ctx.omitted_present_field(
@@ -586,6 +591,25 @@ impl QuoteCurrencyUnits {
         )
     }
 
+    fn quote_price_amount(
+        &self,
+        ctx: &mut ProjectionContext,
+        path: &'static str,
+        key: Option<String>,
+        value: Option<f64>,
+        target: &'static str,
+    ) -> Result<Option<PriceAmount>, YfError> {
+        optional_with_unit(
+            ctx,
+            path,
+            key,
+            self.quote_unit(),
+            value,
+            target,
+            ResolvedCurrencyUnit::price_amount_from_f64,
+        )
+    }
+
     fn quote_money(
         &self,
         ctx: &mut ProjectionContext,
@@ -645,6 +669,10 @@ impl QuoteCurrencyUnits {
 
     fn quote_unit(&self) -> Result<&ResolvedCurrencyUnit, ProjectionIssue> {
         self.quote.as_ref().ok_or_else(|| self.quote_issue())
+    }
+
+    fn quote_currency(&self) -> Result<Currency, ProjectionIssue> {
+        self.quote_unit().map(|unit| unit.currency().clone())
     }
 
     fn quote_major_unit(&self) -> Result<&ResolvedCurrencyUnit, ProjectionIssue> {
@@ -835,7 +863,7 @@ impl QuoteSummaryKeyStatistics {
                 from_raw(summary_detail.dividend_yield),
                 "forward dividend yield",
             )?,
-            ex_dividend_date: optional_timestamp(
+            ex_dividend_date: optional_date(
                 ctx,
                 "summaryDetail.exDividendDate",
                 key.clone(),
@@ -882,18 +910,18 @@ fn raw_u64(raw: Option<RawNumU64>) -> Option<u64> {
     raw.and_then(|value| value.raw)
 }
 
-fn optional_timestamp(
+fn optional_date(
     ctx: &mut ProjectionContext,
     path: &'static str,
     key: Option<String>,
     timestamp: Option<i64>,
-) -> Result<Option<chrono::DateTime<chrono::Utc>>, YfError> {
+) -> Result<Option<chrono::NaiveDate>, YfError> {
     let Some(timestamp) = timestamp else {
         return Ok(None);
     };
 
-    match i64_to_datetime(timestamp) {
-        Ok(timestamp) => Ok(Some(timestamp)),
+    match i64_to_date(timestamp) {
+        Ok(date) => Ok(Some(date)),
         Err(err) => {
             ctx.omitted_present_field(
                 path,
@@ -1263,8 +1291,16 @@ impl V7QuoteNode {
                 return Ok(None);
             }
         };
+        let currencies = self.currency_units();
+        let currency = match currencies.quote_currency() {
+            Ok(currency) => currency,
+            Err(reason) => {
+                ctx.dropped_item("quote", key, reason)?;
+                return Ok(None);
+            }
+        };
 
-        self.quote_from_instrument_with_context(ctx, key, instrument)
+        self.quote_from_instrument_with_context(ctx, key, instrument, currency)
             .map(Some)
     }
 
@@ -1275,8 +1311,12 @@ impl V7QuoteNode {
         let key = self.symbol.clone();
         let exchange = self.exchange_with_context(ctx, key.as_deref())?;
         let instrument = self.instrument(exchange)?;
+        let currency = self
+            .currency_units()
+            .quote_currency()
+            .map_err(|issue| YfError::InvalidData(format!("invalid quote currency: {issue}")))?;
 
-        self.quote_from_instrument_with_context(ctx, key, instrument)
+        self.quote_from_instrument_with_context(ctx, key, instrument, currency)
     }
 
     fn quote_from_instrument_with_context(
@@ -1284,13 +1324,15 @@ impl V7QuoteNode {
         ctx: &mut ProjectionContext,
         key: Option<String>,
         instrument: Instrument,
+        currency: Currency,
     ) -> Result<Quote, YfError> {
         let currencies = self.currency_units();
 
         Ok(Quote {
             instrument,
             name: self.long_name.clone().or_else(|| self.short_name.clone()),
-            price: currencies.quote_price(
+            currency,
+            price: currencies.quote_price_amount(
                 ctx,
                 "regularMarketPrice",
                 key.clone(),
@@ -1299,14 +1341,14 @@ impl V7QuoteNode {
             )?,
             bid: self.positive_book_level(ctx, "bid", key.clone(), self.bid, self.bid_size)?,
             ask: self.positive_book_level(ctx, "ask", key.clone(), self.ask, self.ask_size)?,
-            previous_close: currencies.quote_price(
+            previous_close: currencies.quote_price_amount(
                 ctx,
                 "regularMarketPreviousClose",
                 key.clone(),
                 self.regular_market_previous_close,
                 "quote previous close",
             )?,
-            day_volume: self.regular_market_volume,
+            day_volume: self.regular_market_volume.and_then(quantity_from_u64),
             market_state: self.market_state_with_context(ctx, key.clone())?,
             as_of: self.as_of_with_context(ctx, key)?,
             provider: (),

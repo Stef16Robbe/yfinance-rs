@@ -20,8 +20,10 @@ use crate::{
 
 use super::model::{OptionChain, OptionContract};
 use chrono::{NaiveDate, TimeZone, Utc};
+use paft::NonNegativeDecimal;
 use paft::domain::{AssetKind, Instrument};
 use paft::market::options::{OptionContractKey, OptionSide};
+use paft::money::PriceAmount;
 
 /* ---------------- Public: expirations + chain ---------------- */
 
@@ -292,13 +294,17 @@ fn project_option_contract(
     };
 
     let exp_date: NaiveDate = exp_dt.date_naive();
-    let key = OptionContractKey::new(underlying.clone(), option_side, strike, exp_date);
+    let mut key = OptionContractKey::new(underlying.clone(), option_side, strike, exp_date);
     let key_for_diag = option_contract_diag_key(contract, option_side, Some(exp_ts));
-    let contract_instrument = optional_contract_instrument(ctx, key_for_diag.clone(), contract)?;
+    if let Some(contract_instrument) =
+        optional_contract_instrument(ctx, key_for_diag.clone(), contract)?
+    {
+        key = key.with_contract_instrument(contract_instrument);
+    }
 
     Ok(Some(OptionContract {
         key,
-        contract_instrument,
+        currency: currency.currency().clone(),
         price: optional_option_price(
             ctx,
             "lastPrice",
@@ -325,7 +331,7 @@ fn project_option_contract(
         )?,
         volume: contract.volume,
         open_interest: contract.open_interest,
-        implied_volatility: optional_decimal_f64(
+        implied_volatility: optional_non_negative_decimal_f64(
             ctx,
             "impliedVolatility",
             key_for_diag.clone(),
@@ -376,15 +382,33 @@ fn optional_option_price(
     currency: &ResolvedCurrencyUnit,
     value: Option<f64>,
     target: &'static str,
-) -> Result<Option<paft::money::Price>, YfError> {
+) -> Result<Option<PriceAmount>, YfError> {
     let Some(value) = value else {
         return Ok(None);
     };
-    let Some(price) = currency.price_from_f64(value) else {
+    let Some(price) = currency.price_amount_from_f64(value) else {
         ctx.omitted_present_field(path, key, ProjectionIssue::ConversionFailed { target })?;
         return Ok(None);
     };
     Ok(Some(price))
+}
+
+fn optional_non_negative_decimal_f64(
+    ctx: &mut ProjectionContext,
+    path: &'static str,
+    key: Option<String>,
+    value: Option<f64>,
+    target: &'static str,
+) -> Result<Option<NonNegativeDecimal>, YfError> {
+    let Some(decimal) = optional_decimal_f64(ctx, path, key.clone(), value, target)? else {
+        return Ok(None);
+    };
+    if let Ok(value) = NonNegativeDecimal::new(decimal) {
+        Ok(Some(value))
+    } else {
+        ctx.omitted_present_field(path, key, ProjectionIssue::ConversionFailed { target })?;
+        Ok(None)
+    }
 }
 
 fn optional_option_timestamp(

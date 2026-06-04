@@ -386,7 +386,10 @@ async fn stream_polling_keeps_valid_quote_when_sibling_node_is_malformed() {
     mock.assert();
 
     assert_eq!(update.instrument.symbol.as_str(), "MSFT");
-    assert_eq!(update.volume, None);
+    assert_eq!(
+        update.volume.as_ref().map(ToString::to_string),
+        Some("1000".into())
+    );
 }
 
 #[tokio::test]
@@ -447,7 +450,7 @@ async fn stream_polling_uses_regular_market_time_as_update_timestamp() {
 }
 
 #[tokio::test]
-async fn stream_polling_emits_on_volume_only_change_with_diff_only() {
+async fn stream_polling_diff_only_ignores_volume_only_change() {
     let server = crate::common::setup_server();
 
     // First response: price P, volume V1
@@ -521,35 +524,22 @@ async fn stream_polling_emits_on_volume_only_change_with_diff_only() {
             .body(body2);
     });
 
-    // Second tick: price unchanged, volume increased -> must emit
-    let second = timeout(Duration::from_secs(3), rx.recv()).await;
+    // Second tick: price unchanged, volume increased -> diff_only should not emit.
+    let second = timeout(Duration::from_millis(350), rx.recv()).await;
 
     handle.abort();
 
     let first = first
         .expect("timed out waiting for first update")
         .expect("stream closed before first update");
-    let second = second
-        .expect("timed out waiting for second update")
-        .expect("stream closed before second update");
 
-    // Price should be unchanged between ticks in this scenario
-    let first_price = first
-        .price
-        .as_ref()
-        .map_or(f64::NAN, yfinance_rs::core::conversions::money_to_f64);
-    let second_price = second
-        .price
-        .as_ref()
-        .map_or(f64::NAN, yfinance_rs::core::conversions::money_to_f64);
-    assert!(
-        (first_price - second_price).abs() < 1e-9,
-        "price should be unchanged when only volume increases"
+    assert_eq!(
+        first.volume.as_ref().map(ToString::to_string),
+        Some("1000".into())
     );
-
     assert!(
-        second.volume.unwrap_or(0) > 0,
-        "second update should carry positive volume delta when price is unchanged"
+        second.is_err(),
+        "volume-only changes should not emit with diff_only"
     );
 }
 

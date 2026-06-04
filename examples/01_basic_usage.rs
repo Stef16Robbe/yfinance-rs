@@ -114,7 +114,7 @@ async fn section_download(client: &YfClient) -> Result<(), YfError> {
         let candles = &entry.history.candles;
         println!("{symbol} has {} data points.", candles.len());
         if let Some(last_candle) = candles.last() {
-            println!("  Last close price: {}", last_candle.close);
+            println!("  Last close price: {}", last_candle.ohlc.close);
         }
     }
     println!();
@@ -134,6 +134,7 @@ async fn section_options(client: &YfClient) -> Result<(), YfError> {
         );
         if let Some(first_call) = chain.calls().next() {
             let contract = first_call
+                .key
                 .contract_instrument
                 .as_ref()
                 .unwrap_or(&first_call.key.underlying);
@@ -161,7 +162,7 @@ async fn section_stream(client: &YfClient) -> Result<(), YfError> {
         while let Some(update) = receiver.recv().await {
             let vol = update
                 .volume
-                .map(|v| format!(" (vol Δ: {v})"))
+                .map(|v| format!(" (volume: {v})"))
                 .unwrap_or_default();
             println!(
                 "[{}] {} @ {}{}",

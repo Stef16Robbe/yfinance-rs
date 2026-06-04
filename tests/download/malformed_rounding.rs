@@ -62,14 +62,17 @@ async fn download_drops_malformed_rows_and_rounds_valid_neighbors() {
         .candles;
     assert_eq!(v.len(), 2, "malformed OHLC row is dropped");
 
-    assert!((money_to_f64(&v[0].open) - 100.00).abs() < 1e-9);
-    assert!((money_to_f64(&v[0].high) - 101.01).abs() < 1e-9);
-    assert!((money_to_f64(&v[0].low) - 99.00).abs() < 1e-9);
-    assert!((money_to_f64(&v[0].close) - 100.50).abs() < 1e-9);
+    assert!((money_to_f64(&v[0].ohlc.open) - 100.00).abs() < 1e-9);
+    assert!((money_to_f64(&v[0].ohlc.high) - 101.01).abs() < 1e-9);
+    assert!((money_to_f64(&v[0].ohlc.low) - 99.00).abs() < 1e-9);
+    assert!((money_to_f64(&v[0].ohlc.close) - 100.50).abs() < 1e-9);
 
-    assert!((money_to_f64(&v[1].open) - 99.99).abs() < 1e-9);
-    assert!((money_to_f64(&v[1].high) - 100.01).abs() < 1e-9);
-    assert!((money_to_f64(&v[1].low) - 98.99).abs() < 1e-9);
-    assert!((money_to_f64(&v[1].close) - 100.00).abs() < 1e-9);
-    assert_eq!(v[1].volume, Some(3000));
+    assert!((money_to_f64(&v[1].ohlc.open) - 99.99).abs() < 1e-9);
+    assert!((money_to_f64(&v[1].ohlc.high) - 100.01).abs() < 1e-9);
+    assert!((money_to_f64(&v[1].ohlc.low) - 98.99).abs() < 1e-9);
+    assert!((money_to_f64(&v[1].ohlc.close) - 100.00).abs() < 1e-9);
+    assert_eq!(
+        v[1].volume.as_ref().map(ToString::to_string),
+        Some("3000".into())
+    );
 }

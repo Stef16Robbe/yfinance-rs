@@ -5,6 +5,12 @@ use url::Url;
 use yfinance_rs::core::conversions::money_from_f64;
 use yfinance_rs::{FundamentalsBuilder, Ticker, YfClient};
 
+fn date_from_ts(timestamp: i64) -> chrono::NaiveDate {
+    chrono::DateTime::from_timestamp(timestamp, 0)
+        .unwrap()
+        .date_naive()
+}
+
 fn make_ticker(server: &MockServer, symbol: &str) -> Ticker {
     let client = YfClient::builder()
         .base_timeseries(
@@ -61,13 +67,10 @@ async fn calendar_maps_dividend_dates_to_distinct_paft_fields() {
     let calendar = ticker.calendar().await.unwrap();
 
     mock.assert();
+    assert_eq!(calendar.ex_dividend_date, Some(date_from_ts(1_758_499_200)));
     assert_eq!(
-        calendar.ex_dividend_date.map(|date| date.timestamp()),
-        Some(1_758_499_200)
-    );
-    assert_eq!(
-        calendar.dividend_payment_date.map(|date| date.timestamp()),
-        Some(1_759_104_000)
+        calendar.dividend_payment_date,
+        Some(date_from_ts(1_759_104_000))
     );
 }
 

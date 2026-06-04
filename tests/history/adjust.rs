@@ -5,6 +5,12 @@ use yfinance_rs::core::Interval;
 use yfinance_rs::core::conversions::*;
 use yfinance_rs::{Action, HistoryBuilder, OhlcPriceBasis, PriceBasis, YfClient};
 
+fn date_from_ts(timestamp: i64) -> chrono::NaiveDate {
+    chrono::DateTime::from_timestamp(timestamp, 0)
+        .unwrap()
+        .date_naive()
+}
+
 #[tokio::test]
 async fn history_auto_adjust_and_actions() {
     let server = MockServer::start();
@@ -71,30 +77,45 @@ async fn history_auto_adjust_and_actions() {
 
     // t1 (1000): prices halved, volume stays as reported by Yahoo.
     let c0 = &resp.candles[0];
-    assert!((money_to_f64(&c0.open) - 50.0).abs() < 1e-9);
-    assert!((money_to_f64(&c0.high) - 50.5).abs() < 1e-9);
-    assert!((money_to_f64(&c0.low) - 49.5).abs() < 1e-9);
-    assert!((money_to_f64(&c0.close) - 50.0).abs() < 1e-9);
-    assert_eq!(c0.volume, Some(10));
+    assert!((money_to_f64(&c0.ohlc.open) - 50.0).abs() < 1e-9);
+    assert!((money_to_f64(&c0.ohlc.high) - 50.5).abs() < 1e-9);
+    assert!((money_to_f64(&c0.ohlc.low) - 49.5).abs() < 1e-9);
+    assert!((money_to_f64(&c0.ohlc.close) - 50.0).abs() < 1e-9);
+    assert_eq!(
+        c0.volume.as_ref().map(ToString::to_string),
+        Some("10".into())
+    );
 
     // t2 (2000): unchanged prices, unchanged volume
     let c1 = &resp.candles[1];
-    assert!((money_to_f64(&c1.close) - 100.0).abs() < 1e-9);
-    assert_eq!(c1.volume, Some(10));
+    assert!((money_to_f64(&c1.ohlc.close) - 100.0).abs() < 1e-9);
+    assert_eq!(
+        c1.volume.as_ref().map(ToString::to_string),
+        Some("10".into())
+    );
 
     // t3 (3000): dividend -> adjclose=99 => factor 0.99
     let c2 = &resp.candles[2];
-    assert!((money_to_f64(&c2.close) - 99.0).abs() < 1e-9);
-    assert_eq!(c2.volume, Some(10));
-
-    // actions parsed and sorted
-    assert_eq!(resp.actions.len(), 2);
-    assert!(matches!(
-        resp.actions[0],
-        Action::Split { ts, numerator, denominator }
-            if ts.timestamp() == 2000 && numerator.get() == 2 && denominator.get() == 1
-    ));
-    assert!(
-        matches!(&resp.actions[1], Action::Dividend { ts, amount } if ts.timestamp()==3000 && (money_to_f64(amount)-1.0).abs()<1e-9)
+    assert!((money_to_f64(&c2.ohlc.close) - 99.0).abs() < 1e-9);
+    assert_eq!(
+        c2.volume.as_ref().map(ToString::to_string),
+        Some("10".into())
     );
+
+    // Actions preserve corporate-action calendar dates and payloads.
+    assert_eq!(resp.actions.len(), 2);
+    assert!(resp.actions.iter().any(|action| {
+        matches!(
+            action,
+            Action::Split { date, numerator, denominator }
+                if *date == date_from_ts(2000) && numerator.get() == 2 && denominator.get() == 1
+        )
+    }));
+    assert!(resp.actions.iter().any(|action| {
+        matches!(
+            action,
+            Action::Dividend { date, amount }
+                if *date == date_from_ts(3000) && (money_to_f64(amount)-1.0).abs()<1e-9
+        )
+    }));
 }

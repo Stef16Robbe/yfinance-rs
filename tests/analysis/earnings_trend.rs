@@ -403,13 +403,13 @@ async fn earnings_trend_accepts_yahoo_eps_revision_down_days_casing() {
     let revisions = &response.data[0].eps_revisions;
     assert_eq!(revisions.historical.len(), 2);
     let seven_days = revisions
-        .find_by_period_str("7d")
+        .find_by_horizon_str("7d")
         .unwrap()
         .expect("7d revision point should map");
     assert_eq!(seven_days.up_count, 2);
     assert_eq!(seven_days.down_count, 1);
     let thirty_days = revisions
-        .find_by_period_str("30d")
+        .find_by_horizon_str("30d")
         .unwrap()
         .expect("30d revision point should map");
     assert_eq!(thirty_days.up_count, 4);

@@ -8,17 +8,13 @@ fn display_opt<T: Display>(value: Option<&T>) -> String {
 
 fn display_action(action: &Action) -> String {
     match action {
-        Action::Dividend { ts, amount } => {
-            format!("dividend of {amount} on {}", ts.date_naive())
-        }
+        Action::Dividend { date, amount } => format!("dividend of {amount} on {date}"),
         Action::Split {
-            ts,
+            date,
             numerator,
             denominator,
-        } => format!("split {numerator}:{denominator} on {}", ts.date_naive()),
-        Action::CapitalGain { ts, gain } => {
-            format!("capital gain of {gain} on {}", ts.date_naive())
-        }
+        } => format!("split {numerator}:{denominator} on {date}"),
+        Action::CapitalGain { date, gain } => format!("capital gain of {gain} on {date}"),
         _ => "other corporate action".to_string(),
     }
 }
@@ -59,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!(
             "  Last close on {}: {}",
             candle.ts.date_naive(),
-            candle.close
+            candle.ohlc.close
         );
     }
     println!();

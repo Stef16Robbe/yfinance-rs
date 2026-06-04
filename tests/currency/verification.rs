@@ -12,12 +12,7 @@ async fn check_fast_info(ticker: &Ticker, expected_currency: &str) {
                 "    Last Price: {:?}",
                 fi.snapshot.last.as_ref().map(money_to_f64)
             );
-            let currency = fi
-                .snapshot
-                .last
-                .as_ref()
-                .or(fi.snapshot.previous_close.as_ref())
-                .map(|price| price.currency().to_string());
+            let currency = Some(fi.snapshot.currency.to_string());
             let exchange = fi
                 .snapshot
                 .instrument
@@ -55,14 +50,7 @@ async fn check_comprehensive_info(ticker: &Ticker, expected_currency: &str) {
                     .as_ref()
                     .map(yfinance_rs::core::conversions::money_to_f64)
             );
-            println!(
-                "    Currency: {:?}",
-                info.snapshot
-                    .last
-                    .as_ref()
-                    .or(info.snapshot.previous_close.as_ref())
-                    .map(|price| price.currency().to_string())
-            );
+            println!("    Currency: {:?}", info.snapshot.currency.to_string());
             println!(
                 "    Exchange: {:?}",
                 info.snapshot
@@ -71,12 +59,7 @@ async fn check_comprehensive_info(ticker: &Ticker, expected_currency: &str) {
                     .as_ref()
                     .map(std::string::ToString::to_string)
             );
-            let currency = info
-                .snapshot
-                .last
-                .as_ref()
-                .or(info.snapshot.previous_close.as_ref())
-                .map(|price| price.currency().to_string());
+            let currency = Some(info.snapshot.currency.to_string());
             let currency_correct = currency.as_deref() == Some(expected_currency);
             println!(
                 "    {} Currency {}: {} (expected {})",
@@ -102,10 +85,9 @@ async fn check_history(ticker: &Ticker, expected_currency: &str) {
     {
         Ok(history) => {
             if let Some(last_candle) = history.last() {
-                println!("    Last Close: {:?}", last_candle.close);
-                println!("    Currency: \"{}\"", last_candle.close.currency());
-                let currency_correct =
-                    last_candle.close.currency().to_string() == expected_currency;
+                println!("    Last Close: {:?}", last_candle.ohlc.close);
+                println!("    Currency: \"{}\"", last_candle.currency);
+                let currency_correct = last_candle.currency.to_string() == expected_currency;
                 println!(
                     "    {} Currency {}: {} (expected {})",
                     if currency_correct { "✅" } else { "❌" },
@@ -114,7 +96,7 @@ async fn check_history(ticker: &Ticker, expected_currency: &str) {
                     } else {
                         "INCORRECT"
                     },
-                    last_candle.close.currency(),
+                    last_candle.currency,
                     expected_currency
                 );
             } else {
@@ -201,8 +183,8 @@ async fn run_batch_quotes(client: &YfClient) -> Result<(), YfError> {
                     "7203.T" => "JPY",
                     _ => "USD",
                 };
-                let currency = quote.price.as_ref().map(|m| m.currency().to_string());
-                let currency_correct = currency.as_deref() == Some(expected);
+                let currency = quote.currency.to_string();
+                let currency_correct = currency == expected;
                 println!(
                     "  {}: Price={:?}, Currency={:?}",
                     symbol,
@@ -217,7 +199,7 @@ async fn run_batch_quotes(client: &YfClient) -> Result<(), YfError> {
                     } else {
                         "INCORRECT"
                     },
-                    currency.as_deref().unwrap_or("None"),
+                    currency,
                     expected
                 );
             }
@@ -263,17 +245,17 @@ async fn test_currency_precision() -> Result<(), YfError> {
         Ok(history) => {
             if let Some(last_candle) = history.last() {
                 println!("📊 Historical Data Precision:");
-                println!("  Open:  {:?}", last_candle.open);
-                println!("  High:  {:?}", last_candle.high);
-                println!("  Low:   {:?}", last_candle.low);
-                println!("  Close: {:?}", last_candle.close);
+                println!("  Open:  {:?}", last_candle.ohlc.open);
+                println!("  High:  {:?}", last_candle.ohlc.high);
+                println!("  Low:   {:?}", last_candle.ohlc.low);
+                println!("  Close: {:?}", last_candle.ohlc.close);
 
                 // Check if amounts are clean (no precision artifacts)
                 let amounts = [
-                    money_to_f64(&last_candle.open),
-                    money_to_f64(&last_candle.high),
-                    money_to_f64(&last_candle.low),
-                    money_to_f64(&last_candle.close),
+                    money_to_f64(&last_candle.ohlc.open),
+                    money_to_f64(&last_candle.ohlc.high),
+                    money_to_f64(&last_candle.ohlc.low),
+                    money_to_f64(&last_candle.ohlc.close),
                 ];
 
                 let has_precision_issues = amounts.iter().any(|&amount| {

@@ -58,7 +58,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("--- Fetching Calendar Events for AAPL (including dividend date) ---");
     let calendar = aapl.calendar().await?;
     if let Some(date) = calendar.ex_dividend_date {
-        println!("  Dividend date: {}", date.date_naive());
+        println!("  Dividend date: {date}");
     } else {
         println!("  No upcoming dividend date found.");
     }

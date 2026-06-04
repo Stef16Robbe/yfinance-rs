@@ -1336,7 +1336,7 @@ where
         }),
         Err(error) => audit.push(Entry {
             surface: surface.to_string(),
-            status: Status::Warn,
+            status: Status::Pass,
             diagnostics: Some(0),
             summary: format!("expected ESG unavailable/dead path: {error}"),
             warnings: Vec::new(),
@@ -1363,7 +1363,7 @@ where
         }),
         Err(error) => audit.push(Entry {
             surface: surface.to_string(),
-            status: Status::Warn,
+            status: Status::Pass,
             diagnostics: None,
             summary: format!("expected ESG unavailable/dead path: {error}"),
             warnings: Vec::new(),
@@ -1504,7 +1504,7 @@ fn summary_quote(quote: &yfinance_rs::Quote) -> Result<String, String> {
         .price
         .as_ref()
         .ok_or_else(|| "quote had no price".to_string())?;
-    if price.amount() <= Decimal::ZERO {
+    if price.as_decimal() <= &Decimal::ZERO {
         return Err(format!("quote price is not positive: {price}"));
     }
     Ok(format!(
@@ -1523,7 +1523,7 @@ fn summary_snapshot(label: &str, snapshot: &Snapshot) -> Result<String, String> 
         .last
         .as_ref()
         .ok_or_else(|| format!("{label} had no last price"))?;
-    if price.amount() <= Decimal::ZERO {
+    if price.as_decimal() <= &Decimal::ZERO {
         return Err(format!("{label} last price is not positive: {price}"));
     }
     Ok(format!(
@@ -1588,10 +1588,10 @@ fn summary_candles(candles: &[Candle]) -> Result<String, String> {
     let bad = candles
         .iter()
         .filter(|candle| {
-            candle.open.amount() <= Decimal::ZERO
-                || candle.high.amount() <= Decimal::ZERO
-                || candle.low.amount() <= Decimal::ZERO
-                || candle.close.amount() <= Decimal::ZERO
+            candle.ohlc.open.as_decimal() <= &Decimal::ZERO
+                || candle.ohlc.high.as_decimal() <= &Decimal::ZERO
+                || candle.ohlc.low.as_decimal() <= &Decimal::ZERO
+                || candle.ohlc.close.as_decimal() <= &Decimal::ZERO
         })
         .count();
     if bad > 0 {
@@ -1607,7 +1607,7 @@ fn summary_candles(candles: &[Candle]) -> Result<String, String> {
         candles.len(),
         first.ts.date_naive(),
         last.ts.date_naive(),
-        last.close,
+        last.ohlc.close,
         last.volume
     ))
 }
@@ -1891,7 +1891,7 @@ fn summary_shares(shares: &[ShareCount]) -> Result<String, String> {
     Ok(format!(
         "{} rows; sample {} shares={}",
         shares.len(),
-        sample.date.date_naive(),
+        sample.date,
         sample.shares
     ))
 }
@@ -1922,7 +1922,7 @@ fn summary_institutional_holders(rows: &[InstitutionalHolder]) -> Result<String,
         sample.holder,
         sample.shares,
         display_opt(sample.value.as_ref()),
-        sample.date_reported.date_naive()
+        sample.date_reported
     ))
 }
 
@@ -1931,9 +1931,7 @@ fn summary_insider_transactions(rows: &[InsiderTransaction]) -> Result<String, S
     if let Some(row) = rows.iter().find(|row| row.insider.trim().is_empty()) {
         return Err(format!(
             "insider transaction had empty insider for {} {} shares={:?}",
-            row.transaction_date.date_naive(),
-            row.transaction_type,
-            row.shares
+            row.transaction_date, row.transaction_type, row.shares
         ));
     }
     let sample = &rows[0];
@@ -1945,7 +1943,7 @@ fn summary_insider_transactions(rows: &[InsiderTransaction]) -> Result<String, S
         sample.transaction_type,
         sample.shares,
         display_opt(sample.value.as_ref()),
-        sample.transaction_date.date_naive()
+        sample.transaction_date
     ))
 }
 
@@ -1961,7 +1959,7 @@ fn summary_insider_roster(rows: &[InsiderRosterHolder]) -> Result<String, String
         sample.name,
         sample.position,
         sample.shares_owned_directly,
-        sample.latest_transaction_date.date_naive()
+        sample.latest_transaction_date
     ))
 }
 

@@ -15,11 +15,10 @@ use crate::core::{
     },
     diagnostics::{
         nonempty_string, optional_decimal_f64, optional_money_u64_with_currency_issue,
-        required_date, required_parsed,
+        optional_ratio_f64, required_date, required_parsed,
     },
     quotesummary,
 };
-use paft::Decimal;
 use paft::fundamentals::holders::{InsiderPosition, TransactionType};
 
 const INSTITUTION_OWNERSHIP_MODULE: &str = "institutionOwnership";
@@ -66,11 +65,11 @@ pub(super) async fn major_holders(
 
     let mut result = Vec::new();
 
-    if let Some(value) = optional_decimal_f64(
+    if let Some(value) = optional_ratio_f64(
         &mut ctx,
         "majorHoldersBreakdown.insidersPercentHeld",
         None,
-        from_raw(breakdown.insiders_percent_held),
+        from_raw(breakdown.insiders),
         "major holder percent",
     )? {
         result.push(MajorHolder {
@@ -78,11 +77,11 @@ pub(super) async fn major_holders(
             value,
         });
     }
-    if let Some(value) = optional_decimal_f64(
+    if let Some(value) = optional_ratio_f64(
         &mut ctx,
         "majorHoldersBreakdown.institutionsPercentHeld",
         None,
-        from_raw(breakdown.institutions_percent_held),
+        from_raw(breakdown.institutions),
         "major holder percent",
     )? {
         result.push(MajorHolder {
@@ -90,11 +89,11 @@ pub(super) async fn major_holders(
             value,
         });
     }
-    if let Some(value) = optional_decimal_f64(
+    if let Some(value) = optional_ratio_f64(
         &mut ctx,
         "majorHoldersBreakdown.institutionsFloatPercentHeld",
         None,
-        from_raw(breakdown.institutions_float_percent_held),
+        from_raw(breakdown.institutions_float),
         "major holder percent",
     )? {
         result.push(MajorHolder {
@@ -102,13 +101,6 @@ pub(super) async fn major_holders(
             value,
         });
     }
-    if let Some(v) = from_raw(breakdown.institutions_count) {
-        result.push(MajorHolder {
-            category: "Number of Institutions Holding Shares".into(),
-            value: Decimal::from(v),
-        });
-    }
-
     Ok(ctx.finish(result))
 }
 
@@ -201,7 +193,7 @@ async fn map_ownership_list(
             from_raw(h.value),
             "holder monetary value",
         )?;
-        let pct_held = optional_decimal_f64(
+        let pct_held = optional_ratio_f64(
             ctx,
             "ownershipList[].pctHeld",
             Some(holder.clone()),

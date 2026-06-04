@@ -62,10 +62,10 @@ async fn download_repair_simple_100x_fix() {
         .history
         .candles;
     // middle row scaled ~0.01
-    assert!((money_to_f64(&v[1].close) - 10.5).abs() < 1e-9);
-    assert!((money_to_f64(&v[1].open) - 10.0).abs() < 1e-9);
-    assert!((money_to_f64(&v[1].high) - 11.0).abs() < 1e-9);
-    assert!((money_to_f64(&v[1].low) - 9.0).abs() < 1e-9);
+    assert!((money_to_f64(&v[1].ohlc.close) - 10.5).abs() < 1e-9);
+    assert!((money_to_f64(&v[1].ohlc.open) - 10.0).abs() < 1e-9);
+    assert!((money_to_f64(&v[1].ohlc.high) - 11.0).abs() < 1e-9);
+    assert!((money_to_f64(&v[1].ohlc.low) - 9.0).abs() < 1e-9);
     assert!((money_to_f64(v[1].close_unadj.as_ref().unwrap()) - 10.5).abs() < 1e-9);
 }
 
@@ -126,8 +126,8 @@ async fn download_repair_leaves_row_unchanged_if_any_scaled_price_fails() {
         .candles;
 
     assert_eq!(v.len(), 3);
-    assert!((money_to_f64(&v[1].close) - 0.1).abs() < 1e-9);
-    assert!(money_to_f64(&v[1].open) > 1e28);
+    assert!((money_to_f64(&v[1].ohlc.close) - 0.1).abs() < 1e-9);
+    assert!(money_to_f64(&v[1].ohlc.open) > 1e28);
 }
 
 #[tokio::test]
@@ -189,6 +189,6 @@ async fn download_repair_uses_repaired_previous_row_as_next_baseline() {
     assert_eq!(v.len(), 4);
     // Row 1 is repaired from 10 to 1000, then that repaired close is used as
     // row 2's previous-neighbor baseline in the same forward pass.
-    assert!((money_to_f64(&v[1].close) - 1000.0).abs() < 1e-9);
-    assert!((money_to_f64(&v[2].close) - 1000.0).abs() < 1e-9);
+    assert!((money_to_f64(&v[1].ohlc.close) - 1000.0).abs() < 1e-9);
+    assert!((money_to_f64(&v[2].ohlc.close) - 1000.0).abs() < 1e-9);
 }

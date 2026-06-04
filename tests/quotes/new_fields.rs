@@ -44,9 +44,15 @@ async fn quote_v7_bid_ask_are_mapped_to_book_levels() {
     let ask = quote.ask.as_ref().expect("ask should be mapped");
 
     assert!((money_to_f64(&bid.price) - expected_bid).abs() < 1e-9);
-    assert_eq!(bid.size, Some(paft::Decimal::from(expected_bid_size)));
+    assert_eq!(
+        bid.size.as_ref().map(ToString::to_string),
+        Some(expected_bid_size.to_string())
+    );
     assert!((money_to_f64(&ask.price) - expected_ask).abs() < 1e-9);
-    assert_eq!(ask.size, Some(paft::Decimal::from(expected_ask_size)));
+    assert_eq!(
+        ask.size.as_ref().map(ToString::to_string),
+        Some(expected_ask_size.to_string())
+    );
 
     #[cfg(feature = "dataframe")]
     {

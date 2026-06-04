@@ -36,9 +36,12 @@ async fn history_drops_malformed_ohlc_rows() {
     mock.assert();
 
     assert_eq!(bars.len(), 1, "null OHLC row is dropped");
-    assert!((money_to_f64(&bars[0].open) - 100.0).abs() < 1e-9);
-    assert!((money_to_f64(&bars[0].close) - 100.5).abs() < 1e-9);
-    assert_eq!(bars[0].volume, Some(1000));
+    assert!((money_to_f64(&bars[0].ohlc.open) - 100.0).abs() < 1e-9);
+    assert!((money_to_f64(&bars[0].ohlc.close) - 100.5).abs() < 1e-9);
+    assert_eq!(
+        bars[0].volume.as_ref().map(ToString::to_string),
+        Some("1000".into())
+    );
 }
 
 #[tokio::test]
@@ -162,5 +165,8 @@ async fn history_drops_unrepresentable_raw_ohlc_before_adjustment() {
         1,
         "raw malformed OHLC row is dropped even if adjusted values would fit"
     );
-    assert_eq!(bars[0].volume, Some(1000));
+    assert_eq!(
+        bars[0].volume.as_ref().map(ToString::to_string),
+        Some("1000".into())
+    );
 }

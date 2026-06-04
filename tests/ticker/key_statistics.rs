@@ -4,7 +4,7 @@ use paft::fundamentals::statistics::KeyStatistics;
 use paft::money::{Currency, IsoCurrency};
 use serde_json::Value;
 use url::Url;
-use yfinance_rs::core::conversions::{CurrencyValue, money_to_f64};
+use yfinance_rs::core::conversions::{CurrencyValue, DecimalValue, money_to_f64};
 use yfinance_rs::{ProjectionIssue, Ticker, YfClient, YfWarning};
 
 struct CurrencyScaleCase {
@@ -153,7 +153,7 @@ fn key_statistics_client(server: &MockServer, crumb: &str) -> YfClient {
         .unwrap()
 }
 
-fn assert_currency_value<T: CurrencyValue>(
+fn assert_currency_value<T: CurrencyValue + DecimalValue>(
     value: &T,
     expected_amount: f64,
     expected_currency: &str,
@@ -173,7 +173,7 @@ fn assert_currency_value<T: CurrencyValue>(
     );
 }
 
-fn assert_quote_price<T: CurrencyValue>(
+fn assert_quote_price<T: CurrencyValue + DecimalValue>(
     value: Option<&T>,
     raw: Option<f64>,
     currency: &str,
@@ -195,7 +195,7 @@ fn assert_quote_price<T: CurrencyValue>(
     );
 }
 
-fn assert_major_price<T: CurrencyValue>(
+fn assert_major_price<T: CurrencyValue + DecimalValue>(
     value: Option<&T>,
     raw: Option<f64>,
     currency: &str,

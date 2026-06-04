@@ -312,12 +312,7 @@ impl Ticker {
         hb = hb.range(range.unwrap_or(Range::Max));
         let resp = hb.auto_adjust(true).actions(true).fetch_full().await?;
         let mut actions = resp.actions;
-        actions.sort_by_key(|a| match a {
-            Action::Dividend { ts, .. }
-            | Action::Split { ts, .. }
-            | Action::CapitalGain { ts, .. } => ts.timestamp(),
-            _ => i64::MAX,
-        });
+        actions.sort_by_key(action_sort_key);
         Ok(actions)
     }
 
@@ -747,5 +742,14 @@ impl Ticker {
         self.fundamentals_builder()
             .shares_between(true, start, end)
             .await
+    }
+}
+
+const fn action_sort_key(action: &Action) -> (bool, chrono::NaiveDate) {
+    match action {
+        Action::Dividend { date, .. }
+        | Action::Split { date, .. }
+        | Action::CapitalGain { date, .. } => (false, *date),
+        _ => (true, chrono::NaiveDate::MAX),
     }
 }

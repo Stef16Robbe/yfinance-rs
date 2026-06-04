@@ -1,4 +1,4 @@
-use paft::domain::{AssetKind, Exchange, Period};
+use paft::domain::{AssetKind, Exchange, ReportingPeriod};
 use paft::fundamentals::{
     analysis::{RecommendationAction, RecommendationGrade},
     holders::{InsiderPosition, TransactionType},
@@ -156,7 +156,7 @@ fn missing_or_invalid_required_tokens_do_not_default_to_plausible_values() {
 fn unknown_nonempty_tokens_are_preserved_as_extensible_other_values() {
     assert!(matches!(
         string_to_period("current quarter").unwrap(),
-        Period::Other(_)
+        ReportingPeriod::Other(_)
     ));
     assert!(matches!(
         string_to_recommendation_grade("conviction buy").unwrap(),

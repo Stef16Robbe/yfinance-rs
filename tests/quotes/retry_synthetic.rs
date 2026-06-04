@@ -1,12 +1,12 @@
 use crate::common;
 use httpmock::Method::GET;
 use httpmock::MockServer;
-use paft::money::{Currency, IsoCurrency, Price};
+use paft::money::PriceAmount;
 use url::Url;
-use yfinance_rs::core::conversions::price_from_f64;
+use yfinance_rs::core::conversions::price_amount_from_f64;
 
-fn usd_price(value: f64) -> Price {
-    price_from_f64(value, Currency::Iso(IsoCurrency::USD)).expect("known-good USD price")
+fn usd_price(value: f64) -> PriceAmount {
+    price_amount_from_f64(value).expect("known-good USD price")
 }
 
 #[tokio::test]

@@ -35,8 +35,14 @@ async fn download_auto_adjust_leaves_yahoo_volume_unchanged_across_split() {
     mock.assert();
     let candles = &response.entries[0].history.candles;
     assert_eq!(candles.len(), 4);
-    assert!((money_to_f64(&candles[1].close) - 120.82).abs() < 1e-9);
-    assert_eq!(candles[1].volume, Some(412_386_000));
-    assert!((money_to_f64(&candles[2].close) - 121.72).abs() < 1e-9);
-    assert_eq!(candles[2].volume, Some(313_434_100));
+    assert!((money_to_f64(&candles[1].ohlc.close) - 120.82).abs() < 1e-9);
+    assert_eq!(
+        candles[1].volume.as_ref().map(ToString::to_string),
+        Some("412386000".into())
+    );
+    assert!((money_to_f64(&candles[2].ohlc.close) - 121.72).abs() < 1e-9);
+    assert_eq!(
+        candles[2].volume.as_ref().map(ToString::to_string),
+        Some("313434100".into())
+    );
 }

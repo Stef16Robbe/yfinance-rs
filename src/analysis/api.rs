@@ -26,7 +26,7 @@ use super::wire::{
     EarningsEstimateNode, EarningsTrendItemNode, EpsRevisionsNode, EpsTrendNode, FinancialDataNode,
     RecommendationNode, RecommendationTrendNode, RevenueEstimateNode,
 };
-use paft::domain::Period;
+use paft::domain::ReportingPeriod;
 use paft::fundamentals::analysis::{
     EarningsEstimate, EpsRevisions, EpsTrend, RecommendationAction, RecommendationGrade,
     RevenueEstimate, RevisionPoint, TrendPoint,
@@ -580,7 +580,7 @@ impl AnalystCurrencyGroups {
 }
 
 struct ValidEarningsTrendItem {
-    period: Period,
+    period: ReportingPeriod,
     raw: RawEarningsTrendItem,
 }
 
@@ -1091,7 +1091,7 @@ fn project_eps_revisions(
 
 fn project_earnings_trend_row(
     ctx: &mut ProjectionContext,
-    period: Period,
+    period: ReportingPeriod,
     raw: &RawEarningsTrendItem,
     units: EarningsTrendUnits<'_>,
 ) -> Result<EarningsTrendRow, YfError> {

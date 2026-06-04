@@ -1,10 +1,10 @@
 use crate::core::{
     ProjectionContext, ProjectionIssue, YfError,
-    conversions::{i64_to_datetime, string_to_period},
+    conversions::{i64_to_date, i64_to_datetime, string_to_period},
     wire::{RawDate, from_raw_date},
 };
-use chrono::{DateTime, Utc};
-use paft::domain::Period;
+use chrono::{DateTime, NaiveDate, Utc};
+use paft::domain::ReportingPeriod;
 
 pub fn diagnostic_key(key: Option<&str>) -> Option<String> {
     key.map(str::to_owned)
@@ -96,11 +96,11 @@ pub fn required_period(
     key: Option<String>,
     field: &'static str,
     value: Option<&str>,
-) -> Result<Option<Period>, YfError> {
+) -> Result<Option<ReportingPeriod>, YfError> {
     required_parsed(ctx, item, key, field, value, string_to_period)
 }
 
-pub fn required_date(
+pub fn required_timestamp(
     ctx: &mut ProjectionContext,
     item: &'static str,
     key: Option<String>,
@@ -113,6 +113,34 @@ pub fn required_date(
     };
 
     match i64_to_datetime(raw) {
+        Ok(value) => Ok(Some(value)),
+        Err(err) => {
+            ctx.dropped_item(
+                item,
+                key,
+                ProjectionIssue::InvalidField {
+                    field,
+                    details: err.to_string(),
+                },
+            )?;
+            Ok(None)
+        }
+    }
+}
+
+pub fn required_date(
+    ctx: &mut ProjectionContext,
+    item: &'static str,
+    key: Option<String>,
+    field: &'static str,
+    value: Option<RawDate>,
+) -> Result<Option<NaiveDate>, YfError> {
+    let Some(raw) = from_raw_date(value) else {
+        ctx.dropped_item(item, key, ProjectionIssue::MissingRequiredField { field })?;
+        return Ok(None);
+    };
+
+    match i64_to_date(raw) {
         Ok(value) => Ok(Some(value)),
         Err(err) => {
             ctx.dropped_item(

@@ -470,9 +470,9 @@ async fn download_back_adjust_offline() {
 
     assert_eq!(a.len(), b.len(), "same number of bars");
     for (ca, cb) in a.iter().zip(b.iter()) {
-        assert!((money_to_f64(&ca.open) - money_to_f64(&cb.open)).abs() < 1e-9);
-        assert!((money_to_f64(&ca.high) - money_to_f64(&cb.high)).abs() < 1e-9);
-        assert!((money_to_f64(&ca.low) - money_to_f64(&cb.low)).abs() < 1e-9);
+        assert!((money_to_f64(&ca.ohlc.open) - money_to_f64(&cb.ohlc.open)).abs() < 1e-9);
+        assert!((money_to_f64(&ca.ohlc.high) - money_to_f64(&cb.ohlc.high)).abs() < 1e-9);
+        assert!((money_to_f64(&ca.ohlc.low) - money_to_f64(&cb.ohlc.low)).abs() < 1e-9);
         // close may differ due to back_adjust
     }
     assert!(!a.is_empty(), "expected some data");
@@ -551,10 +551,10 @@ async fn download_repair_is_noop_on_clean_data_offline() {
 
     assert_eq!(a.len(), b.len());
     for (ca, cb) in a.iter().zip(b.iter()) {
-        assert!((money_to_f64(&ca.open) - money_to_f64(&cb.open)).abs() < 1e-12);
-        assert!((money_to_f64(&ca.high) - money_to_f64(&cb.high)).abs() < 1e-12);
-        assert!((money_to_f64(&ca.low) - money_to_f64(&cb.low)).abs() < 1e-12);
-        assert!((money_to_f64(&ca.close) - money_to_f64(&cb.close)).abs() < 1e-12);
+        assert!((money_to_f64(&ca.ohlc.open) - money_to_f64(&cb.ohlc.open)).abs() < 1e-12);
+        assert!((money_to_f64(&ca.ohlc.high) - money_to_f64(&cb.ohlc.high)).abs() < 1e-12);
+        assert!((money_to_f64(&ca.ohlc.low) - money_to_f64(&cb.ohlc.low)).abs() < 1e-12);
+        assert!((money_to_f64(&ca.ohlc.close) - money_to_f64(&cb.ohlc.close)).abs() < 1e-12);
     }
 }
 
@@ -603,10 +603,10 @@ async fn rounding_two_decimals() {
 
     for entry in &res.entries {
         for c in &entry.history.candles {
-            assert!(!has_more_than_two_decimals(money_to_f64(&c.open)));
-            assert!(!has_more_than_two_decimals(money_to_f64(&c.high)));
-            assert!(!has_more_than_two_decimals(money_to_f64(&c.low)));
-            assert!(!has_more_than_two_decimals(money_to_f64(&c.close)));
+            assert!(!has_more_than_two_decimals(money_to_f64(&c.ohlc.open)));
+            assert!(!has_more_than_two_decimals(money_to_f64(&c.ohlc.high)));
+            assert!(!has_more_than_two_decimals(money_to_f64(&c.ohlc.low)));
+            assert!(!has_more_than_two_decimals(money_to_f64(&c.ohlc.close)));
         }
     }
 }

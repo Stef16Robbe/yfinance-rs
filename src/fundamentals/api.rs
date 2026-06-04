@@ -1,4 +1,4 @@
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Duration, NaiveDate, Utc};
 use std::collections::{BTreeMap, btree_map::Entry};
 
 use crate::{
@@ -6,20 +6,20 @@ use crate::{
         CallOptions, DataQuality, ProjectionContext, ProjectionIssue, YfClient, YfError,
         YfResponse,
         client::{CacheEndpoint, SymbolEndpoint, normalize_symbol},
-        conversions::{i64_to_datetime, string_to_period},
+        conversions::i64_to_date,
         currency_resolver::{
             CurrencyHints, CurrencyPurpose, ReportingCurrencyEvidence, ResolvedCurrencyUnit,
             project_currency_resolution,
         },
         diagnostics::{
             diagnostic_key, optional_money_decimal_with_currency_issue,
-            optional_price_f64_with_currency_issue, required_date, required_period,
+            optional_price_f64_with_currency_issue, required_period, required_timestamp,
         },
         wire::{RawDate, RawDecimal, RawNumU64},
     },
     fundamentals::wire::{TimeseriesData, TimeseriesEnvelope},
 };
-use paft::domain::Period;
+use paft::domain::ReportingPeriod;
 use paft::fundamentals::profile::ShareCount;
 use paft::money::{Currency, Money};
 use url::Url;
@@ -369,9 +369,9 @@ fn timeseries_currency_evidence(
     (currency_code.or(invalid_currency_code), needs_currency)
 }
 
-fn period_from_timestamp(timestamp: i64) -> Result<Period, YfError> {
-    let date = i64_to_datetime(timestamp)?.format("%Y-%m-%d").to_string();
-    string_to_period(&date)
+fn period_from_timestamp(timestamp: i64) -> Result<ReportingPeriod, YfError> {
+    ReportingPeriod::date(i64_to_date(timestamp)?)
+        .map_err(|err| YfError::InvalidData(format!("invalid reporting period: {err}")))
 }
 
 fn parse_timeseries_values<T>(
@@ -485,7 +485,7 @@ fn row_for_timestamp<'a, T>(
     rows_map: &'a mut BTreeMap<i64, T>,
     timestamp: i64,
     key: String,
-    create: impl FnOnce(Period) -> T,
+    create: impl FnOnce(ReportingPeriod) -> T,
 ) -> Result<Option<&'a mut T>, YfError> {
     let period = match period_from_timestamp(timestamp) {
         Ok(period) => period,
@@ -510,7 +510,7 @@ fn row_for_timestamp<'a, T>(
 
 fn process_statement_money_values<T>(
     item: TimeseriesItem<'_, T>,
-    create_row: fn(Period) -> T,
+    create_row: fn(ReportingPeriod) -> T,
     assign_money: fn(&mut T, &str, Option<Money>),
 ) -> Result<(), YfError> {
     let TimeseriesItem {
@@ -577,7 +577,7 @@ fn process_statement_money_values<T>(
 
 fn process_statement_u64_values<T>(
     item: TimeseriesItem<'_, T>,
-    create_row: fn(Period) -> T,
+    create_row: fn(ReportingPeriod) -> T,
     assign_value: fn(&mut T, &str, Option<u64>),
 ) -> Result<(), YfError> {
     let TimeseriesItem {
@@ -620,7 +620,7 @@ fn process_statement_u64_values<T>(
     Ok(())
 }
 
-const fn empty_income_statement_row(period: Period) -> IncomeStatementRow {
+const fn empty_income_statement_row(period: ReportingPeriod) -> IncomeStatementRow {
     IncomeStatementRow {
         period,
         total_revenue: None,
@@ -688,7 +688,7 @@ pub(super) async fn income_statement(
     Ok(result)
 }
 
-const fn empty_balance_sheet_row(period: Period) -> BalanceSheetRow {
+const fn empty_balance_sheet_row(period: ReportingPeriod) -> BalanceSheetRow {
     BalanceSheetRow {
         period,
         total_assets: None,
@@ -801,7 +801,7 @@ pub(super) async fn balance_sheet(
     .await
 }
 
-const fn empty_cashflow_row(period: Period) -> CashflowRow {
+const fn empty_cashflow_row(period: ReportingPeriod) -> CashflowRow {
     CashflowRow {
         period,
         operating_cashflow: None,
@@ -972,27 +972,39 @@ pub(super) async fn earnings(
                 )?;
                 continue;
             };
-            yearly.push(EarningsYear {
-                year,
-                revenue: optional_money_decimal_with_currency_issue(
-                    &mut ctx,
-                    "financialsChart.yearly[].revenue",
-                    Some(year.to_string()),
-                    currency.as_ref(),
-                    currency_issue.as_ref(),
-                    y.revenue.as_ref().and_then(|x| x.raw),
-                    "earnings monetary value",
-                )?,
-                earnings: optional_money_decimal_with_currency_issue(
-                    &mut ctx,
-                    "financialsChart.yearly[].earnings",
-                    Some(year.to_string()),
-                    currency.as_ref(),
-                    currency_issue.as_ref(),
-                    y.earnings.as_ref().and_then(|x| x.raw),
-                    "earnings monetary value",
-                )?,
-            });
+            let mut row = match EarningsYear::new(year) {
+                Ok(row) => row,
+                Err(err) => {
+                    ctx.dropped_item(
+                        "earnings_year",
+                        Some(year.to_string()),
+                        ProjectionIssue::InvalidField {
+                            field: "date",
+                            details: err.to_string(),
+                        },
+                    )?;
+                    continue;
+                }
+            };
+            row.revenue = optional_money_decimal_with_currency_issue(
+                &mut ctx,
+                "financialsChart.yearly[].revenue",
+                Some(year.to_string()),
+                currency.as_ref(),
+                currency_issue.as_ref(),
+                y.revenue.as_ref().and_then(|x| x.raw),
+                "earnings monetary value",
+            )?;
+            row.earnings = optional_money_decimal_with_currency_issue(
+                &mut ctx,
+                "financialsChart.yearly[].earnings",
+                Some(year.to_string()),
+                currency.as_ref(),
+                currency_issue.as_ref(),
+                y.earnings.as_ref().and_then(|x| x.raw),
+                "earnings monetary value",
+            )?;
+            yearly.push(row);
         }
     }
 
@@ -1149,7 +1161,7 @@ fn calendar_earnings_dates(
     let mut out = Vec::new();
     for (idx, date) in dates.unwrap_or_default().into_iter().enumerate() {
         let key = Some(idx.to_string());
-        if let Some(date) = required_date(
+        if let Some(date) = required_timestamp(
             ctx,
             "calendar_earnings_date",
             key,
@@ -1167,7 +1179,7 @@ fn optional_calendar_date(
     path: &'static str,
     field: &'static str,
     value: Option<RawDate>,
-) -> Result<Option<DateTime<Utc>>, YfError> {
+) -> Result<Option<NaiveDate>, YfError> {
     let Some(value) = value else {
         return Ok(None);
     };
@@ -1175,7 +1187,7 @@ fn optional_calendar_date(
         ctx.omitted_present_field(path, None, ProjectionIssue::MissingRequiredField { field })?;
         return Ok(None);
     };
-    match i64_to_datetime(raw) {
+    match i64_to_date(raw) {
         Ok(date) => Ok(Some(date)),
         Err(err) => {
             ctx.omitted_present_field(
@@ -1265,7 +1277,7 @@ pub(super) async fn shares(
         let Some(shares) = reported_share_count_at(&values, idx) else {
             continue;
         };
-        let date = match i64_to_datetime(ts) {
+        let date = match i64_to_date(ts) {
             Ok(date) => date,
             Err(err) => {
                 ctx.dropped_item(

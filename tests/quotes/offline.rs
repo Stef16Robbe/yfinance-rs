@@ -54,7 +54,7 @@ async fn malformed_quote_node_missing_symbol_is_dropped_from_batch() {
                   "quoteResponse": {
                     "result": [
                       { "quoteType": "EQUITY", "regularMarketPrice": 190.0 },
-                      { "symbol": "MSFT", "quoteType": "EQUITY", "regularMarketPrice": 420.0 }
+                      { "symbol": "MSFT", "quoteType": "EQUITY", "regularMarketPrice": 420.0, "currency": "USD" }
                     ]
                   }
                 }"#,
@@ -116,7 +116,8 @@ async fn structurally_malformed_quote_node_is_dropped_from_batch() {
                       {
                         "symbol": "MSFT",
                         "quoteType": "EQUITY",
-                        "regularMarketPrice": 420.0
+                        "regularMarketPrice": 420.0,
+                        "currency": "USD"
                       }
                     ]
                   }
@@ -205,19 +206,30 @@ async fn quote_v7_counter_fields_accept_numeric_strings() {
     let quote = quotes
         .first()
         .expect("quote should survive numeric strings");
-    assert_eq!(quote.day_volume, Some(12_345));
     assert_eq!(
-        quote.bid.as_ref().and_then(|level| level.size),
-        Some(paft::Decimal::from(7))
+        quote.day_volume.as_ref().map(ToString::to_string),
+        Some("12345".to_string())
     );
     assert_eq!(
-        quote.ask.as_ref().and_then(|level| level.size),
-        Some(paft::Decimal::from(9))
+        quote
+            .bid
+            .as_ref()
+            .and_then(|level| level.size.as_ref())
+            .map(ToString::to_string),
+        Some("7".to_string())
+    );
+    assert_eq!(
+        quote
+            .ask
+            .as_ref()
+            .and_then(|level| level.size.as_ref())
+            .map(ToString::to_string),
+        Some("9".to_string())
     );
 }
 
 #[tokio::test]
-async fn batch_quotes_with_diagnostics_reports_unresolved_currency_for_present_price() {
+async fn batch_quotes_with_diagnostics_drops_quote_without_required_currency() {
     let server = setup_server();
     let _mock = server.mock(|when, then| {
         when.method(GET)
@@ -242,14 +254,13 @@ async fn batch_quotes_with_diagnostics_reports_unresolved_currency_for_present_p
         .await
         .unwrap();
 
-    assert_eq!(response.data.len(), 1);
-    assert!(response.data[0].price.is_none());
+    assert_eq!(response.data.len(), 0);
     assert!(response.diagnostics.warnings.iter().any(|warning| {
         matches!(
             warning,
-            YfWarning::OmittedPresentField {
+            YfWarning::DroppedItem {
                 endpoint: "quotes",
-                path: "regularMarketPrice",
+                item: "quote",
                 key: Some(key),
                 reason: ProjectionIssue::CurrencyUnresolved,
             } if key == "AAPL"

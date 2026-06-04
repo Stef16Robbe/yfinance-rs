@@ -5,6 +5,12 @@ use yfinance_rs::core::Interval;
 use yfinance_rs::core::conversions::money_to_f64;
 use yfinance_rs::{Action, HistoryBuilder, YfClient};
 
+fn date_from_ts(timestamp: i64) -> chrono::NaiveDate {
+    chrono::DateTime::from_timestamp(timestamp, 0)
+        .unwrap()
+        .date_naive()
+}
+
 #[tokio::test]
 async fn history_tolerates_fractional_split_components() {
     let server = MockServer::start();
@@ -32,17 +38,20 @@ async fn history_tolerates_fractional_split_components() {
 
     mock.assert();
     assert_eq!(response.candles.len(), 2);
-    assert!((money_to_f64(&response.candles[0].close) - 100.0).abs() < 1e-9);
-    assert_eq!(response.candles[0].volume, Some(10));
+    assert!((money_to_f64(&response.candles[0].ohlc.close) - 100.0).abs() < 1e-9);
+    assert_eq!(
+        response.candles[0].volume.as_ref().map(ToString::to_string),
+        Some("10".into())
+    );
     assert_eq!(response.actions.len(), 1);
     assert!(
         matches!(
             response.actions[0],
             Action::Split {
-                ts,
+                date,
                 numerator,
                 denominator,
-            } if ts.timestamp() == 2000
+            } if date == date_from_ts(2000)
                 && numerator.get() == 631_419
                 && denominator.get() == 500_000
         ),
@@ -101,6 +110,9 @@ async fn history_skips_split_components_that_overflow_action_ratio() {
     mock.assert();
     assert_eq!(response.candles.len(), 2);
     assert!(response.actions.is_empty());
-    assert!((money_to_f64(&response.candles[0].close) - 100.0).abs() < 1e-9);
-    assert_eq!(response.candles[0].volume, Some(10));
+    assert!((money_to_f64(&response.candles[0].ohlc.close) - 100.0).abs() < 1e-9);
+    assert_eq!(
+        response.candles[0].volume.as_ref().map(ToString::to_string),
+        Some("10".into())
+    );
 }

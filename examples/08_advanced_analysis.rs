@@ -56,12 +56,12 @@ async fn section_capital_gains() -> Result<(), YfError> {
         .filter(|action| matches!(action, Action::CapitalGain { .. }))
         .count();
     println!("Capital Gains Distributions ({capital_gains} periods):");
-    if let Some(Action::CapitalGain { ts, gain }) = actions
+    if let Some(Action::CapitalGain { date, gain }) = actions
         .iter()
         .rev()
         .find(|action| matches!(action, Action::CapitalGain { .. }))
     {
-        println!("  Most Recent Gain: {gain} on {}", ts.date_naive());
+        println!("  Most Recent Gain: {gain} on {date}");
     }
     Ok(())
 }
@@ -107,7 +107,7 @@ async fn section_isin_calendar(symbol: &str, ticker: &Ticker) -> Result<(), YfEr
         println!("  Next earnings date (approx): {}", date.date_naive());
     }
     if let Some(date) = calendar.ex_dividend_date {
-        println!("  Ex-dividend date: {}", date.date_naive());
+        println!("  Ex-dividend date: {date}");
     }
     println!();
     Ok(())

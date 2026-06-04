@@ -44,8 +44,10 @@ fn decode_real_websocket_message() {
         "price should be positive"
     );
 
-    // Decoder is stateless: volume must be None
-    assert!(update.volume.is_none(), "decoder should not set volume");
+    assert!(
+        update.volume.is_some(),
+        "decoder should expose cumulative volume when Yahoo sends it"
+    );
 }
 
 #[test]
@@ -70,7 +72,7 @@ fn decode_equity_websocket_message_infers_currency_from_exchange() {
         yfinance_rs::AssetKind::Equity
     ));
     let price = update.price.as_ref().expect("price should be present");
-    assert_eq!(price.currency().to_string(), "USD");
+    assert_eq!(update.currency.to_string(), "USD");
     assert!(
         yfinance_rs::core::conversions::money_to_f64(price) > 0.0,
         "price should be positive"
@@ -78,6 +80,10 @@ fn decode_equity_websocket_message_infers_currency_from_exchange() {
     assert!(
         update.previous_close.is_none(),
         "protobuf default zero should not be projected as a real previous close"
+    );
+    assert_eq!(
+        update.volume.as_ref().map(ToString::to_string),
+        Some("26248990".into())
     );
 }
 

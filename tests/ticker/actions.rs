@@ -5,6 +5,12 @@ use url::Url;
 use yfinance_rs::core::{Action, Range, conversions::money_to_f64};
 use yfinance_rs::{CacheMode, Ticker, YfClient};
 
+fn date_from_ts(timestamp: i64) -> chrono::NaiveDate {
+    chrono::DateTime::from_timestamp(timestamp, 0)
+        .unwrap()
+        .date_naive()
+}
+
 fn body_with_actions() -> String {
     r#"{
       "chart":{
@@ -99,18 +105,18 @@ async fn ticker_actions_include_dividends_and_splits() {
     assert!(acts.iter().any(|action| {
         matches!(
             action,
-            Action::Dividend { ts, amount }
-                if ts.timestamp() == 3000 && (money_to_f64(amount) - 1.0).abs() < 1e-9
+            Action::Dividend { date, amount }
+                if *date == date_from_ts(3000) && (money_to_f64(amount) - 1.0).abs() < 1e-9
         )
     }));
     assert!(acts.iter().any(|action| {
         matches!(
             action,
             Action::Split {
-                ts,
+                date,
                 numerator,
                 denominator,
-            } if ts.timestamp() == 2000 && numerator.get() == 2 && denominator.get() == 1
+            } if *date == date_from_ts(2000) && numerator.get() == 2 && denominator.get() == 1
         )
     }));
 }
@@ -202,15 +208,15 @@ async fn ticker_actions_skip_invalid_amounts_and_keep_valid_siblings() {
     assert!(actions.iter().any(|action| {
         matches!(
             action,
-            Action::Dividend { ts, amount }
-                if ts.timestamp() == 3000 && (money_to_f64(amount) - 1.0).abs() < 1e-9
+            Action::Dividend { date, amount }
+                if *date == date_from_ts(3000) && (money_to_f64(amount) - 1.0).abs() < 1e-9
         )
     }));
     assert!(actions.iter().any(|action| {
         matches!(
             action,
-            Action::CapitalGain { ts, gain }
-                if ts.timestamp() == 5000 && (money_to_f64(gain) - 2.0).abs() < 1e-9
+            Action::CapitalGain { date, gain }
+                if *date == date_from_ts(5000) && (money_to_f64(gain) - 2.0).abs() < 1e-9
         )
     }));
 }

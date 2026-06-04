@@ -70,7 +70,7 @@ An ergonomic, async-first Rust client for the unofficial Yahoo Finance API. It p
 * **WebSocket Streaming**: Get live quote updates using WebSockets (preferred method).
 * **HTTP Polling**: Fallback polling method for real-time data.
 * **Configurable Streaming**: Customize update frequency and change-only filtering.
-* **Per-update volume deltas**: `QuoteUpdate.volume` reflects the delta since the previous update for that symbol. The first observed tick has `volume = None`; after a reset/rollover, the current cumulative volume is emitted as the first delta of the new session.
+* **Cumulative stream volume**: `QuoteUpdate.volume` reflects Yahoo's latest cumulative session volume when Yahoo sends it.
 
 ### Advanced Features
 
@@ -130,7 +130,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(last_bar) = history.last() {
         println!(
             "Last closing price: {} on {}",
-            last_bar.close, last_bar.ts
+            last_bar.ohlc.close, last_bar.ts
         );
     }
 
@@ -299,7 +299,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     while let Some(update) = receiver.recv().await {
-        let vol = update.volume.map(|v| format!(" (vol Δ: {v})")).unwrap_or_default();
+        let vol = update.volume.map(|v| format!(" (volume: {v})")).unwrap_or_default();
         let price = update
             .price
             .as_ref()
@@ -313,15 +313,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 #### Volume semantics
 
-Yahoo’s websocket stream provides cumulative intraday volume (`day_volume`). This crate converts it to per-update deltas on the consumer-facing `QuoteUpdate`:
+Yahoo’s websocket stream provides cumulative intraday volume (`day_volume`), and v7 quote polling provides the same concept as `regularMarketVolume`. `QuoteUpdate::volume` exposes the latest cumulative value directly:
 
-- First tick per symbol: `volume = None`.
-- Normal progression: `volume = Some(current_day_volume - last_day_volume)`.
-- Detected reset/rollover (`current < last`): `volume = Some(current_day_volume)`.
-- The polling stream applies the same logic using the v7 `regularMarketVolume` field.
-- The low-level decoder helper `stream::decode_and_map_message` is stateless and always returns `volume = None`.
+- WebSocket stream: maps Yahoo `day_volume` to `volume`.
+- Polling stream: maps Yahoo `regularMarketVolume` to `volume`.
+- No per-symbol volume state is kept inside the stream.
+- `diff_only(true)` filters on price changes; volume-only changes do not emit a new polling update.
 
-If you need cumulative volume, sum the emitted per-update `volume` values, or use `Quote.day_volume` from the quote endpoints.
+If you need deltas, day-boundary handling, or provider-adjustment detection, derive those from successive cumulative values in application code.
 
 ### Financial Statements
 

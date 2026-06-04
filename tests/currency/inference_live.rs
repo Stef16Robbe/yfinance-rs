@@ -77,20 +77,12 @@ async fn live_gs2c_dual_listing_currency() -> Result<(), Box<dyn std::error::Err
     let ticker = Ticker::new(&client, "GS2C.DE");
 
     let fast = ticker.fast_info().await?;
-    assert_eq!(
-        fast.snapshot
-            .last
-            .as_ref()
-            .or(fast.snapshot.previous_close.as_ref())
-            .map(|price| price.currency().to_string())
-            .as_deref(),
-        Some("EUR")
-    );
+    assert_eq!(fast.snapshot.currency.to_string(), "EUR");
 
     let history = ticker
         .history(Some(Range::D5), Some(Interval::D1), false)
         .await?;
-    let history_currency = history.first().map(|bar| bar.close.currency().clone());
+    let history_currency = history.first().map(|bar| bar.currency.clone());
     assert_eq!(history_currency, Some(Currency::Iso(IsoCurrency::EUR)));
 
     let fundamentals = ticker.income_stmt(None).await?;

@@ -1757,7 +1757,7 @@ checksum = "d05e27ee213611ffe7d6348b942e8f942b37114c00cc03cec254295a4a17852e"
 [[package]]
 name = "paft"
 version = "0.9.0"
-source = "git+https://github.com/paft-rs/paft?branch=develop#83cf9c00a21ff0c5c6a9fc1b66ff2c6c18649fe7"
+source = "git+https://github.com/paft-rs/paft?branch=develop#852fbe1bb2280c6e2a6785b1cc63d7ea71a2ec5c"
 dependencies = [
  "iso_currency",
  "paft-aggregates",
@@ -1775,7 +1775,7 @@ dependencies = [
 [[package]]
 name = "paft-aggregates"
 version = "0.9.0"
-source = "git+https://github.com/paft-rs/paft?branch=develop#83cf9c00a21ff0c5c6a9fc1b66ff2c6c18649fe7"
+source = "git+https://github.com/paft-rs/paft?branch=develop#852fbe1bb2280c6e2a6785b1cc63d7ea71a2ec5c"
 dependencies = [
  "chrono",
  "df-derive-macros",
@@ -1789,7 +1789,7 @@ dependencies = [
 [[package]]
 name = "paft-core"
 version = "0.9.0"
-source = "git+https://github.com/paft-rs/paft?branch=develop#83cf9c00a21ff0c5c6a9fc1b66ff2c6c18649fe7"
+source = "git+https://github.com/paft-rs/paft?branch=develop#852fbe1bb2280c6e2a6785b1cc63d7ea71a2ec5c"
 dependencies = [
  "chrono",
  "paft-utils",
@@ -1800,15 +1800,16 @@ dependencies = [
 [[package]]
 name = "paft-decimal"
 version = "0.9.0"
-source = "git+https://github.com/paft-rs/paft?branch=develop#83cf9c00a21ff0c5c6a9fc1b66ff2c6c18649fe7"
+source = "git+https://github.com/paft-rs/paft?branch=develop#852fbe1bb2280c6e2a6785b1cc63d7ea71a2ec5c"
 dependencies = [
  "rust_decimal",
+ "serde",
 ]
 
 [[package]]
 name = "paft-domain"
 version = "0.9.0"
-source = "git+https://github.com/paft-rs/paft?branch=develop#83cf9c00a21ff0c5c6a9fc1b66ff2c6c18649fe7"
+source = "git+https://github.com/paft-rs/paft?branch=develop#852fbe1bb2280c6e2a6785b1cc63d7ea71a2ec5c"
 dependencies = [
  "chrono",
  "df-derive-macros",
@@ -1824,7 +1825,7 @@ dependencies = [
 [[package]]
 name = "paft-fundamentals"
 version = "0.9.0"
-source = "git+https://github.com/paft-rs/paft?branch=develop#83cf9c00a21ff0c5c6a9fc1b66ff2c6c18649fe7"
+source = "git+https://github.com/paft-rs/paft?branch=develop#852fbe1bb2280c6e2a6785b1cc63d7ea71a2ec5c"
 dependencies = [
  "chrono",
  "df-derive-macros",
@@ -1835,12 +1836,13 @@ dependencies = [
  "paft-utils",
  "polars",
  "serde",
+ "thiserror",
 ]
 
 [[package]]
 name = "paft-market"
 version = "0.9.0"
-source = "git+https://github.com/paft-rs/paft?branch=develop#83cf9c00a21ff0c5c6a9fc1b66ff2c6c18649fe7"
+source = "git+https://github.com/paft-rs/paft?branch=develop#852fbe1bb2280c6e2a6785b1cc63d7ea71a2ec5c"
 dependencies = [
  "bitflags",
  "chrono",
@@ -1858,7 +1860,7 @@ dependencies = [
 [[package]]
 name = "paft-money"
 version = "0.9.0"
-source = "git+https://github.com/paft-rs/paft?branch=develop#83cf9c00a21ff0c5c6a9fc1b66ff2c6c18649fe7"
+source = "git+https://github.com/paft-rs/paft?branch=develop#852fbe1bb2280c6e2a6785b1cc63d7ea71a2ec5c"
 dependencies = [
  "df-derive-macros",
  "iso_currency",
@@ -1872,7 +1874,7 @@ dependencies = [
 [[package]]
 name = "paft-prediction"
 version = "0.9.0"
-source = "git+https://github.com/paft-rs/paft?branch=develop#83cf9c00a21ff0c5c6a9fc1b66ff2c6c18649fe7"
+source = "git+https://github.com/paft-rs/paft?branch=develop#852fbe1bb2280c6e2a6785b1cc63d7ea71a2ec5c"
 dependencies = [
  "chrono",
  "df-derive-macros",
@@ -1886,9 +1888,10 @@ dependencies = [
 [[package]]
 name = "paft-utils"
 version = "0.9.0"
-source = "git+https://github.com/paft-rs/paft?branch=develop#83cf9c00a21ff0c5c6a9fc1b66ff2c6c18649fe7"
+source = "git+https://github.com/paft-rs/paft?branch=develop#852fbe1bb2280c6e2a6785b1cc63d7ea71a2ec5c"
 dependencies = [
  "df-derive-core",
+ "paft-decimal",
  "polars",
  "rust_decimal",
  "smol_str",

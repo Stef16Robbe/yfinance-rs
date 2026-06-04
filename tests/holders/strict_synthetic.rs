@@ -574,7 +574,7 @@ async fn major_holder_decimal_conversion_failure_is_reported() {
         .unwrap();
 
     holders_mock.assert();
-    assert_eq!(response.data.len(), 2);
+    assert_eq!(response.data.len(), 1);
     assert!(
         response
             .data

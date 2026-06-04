@@ -39,13 +39,11 @@ pub struct InstitutionalHolderNode {
 #[derive(Deserialize)]
 pub struct MajorHoldersBreakdownNode {
     #[serde(rename = "insidersPercentHeld")]
-    pub(crate) insiders_percent_held: Option<RawNum<f64>>,
+    pub(crate) insiders: Option<RawNum<f64>>,
     #[serde(rename = "institutionsPercentHeld")]
-    pub(crate) institutions_percent_held: Option<RawNum<f64>>,
+    pub(crate) institutions: Option<RawNum<f64>>,
     #[serde(rename = "institutionsFloatPercentHeld")]
-    pub(crate) institutions_float_percent_held: Option<RawNum<f64>>,
-    #[serde(rename = "institutionsCount")]
-    pub(crate) institutions_count: Option<RawNum<u64>>,
+    pub(crate) institutions_float: Option<RawNum<f64>>,
 }
 
 #[derive(Deserialize)]

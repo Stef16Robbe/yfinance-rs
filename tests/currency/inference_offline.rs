@@ -333,15 +333,7 @@ async fn offline_gs2c_dual_listing_currency() {
     let ticker = Ticker::new(&client, symbol);
 
     let fast = ticker.fast_info().await.unwrap();
-    assert_eq!(
-        fast.snapshot
-            .last
-            .as_ref()
-            .or(fast.snapshot.previous_close.as_ref())
-            .map(|price| price.currency().to_string())
-            .as_deref(),
-        Some("EUR")
-    );
+    assert_eq!(fast.snapshot.currency.to_string(), "EUR");
 
     let fundamentals = ticker.income_stmt(None).await.unwrap();
     let fundamentals_currency = fundamentals
@@ -353,7 +345,7 @@ async fn offline_gs2c_dual_listing_currency() {
         .history(Some(Range::D5), Some(Interval::D1), false)
         .await
         .unwrap();
-    let history_currency = history.first().map(|bar| bar.close.currency().clone());
+    let history_currency = history.first().map(|bar| bar.currency.clone());
     assert_eq!(history_currency, Some(Currency::Iso(IsoCurrency::EUR)));
 
     assert_eq!(quote_mock.calls(), 1);

@@ -1,9 +1,9 @@
-use crate::core::conversions::i64_to_datetime;
+use crate::core::conversions::{i64_to_datetime, quantity_from_u64};
 use crate::core::{ProjectionContext, ProjectionIssue, YfError};
 use crate::core::{conversions::decimal_from_f64, currency_resolver::ResolvedCurrencyUnit};
 use crate::history::wire::QuoteBlock;
-use paft::market::responses::history::Candle;
-use paft::money::Price;
+use paft::market::responses::history::{Candle, Ohlc};
+use paft::money::PriceAmount;
 
 use super::adjust::price_factor_for_row;
 
@@ -70,7 +70,7 @@ pub fn assemble_candles(
             )?;
             continue;
         };
-        let close_unadj = currency.price_from_f64(raw_close);
+        let close_unadj = currency.price_amount_from_f64(raw_close);
         if close_unadj.is_none() {
             ctx.omitted_present_field(
                 "quote.close_unadj",
@@ -82,12 +82,10 @@ pub fn assemble_candles(
         }
         out.push(Candle {
             ts,
-            open,
-            high,
-            low,
-            close,
+            currency: currency.currency().clone(),
+            ohlc: Ohlc::new(open, high, low, close),
             close_unadj,
-            volume: volume0,
+            volume: volume0.and_then(quantity_from_u64),
             provider: (),
         });
     }
@@ -141,11 +139,11 @@ fn candle_prices(
     low: f64,
     close: f64,
     currency: &ResolvedCurrencyUnit,
-) -> Option<(Price, Price, Price, Price)> {
+) -> Option<(PriceAmount, PriceAmount, PriceAmount, PriceAmount)> {
     Some((
-        currency.price_from_f64(open)?,
-        currency.price_from_f64(high)?,
-        currency.price_from_f64(low)?,
-        currency.price_from_f64(close)?,
+        currency.price_amount_from_f64(open)?,
+        currency.price_amount_from_f64(high)?,
+        currency.price_amount_from_f64(low)?,
+        currency.price_amount_from_f64(close)?,
     ))
 }

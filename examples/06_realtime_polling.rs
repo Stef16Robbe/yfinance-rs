@@ -32,7 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 price,
                 update
                     .volume
-                    .map(|v| format!("({v} delta)"))
+                    .map(|v| format!("(volume {v})"))
                     .unwrap_or_default()
             );
             count += 1;

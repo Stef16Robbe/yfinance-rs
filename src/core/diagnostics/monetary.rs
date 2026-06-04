@@ -2,7 +2,7 @@ use crate::core::{
     ProjectionContext, ProjectionIssue, YfError, conversions::decimal_from_f64,
     currency_resolver::ResolvedCurrencyUnit, diagnostics::optional_projected,
 };
-use paft::Decimal;
+use paft::{Decimal, Ratio};
 
 pub fn optional_decimal_f64(
     ctx: &mut ProjectionContext,
@@ -13,6 +13,20 @@ pub fn optional_decimal_f64(
 ) -> Result<Option<Decimal>, YfError> {
     optional_projected(ctx, path, key, value, |value| {
         decimal_from_f64(value).ok_or(ProjectionIssue::ConversionFailed { target })
+    })
+}
+
+pub fn optional_ratio_f64(
+    ctx: &mut ProjectionContext,
+    path: &'static str,
+    key: Option<String>,
+    value: Option<f64>,
+    target: &'static str,
+) -> Result<Option<Ratio>, YfError> {
+    optional_projected(ctx, path, key, value, |value| {
+        let decimal =
+            decimal_from_f64(value).ok_or(ProjectionIssue::ConversionFailed { target })?;
+        Ratio::new(decimal).map_err(|_| ProjectionIssue::ConversionFailed { target })
     })
 }
 

@@ -1,4 +1,3 @@
-use paft::Decimal;
 use std::fmt::Display;
 use yfinance_rs::{Ticker, YfClient};
 
@@ -22,10 +21,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\nTop 5 Mutual Fund Holders:");
     for holder in mf_holders.iter().take(5) {
         println!(
-            "  - {}: {} shares ({:.2}%)",
+            "  - {}: {} shares ({}%)",
             holder.holder,
             display_opt(holder.shares),
-            holder.pct_held.unwrap_or(Decimal::ZERO) * Decimal::from(100)
+            holder.pct_held.map_or_else(
+                || "N/A".to_string(),
+                |ratio| { format!("{}", ratio.as_decimal() * paft::Decimal::from(100)) }
+            )
         );
     }
 
@@ -38,7 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             txn.insider,
             display_label(&txn.transaction_type),
             display_opt(txn.shares),
-            txn.transaction_date.date_naive()
+            txn.transaction_date
         );
     }
 

@@ -7,6 +7,12 @@ fn fixture(endpoint: &str, symbol: &str) -> String {
     crate::common::fixture(endpoint, symbol, "json")
 }
 
+fn date_from_ts(timestamp: i64) -> chrono::NaiveDate {
+    chrono::DateTime::from_timestamp(timestamp, 0)
+        .unwrap()
+        .date_naive()
+}
+
 #[tokio::test]
 async fn offline_shares_accepts_timeseries_items_without_meta() {
     let sym = "NOMETA";
@@ -54,7 +60,7 @@ async fn offline_shares_accepts_timeseries_items_without_meta() {
 
     mock_annual.assert();
     assert_eq!(annual.len(), 1);
-    assert_eq!(annual[0].date.timestamp(), 1_704_067_200);
+    assert_eq!(annual[0].date, date_from_ts(1_704_067_200));
     assert_eq!(annual[0].shares, 100);
 }
 

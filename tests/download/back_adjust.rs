@@ -60,12 +60,12 @@ async fn download_back_adjust_sets_close_to_raw() {
 
     let s = &history.candles;
     // first bar got 50% adjustment factor; OHLC adjusted => open≈50, high≈52.5, low≈47.5
-    assert!((money_to_f64(&s[0].open) - 50.0).abs() < 1e-9);
+    assert!((money_to_f64(&s[0].ohlc.open) - 50.0).abs() < 1e-9);
     // back_adjust keeps raw Close
-    assert!((money_to_f64(&s[0].close) - 100.0).abs() < 1e-9);
+    assert!((money_to_f64(&s[0].ohlc.close) - 100.0).abs() < 1e-9);
     // second bar unchanged
-    assert!((money_to_f64(&s[1].open) - 100.0).abs() < 1e-9);
-    assert!((money_to_f64(&s[1].close) - 100.0).abs() < 1e-9);
+    assert!((money_to_f64(&s[1].ohlc.open) - 100.0).abs() < 1e-9);
+    assert!((money_to_f64(&s[1].ohlc.close) - 100.0).abs() < 1e-9);
 }
 
 #[tokio::test]

@@ -3,13 +3,13 @@
 //! This module is public only so integration tests can share the crate's adapter
 //! helpers. It is not part of the stable user-facing API.
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use paft::Decimal;
-use paft::domain::{AssetKind, Exchange, MarketState, Period};
+use paft::domain::{AssetKind, Exchange, MarketState, ReportingPeriod};
 use paft::fundamentals::analysis::{RecommendationAction, RecommendationGrade};
 use paft::fundamentals::holders::{InsiderPosition, TransactionType};
 use paft::fundamentals::profile::FundKind;
-use paft::money::{Currency, MonetaryAmount, Money, Price};
+use paft::money::{Currency, MonetaryAmount, Money, Price, PriceAmount, QuantityAmount};
 use rust_decimal::prelude::ToPrimitive;
 use std::{fmt::Display, str::FromStr};
 
@@ -85,11 +85,30 @@ pub fn price_from_f64(value: f64, currency: Currency) -> Option<Price> {
     decimal_from_f64(value).map(|decimal| Price::new(decimal, currency))
 }
 
+/// Convert a finite `f64` to a contextual price amount.
+#[must_use]
+pub fn price_amount_from_f64(value: f64) -> Option<PriceAmount> {
+    decimal_from_f64(value).map(PriceAmount::new)
+}
+
 /// Convert a finite `f64` to `Price` with a parsed currency string.
 #[must_use]
 pub fn price_from_f64_with_currency_str(value: f64, currency_str: Option<&str>) -> Option<Price> {
     let unit = currency_str.and_then(ResolvedCurrencyUnit::from_code)?;
     unit.price_from_f64(value)
+}
+
+/// Convert a non-negative integer volume/size to a contextual quantity amount.
+#[must_use]
+pub fn quantity_from_u64(value: u64) -> Option<QuantityAmount> {
+    QuantityAmount::from_decimal(Decimal::from(value)).ok()
+}
+
+/// Convert a non-negative signed integer volume/size to a contextual quantity amount.
+#[must_use]
+pub fn quantity_from_i64(value: i64) -> Option<QuantityAmount> {
+    let value = u64::try_from(value).ok()?;
+    quantity_from_u64(value)
 }
 
 /// Currency-denominated value that exposes a decimal amount and currency.
@@ -99,6 +118,42 @@ pub trait CurrencyValue {
 
     /// Returns the associated currency.
     fn currency(&self) -> &Currency;
+}
+
+/// Value that exposes a decimal amount without necessarily carrying currency.
+pub trait DecimalValue {
+    /// Returns the decimal amount.
+    fn decimal_amount(&self) -> Decimal;
+}
+
+impl DecimalValue for Money {
+    fn decimal_amount(&self) -> Decimal {
+        self.amount()
+    }
+}
+
+impl DecimalValue for Price {
+    fn decimal_amount(&self) -> Decimal {
+        self.amount()
+    }
+}
+
+impl DecimalValue for MonetaryAmount {
+    fn decimal_amount(&self) -> Decimal {
+        self.amount()
+    }
+}
+
+impl DecimalValue for PriceAmount {
+    fn decimal_amount(&self) -> Decimal {
+        *self.as_decimal()
+    }
+}
+
+impl DecimalValue for QuantityAmount {
+    fn decimal_amount(&self) -> Decimal {
+        *self.as_decimal()
+    }
 }
 
 impl CurrencyValue for Money {
@@ -131,6 +186,12 @@ impl CurrencyValue for MonetaryAmount {
     }
 }
 
+/// Convert a contextual price amount to f64.
+#[must_use]
+pub fn f64_from_price_amount(value: &PriceAmount) -> Option<f64> {
+    value.as_decimal().to_f64()
+}
+
 /// Convert a currency-denominated value to f64 (loses currency information).
 #[must_use]
 pub fn f64_from_currency_value(value: &impl CurrencyValue) -> Option<f64> {
@@ -142,8 +203,11 @@ pub fn f64_from_currency_value(value: &impl CurrencyValue) -> Option<f64> {
 /// This is intentionally hidden and should not be used by production mappings,
 /// where failed conversion should be represented explicitly.
 #[must_use]
-pub fn money_to_f64(value: &impl CurrencyValue) -> f64 {
-    f64_from_currency_value(value).expect("currency value should fit in f64")
+pub fn money_to_f64(value: &impl DecimalValue) -> f64 {
+    value
+        .decimal_amount()
+        .to_f64()
+        .expect("decimal amount should fit in f64")
 }
 
 /// Extract currency string from a currency-denominated value.
@@ -160,6 +224,15 @@ pub fn money_to_currency_str(value: &impl CurrencyValue) -> Option<String> {
 pub fn i64_to_datetime(timestamp: i64) -> Result<DateTime<Utc>, YfError> {
     DateTime::from_timestamp(timestamp, 0)
         .ok_or_else(|| YfError::InvalidData(format!("invalid Unix timestamp: {timestamp}")))
+}
+
+/// Convert i64 timestamp to UTC calendar date.
+///
+/// # Errors
+/// Returns `YfError::InvalidData` when the timestamp is outside chrono's
+/// representable range.
+pub fn i64_to_date(timestamp: i64) -> Result<NaiveDate, YfError> {
+    Ok(i64_to_datetime(timestamp)?.date_naive())
 }
 
 /// Convert `DateTime`<Utc> to i64 timestamp
@@ -244,8 +317,8 @@ pub fn string_to_transaction_type(s: &str) -> Result<TransactionType, YfError> {
     parse_required_token(s, "insider transaction type")
 }
 
-/// Convert String to Period
-pub fn string_to_period(s: &str) -> Result<Period, YfError> {
+/// Convert String to `ReportingPeriod`.
+pub fn string_to_period(s: &str) -> Result<ReportingPeriod, YfError> {
     parse_required_token(s, "period")
 }
 
