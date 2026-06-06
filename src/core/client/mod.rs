@@ -217,7 +217,7 @@ where
 
 #[derive(Clone, Debug)]
 struct CacheEntry {
-    body: String,
+    body: Arc<str>,
     expires_at: Instant,
 }
 
@@ -244,7 +244,7 @@ impl CacheStore {
 }
 
 impl CacheMap {
-    fn get_fresh(&mut self, key: &str, now: Instant) -> Option<String> {
+    fn get_fresh_shared(&mut self, key: &str, now: Instant) -> Option<Arc<str>> {
         if self.entry_expired(key, now) {
             self.remove(key);
             return None;
@@ -264,8 +264,13 @@ impl CacheMap {
     }
 
     fn insert(&mut self, key: &str, body: String, expires_at: Instant) {
-        self.entries
-            .insert_newest(key.to_string(), CacheEntry { body, expires_at });
+        self.entries.insert_newest(
+            key.to_string(),
+            CacheEntry {
+                body: Arc::from(body),
+                expires_at,
+            },
+        );
         self.note_expiration(expires_at);
     }
 
@@ -452,11 +457,11 @@ impl YfClient {
         self.cache.is_some()
     }
 
-    pub(crate) async fn cache_get(&self, url: &Url) -> Option<String> {
+    pub(crate) async fn cache_get(&self, url: &Url) -> Option<Arc<str>> {
         self.cache_get_key(&url_cache_key(url)).await
     }
 
-    pub(crate) async fn cache_get_key(&self, key: &str) -> Option<String> {
+    pub(crate) async fn cache_get_key(&self, key: &str) -> Option<Arc<str>> {
         let store = self.cache.as_ref()?;
         let now = Instant::now();
 
@@ -464,7 +469,7 @@ impl YfClient {
             let guard = store.map.read().await;
             let entry = guard.entries.get_ref(key)?;
             if now <= entry.expires_at {
-                let body = entry.body.clone();
+                let body = Arc::clone(&entry.body);
                 drop(guard);
                 // Promote only when uncontended; cache hits should not serialize on LRU updates.
                 if let Ok(mut guard) = store.map.try_write() {
@@ -475,7 +480,7 @@ impl YfClient {
         }
 
         let mut guard = store.map.write().await;
-        guard.get_fresh(key, now)
+        guard.get_fresh_shared(key, now)
     }
 
     pub(crate) async fn cache_put(
@@ -1504,6 +1509,28 @@ mod tests {
             .expect("cache hit should not wait for a write lock to promote LRU state");
 
         assert_eq!(hit.as_deref(), Some("fresh"));
+    }
+
+    #[tokio::test]
+    async fn cache_get_reuses_cached_body_allocation() {
+        let client = cached_client();
+        let url = test_url("https://example.test/large?symbol=AAPL");
+
+        client
+            .cache_put(CacheEndpoint::Chart, &url, "large-body", None)
+            .await;
+
+        let first = client
+            .cache_get(&url)
+            .await
+            .expect("first cache hit should return body");
+        let second = client
+            .cache_get(&url)
+            .await
+            .expect("second cache hit should return body");
+
+        assert_eq!(first.as_ref(), "large-body");
+        assert!(Arc::ptr_eq(&first, &second));
     }
 
     #[tokio::test]

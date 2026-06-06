@@ -107,6 +107,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   contention across concurrent cache hits.
 - Internal LRU caches now use the `lru` crate instead of a custom linked-list
   map, avoiding key clones during cache-hit promotion.
+- Response-cache bodies are now stored as shared strings, so cache hits no
+  longer allocate and copy the entire cached response body.
 - `profile()` now reports valid symbols with unsupported Yahoo instrument types
   such as indexes and cryptocurrencies as provider data errors instead of
   invalid caller parameters.

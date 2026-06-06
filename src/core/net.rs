@@ -128,7 +128,7 @@ pub async fn fetch_text_cached(
     if config.options.cache_mode().reads(config.cache_endpoint)
         && let Some(text) = client.cache_get(url).await
     {
-        return Ok(text);
+        return Ok(text.to_string());
     }
 
     let text = fetch_text(
@@ -164,7 +164,7 @@ where
     if config.options.cache_mode().reads(config.cache_endpoint)
         && let Some(body) = client.cache_get_key(&cache_key).await
     {
-        return serde_json::from_str(&body).map_err(YfError::Json);
+        return serde_json::from_str(body.as_ref()).map_err(YfError::Json);
     }
 
     let req = client
@@ -364,12 +364,15 @@ async fn read_cached_auth_attempt(
     }
 
     let body = client.cache_get_key(cache_key).await?;
-    if should_retry_invalid_crumb_body(config, detect_invalid_crumb_body, &body) {
+    if should_retry_invalid_crumb_body(config, detect_invalid_crumb_body, body.as_ref()) {
         client.cache_remove_key(cache_key).await;
         return Some(CachedAuthAttempt::InvalidCrumb);
     }
 
-    Some(CachedAuthAttempt::Success { body, url })
+    Some(CachedAuthAttempt::Success {
+        body: body.to_string(),
+        url,
+    })
 }
 
 async fn retry_with_fresh_crumb<F>(
