@@ -90,6 +90,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Response-cache reads no longer prune the entire cache on every lookup, and
+  bounded caches now evict from a maintained LRU list instead of repeatedly
+  scanning for the oldest access.
 - `profile()` now reports valid symbols with unsupported Yahoo instrument types
   such as indexes and cryptocurrencies as provider data errors instead of
   invalid caller parameters.

@@ -18,10 +18,7 @@ use constants::{
 use reqwest::Client;
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
-use std::sync::{
-    Arc,
-    atomic::{AtomicU64, Ordering},
-};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 use url::Url;
@@ -40,23 +37,27 @@ struct HttpTimeouts {
 struct CacheEntry {
     body: String,
     expires_at: Instant,
-    last_access: u64,
+    newer: Option<String>,
+    older: Option<String>,
+}
+
+#[derive(Debug, Default)]
+struct CacheMap {
+    entries: HashMap<String, CacheEntry>,
+    newest: Option<String>,
+    oldest: Option<String>,
+    next_expiration_scan_at: Option<Instant>,
 }
 
 #[derive(Debug)]
 struct CacheStore {
-    map: RwLock<HashMap<String, CacheEntry>>,
+    map: RwLock<CacheMap>,
     default_ttl: Option<Duration>,
     endpoint_ttls: HashMap<CacheEndpoint, Duration>,
     max_entries: usize,
-    access_counter: AtomicU64,
 }
 
 impl CacheStore {
-    fn next_access(&self) -> u64 {
-        self.access_counter.fetch_add(1, Ordering::Relaxed) + 1
-    }
-
     fn ttl_for(&self, endpoint: CacheEndpoint, ttl_override: Option<Duration>) -> Option<Duration> {
         ttl_override
             .or_else(|| self.endpoint_ttls.get(&endpoint).copied())
@@ -64,20 +65,178 @@ impl CacheStore {
     }
 }
 
-fn retain_unexpired_entries(map: &mut HashMap<String, CacheEntry>, now: Instant) {
-    map.retain(|_, entry| now <= entry.expires_at);
-}
+impl CacheMap {
+    fn get_fresh(&mut self, key: &str, now: Instant) -> Option<String> {
+        if self.entry_expired(key, now) {
+            self.remove(key);
+            return None;
+        }
 
-fn evict_lru_entries(map: &mut HashMap<String, CacheEntry>, max_entries: usize) {
-    while map.len() > max_entries {
-        let Some(key) = map
+        let body = self.entries.get(key)?.body.clone();
+        self.touch(key);
+        Some(body)
+    }
+
+    fn insert(&mut self, key: &str, body: String, expires_at: Instant) {
+        self.remove(key);
+        self.entries.insert(
+            key.to_string(),
+            CacheEntry {
+                body,
+                expires_at,
+                newer: None,
+                older: None,
+            },
+        );
+        self.attach_newest(key);
+        self.note_expiration(expires_at);
+    }
+
+    fn remove(&mut self, key: &str) -> Option<CacheEntry> {
+        if !self.entries.contains_key(key) {
+            return None;
+        }
+
+        self.detach(key);
+        self.entries.remove(key)
+    }
+
+    fn clear(&mut self) {
+        self.entries.clear();
+        self.newest = None;
+        self.oldest = None;
+        self.next_expiration_scan_at = None;
+    }
+
+    fn remove_url(&mut self, url: &Url) {
+        let keys = self
+            .entries
+            .keys()
+            .filter(|key| cache_key_matches_url(key, url))
+            .cloned()
+            .collect::<Vec<_>>();
+        for key in keys {
+            self.remove(&key);
+        }
+        self.refresh_next_expiration_scan();
+    }
+
+    fn prune_expired_if_due(&mut self, now: Instant) {
+        if self
+            .next_expiration_scan_at
+            .is_some_and(|next_scan| now <= next_scan)
+        {
+            return;
+        }
+
+        let expired_keys = self
+            .entries
             .iter()
-            .min_by_key(|(_, entry)| entry.last_access)
+            .filter(|(_, entry)| now > entry.expires_at)
             .map(|(key, _)| key.clone())
+            .collect::<Vec<_>>();
+
+        for key in expired_keys {
+            self.remove(&key);
+        }
+        self.refresh_next_expiration_scan();
+    }
+
+    fn evict_lru_entries(&mut self, max_entries: usize) {
+        while self.entries.len() > max_entries {
+            let Some(key) = self.oldest.clone() else {
+                break;
+            };
+            self.remove(&key);
+        }
+    }
+
+    #[cfg(test)]
+    fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    #[cfg(test)]
+    fn contains_key(&self, key: &str) -> bool {
+        self.entries.contains_key(key)
+    }
+
+    fn entry_expired(&self, key: &str, now: Instant) -> bool {
+        self.entries
+            .get(key)
+            .is_some_and(|entry| now > entry.expires_at)
+    }
+
+    fn touch(&mut self, key: &str) {
+        if self.newest.as_deref() == Some(key) {
+            return;
+        }
+
+        self.detach(key);
+        self.attach_newest(key);
+    }
+
+    fn detach(&mut self, key: &str) {
+        let Some((newer, older)) = self
+            .entries
+            .get(key)
+            .map(|entry| (entry.newer.clone(), entry.older.clone()))
         else {
-            break;
+            return;
         };
-        map.remove(&key);
+
+        match &newer {
+            Some(newer_key) => {
+                if let Some(newer_entry) = self.entries.get_mut(newer_key) {
+                    newer_entry.older.clone_from(&older);
+                }
+            }
+            None => self.newest.clone_from(&older),
+        }
+
+        match &older {
+            Some(older_key) => {
+                if let Some(older_entry) = self.entries.get_mut(older_key) {
+                    older_entry.newer.clone_from(&newer);
+                }
+            }
+            None => self.oldest.clone_from(&newer),
+        }
+
+        if let Some(entry) = self.entries.get_mut(key) {
+            entry.newer = None;
+            entry.older = None;
+        }
+    }
+
+    fn attach_newest(&mut self, key: &str) {
+        let previous_newest = self.newest.replace(key.to_string());
+
+        if let Some(previous_newest_key) = &previous_newest {
+            if let Some(previous_newest_entry) = self.entries.get_mut(previous_newest_key) {
+                previous_newest_entry.newer = Some(key.to_string());
+            }
+        } else {
+            self.oldest = Some(key.to_string());
+        }
+
+        if let Some(entry) = self.entries.get_mut(key) {
+            entry.newer = None;
+            entry.older = previous_newest;
+        }
+    }
+
+    fn note_expiration(&mut self, expires_at: Instant) {
+        if self
+            .next_expiration_scan_at
+            .is_none_or(|next_scan| expires_at < next_scan)
+        {
+            self.next_expiration_scan_at = Some(expires_at);
+        }
+    }
+
+    fn refresh_next_expiration_scan(&mut self) {
+        self.next_expiration_scan_at = self.entries.values().map(|entry| entry.expires_at).min();
     }
 }
 
@@ -194,13 +353,19 @@ impl YfClient {
     pub(crate) async fn cache_get_key(&self, key: &str) -> Option<String> {
         let store = self.cache.as_ref()?;
         let now = Instant::now();
+
+        {
+            let guard = store.map.read().await;
+            let entry = guard.entries.get(key)?;
+            if now <= entry.expires_at {
+                drop(guard);
+                let mut guard = store.map.write().await;
+                return guard.get_fresh(key, now);
+            }
+        }
+
         let mut guard = store.map.write().await;
-        retain_unexpired_entries(&mut guard, now);
-        let entry = guard.get_mut(key)?;
-        entry.last_access = store.next_access();
-        let body = entry.body.clone();
-        drop(guard);
-        Some(body)
+        guard.get_fresh(key, now)
     }
 
     pub(crate) async fn cache_put(
@@ -230,17 +395,11 @@ impl YfClient {
         };
         let now = Instant::now();
         let expires_at = now + ttl;
-        let entry = CacheEntry {
-            body: body.to_string(),
-            expires_at,
-            last_access: store.next_access(),
-        };
         let max_entries = store.max_entries;
         let mut guard = store.map.write().await;
-        retain_unexpired_entries(&mut guard, now);
-        guard.insert(key, entry);
-        evict_lru_entries(&mut guard, max_entries);
-        drop(guard);
+        guard.prune_expired_if_due(now);
+        guard.insert(&key, body.to_string(), expires_at);
+        guard.evict_lru_entries(max_entries);
     }
 
     pub(crate) async fn cache_remove_key(&self, key: &str) {
@@ -286,7 +445,7 @@ impl YfClient {
     pub async fn invalidate_cache_entry(&self, url: &Url) {
         if let Some(store) = &self.cache {
             let mut guard = store.map.write().await;
-            guard.retain(|key, _| !cache_key_matches_url(key, url));
+            guard.remove_url(url);
         }
     }
 
@@ -620,8 +779,9 @@ impl YfClientBuilder {
 
     /// Sets the maximum number of in-memory response-cache entries.
     ///
-    /// The cache evicts the least recently used entries after expired entries
-    /// have been pruned. The default is 1024 entries.
+    /// The cache removes requested expired entries on read, lazily prunes other
+    /// expired entries on writes when the next known expiry is due, and then
+    /// evicts least-recently-used entries if needed. The default is 1024 entries.
     #[must_use]
     pub const fn cache_max_entries(mut self, max_entries: NonZeroUsize) -> Self {
         self.cache_max_entries = Some(max_entries);
@@ -886,13 +1046,12 @@ impl YfClientBuilder {
             instrument_cache: Arc::new(RwLock::new(HashMap::new())),
             cache: (self.cache_ttl.is_some() || !self.cache_ttls.is_empty()).then(|| {
                 Arc::new(CacheStore {
-                    map: RwLock::new(HashMap::new()),
+                    map: RwLock::new(CacheMap::default()),
                     default_ttl: self.cache_ttl,
                     endpoint_ttls: self.cache_ttls,
                     max_entries: self
                         .cache_max_entries
                         .map_or(DEFAULT_CACHE_MAX_ENTRIES, NonZeroUsize::get),
-                    access_counter: AtomicU64::new(0),
                 })
             }),
         })
@@ -1041,14 +1200,11 @@ mod tests {
 
     async fn insert_cache_entry(client: &YfClient, url: &Url, body: &str, expires_at: Instant) {
         let store = client.cache.as_ref().expect("cache is enabled");
-        store.map.write().await.insert(
-            url.as_str().to_string(),
-            CacheEntry {
-                body: body.to_string(),
-                expires_at,
-                last_access: 0,
-            },
-        );
+        store
+            .map
+            .write()
+            .await
+            .insert(url.as_str(), body.to_string(), expires_at);
     }
 
     #[tokio::test]
@@ -1066,6 +1222,35 @@ mod tests {
             guard.contains_key(url.as_str())
         };
         assert!(!has_entry);
+    }
+
+    #[tokio::test]
+    async fn cache_get_does_not_prune_unrelated_expired_entries() {
+        let client = cached_client();
+        let expired_url = test_url("https://example.test/old?symbol=AAPL");
+        let fresh_url = test_url("https://example.test/new?symbol=MSFT");
+
+        insert_cache_entry(&client, &expired_url, "stale", expired_at()).await;
+        insert_cache_entry(
+            &client,
+            &fresh_url,
+            "fresh",
+            Instant::now() + Duration::from_mins(1),
+        )
+        .await;
+
+        assert_eq!(client.cache_get(&fresh_url).await.as_deref(), Some("fresh"));
+
+        let (has_expired, has_fresh) = {
+            let store = client.cache.as_ref().expect("cache is enabled");
+            let guard = store.map.read().await;
+            (
+                guard.contains_key(expired_url.as_str()),
+                guard.contains_key(fresh_url.as_str()),
+            )
+        };
+        assert!(has_expired);
+        assert!(has_fresh);
     }
 
     #[tokio::test]
