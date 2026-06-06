@@ -1,4 +1,4 @@
-use futures::{StreamExt, TryStreamExt, stream};
+use futures::{StreamExt, stream};
 
 use crate::{
     core::client::normalize_symbols,
@@ -17,6 +17,9 @@ use paft::money::PriceAmount;
 use rust_decimal::prelude::FromPrimitive;
 type DateRange = (chrono::DateTime<chrono::Utc>, chrono::DateTime<chrono::Utc>);
 type MaybeDateRange = Option<DateRange>;
+type DownloadFetchSuccess = (usize, String, YfResponse<HistoryResponse>);
+type DownloadFetchFailure = (usize, String, YfError);
+type DownloadFetchResult = Result<DownloadFetchSuccess, DownloadFetchFailure>;
 
 /// Maximum number of per-symbol history requests a [`DownloadBuilder`] runs at once.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -361,7 +364,9 @@ impl DownloadBuilder {
     ///
     /// # Errors
     ///
-    /// Returns an error if any of the underlying history requests fail.
+    /// Returns an error if parameters are invalid or strict data-quality mode rejects a
+    /// diagnostic. In best-effort mode, individual symbol fetch failures are returned as
+    /// diagnostics while successful symbols are still included in the response.
     pub async fn run(&self) -> Result<DownloadResponse, YfError> {
         Ok(self.run_with_diagnostics().await?.into_data())
     }
@@ -370,7 +375,9 @@ impl DownloadBuilder {
     ///
     /// # Errors
     ///
-    /// Returns an error if any history request fails or strict data-quality mode rejects a projection issue.
+    /// Returns an error if parameters are invalid or strict data-quality mode rejects a
+    /// diagnostic. In best-effort mode, individual symbol fetch failures are returned as
+    /// diagnostics while successful symbols are still included in the response.
     pub async fn run_with_diagnostics(&self) -> Result<YfResponse<DownloadResponse>, YfError> {
         self.validate_adjustment_flags()?;
 
@@ -383,21 +390,40 @@ impl DownloadBuilder {
         let need_adjust_in_fetch = self.auto_adjust || self.back_adjust;
         let period_dt = self.precompute_period_dt()?;
 
-        let mut joined: Vec<(usize, String, YfResponse<HistoryResponse>)> =
-            stream::iter(symbols.into_iter().enumerate())
-                .map(|(index, sym)| {
-                    let hb = self.build_history_for_symbol(&sym, period_dt, need_adjust_in_fetch);
+        let results: Vec<DownloadFetchResult> = stream::iter(symbols.into_iter().enumerate())
+            .map(|(index, sym)| {
+                let hb = self.build_history_for_symbol(&sym, period_dt, need_adjust_in_fetch);
 
-                    async move {
-                        let full = hb.fetch_full_with_diagnostics().await?;
-                        Ok::<(usize, String, YfResponse<HistoryResponse>), YfError>((
-                            index, sym, full,
-                        ))
+                async move {
+                    match hb.fetch_full_with_diagnostics().await {
+                        Ok(full) => Ok((index, sym, full)),
+                        Err(err) => Err((index, sym, err)),
                     }
-                })
-                .buffer_unordered(self.concurrency.get())
-                .try_collect()
-                .await?;
+                }
+            })
+            .buffer_unordered(self.concurrency.get())
+            .collect()
+            .await;
+
+        let mut joined = Vec::with_capacity(results.len());
+        let mut failed = Vec::new();
+        for result in results {
+            match result {
+                Ok(success) => joined.push(success),
+                Err(failure) => failed.push(failure),
+            }
+        }
+
+        failed.sort_unstable_by_key(|(index, _, _)| *index);
+        for (_, sym, err) in failed {
+            ctx.dropped_item(
+                "download_entry",
+                Some(sym),
+                ProjectionIssue::ProviderError {
+                    message: format!("history fetch failed: {err}"),
+                },
+            )?;
+        }
 
         joined.sort_unstable_by_key(|(index, _, _)| *index);
         let joined: Vec<(String, YfResponse<HistoryResponse>)> = joined

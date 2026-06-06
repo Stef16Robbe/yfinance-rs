@@ -118,6 +118,61 @@ async fn download_multi_symbols_happy_path() {
 }
 
 #[tokio::test]
+async fn best_effort_download_keeps_successes_when_symbol_fetch_fails() {
+    let server = common::setup_server();
+
+    let m_aapl = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v8/finance/chart/AAPL")
+            .query_param("range", "6mo")
+            .query_param("interval", "1d")
+            .query_param("includePrePost", "false")
+            .query_param("events", "div|split|capitalGains");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(common::fixture("history_chart", "AAPL", "json"));
+    });
+
+    let m_broken = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v8/finance/chart/BROKEN")
+            .query_param("range", "6mo")
+            .query_param("interval", "1d")
+            .query_param("includePrePost", "false")
+            .query_param("events", "div|split|capitalGains");
+        then.status(404);
+    });
+
+    let client = YfClient::builder()
+        .base_chart(Url::parse(&format!("{}/v8/finance/chart/", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+
+    let response = DownloadBuilder::new(&client)
+        .symbols(["AAPL", "BROKEN"])
+        .run_with_diagnostics()
+        .await
+        .unwrap();
+
+    m_aapl.assert();
+    m_broken.assert();
+
+    assert_eq!(response.data.entries.len(), 1);
+    assert_eq!(response.data.entries[0].instrument.symbol.as_str(), "AAPL");
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::DroppedItem {
+            endpoint: "download",
+            item: "download_entry",
+            key: Some(key),
+            reason: ProjectionIssue::ProviderError { message },
+        } if key == "BROKEN"
+            && message.contains("history fetch failed: Not found at")
+            && message.contains("/v8/finance/chart/BROKEN")
+    )));
+}
+
+#[tokio::test]
 async fn best_effort_download_drops_entry_without_instrument_metadata() {
     let server = common::setup_server();
 
