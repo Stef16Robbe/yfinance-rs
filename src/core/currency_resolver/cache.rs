@@ -4,18 +4,20 @@ use crate::core::YfClient;
 impl YfClient {
     pub(crate) async fn store_currency_hints(&self, symbol: &str, hints: CurrencyHints) {
         let mut guard = self.currency_hints.write().await;
-        guard
-            .entry(symbol.to_string())
-            .and_modify(|existing| existing.merge(hints.clone()))
-            .or_insert(hints);
+        let key = symbol.to_string();
+        let mut hints = hints;
+        if let Some(mut existing) = guard.remove(symbol) {
+            existing.merge(hints);
+            hints = existing;
+        }
+        guard.insert(key, hints);
     }
 
     pub(crate) async fn cached_currency_hints(&self, symbol: &str) -> CurrencyHints {
         self.currency_hints
-            .read()
+            .write()
             .await
-            .get(symbol)
-            .cloned()
+            .get_cloned(symbol)
             .unwrap_or_default()
     }
 
@@ -28,7 +30,8 @@ impl YfClient {
         let mut guard = self.currency_cache.write().await;
         let key = CurrencyCacheKey::new(symbol, kind);
         let should_store = guard
-            .get(&key)
+            .get_cloned(&key)
+            .as_ref()
             .is_none_or(|existing| resolved.cache_rank_ge(existing));
 
         if should_store {
@@ -48,10 +51,9 @@ impl YfClient {
         kind: CurrencyCacheKind,
     ) -> Option<ResolvedCurrency> {
         self.currency_cache
-            .read()
+            .write()
             .await
-            .get(&CurrencyCacheKey::new(symbol, kind))
-            .cloned()
+            .get_cloned(&CurrencyCacheKey::new(symbol, kind))
             .map(|resolved| resolved.with_cached_acquisition(kind))
     }
 }

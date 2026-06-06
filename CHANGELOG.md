@@ -90,6 +90,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Currency and instrument side caches are now bounded LRU caches instead of
+  unbounded `HashMap`s, with `YfClientBuilder::side_cache_max_entries()` for
+  tuning the per-cache limit.
 - Response-cache reads no longer prune the entire cache on every lookup, and
   bounded caches now evict from a maintained LRU list instead of repeatedly
   scanning for the oldest access.

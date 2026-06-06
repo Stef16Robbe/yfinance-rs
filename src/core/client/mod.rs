@@ -16,7 +16,9 @@ use constants::{
     DEFAULT_BASE_CHART, DEFAULT_BASE_QUOTE_API, DEFAULT_COOKIE_URL, DEFAULT_CRUMB_URL, USER_AGENT,
 };
 use reqwest::Client;
+use std::borrow::Borrow;
 use std::collections::HashMap;
+use std::hash::Hash;
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -24,6 +26,7 @@ use tokio::sync::RwLock;
 use url::Url;
 
 const DEFAULT_CACHE_MAX_ENTRIES: usize = 1024;
+const DEFAULT_SIDE_CACHE_MAX_ENTRIES: usize = 4096;
 const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 const DEFAULT_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -34,18 +37,255 @@ struct HttpTimeouts {
 }
 
 #[derive(Debug)]
+struct LruEntry<K, V> {
+    value: V,
+    newer: Option<K>,
+    older: Option<K>,
+}
+
+#[derive(Debug)]
+struct LruMap<K, V> {
+    entries: HashMap<K, LruEntry<K, V>>,
+    newest: Option<K>,
+    oldest: Option<K>,
+}
+
+impl<K, V> Default for LruMap<K, V> {
+    fn default() -> Self {
+        Self {
+            entries: HashMap::new(),
+            newest: None,
+            oldest: None,
+        }
+    }
+}
+
+impl<K, V> LruMap<K, V>
+where
+    K: Clone + Eq + Hash,
+{
+    fn insert_newest(&mut self, key: K, value: V) -> Option<V> {
+        let previous = self.remove(&key);
+        let linked_key = key.clone();
+        self.entries.insert(
+            key,
+            LruEntry {
+                value,
+                newer: None,
+                older: None,
+            },
+        );
+        self.attach_newest(&linked_key);
+        previous
+    }
+
+    fn get_ref<Q>(&self, key: &Q) -> Option<&V>
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        self.entries.get(key).map(|entry| &entry.value)
+    }
+
+    fn get_cloned<Q>(&mut self, key: &Q) -> Option<V>
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+        V: Clone,
+    {
+        let (stored_key, value) = self
+            .entries
+            .get_key_value(key)
+            .map(|(stored_key, entry)| (stored_key.clone(), entry.value.clone()))?;
+        self.touch(&stored_key);
+        Some(value)
+    }
+
+    fn remove<Q>(&mut self, key: &Q) -> Option<V>
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        let stored_key = self
+            .entries
+            .get_key_value(key)
+            .map(|(stored_key, _)| stored_key.clone())?;
+
+        self.detach(&stored_key);
+        self.entries
+            .remove::<K>(&stored_key)
+            .map(|entry| entry.value)
+    }
+
+    fn clear(&mut self) {
+        self.entries.clear();
+        self.newest = None;
+        self.oldest = None;
+    }
+
+    fn evict_lru_entries(&mut self, max_entries: usize) {
+        while self.entries.len() > max_entries {
+            let Some(key) = self.oldest.clone() else {
+                break;
+            };
+            self.remove(&key);
+        }
+    }
+
+    fn iter(&self) -> impl Iterator<Item = (&K, &V)> {
+        self.entries.iter().map(|(key, entry)| (key, &entry.value))
+    }
+
+    fn keys(&self) -> impl Iterator<Item = &K> {
+        self.entries.keys()
+    }
+
+    fn values(&self) -> impl Iterator<Item = &V> {
+        self.entries.values().map(|entry| &entry.value)
+    }
+
+    #[cfg(test)]
+    fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    #[cfg(test)]
+    fn contains_key<Q>(&self, key: &Q) -> bool
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        self.entries.contains_key(key)
+    }
+
+    fn touch(&mut self, key: &K) {
+        if self.newest.as_ref() == Some(key) {
+            return;
+        }
+
+        self.detach(key);
+        self.attach_newest(key);
+    }
+
+    fn detach(&mut self, key: &K) {
+        let Some((newer, older)) = self
+            .entries
+            .get(key)
+            .map(|entry| (entry.newer.clone(), entry.older.clone()))
+        else {
+            return;
+        };
+
+        match &newer {
+            Some(newer_key) => {
+                if let Some(newer_entry) = self.entries.get_mut(newer_key) {
+                    newer_entry.older.clone_from(&older);
+                }
+            }
+            None => self.newest.clone_from(&older),
+        }
+
+        match &older {
+            Some(older_key) => {
+                if let Some(older_entry) = self.entries.get_mut(older_key) {
+                    older_entry.newer.clone_from(&newer);
+                }
+            }
+            None => self.oldest.clone_from(&newer),
+        }
+
+        if let Some(entry) = self.entries.get_mut(key) {
+            entry.newer = None;
+            entry.older = None;
+        }
+    }
+
+    fn attach_newest(&mut self, key: &K) {
+        let previous_newest = self.newest.replace(key.clone());
+
+        if let Some(previous_newest_key) = &previous_newest {
+            if let Some(previous_newest_entry) = self.entries.get_mut(previous_newest_key) {
+                previous_newest_entry.newer = Some(key.clone());
+            }
+        } else {
+            self.oldest = Some(key.clone());
+        }
+
+        if let Some(entry) = self.entries.get_mut(key) {
+            entry.newer = None;
+            entry.older = previous_newest;
+        }
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct BoundedLruMap<K, V> {
+    entries: LruMap<K, V>,
+    max_entries: usize,
+}
+
+impl<K, V> BoundedLruMap<K, V>
+where
+    K: Clone + Eq + Hash,
+{
+    fn new(max_entries: usize) -> Self {
+        debug_assert!(max_entries > 0);
+        Self {
+            entries: LruMap::default(),
+            max_entries,
+        }
+    }
+
+    pub(crate) fn insert(&mut self, key: K, value: V) {
+        self.entries.insert_newest(key, value);
+        self.entries.evict_lru_entries(self.max_entries);
+    }
+
+    pub(crate) fn get_cloned<Q>(&mut self, key: &Q) -> Option<V>
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+        V: Clone,
+    {
+        self.entries.get_cloned(key)
+    }
+
+    pub(crate) fn remove<Q>(&mut self, key: &Q) -> Option<V>
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        self.entries.remove(key)
+    }
+
+    pub(crate) fn clear(&mut self) {
+        self.entries.clear();
+    }
+
+    #[cfg(test)]
+    pub(crate) fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn contains_key<Q>(&self, key: &Q) -> bool
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        self.entries.contains_key(key)
+    }
+}
+
+#[derive(Clone, Debug)]
 struct CacheEntry {
     body: String,
     expires_at: Instant,
-    newer: Option<String>,
-    older: Option<String>,
 }
 
 #[derive(Debug, Default)]
 struct CacheMap {
-    entries: HashMap<String, CacheEntry>,
-    newest: Option<String>,
-    oldest: Option<String>,
+    entries: LruMap<String, CacheEntry>,
     next_expiration_scan_at: Option<Instant>,
 }
 
@@ -72,39 +312,21 @@ impl CacheMap {
             return None;
         }
 
-        let body = self.entries.get(key)?.body.clone();
-        self.touch(key);
-        Some(body)
+        self.entries.get_cloned(key).map(|entry| entry.body)
     }
 
     fn insert(&mut self, key: &str, body: String, expires_at: Instant) {
-        self.remove(key);
-        self.entries.insert(
-            key.to_string(),
-            CacheEntry {
-                body,
-                expires_at,
-                newer: None,
-                older: None,
-            },
-        );
-        self.attach_newest(key);
+        self.entries
+            .insert_newest(key.to_string(), CacheEntry { body, expires_at });
         self.note_expiration(expires_at);
     }
 
     fn remove(&mut self, key: &str) -> Option<CacheEntry> {
-        if !self.entries.contains_key(key) {
-            return None;
-        }
-
-        self.detach(key);
         self.entries.remove(key)
     }
 
     fn clear(&mut self) {
         self.entries.clear();
-        self.newest = None;
-        self.oldest = None;
         self.next_expiration_scan_at = None;
     }
 
@@ -143,12 +365,7 @@ impl CacheMap {
     }
 
     fn evict_lru_entries(&mut self, max_entries: usize) {
-        while self.entries.len() > max_entries {
-            let Some(key) = self.oldest.clone() else {
-                break;
-            };
-            self.remove(&key);
-        }
+        self.entries.evict_lru_entries(max_entries);
     }
 
     #[cfg(test)]
@@ -163,67 +380,8 @@ impl CacheMap {
 
     fn entry_expired(&self, key: &str, now: Instant) -> bool {
         self.entries
-            .get(key)
+            .get_ref(key)
             .is_some_and(|entry| now > entry.expires_at)
-    }
-
-    fn touch(&mut self, key: &str) {
-        if self.newest.as_deref() == Some(key) {
-            return;
-        }
-
-        self.detach(key);
-        self.attach_newest(key);
-    }
-
-    fn detach(&mut self, key: &str) {
-        let Some((newer, older)) = self
-            .entries
-            .get(key)
-            .map(|entry| (entry.newer.clone(), entry.older.clone()))
-        else {
-            return;
-        };
-
-        match &newer {
-            Some(newer_key) => {
-                if let Some(newer_entry) = self.entries.get_mut(newer_key) {
-                    newer_entry.older.clone_from(&older);
-                }
-            }
-            None => self.newest.clone_from(&older),
-        }
-
-        match &older {
-            Some(older_key) => {
-                if let Some(older_entry) = self.entries.get_mut(older_key) {
-                    older_entry.newer.clone_from(&newer);
-                }
-            }
-            None => self.oldest.clone_from(&newer),
-        }
-
-        if let Some(entry) = self.entries.get_mut(key) {
-            entry.newer = None;
-            entry.older = None;
-        }
-    }
-
-    fn attach_newest(&mut self, key: &str) {
-        let previous_newest = self.newest.replace(key.to_string());
-
-        if let Some(previous_newest_key) = &previous_newest {
-            if let Some(previous_newest_entry) = self.entries.get_mut(previous_newest_key) {
-                previous_newest_entry.newer = Some(key.to_string());
-            }
-        } else {
-            self.oldest = Some(key.to_string());
-        }
-
-        if let Some(entry) = self.entries.get_mut(key) {
-            entry.newer = None;
-            entry.older = previous_newest;
-        }
     }
 
     fn note_expiration(&mut self, expires_at: Instant) {
@@ -294,10 +452,10 @@ pub struct YfClient {
     credential_fetch_lock: Arc<tokio::sync::Mutex<()>>,
 
     retry: RetryConfig,
-    pub(crate) currency_cache: Arc<RwLock<HashMap<CurrencyCacheKey, ResolvedCurrency>>>,
-    pub(crate) currency_hints: Arc<RwLock<HashMap<String, CurrencyHints>>>,
+    pub(crate) currency_cache: Arc<RwLock<BoundedLruMap<CurrencyCacheKey, ResolvedCurrency>>>,
+    pub(crate) currency_hints: Arc<RwLock<BoundedLruMap<String, CurrencyHints>>>,
     // Cache of resolved instruments by original ticker string
-    instrument_cache: Arc<RwLock<HashMap<String, paft::domain::Instrument>>>,
+    instrument_cache: Arc<RwLock<BoundedLruMap<String, paft::domain::Instrument>>>,
     cache: Option<Arc<CacheStore>>,
 }
 
@@ -356,7 +514,7 @@ impl YfClient {
 
         {
             let guard = store.map.read().await;
-            let entry = guard.entries.get(key)?;
+            let entry = guard.entries.get_ref(key)?;
             if now <= entry.expires_at {
                 drop(guard);
                 let mut guard = store.map.write().await;
@@ -414,8 +572,8 @@ impl YfClient {
 
     // -------- instrument cache (async) --------
     pub(crate) async fn cached_instrument(&self, key: &str) -> Option<paft::domain::Instrument> {
-        let guard = self.instrument_cache.read().await;
-        guard.get(key).cloned()
+        let mut guard = self.instrument_cache.write().await;
+        guard.get_cloned(key)
     }
 
     pub(crate) async fn store_instrument(&self, key: String, inst: paft::domain::Instrument) {
@@ -581,6 +739,7 @@ pub struct YfClientBuilder {
     cache_ttl: Option<Duration>,
     cache_ttls: HashMap<CacheEndpoint, Duration>,
     cache_max_entries: Option<NonZeroUsize>,
+    side_cache_max_entries: Option<NonZeroUsize>,
 
     // New fields for custom client and proxy configuration
     custom_client: Option<Client>,
@@ -785,6 +944,17 @@ impl YfClientBuilder {
     #[must_use]
     pub const fn cache_max_entries(mut self, max_entries: NonZeroUsize) -> Self {
         self.cache_max_entries = Some(max_entries);
+        self
+    }
+
+    /// Sets the maximum number of entries for each internal side cache.
+    ///
+    /// This limit applies independently to the resolved-currency cache,
+    /// currency-hints cache, and instrument cache. The default is 4096 entries
+    /// per side cache.
+    #[must_use]
+    pub const fn side_cache_max_entries(mut self, max_entries: NonZeroUsize) -> Self {
+        self.side_cache_max_entries = Some(max_entries);
         self
     }
 
@@ -1024,6 +1194,9 @@ impl YfClientBuilder {
 
         let retry = self.retry.unwrap_or_default();
         retry.validate()?;
+        let side_cache_max_entries = self
+            .side_cache_max_entries
+            .map_or(DEFAULT_SIDE_CACHE_MAX_ENTRIES, NonZeroUsize::get);
 
         Ok(YfClient {
             http,
@@ -1041,9 +1214,9 @@ impl YfClientBuilder {
             state: Arc::new(RwLock::new(initial_state)),
             credential_fetch_lock: Arc::new(tokio::sync::Mutex::new(())),
             retry,
-            currency_cache: Arc::new(RwLock::new(HashMap::new())),
-            currency_hints: Arc::new(RwLock::new(HashMap::new())),
-            instrument_cache: Arc::new(RwLock::new(HashMap::new())),
+            currency_cache: Arc::new(RwLock::new(BoundedLruMap::new(side_cache_max_entries))),
+            currency_hints: Arc::new(RwLock::new(BoundedLruMap::new(side_cache_max_entries))),
+            instrument_cache: Arc::new(RwLock::new(BoundedLruMap::new(side_cache_max_entries))),
             cache: (self.cache_ttl.is_some() || !self.cache_ttls.is_empty()).then(|| {
                 Arc::new(CacheStore {
                     map: RwLock::new(CacheMap::default()),
@@ -1297,6 +1470,36 @@ mod tests {
         assert_eq!(client.cache_get(&a).await.as_deref(), Some("a"));
         assert!(client.cache_get(&b).await.is_none());
         assert_eq!(client.cache_get(&c).await.as_deref(), Some("c"));
+    }
+
+    fn test_instrument(symbol: &str) -> paft::domain::Instrument {
+        paft::domain::Instrument::from_symbol(symbol, paft::domain::AssetKind::Equity)
+            .expect("valid test instrument")
+    }
+
+    #[tokio::test]
+    async fn instrument_side_cache_evicts_least_recently_used_entry() {
+        let client = YfClient::builder()
+            .side_cache_max_entries(NonZeroUsize::new(2).expect("non-zero"))
+            .build()
+            .expect("client builds");
+
+        client
+            .store_instrument("AAPL".to_string(), test_instrument("AAPL"))
+            .await;
+        client
+            .store_instrument("MSFT".to_string(), test_instrument("MSFT"))
+            .await;
+        assert!(client.cached_instrument("AAPL").await.is_some());
+
+        client
+            .store_instrument("GOOGL".to_string(), test_instrument("GOOGL"))
+            .await;
+
+        assert!(client.cached_instrument("AAPL").await.is_some());
+        assert!(client.cached_instrument("MSFT").await.is_none());
+        assert!(client.cached_instrument("GOOGL").await.is_some());
+        assert_eq!(client.instrument_cache.read().await.len(), 2);
     }
 
     #[tokio::test]

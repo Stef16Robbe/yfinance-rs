@@ -16,6 +16,7 @@ use crate::core::{
 use httpmock::{Method::GET, MockServer};
 use paft::Decimal;
 use paft::money::{Currency, IsoCurrency};
+use std::num::NonZeroUsize;
 use url::Url;
 
 fn unit(code: &str) -> ResolvedCurrencyUnit {
@@ -163,6 +164,96 @@ async fn direct_provider_does_not_replace_stronger_override_cache_entry() {
         .await
         .expect("cached currency");
     assert_eq!(currency(&resolved.unit), Currency::Iso(IsoCurrency::GBP));
+}
+
+#[tokio::test]
+async fn currency_side_caches_evict_least_recently_used_entries() {
+    let client = YfClient::builder()
+        .side_cache_max_entries(NonZeroUsize::new(2).expect("non-zero"))
+        .build()
+        .expect("client builds");
+
+    client
+        .store_resolved_currency(
+            "AAPL",
+            CurrencyCacheKind::Trading,
+            ResolvedCurrency::quote_enrichment(unit("USD")),
+        )
+        .await;
+    client
+        .store_resolved_currency(
+            "MSFT",
+            CurrencyCacheKind::Trading,
+            ResolvedCurrency::quote_enrichment(unit("USD")),
+        )
+        .await;
+    assert!(
+        client
+            .cached_resolved_currency("AAPL", CurrencyCacheKind::Trading)
+            .await
+            .is_some()
+    );
+    client
+        .store_resolved_currency(
+            "GOOGL",
+            CurrencyCacheKind::Trading,
+            ResolvedCurrency::quote_enrichment(unit("USD")),
+        )
+        .await;
+
+    assert!(
+        client
+            .cached_resolved_currency("AAPL", CurrencyCacheKind::Trading)
+            .await
+            .is_some()
+    );
+    assert!(
+        client
+            .cached_resolved_currency("MSFT", CurrencyCacheKind::Trading)
+            .await
+            .is_none()
+    );
+    assert!(
+        client
+            .cached_resolved_currency("GOOGL", CurrencyCacheKind::Trading)
+            .await
+            .is_some()
+    );
+    assert_eq!(client.currency_cache.read().await.len(), 2);
+
+    client
+        .store_currency_hints(
+            "AAPL",
+            CurrencyHints::from_quote(Some("USD"), None, None, None, None),
+        )
+        .await;
+    client
+        .store_currency_hints(
+            "MSFT",
+            CurrencyHints::from_quote(Some("USD"), None, None, None, None),
+        )
+        .await;
+    let _ = client.cached_currency_hints("AAPL").await;
+    client
+        .store_currency_hints(
+            "GOOGL",
+            CurrencyHints::from_quote(Some("USD"), None, None, None, None),
+        )
+        .await;
+
+    let (has_aapl, has_msft, has_googl, len) = {
+        let guard = client.currency_hints.read().await;
+        (
+            guard.contains_key("AAPL"),
+            guard.contains_key("MSFT"),
+            guard.contains_key("GOOGL"),
+            guard.len(),
+        )
+    };
+    assert!(has_aapl);
+    assert!(!has_msft);
+    assert!(has_googl);
+    assert_eq!(len, 2);
 }
 
 #[tokio::test]
