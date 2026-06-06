@@ -3,6 +3,7 @@ use std::fmt;
 use super::{ProjectionIssue, YfCurrencyInference, YfCurrencyPurpose};
 
 /// A warning emitted by the Yahoo projection layer.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum YfWarning {
     /// A provider item was skipped because it could not form a valid public value.

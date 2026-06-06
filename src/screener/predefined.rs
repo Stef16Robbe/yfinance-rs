@@ -10,6 +10,7 @@ use crate::YfError;
 ///
 /// Raw predefined IDs are intentionally not accepted. Add new variants when
 /// Yahoo exposes useful new predefined screens.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PredefinedScreener {
     /// Aggressive small-cap equities.

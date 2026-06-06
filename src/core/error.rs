@@ -36,6 +36,7 @@ impl fmt::Debug for RedactedHttpError {
 impl std::error::Error for RedactedHttpError {}
 
 /// The primary error type for the `yfinance-rs` crate.
+#[non_exhaustive]
 #[derive(Debug, Error)]
 pub enum YfError {
     /// An error originating from the underlying HTTP client (`reqwest`).

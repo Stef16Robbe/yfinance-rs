@@ -234,7 +234,7 @@ pub fn money_to_currency_str(value: &impl CurrencyValue) -> Option<String> {
     Some(value.currency().to_string())
 }
 
-/// Convert i64 timestamp to `DateTime`<Utc>
+/// Convert i64 timestamp to `DateTime<Utc>`.
 ///
 /// # Errors
 /// Returns `YfError::InvalidData` when the timestamp is outside chrono's
@@ -253,7 +253,7 @@ pub fn i64_to_date(timestamp: i64) -> Result<NaiveDate, YfError> {
     Ok(i64_to_datetime(timestamp)?.date_naive())
 }
 
-/// Convert `DateTime`<Utc> to i64 timestamp
+/// Convert `DateTime<Utc>` to i64 timestamp.
 #[must_use]
 pub const fn datetime_to_i64(dt: DateTime<Utc>) -> i64 {
     dt.timestamp()

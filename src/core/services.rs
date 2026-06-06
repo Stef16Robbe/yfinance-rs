@@ -26,7 +26,8 @@ pub struct HistoryRequest {
 /// A trait for services that can fetch historical financial data.
 ///
 /// This allows for abstracting the history fetching logic, making it easier to test
-/// and decoupling different parts of the crate. It is implemented by [`YfClient`].
+/// and decoupling different parts of the crate. It is implemented by
+/// [`YfClient`](crate::core::YfClient).
 pub trait HistoryService: Send + Sync {
     /// Asynchronously fetches the complete historical data for a given symbol and request.
     ///

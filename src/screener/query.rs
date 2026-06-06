@@ -32,6 +32,7 @@ pub type FundQuery = ScreenerQuery<Fund>;
 pub type EtfQuery = ScreenerQuery<Etf>;
 
 /// Yahoo quote type used by the screener endpoint.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub enum YahooQuoteType {
     /// Common stock or equity-like instrument.
@@ -266,6 +267,7 @@ impl Region {
 }
 
 /// Yahoo exchange code used by screener filters.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub enum YahooExchangeCode {
     /// NASDAQ Global Select.
@@ -371,6 +373,7 @@ impl YahooExchangeCode {
 }
 
 /// Equity sector values supported by Yahoo screeners.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EquitySector {
     /// Basic materials.
@@ -416,6 +419,7 @@ impl EquitySector {
 }
 
 /// Mutual fund category values currently supported by the typed API.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FundCategory {
     /// Foreign large value.
@@ -458,6 +462,7 @@ impl FundCategory {
 }
 
 /// ETF category values currently supported by the typed API.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EtfCategory {
     /// Technology.

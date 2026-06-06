@@ -1,6 +1,7 @@
 use std::fmt;
 
 /// Why provider data could not be represented losslessly.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProjectionIssue {
     /// A required provider field was absent or null.

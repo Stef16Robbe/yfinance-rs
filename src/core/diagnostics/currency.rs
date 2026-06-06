@@ -1,6 +1,7 @@
 use std::fmt;
 
 /// Currency purpose used by diagnostics.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum YfCurrencyPurpose {
     /// Trading currency for quoted prices.
@@ -26,6 +27,7 @@ impl fmt::Display for YfCurrencyPurpose {
 }
 
 /// Heuristic used to infer a currency when Yahoo did not provide a usable currency field.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum YfCurrencyInference {
     /// Currency inferred from Yahoo symbol/listing or exchange metadata.

@@ -282,7 +282,7 @@ impl Ticker {
 
     /// Fetches historical price candles with default settings.
     ///
-    /// Prices are automatically adjusted for splits and dividends. For more control, use [`history_builder`].
+    /// Prices are automatically adjusted for splits and dividends. For more control, use [`Self::history_builder`].
     ///
     /// # Arguments
     /// * `range` - The relative time range for the data (e.g., `1y`, `6mo`). Defaults to `6mo` if `None`.

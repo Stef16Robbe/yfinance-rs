@@ -52,6 +52,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   heuristic inference through `YfCurrencyPurpose` and `YfCurrencyInference`.
   Removed the public `YfCurrencySource` and `YfEvidenceStrength` provenance
   types; provider-backed currency provenance is now an internal resolver detail.
+- Growable public enums such as diagnostics, errors, news tabs, and Yahoo
+  screener vocabularies are now `#[non_exhaustive]`.
 
 ### Added
 
