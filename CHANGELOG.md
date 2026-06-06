@@ -96,6 +96,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Search requests now reject empty or whitespace-only queries with
+  `YfError::InvalidParams` before contacting Yahoo.
 - Currency and instrument side caches are now bounded LRU caches instead of
   unbounded `HashMap`s, with `YfClientBuilder::side_cache_max_entries()` for
   tuning the per-cache limit.

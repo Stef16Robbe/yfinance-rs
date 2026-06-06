@@ -45,6 +45,35 @@ async fn offline_search_uses_recorded_fixture() {
 }
 
 #[tokio::test]
+async fn search_rejects_empty_query_before_request() {
+    let server = MockServer::start();
+    let mock = server.mock(|when, then| {
+        when.method(GET).path("/v1/finance/search");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(r#"{"quotes":[]}"#);
+    });
+
+    let client = YfClient::builder().build().unwrap();
+    let base = Url::parse(&format!("{}/v1/finance/search", server.base_url())).unwrap();
+
+    for query in ["", " \t\n "] {
+        let err = SearchBuilder::new(&client, query)
+            .search_base(base.clone())
+            .fetch()
+            .await
+            .unwrap_err();
+
+        match err {
+            YfError::InvalidParams(message) => assert!(message.contains("query")),
+            other => panic!("expected InvalidParams, got {other:?}"),
+        }
+    }
+
+    mock.assert_calls(0);
+}
+
+#[tokio::test]
 async fn search_403_with_stale_cached_crumb_refreshes_before_retry() {
     let query = "apple";
     let server = MockServer::start();

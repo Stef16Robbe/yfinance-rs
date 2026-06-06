@@ -144,7 +144,8 @@ fn search_quote_diag_key(value: &Value, idx: usize) -> String {
 ///
 /// # Errors
 ///
-/// Returns `YfError` if the network request fails or the response cannot be parsed.
+/// Returns `YfError` if the query is empty, the network request fails, or the
+/// response cannot be parsed.
 pub async fn search(client: &YfClient, query: &str) -> Result<SearchResponse, YfError> {
     SearchBuilder::new(client, query).fetch().await
 }
@@ -244,8 +245,9 @@ impl SearchBuilder {
     ///
     /// # Errors
     ///
-    /// This method will return an error if the network request fails, the API returns a
-    /// non-successful status code, or the response body cannot be parsed as a valid search result.
+    /// This method will return an error if the query is empty, the network request
+    /// fails, the API returns a non-successful status code, or the response body
+    /// cannot be parsed as a valid search result.
     pub async fn fetch(&self) -> Result<SearchResponse, crate::core::YfError> {
         Ok(self.fetch_with_diagnostics().await?.into_data())
     }
@@ -254,13 +256,15 @@ impl SearchBuilder {
     ///
     /// # Errors
     ///
-    /// This method will return an error if the request fails or strict data-quality mode rejects a projection issue.
+    /// This method will return an error if the query is empty, the request fails,
+    /// or strict data-quality mode rejects a projection issue.
     pub async fn fetch_with_diagnostics(&self) -> Result<YfResponse<SearchResponse>, YfError> {
+        let query = self.validate_query()?;
         let mut ctx = ProjectionContext::new("search", self.options.data_quality());
         let mut url = self.base.clone();
         Self::append_query_params(
             &mut url,
-            &self.query,
+            query,
             self.quotes_count,
             self.news_count,
             self.lists_count,
@@ -277,7 +281,7 @@ impl SearchBuilder {
                 options: &self.options,
                 cache_body: None,
                 endpoint: "search_v1",
-                fixture_key: &self.query,
+                fixture_key: query,
                 ext: "json",
                 retry_on_invalid_crumb_body: true,
             },
@@ -292,6 +296,16 @@ impl SearchBuilder {
 
         let data = parse_search_body(&body, &mut ctx)?;
         Ok(ctx.finish(data))
+    }
+
+    fn validate_query(&self) -> Result<&str, YfError> {
+        let query = self.query.trim();
+        if query.is_empty() {
+            return Err(YfError::InvalidParams(
+                "search query cannot be empty".into(),
+            ));
+        }
+        Ok(query)
     }
 
     fn append_query_params(
