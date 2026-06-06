@@ -4,6 +4,10 @@ use prost::Message;
 use std::{
     io::ErrorKind,
     net::{TcpListener, TcpStream},
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    },
     thread::{self, JoinHandle},
     time::Instant,
 };
@@ -540,6 +544,91 @@ async fn stream_polling_diff_only_ignores_volume_only_change() {
     assert!(
         second.is_err(),
         "volume-only changes should not emit with diff_only"
+    );
+}
+
+#[tokio::test]
+async fn stream_polling_diff_only_does_not_track_skipped_updates() {
+    let server = crate::common::setup_server();
+
+    let missing_currency = r#"{
+        "quoteResponse": {
+            "result": [
+                {
+                    "symbol": "MSFT",
+                    "quoteType": "EQUITY",
+                    "regularMarketPrice": 420.00,
+                    "regularMarketPreviousClose": 419.00,
+                    "regularMarketVolume": 1000
+                }
+            ],
+            "error": null
+        }
+    }"#;
+
+    let valid_quote = r#"{
+        "quoteResponse": {
+            "result": [
+                {
+                    "symbol": "MSFT",
+                    "quoteType": "EQUITY",
+                    "regularMarketPrice": 420.00,
+                    "regularMarketPreviousClose": 419.00,
+                    "regularMarketVolume": 1500,
+                    "currency": "USD"
+                }
+            ],
+            "error": null
+        }
+    }"#;
+
+    let calls = Arc::new(AtomicUsize::new(0));
+    let response_calls = Arc::clone(&calls);
+    let _mock = server.mock(|when, then| {
+        when.method(httpmock::Method::GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "MSFT");
+        then.respond_with(move |_req: &httpmock::HttpMockRequest| {
+            let body = if response_calls.fetch_add(1, Ordering::Relaxed) == 0 {
+                missing_currency
+            } else {
+                valid_quote
+            };
+
+            httpmock::HttpMockResponse::builder()
+                .status(200)
+                .header("content-type", "application/json")
+                .body(body)
+                .build()
+        });
+    });
+
+    let client = yfinance_rs::YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+
+    let builder = yfinance_rs::StreamBuilder::new(&client)
+        .symbols(["MSFT"])
+        .method(StreamMethod::Polling)
+        .interval(Duration::from_millis(100))
+        .cache_mode(CacheMode::Bypass);
+
+    let (handle, mut rx) = builder.start().await.unwrap();
+    let update = timeout(Duration::from_secs(3), rx.recv())
+        .await
+        .expect("timed out waiting for valid polling stream update")
+        .expect("stream closed before valid polling stream update");
+    handle.abort();
+
+    assert!(
+        calls.load(Ordering::Relaxed) >= 2,
+        "stream should keep polling after a skipped update"
+    );
+    assert_eq!(update.instrument.symbol.as_str(), "MSFT");
+    assert_eq!(
+        update.volume.as_ref().map(ToString::to_string),
+        Some("1500".into())
     );
 }
 

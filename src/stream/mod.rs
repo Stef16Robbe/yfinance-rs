@@ -692,10 +692,8 @@ async fn run_polling_stream(
                             let sym_s = q.symbol.clone().unwrap_or_default();
                             let lp = q.regular_market_price.or(q.regular_market_previous_close);
 
-                            // Track price changes when diff_only is enabled
                             let price_changed = if cfg.diff_only {
-                                let prev = last_price.insert(sym_s.clone(), lp);
-                                prev != Some(lp)
+                                last_price.get(&sym_s) != Some(&lp)
                             } else {
                                 true
                             };
@@ -733,6 +731,9 @@ async fn run_polling_stream(
                             }).await.is_err() {
                                 // Break outer loop if receiver is dropped
                                 break;
+                            }
+                            if cfg.diff_only {
+                                last_price.insert(sym_s, lp);
                             }
                         }
                     }
