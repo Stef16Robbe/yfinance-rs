@@ -93,11 +93,8 @@ where
         Q: Eq + Hash + ?Sized,
         V: Clone,
     {
-        let (stored_key, value) = self
-            .entries
-            .get_key_value(key)
-            .map(|(stored_key, entry)| (stored_key.clone(), entry.value.clone()))?;
-        self.touch(&stored_key);
+        let value = self.entries.get(key).map(|entry| entry.value.clone())?;
+        self.touch(key);
         Some(value)
     }
 
@@ -158,13 +155,22 @@ where
         self.entries.contains_key(key)
     }
 
-    fn touch(&mut self, key: &K) {
-        if self.newest.as_ref() == Some(key) {
-            return;
+    fn touch<Q>(&mut self, key: &Q) -> bool
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        let Some(stored_key) = self.entries.get_key_value(key).map(|(key, _)| key.clone()) else {
+            return false;
+        };
+
+        if self.newest.as_ref() == Some(&stored_key) {
+            return true;
         }
 
-        self.detach(key);
-        self.attach_newest(key);
+        self.detach(&stored_key);
+        self.attach_newest(&stored_key);
+        true
     }
 
     fn detach(&mut self, key: &K) {
@@ -313,6 +319,16 @@ impl CacheMap {
         }
 
         self.entries.get_cloned(key).map(|entry| entry.body)
+    }
+
+    fn touch_fresh(&mut self, key: &str, now: Instant) {
+        if self
+            .entries
+            .get_ref(key)
+            .is_some_and(|entry| now <= entry.expires_at)
+        {
+            self.entries.touch(key);
+        }
     }
 
     fn insert(&mut self, key: &str, body: String, expires_at: Instant) {
@@ -516,9 +532,13 @@ impl YfClient {
             let guard = store.map.read().await;
             let entry = guard.entries.get_ref(key)?;
             if now <= entry.expires_at {
+                let body = entry.body.clone();
                 drop(guard);
-                let mut guard = store.map.write().await;
-                return guard.get_fresh(key, now);
+                // Promote only when uncontended; cache hits should not serialize on LRU updates.
+                if let Ok(mut guard) = store.map.try_write() {
+                    guard.touch_fresh(key, now);
+                }
+                return Some(body);
             }
         }
 
@@ -940,7 +960,8 @@ impl YfClientBuilder {
     ///
     /// The cache removes requested expired entries on read, lazily prunes other
     /// expired entries on writes when the next known expiry is due, and then
-    /// evicts least-recently-used entries if needed. The default is 1024 entries.
+    /// evicts least-recently-used entries based on writes and uncontended read-hit
+    /// promotion. The default is 1024 entries.
     #[must_use]
     pub const fn cache_max_entries(mut self, max_entries: NonZeroUsize) -> Self {
         self.cache_max_entries = Some(max_entries);
@@ -1424,6 +1445,29 @@ mod tests {
         };
         assert!(has_expired);
         assert!(has_fresh);
+    }
+
+    #[tokio::test]
+    async fn cache_get_fresh_hit_does_not_wait_for_lru_promotion() {
+        let client = cached_client();
+        let url = test_url("https://example.test/hit?symbol=AAPL");
+
+        insert_cache_entry(
+            &client,
+            &url,
+            "fresh",
+            Instant::now() + Duration::from_mins(1),
+        )
+        .await;
+
+        let store = client.cache.as_ref().expect("cache is enabled");
+        let _read_guard = store.map.read().await;
+
+        let hit = tokio::time::timeout(Duration::from_millis(100), client.cache_get(&url))
+            .await
+            .expect("cache hit should not wait for a write lock to promote LRU state");
+
+        assert_eq!(hit.as_deref(), Some("fresh"));
     }
 
     #[tokio::test]
