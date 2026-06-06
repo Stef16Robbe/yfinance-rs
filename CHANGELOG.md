@@ -88,6 +88,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Listing-currency inference now reaches Yahoo exchange alias fallbacks such as
   `NASDAQ`, `LONDON`, and `FRA` before strict exchange parsing can reject them.
+- Cached quoteSummary and fundamentals-timeseries responses are now returned before
+  acquiring Yahoo cookie/crumb credentials.
 - Polling streams with `diff_only(true)` now advance their last-price filter
   only after a quote update is successfully emitted, so a skipped malformed
   quote cannot suppress a later valid quote at the same price.

@@ -43,6 +43,11 @@ enum AuthAttempt {
     InvalidCrumb,
 }
 
+enum CachedAuthAttempt {
+    Success { body: String, url: Url },
+    InvalidCrumb,
+}
+
 /// Read the response body as text.
 /// In `test-mode`, if `YF_RECORD=1`, the body is saved as a fixture via `net_fixtures`.
 #[allow(unused_variables)]
@@ -255,6 +260,18 @@ where
             }
         }
         AuthMode::RequiredCrumb => {
+            if let Some(attempt) =
+                read_cached_auth_attempt(client, base_url.clone(), &cache_key, config, true).await
+            {
+                return match attempt {
+                    CachedAuthAttempt::Success { body, url } => Ok((body, url)),
+                    CachedAuthAttempt::InvalidCrumb => {
+                        retry_with_fresh_crumb(client, base_url, &cache_key, config, &build_request)
+                            .await
+                    }
+                };
+            }
+
             let crumb = ensure_crumb(client, "Crumb is not set").await?;
             let crumb_url = url_with_crumb(base_url.clone(), &crumb);
 
@@ -292,15 +309,19 @@ async fn fetch_text_auth_attempt<F>(
 where
     F: Fn(Url) -> reqwest::RequestBuilder + Send + Sync,
 {
-    if config.options.cache_mode().reads(config.cache_endpoint)
-        && let Some(body) = client.cache_get_key(cache_key).await
+    if let Some(attempt) = read_cached_auth_attempt(
+        client,
+        url.clone(),
+        cache_key,
+        config,
+        detect_invalid_crumb_body,
+    )
+    .await
     {
-        if should_retry_invalid_crumb_body(config, detect_invalid_crumb_body, &body) {
-            client.cache_remove_key(cache_key).await;
-            return Ok(AuthAttempt::InvalidCrumb);
-        }
-
-        return Ok(AuthAttempt::Success { body, url });
+        return Ok(match attempt {
+            CachedAuthAttempt::Success { body, url } => AuthAttempt::Success { body, url },
+            CachedAuthAttempt::InvalidCrumb => AuthAttempt::InvalidCrumb,
+        });
     }
 
     let req = client.with_auth_cookie(build_request(url.clone())).await;
@@ -329,6 +350,26 @@ where
     }
 
     Ok(AuthAttempt::Success { body, url })
+}
+
+async fn read_cached_auth_attempt(
+    client: &YfClient,
+    url: Url,
+    cache_key: &str,
+    config: AuthFetchConfig<'_>,
+    detect_invalid_crumb_body: bool,
+) -> Option<CachedAuthAttempt> {
+    if !config.options.cache_mode().reads(config.cache_endpoint) {
+        return None;
+    }
+
+    let body = client.cache_get_key(cache_key).await?;
+    if should_retry_invalid_crumb_body(config, detect_invalid_crumb_body, &body) {
+        client.cache_remove_key(cache_key).await;
+        return Some(CachedAuthAttempt::InvalidCrumb);
+    }
+
+    Some(CachedAuthAttempt::Success { body, url })
 }
 
 async fn retry_with_fresh_crumb<F>(
@@ -454,6 +495,20 @@ mod tests {
     }
 
     #[must_use]
+    fn required_quote_summary_auth_config() -> AuthFetchConfig<'static> {
+        AuthFetchConfig {
+            auth_mode: AuthMode::RequiredCrumb,
+            cache_endpoint: CacheEndpoint::QuoteSummary,
+            options: &QUOTE_AUTH_OPTIONS,
+            cache_body: None,
+            endpoint: "quote_summary",
+            fixture_key: "AAPL",
+            ext: "json",
+            retry_on_invalid_crumb_body: true,
+        }
+    }
+
+    #[must_use]
     fn mock_credentials(server: &'_ MockServer) -> (Mock<'_>, Mock<'_>) {
         let cookie = server.mock(|when, then| {
             when.method(GET).path("/consent");
@@ -464,6 +519,35 @@ mod tests {
             then.status(200).body("fresh-crumb");
         });
         (cookie, crumb)
+    }
+
+    #[tokio::test]
+    async fn required_crumb_cache_hit_does_not_fetch_credentials() {
+        let server = MockServer::start();
+        let (cookie, crumb) = mock_credentials(&server);
+        let client = cached_client(&server);
+        let base_url = server_url(
+            &server,
+            "/v10/finance/quoteSummary/AAPL?modules=summaryDetail",
+        );
+        let cache_key = base_url.as_str().to_string();
+        client
+            .cache_put_key(CacheEndpoint::QuoteSummary, cache_key, OK_BODY, None)
+            .await;
+
+        let (body, used_url) = fetch_text_with_auth_retry(
+            &client,
+            base_url.clone(),
+            required_quote_summary_auth_config(),
+            |url| client.http().get(url),
+        )
+        .await
+        .expect("cached quoteSummary response succeeds");
+
+        assert_eq!(body, OK_BODY);
+        assert_eq!(used_url, base_url);
+        assert_eq!(cookie.calls(), 0);
+        assert_eq!(crumb.calls(), 0);
     }
 
     #[tokio::test]
