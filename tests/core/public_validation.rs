@@ -461,3 +461,18 @@ async fn stream_builder_rejects_zero_websocket_idle_timeout_before_starting() {
 
     assert_invalid_params(err, "websocket idle timeout");
 }
+
+#[tokio::test]
+async fn stream_builder_rejects_zero_websocket_connect_timeout_before_starting() {
+    let client = YfClient::default();
+    let builder = StreamBuilder::new(&client)
+        .symbols(["AAPL"])
+        .method(StreamMethod::Websocket)
+        .websocket_connect_timeout(Duration::ZERO);
+
+    let Err(err) = builder.start().await else {
+        panic!("zero websocket connect timeout should fail before startup");
+    };
+
+    assert_invalid_params(err, "websocket connect timeout");
+}

@@ -141,6 +141,11 @@ async fn wait_for_mock_calls(
     mock.calls_async().await >= expected
 }
 
+fn websocket_url_for_mock_server(server: &httpmock::MockServer, path: &str) -> Url {
+    let base_url = server.base_url().replacen("http://", "ws://", 1);
+    Url::parse(&format!("{base_url}{path}")).unwrap()
+}
+
 #[tokio::test]
 async fn stream_websocket_maps_numeric_quote_type_without_cached_instrument() {
     let (stream_url, websocket_thread) = spawn_websocket_server(|websocket| {
@@ -208,6 +213,75 @@ async fn stream_websocket_reports_initial_connection_failure() {
         matches!(err, yfinance_rs::YfError::Websocket(_)),
         "expected websocket error, got: {err}"
     );
+}
+
+#[tokio::test]
+async fn stream_websocket_startup_respects_connect_timeout() {
+    let server = httpmock::MockServer::start();
+    let mock = server.mock(|when, then| {
+        when.method(httpmock::Method::GET).path("/stream");
+        then.status(200).delay(Duration::from_secs(2)).body("");
+    });
+
+    let client = yfinance_rs::YfClient::builder()
+        .base_stream(websocket_url_for_mock_server(&server, "/stream"))
+        .build()
+        .unwrap();
+
+    let builder = yfinance_rs::StreamBuilder::new(&client)
+        .symbols(["AAPL"])
+        .method(StreamMethod::Websocket)
+        .websocket_connect_timeout(Duration::from_millis(50));
+
+    let Err(err) = timeout(Duration::from_secs(1), builder.start())
+        .await
+        .expect("websocket startup should finish after connect timeout")
+    else {
+        panic!("websocket startup should fail after connect timeout");
+    };
+
+    assert!(
+        matches!(err, yfinance_rs::YfError::Websocket(_)),
+        "expected websocket timeout error, got: {err}"
+    );
+    assert!(
+        err.to_string().contains("startup"),
+        "expected startup timeout message, got: {err}"
+    );
+    assert!(
+        wait_for_mock_calls(&mock, 1, Duration::from_secs(1)).await,
+        "websocket startup request should have reached the test server"
+    );
+}
+
+#[tokio::test]
+async fn stream_websocket_fallback_stop_cancels_startup() {
+    let server = httpmock::MockServer::start();
+    let mock = server.mock(|when, then| {
+        when.method(httpmock::Method::GET).path("/stream");
+        then.status(200).delay(Duration::from_secs(2)).body("");
+    });
+
+    let client = yfinance_rs::YfClient::builder()
+        .base_stream(websocket_url_for_mock_server(&server, "/stream"))
+        .build()
+        .unwrap();
+
+    let builder = yfinance_rs::StreamBuilder::new(&client)
+        .symbols(["AAPL"])
+        .method(StreamMethod::WebsocketWithFallback)
+        .websocket_connect_timeout(Duration::from_secs(5));
+
+    let (handle, _rx) = builder.start().await.unwrap();
+
+    assert!(
+        wait_for_mock_calls(&mock, 1, Duration::from_secs(1)).await,
+        "websocket startup did not begin"
+    );
+
+    timeout(Duration::from_millis(250), handle.stop())
+        .await
+        .expect("stop should not wait for the websocket startup request to finish");
 }
 
 #[tokio::test]
@@ -289,7 +363,10 @@ async fn stream_websocket_fallback_to_polling_after_idle_timeout() {
         .join()
         .expect("websocket server thread panicked");
 
-    mock.assert();
+    assert!(
+        mock.calls_async().await >= 1,
+        "fallback should poll quotes after websocket idle timeout"
+    );
 
     let update = got
         .expect("timed out waiting for fallback stream update")
@@ -327,7 +404,10 @@ async fn stream_websocket_fallback_to_polling_offline() {
     let got = timeout(Duration::from_secs(3), rx.recv()).await;
     handle.abort();
 
-    mock.assert();
+    assert!(
+        mock.calls_async().await >= 1,
+        "fallback should poll quotes after websocket startup failure"
+    );
 
     let update = got
         .expect("timed out waiting for cached stream update")
@@ -387,7 +467,10 @@ async fn stream_websocket_fallback_to_polling_after_remote_close() {
         .join()
         .expect("websocket server thread panicked");
 
-    mock.assert();
+    assert!(
+        mock.calls_async().await >= 1,
+        "fallback should poll quotes after websocket remote close"
+    );
 
     let update = got
         .expect("timed out waiting for fallback stream update")
@@ -478,7 +561,10 @@ async fn stream_websocket_fallback_reconnects_after_polling() {
         .join()
         .expect("websocket server thread panicked");
 
-    mock.assert();
+    assert!(
+        mock.calls_async().await >= 1,
+        "fallback should poll quotes before reconnecting"
+    );
     assert_eq!(websocket_update.instrument.symbol.as_str(), "AAPL");
 }
 

@@ -40,7 +40,9 @@ use paft::market::quote::QuoteUpdate;
 use paft::money::{PriceAmount, QuantityAmount};
 
 const UNTYPED_STREAM_ASSET_KIND: &str = "YAHOO_STREAM_UNTYPED";
+const DEFAULT_WEBSOCKET_CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
 const DEFAULT_WEBSOCKET_IDLE_TIMEOUT: Duration = Duration::from_secs(90);
+const MAX_WEBSOCKET_RECONNECT_BACKOFF: Duration = Duration::from_secs(30);
 
 // Yahoo Finance websocket wire types (generated from `yaticker.proto`).
 mod wire_ws {
@@ -123,6 +125,7 @@ pub struct StreamBuilder {
     symbols: Vec<String>,
     cfg: StreamConfig,
     method: StreamMethod,
+    ws_connect_timeout: Duration,
     ws_idle_timeout: Duration,
     options: CallOptions,
 }
@@ -136,6 +139,7 @@ impl StreamBuilder {
             symbols: Vec::new(),
             cfg: StreamConfig::default(),
             method: StreamMethod::default(),
+            ws_connect_timeout: DEFAULT_WEBSOCKET_CONNECT_TIMEOUT,
             ws_idle_timeout: DEFAULT_WEBSOCKET_IDLE_TIMEOUT,
             options: CallOptions::default(),
         }
@@ -204,6 +208,16 @@ impl StreamBuilder {
         self
     }
 
+    /// Sets how long WebSocket startup may spend connecting and subscribing.
+    ///
+    /// This timeout covers the HTTP upgrade and initial subscription write. It is independent from
+    /// [`Self::websocket_idle_timeout`], which applies after the stream is established.
+    #[must_use]
+    pub const fn websocket_connect_timeout(mut self, timeout: Duration) -> Self {
+        self.ws_connect_timeout = timeout;
+        self
+    }
+
     fn validated_symbols(&self) -> Result<Vec<String>, crate::core::YfError> {
         if self.symbols.is_empty() {
             return Err(crate::core::YfError::InvalidParams(
@@ -218,6 +232,11 @@ impl StreamBuilder {
         if self.ws_idle_timeout.is_zero() {
             return Err(crate::core::YfError::InvalidParams(
                 "websocket idle timeout must be greater than zero".into(),
+            ));
+        }
+        if self.ws_connect_timeout.is_zero() {
+            return Err(crate::core::YfError::InvalidParams(
+                "websocket connect timeout must be greater than zero".into(),
             ));
         }
 
@@ -257,7 +276,10 @@ impl StreamBuilder {
             let symbols = symbols.clone();
             let cfg = self.cfg.clone();
             let method = self.method;
-            let ws_idle_timeout = self.ws_idle_timeout;
+            let ws_timeouts = WebsocketTimeouts {
+                connect: self.ws_connect_timeout,
+                idle: self.ws_idle_timeout,
+            };
 
             let mut stop_rx = stop_rx;
 
@@ -272,7 +294,7 @@ impl StreamBuilder {
                             tx,
                             &mut stop_rx,
                             startup_tx,
-                            ws_idle_timeout,
+                            ws_timeouts,
                         )
                         .await
                         {
@@ -292,7 +314,7 @@ impl StreamBuilder {
                             tx,
                             &mut stop_rx,
                             &options,
-                            ws_idle_timeout,
+                            ws_timeouts,
                         )
                         .await;
                     }
@@ -330,6 +352,12 @@ struct WsSubscribe<'a> {
     subscribe: &'a [String],
 }
 
+#[derive(Clone, Copy)]
+struct WebsocketTimeouts {
+    connect: Duration,
+    idle: Duration,
+}
+
 fn report_websocket_startup_error(
     startup_tx: Option<oneshot::Sender<Result<(), YfError>>>,
     err: YfError,
@@ -352,6 +380,14 @@ fn websocket_idle_timeout_error(timeout: Duration) -> YfError {
     WsError::Io(std::io::Error::new(
         std::io::ErrorKind::TimedOut,
         format!("websocket stream received no frames for {timeout:?}"),
+    ))
+    .into()
+}
+
+fn websocket_connect_timeout_error(timeout: Duration) -> YfError {
+    WsError::Io(std::io::Error::new(
+        std::io::ErrorKind::TimedOut,
+        format!("websocket startup did not complete within {timeout:?}"),
     ))
     .into()
 }
@@ -439,9 +475,9 @@ async fn run_websocket_stream(
     tx: mpsc::Sender<QuoteUpdate>,
     stop_rx: &mut oneshot::Receiver<()>,
     startup_tx: Option<oneshot::Sender<Result<(), YfError>>>,
-    ws_idle_timeout: Duration,
+    timeouts: WebsocketTimeouts,
 ) -> Result<(), YfError> {
-    let startup_result = async {
+    let startup = async {
         let ws_stream = connect_websocket_stream(client).await?;
         let (mut write, read) = ws_stream.split();
 
@@ -452,8 +488,15 @@ async fn run_websocket_stream(
         write.send(WsMessage::Text(sub_msg.into())).await?;
 
         Ok((write, read))
-    }
-    .await;
+    };
+
+    let startup_result = select! {
+        result = startup => result,
+        () = tokio::time::sleep(timeouts.connect) => {
+            Err(websocket_connect_timeout_error(timeouts.connect))
+        },
+        _ = &mut *stop_rx => return Ok(()),
+    };
 
     let (mut write, mut read) = match startup_result {
         Ok(parts) => parts,
@@ -552,8 +595,8 @@ async fn run_websocket_stream(
             },
             // Yahoo sends ping frames during idle periods. Missing several of those likely means
             // the TCP/WebSocket connection is half-open, so reconnect or fall back to polling.
-            () = tokio::time::sleep(ws_idle_timeout) => {
-                return Err(websocket_idle_timeout_error(ws_idle_timeout));
+            () = tokio::time::sleep(timeouts.idle) => {
+                return Err(websocket_idle_timeout_error(timeouts.idle));
             },
             _ = &mut *stop_rx => {
                 break;
@@ -570,10 +613,11 @@ async fn run_websocket_stream_with_fallback(
     tx: tokio::sync::mpsc::Sender<QuoteUpdate>,
     stop_rx: &mut tokio::sync::oneshot::Receiver<()>,
     options: &CallOptions,
-    ws_idle_timeout: Duration,
+    timeouts: WebsocketTimeouts,
 ) {
     let mut ticker = tokio::time::interval(cfg.interval);
     let mut last_price: HashMap<String, Option<f64>> = HashMap::new();
+    let mut websocket_failures = 0_u32;
 
     loop {
         if tx.is_closed() || websocket_stop_requested(stop_rx) {
@@ -586,25 +630,24 @@ async fn run_websocket_stream_with_fallback(
             tx.clone(),
             stop_rx,
             None,
-            ws_idle_timeout,
+            timeouts,
         )
         .await
         {
             Ok(()) => break,
             Err(e) => {
+                websocket_failures = websocket_failures.saturating_add(1);
                 crate::core::logging::trace_warn!(
                     error = %e,
-                    "websocket stream failed; polling once before reconnect"
+                    "websocket stream failed; polling before reconnect"
                 );
                 #[cfg(not(feature = "tracing"))]
                 let _ = &e;
             }
         }
 
-        if !wait_for_poll_tick(&mut ticker, &tx, stop_rx).await {
-            break;
-        }
-        if !poll_stream_once(
+        let reconnect_delay = websocket_reconnect_backoff(cfg.interval, websocket_failures);
+        if !poll_until_websocket_reconnect(
             &client,
             &symbols,
             &cfg,
@@ -612,10 +655,49 @@ async fn run_websocket_stream_with_fallback(
             stop_rx,
             options,
             &mut last_price,
+            &mut ticker,
+            reconnect_delay,
         )
         .await
         {
             break;
+        }
+    }
+}
+
+fn websocket_reconnect_backoff(interval: Duration, consecutive_failures: u32) -> Duration {
+    let base = interval.max(Duration::from_millis(1));
+    let exponent = consecutive_failures.saturating_sub(1).min(16);
+    base.saturating_mul(1_u32 << exponent)
+        .min(MAX_WEBSOCKET_RECONNECT_BACKOFF)
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn poll_until_websocket_reconnect(
+    client: &crate::core::YfClient,
+    symbols: &[String],
+    cfg: &StreamConfig,
+    tx: &tokio::sync::mpsc::Sender<QuoteUpdate>,
+    stop_rx: &mut tokio::sync::oneshot::Receiver<()>,
+    options: &CallOptions,
+    last_price: &mut HashMap<String, Option<f64>>,
+    ticker: &mut tokio::time::Interval,
+    reconnect_delay: Duration,
+) -> bool {
+    let reconnect_at = tokio::time::Instant::now() + reconnect_delay;
+
+    loop {
+        tokio::select! {
+            () = tokio::time::sleep_until(reconnect_at) => return true,
+            _ = ticker.tick() => {
+                if tx.is_closed() {
+                    return false;
+                }
+                if !poll_stream_once(client, symbols, cfg, tx, stop_rx, options, last_price).await {
+                    return false;
+                }
+            },
+            _ = &mut *stop_rx => return false,
         }
     }
 }
@@ -959,8 +1041,9 @@ async fn handle_polling_quotes(
 
 #[cfg(test)]
 mod tests {
-    use super::stream_quote_type_to_asset_kind;
+    use super::{MAX_WEBSOCKET_RECONNECT_BACKOFF, stream_quote_type_to_asset_kind};
     use paft::domain::AssetKind;
+    use std::time::Duration;
 
     #[test]
     fn stream_quote_type_to_asset_kind_maps_known_yahoo_codes() {
@@ -988,5 +1071,20 @@ mod tests {
         assert_eq!(stream_quote_type_to_asset_kind(7), None);
         assert_eq!(stream_quote_type_to_asset_kind(1000), None);
         assert_eq!(stream_quote_type_to_asset_kind(i32::MAX), None);
+    }
+
+    #[test]
+    fn websocket_reconnect_backoff_grows_and_caps() {
+        let base = Duration::from_millis(40);
+
+        assert_eq!(super::websocket_reconnect_backoff(base, 1), base);
+        assert_eq!(
+            super::websocket_reconnect_backoff(base, 2),
+            Duration::from_millis(80)
+        );
+        assert_eq!(
+            super::websocket_reconnect_backoff(base, u32::MAX),
+            MAX_WEBSOCKET_RECONNECT_BACKOFF
+        );
     }
 }

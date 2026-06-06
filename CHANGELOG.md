@@ -135,6 +135,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `StreamMethod::WebsocketWithFallback` now retries WebSocket connections after
   fallback polling instead of staying in polling mode forever after the first
   WebSocket drop.
+- WebSocket startup is now cancellable and bounded by
+  `StreamBuilder::websocket_connect_timeout()`, and fallback reconnect attempts
+  use capped exponential backoff while HTTP polling continues.
 - Custom screener POST requests now reuse the already serialized JSON body
   instead of serializing the same `serde_json::Value` twice.
 - WebSocket streams now rely on tungstenite's automatic ping replies instead of
