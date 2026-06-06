@@ -533,7 +533,7 @@ For full control over HTTP configuration, you can provide your own reqwest clien
 need `cookie_store(true)` unless your own reqwest usage requires it.
 
 ```rust
-use yfinance_rs::{YfClient, Ticker};
+use yfinance_rs::{CacheEndpoint, CacheMode, Ticker, YfClient};
 use reqwest::Client;
 use std::time::Duration;
 
@@ -551,10 +551,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = YfClient::builder()
         .custom_client(custom_client)
         .cache_ttl(Duration::from_secs(300))
-        .cache_ttl_for(yfinance_rs::CacheEndpoint::Quote, Duration::from_secs(5))
+        .cache_ttl_for(CacheEndpoint::Quote, Duration::from_secs(5))
         .build()?;
 
-    let ticker = Ticker::new(&client, "AAPL");
+    let ticker = Ticker::new(&client, "AAPL").cache_mode(CacheMode::Use);
     let quote = ticker.quote().await?;
     if let Some(price) = quote.price.as_ref() {
         println!("Latest price for AAPL: {price}");

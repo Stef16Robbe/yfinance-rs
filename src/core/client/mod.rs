@@ -871,11 +871,14 @@ impl YfClientBuilder {
         self
     }
 
-    /// Enables in-memory caching with a default Time-To-Live (TTL) for all responses.
+    /// Sets the default Time-To-Live (TTL) for cached responses.
     ///
-    /// If neither this nor [`YfClientBuilder::cache_ttl_for`] is set, response
-    /// caching is disabled by default. Endpoint-specific TTLs override this
-    /// value.
+    /// This TTL is used when a call's effective [`CacheMode`] allows cache writes.
+    /// [`CacheMode::Default`] still bypasses volatile endpoints such as quotes,
+    /// options, news, and screeners; use [`CacheMode::Use`] or [`CacheMode::Refresh`]
+    /// on those calls to cache them. If neither this nor
+    /// [`YfClientBuilder::cache_ttl_for`] is set, response caching is disabled.
+    /// Endpoint-specific TTLs override this value.
     #[must_use]
     pub const fn cache_ttl(mut self, dur: Duration) -> Self {
         self.cache_ttl = Some(dur);
@@ -884,9 +887,12 @@ impl YfClientBuilder {
 
     /// Sets a Time-To-Live (TTL) for one response-cache endpoint bucket.
     ///
-    /// Calling this enables response caching for that endpoint even when no
-    /// global [`YfClientBuilder::cache_ttl`] is configured. Endpoints without a
-    /// specific TTL are cached only when a global TTL is configured.
+    /// This TTL is used when that endpoint is cacheable for a given call. It does not
+    /// override the call's effective [`CacheMode`]: volatile endpoints such as quotes,
+    /// options, news, and screeners still bypass the cache under [`CacheMode::Default`].
+    /// Use [`CacheMode::Use`] or [`CacheMode::Refresh`] on those calls to cache them.
+    /// Endpoints without a specific TTL are cached only when a global
+    /// [`YfClientBuilder::cache_ttl`] is configured.
     #[must_use]
     pub fn cache_ttl_for(mut self, endpoint: CacheEndpoint, dur: Duration) -> Self {
         self.cache_ttls.insert(endpoint, dur);
