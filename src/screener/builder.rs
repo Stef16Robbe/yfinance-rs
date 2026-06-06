@@ -339,7 +339,7 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
         let body = self.custom_body(parts);
         let body_json = serde_json::to_string(&body).map_err(YfError::Json)?;
         let response = self
-            .post_with_auth_retry(url, &body, &body_json, &fixture_key)
+            .post_with_auth_retry(url, &body_json, &fixture_key)
             .await?;
         parse_screener_body_with_diagnostics(&response, self.options.data_quality())
     }
@@ -405,7 +405,6 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
     async fn post_with_auth_retry(
         &self,
         url: Url,
-        body: &Value,
         body_json: &str,
         fixture_key: &str,
     ) -> Result<String, YfError> {
@@ -427,7 +426,8 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
                     .http()
                     .post(url)
                     .header("accept", "application/json")
-                    .json(body)
+                    .header("content-type", "application/json")
+                    .body(body_json.to_owned())
             },
         )
         .await?;

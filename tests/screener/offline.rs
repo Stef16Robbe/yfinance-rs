@@ -452,6 +452,7 @@ async fn offline_custom_equity_query_posts_python_wire_shape() {
     let mock = server.mock(|when, then| {
         when.method(POST)
             .path("/v1/finance/screener")
+            .header("content-type", "application/json")
             .query_param("corsDomain", "finance.yahoo.com")
             .query_param("formatted", "false")
             .query_param("lang", "en-US")

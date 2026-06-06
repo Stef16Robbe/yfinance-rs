@@ -126,6 +126,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `StreamMethod::WebsocketWithFallback` now retries WebSocket connections after
   fallback polling instead of staying in polling mode forever after the first
   WebSocket drop.
+- Custom screener POST requests now reuse the already serialized JSON body
+  instead of serializing the same `serde_json::Value` twice.
 - WebSocket streams now rely on tungstenite's automatic ping replies instead of
   writing explicit pong frames from the stream loop.
 - WebSocket quote updates now preserve equity prices when Yahoo omits the
