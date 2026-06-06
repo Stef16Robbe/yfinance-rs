@@ -221,8 +221,7 @@ See the full example: `examples/15_screeners.rs`.
 Enable the `dataframe` feature to convert paft models into a Polars `DataFrame` with `.to_dataframe()`.
 
 ```rust
-use yfinance_rs::{Interval, Range, Ticker, YfClient};
-use paft::prelude::{ToDataFrame, ToDataFrameVec};
+use yfinance_rs::{Interval, Range, Ticker, ToDataFrame, ToDataFrameVec, YfClient};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

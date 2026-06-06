@@ -56,7 +56,7 @@ async fn quote_v7_bid_ask_are_mapped_to_book_levels() {
 
     #[cfg(feature = "dataframe")]
     {
-        use paft::prelude::ToDataFrame;
+        use yfinance_rs::ToDataFrame;
 
         let df = quote.to_dataframe().unwrap();
         assert_eq!(df.height(), 1);

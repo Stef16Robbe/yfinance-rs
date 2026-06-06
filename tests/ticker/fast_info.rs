@@ -168,7 +168,7 @@ async fn fast_info_maps_snapshot_session_fields_from_v7_quote() {
 
     #[cfg(feature = "dataframe")]
     {
-        use paft::prelude::ToDataFrame;
+        use yfinance_rs::ToDataFrame;
 
         let df = snapshot.to_dataframe().unwrap();
         assert_eq!(df.height(), 1);

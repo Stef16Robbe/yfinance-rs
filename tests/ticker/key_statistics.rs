@@ -1085,7 +1085,7 @@ async fn key_statistics_merge_v7_quote_and_quote_summary_fixtures() {
 
     #[cfg(feature = "dataframe")]
     {
-        use paft::prelude::ToDataFrame;
+        use yfinance_rs::ToDataFrame;
 
         let df = stats.to_dataframe().unwrap();
         assert_eq!(df.height(), 1);

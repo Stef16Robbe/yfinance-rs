@@ -32,7 +32,6 @@ futures-util = "0.3"
 prost = "0.14"
 base64 = "0.22"
 getrandom = "0.3.3"
-polars = { version = "0.53", default-features = false, optional = true }
 paft = { version = "0.9.0", features = ["market", "fundamentals", "domain", "aggregates"] }
 rust_decimal = "1.36"
 tracing = { version = "0.1", optional = true }
@@ -55,7 +54,7 @@ protoc-bin-vendored = "3"
 default = []
 test-mode = []
 debug-dumps = []
-dataframe = ["polars", "paft/dataframe"]
+dataframe = ["paft/dataframe"]
 tracing = ["dep:tracing"]
 # Dev-only convenience to initialize a subscriber in examples/tests
 tracing-subscriber = ["tracing", "dep:tracing-subscriber"]

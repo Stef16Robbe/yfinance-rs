@@ -6,13 +6,13 @@
 use polars::prelude::*;
 
 #[cfg(feature = "dataframe")]
-use paft::prelude::{ToDataFrame, ToDataFrameVec};
-
-#[cfg(feature = "dataframe")]
 use yfinance_rs::{Ticker, YfClient};
 
 #[cfg(feature = "dataframe")]
 use yfinance_rs::core::{Interval, Range};
+
+#[cfg(feature = "dataframe")]
+use yfinance_rs::{ToDataFrame, ToDataFrameVec};
 
 #[cfg(feature = "dataframe")]
 #[tokio::main]

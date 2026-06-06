@@ -154,6 +154,15 @@ pub use core::{
     YfCurrencyInference, YfCurrencyPurpose, YfDiagnostics, YfError, YfResponse, YfWarning,
 };
 
+/// `DataFrame` conversion traits re-exported from `paft`.
+#[cfg(feature = "dataframe")]
+pub mod dataframe {
+    pub use paft::dataframe::*;
+}
+
+#[cfg(feature = "dataframe")]
+pub use dataframe::{Columnar, Decimal128Encode, ToDataFrame, ToDataFrameVec};
+
 // Provider-specific builders and utilities
 pub use download::{DownloadBuilder, DownloadConcurrency};
 pub use esg::EsgBuilder;

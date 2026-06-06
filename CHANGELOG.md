@@ -16,6 +16,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `HistoryService::fetch_full_history()` now returns an unboxed `impl Future + Send`
   instead of a pinned boxed future; callers can still `.await` it directly, but
   custom trait implementors must update their signatures.
+- Removed the unused `yfinance_rs::core::dataframe::ToDataFrame` trait. The
+  `dataframe` feature now re-exports `paft`'s real dataframe traits at
+  `yfinance_rs::{dataframe, ToDataFrame, ToDataFrameVec}`.
 - `ScreenerNumber` is now an opaque validated value. Floating-point values must
   be constructed with `ScreenerNumber::new`, while integer values still use the
   existing `From` conversions.

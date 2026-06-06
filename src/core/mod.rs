@@ -30,10 +30,6 @@ pub mod yahoo_vocab;
 #[cfg(feature = "test-mode")]
 pub(crate) mod fixtures;
 
-#[cfg(feature = "dataframe")]
-/// `DataFrame` conversion traits.
-pub mod dataframe;
-
 #[doc(hidden)]
 pub mod conversions;
 pub(crate) mod net;
