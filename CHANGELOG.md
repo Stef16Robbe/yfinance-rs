@@ -109,6 +109,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   map, avoiding key clones during cache-hit promotion.
 - Response-cache bodies are now stored as shared strings, so cache hits no
   longer allocate and copy the entire cached response body.
+- History candle assembly now preallocates its output buffer using the shortest
+  required OHLC/timestamp array as a safe upper bound.
 - `profile()` now reports valid symbols with unsupported Yahoo instrument types
   such as indexes and cryptocurrencies as provider data errors instead of
   invalid caller parameters.

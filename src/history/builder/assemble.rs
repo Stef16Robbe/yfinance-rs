@@ -16,7 +16,7 @@ pub fn assemble_candles(
     currency: &ResolvedCurrencyUnit,
     ctx: &mut ProjectionContext,
 ) -> Result<Vec<Candle>, YfError> {
-    let mut out = Vec::new();
+    let mut out = Vec::with_capacity(candle_capacity_upper_bound(ts, q));
 
     for (i, &t) in ts.iter().enumerate() {
         let ts = match i64_to_datetime(t) {
@@ -93,6 +93,12 @@ pub fn assemble_candles(
     Ok(out)
 }
 
+fn candle_capacity_upper_bound(ts: &[i64], q: &QuoteBlock) -> usize {
+    [q.open.len(), q.high.len(), q.low.len(), q.close.len()]
+        .into_iter()
+        .fold(ts.len(), usize::min)
+}
+
 fn raw_ohlc_values(
     open: Option<f64>,
     high: Option<f64>,
@@ -146,4 +152,22 @@ fn candle_prices(
         currency.price_amount_from_f64(low)?,
         currency.price_amount_from_f64(close)?,
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn candle_capacity_upper_bound_uses_shortest_required_array() {
+        let quote = QuoteBlock {
+            open: vec![Some(1.0), Some(2.0), Some(3.0)],
+            high: vec![Some(1.0), Some(2.0)],
+            low: vec![Some(1.0), Some(2.0), Some(3.0), Some(4.0)],
+            close: vec![Some(1.0)],
+            volume: vec![Some(1), Some(2), Some(3), Some(4), Some(5)],
+        };
+
+        assert_eq!(candle_capacity_upper_bound(&[1, 2, 3, 4, 5], &quote), 1);
+    }
 }
