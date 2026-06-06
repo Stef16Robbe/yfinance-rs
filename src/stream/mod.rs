@@ -680,75 +680,110 @@ async fn run_polling_stream(
         tokio::select! {
             _ = ticker.tick() => {
                 if tx.is_closed() { break; }
-                match crate::core::quotes::fetch_v7_quotes(&client, &symbol_slices, options).await {
-                    Ok(quotes) => {
-                        for q in quotes {
-                            let ts = q
-                                .regular_market_time
-                                .and_then(|t| DateTime::from_timestamp(t, 0))
-                                .unwrap_or_else(Utc::now);
-                            let sym_s = q.symbol.clone().unwrap_or_default();
-                            let lp = q.regular_market_price.or(q.regular_market_previous_close);
-
-                            let price_changed = if cfg.diff_only {
-                                last_price.get(&sym_s) != Some(&lp)
-                            } else {
-                                true
-                            };
-
-                            if cfg.diff_only && !price_changed {
-                                continue;
-                            }
-
-                            let Some(currency_unit) =
-                                q.currency.as_deref().and_then(ResolvedCurrencyUnit::from_code)
-                            else {
-                                crate::core::logging::trace_debug!(
-                                    symbol = %sym_s,
-                                    "skipping polling stream update without usable currency"
-                                );
-                                continue;
-                            };
-                            let kind = q
-                                .quote_type
-                                .as_deref()
-                                .and_then(|value| parse_yahoo_quote_type(value).ok());
-                            let Some(instrument) =
-                                resolve_stream_instrument(&client, &sym_s, kind).await
-                            else {
-                                continue;
-                            };
-                            if tx.send(QuoteUpdate {
-                                instrument,
-                                currency: currency_unit.currency().clone(),
-                                price: lp.and_then(|v| currency_unit.price_amount_from_f64(v)),
-                                previous_close: q.regular_market_previous_close.and_then(|v| currency_unit.price_amount_from_f64(v)),
-                                volume: q.regular_market_volume.and_then(quantity_from_u64),
-                                ts,
-                                provider: (),
-                            }).await.is_err() {
-                                // Break outer loop if receiver is dropped
-                                break;
-                            }
-                            if cfg.diff_only {
-                                last_price.insert(sym_s, lp);
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        crate::core::logging::trace_debug!(
-                            error = %e,
-                            "polling stream quote fetch failed"
-                        );
-                        #[cfg(not(feature = "tracing"))]
-                        let _ = e;
-                    }
-                }
-                if tx.is_closed() { break; }
             }
             _ = &mut *stop_rx => { break; }
         }
+
+        if tx.is_closed() {
+            break;
+        }
+
+        let fetch = crate::core::quotes::fetch_v7_quotes(&client, &symbol_slices, options);
+        let quotes = tokio::select! {
+            result = fetch => result,
+            _ = &mut *stop_rx => { break; }
+        };
+
+        match quotes {
+            Ok(quotes) => {
+                if !handle_polling_quotes(&client, &tx, cfg.diff_only, &mut last_price, quotes)
+                    .await
+                {
+                    break;
+                }
+            }
+            Err(e) => {
+                crate::core::logging::trace_debug!(
+                    error = %e,
+                    "polling stream quote fetch failed"
+                );
+                #[cfg(not(feature = "tracing"))]
+                let _ = e;
+            }
+        }
+
+        if tx.is_closed() {
+            break;
+        }
     }
+}
+
+async fn handle_polling_quotes(
+    client: &crate::core::YfClient,
+    tx: &tokio::sync::mpsc::Sender<QuoteUpdate>,
+    diff_only: bool,
+    last_price: &mut HashMap<String, Option<f64>>,
+    quotes: Vec<crate::core::quotes::V7QuoteNode>,
+) -> bool {
+    for q in quotes {
+        let ts = q
+            .regular_market_time
+            .and_then(|t| DateTime::from_timestamp(t, 0))
+            .unwrap_or_else(Utc::now);
+        let sym_s = q.symbol.clone().unwrap_or_default();
+        let lp = q.regular_market_price.or(q.regular_market_previous_close);
+
+        let price_changed = if diff_only {
+            last_price.get(&sym_s) != Some(&lp)
+        } else {
+            true
+        };
+
+        if diff_only && !price_changed {
+            continue;
+        }
+
+        let Some(currency_unit) = q
+            .currency
+            .as_deref()
+            .and_then(ResolvedCurrencyUnit::from_code)
+        else {
+            crate::core::logging::trace_debug!(
+                symbol = %sym_s,
+                "skipping polling stream update without usable currency"
+            );
+            continue;
+        };
+        let kind = q
+            .quote_type
+            .as_deref()
+            .and_then(|value| parse_yahoo_quote_type(value).ok());
+        let Some(instrument) = resolve_stream_instrument(client, &sym_s, kind).await else {
+            continue;
+        };
+        if tx
+            .send(QuoteUpdate {
+                instrument,
+                currency: currency_unit.currency().clone(),
+                price: lp.and_then(|v| currency_unit.price_amount_from_f64(v)),
+                previous_close: q
+                    .regular_market_previous_close
+                    .and_then(|v| currency_unit.price_amount_from_f64(v)),
+                volume: q.regular_market_volume.and_then(quantity_from_u64),
+                ts,
+                provider: (),
+            })
+            .await
+            .is_err()
+        {
+            return false;
+        }
+        if diff_only {
+            last_price.insert(sym_s, lp);
+        }
+    }
+
+    true
 }
 
 #[cfg(test)]

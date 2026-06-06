@@ -101,6 +101,21 @@ fn assert_subscription(message: TestWsMessage, symbols: &[&str]) {
     assert_eq!(subscription["subscribe"], serde_json::json!(symbols));
 }
 
+async fn wait_for_mock_calls(
+    mock: &httpmock::Mock<'_>,
+    expected: usize,
+    timeout_duration: Duration,
+) -> bool {
+    let started = Instant::now();
+    while started.elapsed() < timeout_duration {
+        if mock.calls_async().await >= expected {
+            return true;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    mock.calls_async().await >= expected
+}
+
 #[tokio::test]
 async fn stream_websocket_maps_numeric_quote_type_without_cached_instrument() {
     let (stream_url, websocket_thread) = spawn_websocket_server(|websocket| {
@@ -334,6 +349,43 @@ async fn stream_polling_explicitly_offline() {
     mock.assert();
 
     assert!(got.is_ok());
+}
+
+#[tokio::test]
+async fn stream_polling_stop_cancels_in_flight_quote_fetch() {
+    let server = crate::common::setup_server();
+
+    let mock = server.mock(|when, then| {
+        when.method(httpmock::Method::GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "MSFT");
+        then.status(200)
+            .header("content-type", "application/json")
+            .delay(Duration::from_secs(2))
+            .body(crate::common::fixture("quote_v7", "MSFT", "json"));
+    });
+
+    let client = yfinance_rs::YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+
+    let builder = yfinance_rs::StreamBuilder::new(&client)
+        .symbols(["MSFT"])
+        .method(StreamMethod::Polling)
+        .interval(Duration::from_millis(1))
+        .cache_mode(CacheMode::Bypass);
+
+    let (handle, _rx) = builder.start().await.unwrap();
+
+    assert!(
+        wait_for_mock_calls(&mock, 1, Duration::from_secs(1)).await,
+        "polling stream did not start the quote request"
+    );
+
+    timeout(Duration::from_millis(250), handle.stop())
+        .await
+        .expect("stop should not wait for the in-flight quote request to finish");
 }
 
 #[tokio::test]
