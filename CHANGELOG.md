@@ -88,6 +88,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Batch quotes with diagnostics now report requested symbols that Yahoo omits
+  from the v7 response instead of silently returning a shorter quote vector.
 - `YfClient::default()` and builder-created clients now apply a 30-second total
   request timeout and a 10-second connect timeout by default, so stalled
   connections fail and can trigger timeout retries instead of hanging forever.

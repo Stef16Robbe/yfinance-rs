@@ -106,6 +106,7 @@ impl QuotesBuilder {
             core_quotes::fetch_v7_quote_values(&self.client, &symbol_slices, &self.options).await?;
 
         let mut ctx = ProjectionContext::new("quotes", self.options.data_quality());
+        core_quotes::report_missing_requested_quote_values(&symbol_slices, &results, &mut ctx)?;
         let mut quotes = Vec::with_capacity(results.len());
         for (idx, result) in results.into_iter().enumerate() {
             let Some(result) =

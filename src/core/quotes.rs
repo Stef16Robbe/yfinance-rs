@@ -1028,6 +1028,7 @@ pub async fn fetch_v7_quotes(
 ) -> Result<Vec<V7QuoteNode>, YfError> {
     let values = fetch_v7_quote_values(client, symbols, options).await?;
     let mut ctx = ProjectionContext::new("quote_v7", options.data_quality());
+    report_missing_requested_quote_values(symbols, &values, &mut ctx)?;
     let mut nodes = Vec::with_capacity(values.len());
     for (idx, value) in values.into_iter().enumerate() {
         if let Some(node) = quote_node_from_value_with_context(value, idx, &mut ctx)? {
@@ -1036,6 +1037,39 @@ pub async fn fetch_v7_quotes(
     }
 
     Ok(nodes)
+}
+
+pub fn report_missing_requested_quote_values(
+    requested_symbols: &[&str],
+    values: &[Value],
+    ctx: &mut ProjectionContext,
+) -> Result<(), YfError> {
+    let normalized_symbols = normalize_symbols(requested_symbols.iter().copied())?;
+    let requested_symbols = normalized_symbols
+        .iter()
+        .map(String::as_str)
+        .collect::<Vec<_>>();
+    let mut resolved_requests = vec![false; requested_symbols.len()];
+
+    for value in values {
+        let provider_symbol = value
+            .get("symbol")
+            .and_then(serde_json::Value::as_str)
+            .and_then(|symbol| nonempty_symbol(Some(symbol)));
+        mark_resolved_requested_symbol(&requested_symbols, &mut resolved_requests, provider_symbol);
+    }
+
+    for (symbol, resolved) in requested_symbols.iter().zip(resolved_requests) {
+        if !resolved {
+            ctx.dropped_item(
+                "quote",
+                Some((*symbol).to_string()),
+                ProjectionIssue::ProviderUnavailable { feature: "quote" },
+            )?;
+        }
+    }
+
+    Ok(())
 }
 
 /// Centralized function to fetch raw quote nodes from the v7 API.
@@ -1173,23 +1207,16 @@ async fn store_v7_quote_side_effects(
         let provider_symbol = nonempty_symbol(node.symbol.as_deref());
         if let Some(symbol) = provider_symbol {
             store_quote_node_hints(client, symbol, node).await;
-            store_requested_alias_hints(
-                client,
-                requested_symbols,
-                &mut resolved_requests,
-                symbol,
-                node,
-            )
-            .await;
+            store_requested_alias_hints(client, requested_symbols, symbol, node).await;
             store_quote_node_instrument(client, symbol, node).await;
         }
 
-        if requested_symbols.len() == 1 {
-            let requested = requested_symbols[0];
-            if provider_symbol.is_none_or(|symbol| !same_symbol(symbol, requested)) {
-                store_quote_node_hints(client, requested, node).await;
-                resolved_requests[0] = true;
-            }
+        mark_resolved_requested_symbol(requested_symbols, &mut resolved_requests, provider_symbol);
+
+        if requested_symbols.len() == 1
+            && provider_symbol.is_none_or(|symbol| !same_symbol(symbol, requested_symbols[0]))
+        {
+            store_quote_node_hints(client, requested_symbols[0], node).await;
         }
     }
 
@@ -1242,17 +1269,33 @@ async fn store_quote_node_instrument(client: &YfClient, symbol: &str, node: &V7Q
 async fn store_requested_alias_hints(
     client: &YfClient,
     requested_symbols: &[&str],
-    resolved: &mut [bool],
     provider_symbol: &str,
     node: &V7QuoteNode,
 ) {
-    for (idx, requested) in requested_symbols.iter().enumerate() {
-        if same_symbol(provider_symbol, requested) {
-            resolved[idx] = true;
-            if !same_cache_key(provider_symbol, requested) {
-                store_quote_node_hints(client, requested, node).await;
+    for requested in requested_symbols {
+        if same_symbol(provider_symbol, requested) && !same_cache_key(provider_symbol, requested) {
+            store_quote_node_hints(client, requested, node).await;
+        }
+    }
+}
+
+fn mark_resolved_requested_symbol(
+    requested_symbols: &[&str],
+    resolved: &mut [bool],
+    provider_symbol: Option<&str>,
+) {
+    if let Some(symbol) = provider_symbol {
+        for (idx, requested) in requested_symbols.iter().enumerate() {
+            if same_symbol(symbol, requested) {
+                resolved[idx] = true;
             }
         }
+    }
+
+    if requested_symbols.len() == 1
+        && provider_symbol.is_none_or(|symbol| !same_symbol(symbol, requested_symbols[0]))
+    {
+        resolved[0] = true;
     }
 }
 
