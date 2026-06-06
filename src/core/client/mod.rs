@@ -1179,7 +1179,8 @@ impl YfClientBuilder {
         let http = if let Some(custom_client) = self.custom_client {
             custom_client
         } else {
-            let mut httpb = reqwest::Client::builder().cookie_store(true);
+            // Yahoo auth stores and sends the required cookie explicitly.
+            let mut httpb = reqwest::Client::builder();
 
             httpb = httpb.timeout(timeouts.request);
             httpb = httpb.connect_timeout(timeouts.connect);
@@ -1349,6 +1350,7 @@ fn duration_from_nanos(nanos: u128) -> Duration {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use httpmock::{Method::GET, MockServer};
 
     fn cached_client() -> YfClient {
         YfClient::builder()
@@ -1390,6 +1392,43 @@ mod tests {
                 .http_timeouts(),
             HttpTimeouts { request, connect }
         );
+    }
+
+    #[tokio::test]
+    async fn builder_default_http_client_does_not_store_ambient_cookies() {
+        let server = MockServer::start();
+        let set_cookie = server.mock(|when, then| {
+            when.method(GET).path("/sets-cookie");
+            then.status(200)
+                .header("set-cookie", "TRACK=1; Path=/")
+                .body("ok");
+        });
+        let no_cookie = server.mock(|when, then| {
+            when.method(GET).path("/no-cookie").header_missing("cookie");
+            then.status(200).body("ok");
+        });
+
+        let client = YfClient::builder().build().expect("client builds");
+
+        client
+            .http
+            .get(server.url("/sets-cookie"))
+            .send()
+            .await
+            .expect("set-cookie request succeeds")
+            .error_for_status()
+            .expect("set-cookie response is successful");
+        client
+            .http
+            .get(server.url("/no-cookie"))
+            .send()
+            .await
+            .expect("follow-up request succeeds")
+            .error_for_status()
+            .expect("follow-up response is successful");
+
+        set_cookie.assert();
+        no_cookie.assert();
     }
 
     async fn insert_cache_entry(client: &YfClient, url: &Url, body: &str, expires_at: Instant) {
