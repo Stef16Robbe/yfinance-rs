@@ -919,8 +919,10 @@ impl YfClientBuilder {
     /// Sets a custom reqwest client for full control over HTTP configuration.
     ///
     /// This allows you to configure advanced features like custom TLS settings,
-    /// connection pooling, or other reqwest-specific options. When this is set,
-    /// other HTTP-related builder methods (timeout, `connect_timeout`, proxy) are ignored.
+    /// connection pooling, proxies, DNS overrides, or other reqwest-specific options.
+    /// WebSocket streams use this client for their HTTP upgrade request before
+    /// handing the upgraded socket to tungstenite. When this is set, other HTTP-related
+    /// builder methods (timeout, `connect_timeout`, proxy) are ignored.
     /// Yahoo authentication cookies are still handled by `YfClient`, so custom
     /// clients do not need `reqwest`'s cookie store enabled. Builder-level
     /// default timeouts are not applied to custom clients.
@@ -947,7 +949,7 @@ impl YfClientBuilder {
         self
     }
 
-    /// Sets a proxy for all HTTP and HTTPS requests.
+    /// Sets a proxy for all HTTP and HTTPS requests, including WebSocket upgrade requests.
     ///
     /// This is a convenience method for setting up proxy configuration without
     /// needing to create a full custom client. If you need more advanced proxy
@@ -983,7 +985,7 @@ impl YfClientBuilder {
         self
     }
 
-    /// Sets a proxy for all HTTP and HTTPS requests with error handling.
+    /// Sets a proxy for all HTTP and HTTPS requests, including WebSocket upgrade requests.
     ///
     /// This is a convenience method for setting up proxy configuration without
     /// needing to create a full custom client. If you need more advanced proxy
@@ -1014,7 +1016,7 @@ impl YfClientBuilder {
         Ok(self)
     }
 
-    /// Sets a proxy for HTTPS requests.
+    /// Sets a proxy for HTTPS requests, including `wss://` WebSocket upgrade requests.
     ///
     /// This is a convenience method for setting up HTTPS proxy configuration.
     ///
@@ -1048,7 +1050,7 @@ impl YfClientBuilder {
         self
     }
 
-    /// Sets a proxy for HTTPS requests with error handling.
+    /// Sets a proxy for HTTPS requests, including `wss://` WebSocket upgrade requests.
     ///
     /// This is a convenience method for setting up HTTPS proxy configuration.
     ///

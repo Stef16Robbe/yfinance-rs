@@ -155,6 +155,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - General proxy configuration through `YfClientBuilder::proxy()` and
   `try_proxy()` now applies to Yahoo's HTTPS requests instead of only matching
   plain HTTP URLs.
+- WebSocket streams now perform their startup upgrade through the configured
+  reqwest client, so builder and custom-client proxy/DNS/TLS configuration is
+  honored consistently with HTTP calls.
 - `DownloadBuilder` best-effort batches now preserve successful symbols when an
   individual history fetch fails, reporting the failed symbol as a dropped
   download-entry diagnostic instead of aborting the whole batch.

@@ -305,6 +305,55 @@ async fn general_proxy_routes_https_requests_through_proxy() {
 }
 
 #[tokio::test]
+async fn general_proxy_routes_websocket_startup_through_proxy() {
+    let proxy = CaptureServer::start();
+    let target = CaptureServer::start();
+    let target_authority = target.addr.to_string();
+    let client = YfClient::builder()
+        .base_stream(Url::parse(&format!("wss://{target_authority}/stream")).unwrap())
+        .try_proxy(&proxy.proxy_url())
+        .unwrap()
+        .timeout(Duration::from_secs(2))
+        .build()
+        .unwrap();
+
+    let result = StreamBuilder::new(&client)
+        .symbols(["AAPL"])
+        .method(StreamMethod::Websocket)
+        .start()
+        .await;
+
+    assert!(result.is_err());
+    assert_websocket_proxy_connect(&proxy, &target, &target_authority);
+}
+
+#[tokio::test]
+async fn custom_client_proxy_routes_websocket_startup_through_proxy() {
+    let proxy = CaptureServer::start();
+    let target = CaptureServer::start();
+    let target_authority = target.addr.to_string();
+    let custom_client = reqwest::Client::builder()
+        .proxy(reqwest::Proxy::all(proxy.proxy_url()).unwrap())
+        .timeout(Duration::from_secs(2))
+        .build()
+        .unwrap();
+    let client = YfClient::builder()
+        .base_stream(Url::parse(&format!("wss://{target_authority}/stream")).unwrap())
+        .custom_client(custom_client)
+        .build()
+        .unwrap();
+
+    let result = StreamBuilder::new(&client)
+        .symbols(["AAPL"])
+        .method(StreamMethod::Websocket)
+        .start()
+        .await;
+
+    assert!(result.is_err());
+    assert_websocket_proxy_connect(&proxy, &target, &target_authority);
+}
+
+#[tokio::test]
 async fn per_call_retry_override_is_validated_before_request() {
     let client = YfClient::default();
 
@@ -316,6 +365,30 @@ async fn per_call_retry_override_is_validated_before_request() {
         .unwrap_err();
 
     assert_invalid_params(err, "factor");
+}
+
+fn assert_websocket_proxy_connect(
+    proxy: &CaptureServer,
+    target: &CaptureServer,
+    target_authority: &str,
+) {
+    let request = proxy
+        .recv_timeout(Duration::from_secs(2))
+        .expect("WebSocket startup should be sent to the configured proxy");
+    let request = String::from_utf8(request).expect("proxy CONNECT request should be UTF-8");
+
+    assert!(
+        request.starts_with("CONNECT "),
+        "expected a WebSocket HTTPS proxy CONNECT request, got {request:?}"
+    );
+    assert!(
+        request.contains(target_authority),
+        "expected CONNECT request to target {target_authority}, got {request:?}"
+    );
+    assert!(
+        target.recv_timeout(Duration::from_millis(100)).is_err(),
+        "WebSocket startup bypassed the proxy and connected directly to the target"
+    );
 }
 
 #[tokio::test]

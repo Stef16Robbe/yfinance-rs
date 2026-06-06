@@ -2,6 +2,13 @@ use base64::{Engine as _, engine::general_purpose};
 use chrono::{DateTime, Utc};
 use futures_util::{SinkExt, StreamExt};
 use prost::Message;
+use reqwest::{
+    StatusCode, Version,
+    header::{
+        CONNECTION, ORIGIN, SEC_WEBSOCKET_ACCEPT, SEC_WEBSOCKET_KEY, SEC_WEBSOCKET_VERSION,
+        UPGRADE, USER_AGENT,
+    },
+};
 use serde::Serialize;
 use std::{borrow::Cow, collections::HashMap, time::Duration};
 use tokio::{
@@ -10,13 +17,14 @@ use tokio::{
     task::JoinHandle,
 };
 use tokio_tungstenite::{
-    connect_async,
+    WebSocketStream,
     tungstenite::{
         Error as WsError,
-        handshake::client::{Request, generate_key},
-        protocol::Message as WsMessage,
+        handshake::{client::generate_key, derive_accept_key},
+        protocol::{Message as WsMessage, Role},
     },
 };
+use url::Url;
 
 use crate::{
     YfClient, YfError,
@@ -24,6 +32,7 @@ use crate::{
     core::client::{CacheMode, RetryConfig, normalize_symbols},
     core::conversions::{quantity_from_i64, quantity_from_u64},
     core::currency_resolver::ResolvedCurrencyUnit,
+    core::error::RedactedHttpError,
     core::yahoo_vocab::{parse_yahoo_quote_type, yahoo_exchange_to_listing_currency},
 };
 use paft::domain::{AssetKind, Instrument};
@@ -351,6 +360,78 @@ fn websocket_stop_requested(stop_rx: &mut oneshot::Receiver<()>) -> bool {
     !matches!(stop_rx.try_recv(), Err(oneshot::error::TryRecvError::Empty))
 }
 
+fn websocket_http_transport_error(err: &reqwest::Error) -> YfError {
+    WsError::Io(std::io::Error::other(
+        RedactedHttpError::new(err).to_string(),
+    ))
+    .into()
+}
+
+fn websocket_http_upgrade_url(base: &Url) -> Result<Url, YfError> {
+    let mut url = base.clone();
+    let scheme = match base.scheme() {
+        "wss" => "https",
+        "ws" => "http",
+        scheme => {
+            return Err(YfError::InvalidParams(format!(
+                "unsupported websocket URL scheme: {scheme}"
+            )));
+        }
+    };
+
+    url.set_scheme(scheme)
+        .map_err(|()| YfError::InvalidParams(format!("invalid websocket URL: {base}")))?;
+    Ok(url)
+}
+
+async fn connect_websocket_stream(
+    client: &YfClient,
+) -> Result<WebSocketStream<reqwest::Upgraded>, YfError> {
+    let base = client.base_stream();
+    let upgrade_url = websocket_http_upgrade_url(base)?;
+    let ws_key = generate_key();
+
+    let response = client
+        .http()
+        .get(upgrade_url)
+        .version(Version::HTTP_11)
+        .header(ORIGIN, "https://finance.yahoo.com")
+        .header(USER_AGENT, client.user_agent())
+        .header(UPGRADE, "websocket")
+        .header(CONNECTION, "Upgrade")
+        .header(SEC_WEBSOCKET_KEY, ws_key.as_str())
+        .header(SEC_WEBSOCKET_VERSION, "13")
+        .send()
+        .await
+        .map_err(|err| websocket_http_transport_error(&err))?;
+
+    let status = response.status();
+    if status != StatusCode::SWITCHING_PROTOCOLS {
+        return Err(YfError::Status {
+            status: status.as_u16(),
+            url: base.to_string(),
+        });
+    }
+
+    let expected_accept = derive_accept_key(ws_key.as_bytes());
+    if response
+        .headers()
+        .get(SEC_WEBSOCKET_ACCEPT)
+        .is_none_or(|accept| accept != expected_accept.as_str())
+    {
+        return Err(WsError::Protocol(
+            tokio_tungstenite::tungstenite::error::ProtocolError::SecWebSocketAcceptKeyMismatch,
+        )
+        .into());
+    }
+
+    let upgraded = response
+        .upgrade()
+        .await
+        .map_err(|err| websocket_http_transport_error(&err))?;
+    Ok(WebSocketStream::from_raw_socket(upgraded, Role::Client, None).await)
+}
+
 #[allow(clippy::too_many_lines)]
 async fn run_websocket_stream(
     client: &YfClient,
@@ -361,26 +442,7 @@ async fn run_websocket_stream(
     ws_idle_timeout: Duration,
 ) -> Result<(), YfError> {
     let startup_result = async {
-        let base = client.base_stream();
-        let host = base
-            .host_str()
-            .ok_or_else(|| YfError::InvalidParams("URL has no host".into()))?;
-
-        let request = Request::builder()
-            .uri(base.as_str())
-            .header("Host", host)
-            .header("Origin", "https://finance.yahoo.com")
-            .header("User-Agent", client.user_agent())
-            .header("Upgrade", "websocket")
-            .header("Connection", "Upgrade")
-            .header("Sec-WebSocket-Key", generate_key())
-            .header("Sec-WebSocket-Version", "13")
-            .body(())
-            .map_err(|e| {
-                YfError::InvalidParams(format!("Failed to build websocket request: {e}"))
-            })?;
-
-        let (ws_stream, _) = connect_async(request).await?;
+        let ws_stream = connect_websocket_stream(client).await?;
         let (mut write, read) = ws_stream.split();
 
         let sub_msg = serde_json::to_string(&WsSubscribe {
