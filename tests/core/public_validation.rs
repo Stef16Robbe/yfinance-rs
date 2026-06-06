@@ -11,6 +11,7 @@ use std::{
 };
 
 use httpmock::Method::GET;
+use tokio::sync::mpsc::{self as tokio_mpsc, UnboundedReceiver, error::TryRecvError};
 use url::Url;
 use yfinance_rs::{
     QuotesBuilder, StreamBuilder, StreamMethod, YfClient, YfCurrencyInference, YfCurrencyPurpose,
@@ -116,6 +117,101 @@ impl Drop for CaptureServer {
     }
 }
 
+struct HangingServer {
+    addr: SocketAddr,
+    stop: Arc<AtomicBool>,
+    requests: UnboundedReceiver<Vec<u8>>,
+    handle: Option<JoinHandle<()>>,
+}
+
+impl HangingServer {
+    fn start() -> Self {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let addr = listener.local_addr().unwrap();
+        listener.set_nonblocking(true).unwrap();
+
+        let stop = Arc::new(AtomicBool::new(false));
+        let stop_thread = Arc::clone(&stop);
+        let (tx, requests) = tokio_mpsc::unbounded_channel();
+        let handle = thread::spawn(move || {
+            #[allow(clippy::collection_is_never_read)]
+            let mut open_streams = Vec::new();
+            while !stop_thread.load(Ordering::Relaxed) {
+                match listener.accept() {
+                    Ok((mut stream, _)) => {
+                        stream
+                            .set_read_timeout(Some(Duration::from_millis(200)))
+                            .unwrap();
+                        let mut buffer = [0; 2048];
+                        let bytes_read = stream.read(&mut buffer).unwrap_or(0);
+                        let _ = tx.send(buffer[..bytes_read].to_vec());
+                        open_streams.push(stream);
+                    }
+                    Err(err) if err.kind() == ErrorKind::WouldBlock => {
+                        thread::sleep(Duration::from_millis(10));
+                    }
+                    Err(_) => return,
+                }
+            }
+        });
+
+        Self {
+            addr,
+            stop,
+            requests,
+            handle: Some(handle),
+        }
+    }
+
+    fn quote_url(&self) -> Url {
+        Url::parse(&format!("http://{}/v7/finance/quote", self.addr)).unwrap()
+    }
+
+    async fn recv_request(&mut self) -> Vec<u8> {
+        self.requests
+            .recv()
+            .await
+            .expect("hanging server request channel should stay open")
+    }
+
+    async fn recv_request_timeout(&mut self, timeout: Duration) -> Vec<u8> {
+        tokio::time::timeout(timeout, self.recv_request())
+            .await
+            .expect("timed out waiting for hanging server request")
+    }
+
+    fn assert_no_pending_request(&mut self) {
+        assert!(
+            matches!(self.requests.try_recv(), Err(TryRecvError::Empty)),
+            "unexpected extra request to hanging server"
+        );
+    }
+}
+
+impl Drop for HangingServer {
+    fn drop(&mut self) {
+        self.stop.store(true, Ordering::Relaxed);
+        if let Some(handle) = self.handle.take() {
+            let _ = handle.join();
+        }
+    }
+}
+
+fn fast_timeout_retry_config(max_retries: u32) -> RetryConfig {
+    RetryConfig {
+        max_retries,
+        backoff: Backoff::Fixed(Duration::ZERO),
+        ..RetryConfig::default()
+    }
+}
+
+fn assert_http_error(err: YfError) {
+    match err {
+        YfError::Http(_) => {}
+        other => panic!("expected HTTP error, got {other:?}"),
+    }
+}
+
 #[test]
 fn client_builder_rejects_invalid_retry_backoff_factors() {
     for factor in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, -1.0, 0.0] {
@@ -138,6 +234,39 @@ fn client_builder_rejects_excessive_retry_counts() {
     let err = YfClient::builder().retry_config(cfg).build().unwrap_err();
 
     assert_invalid_params(err, "max_retries");
+}
+
+#[tokio::test]
+async fn configured_timeout_retries_hanging_quote_requests() {
+    let mut server = HangingServer::start();
+    let client = YfClient::builder()
+        .base_quote_v7(server.quote_url())
+        .timeout(Duration::from_millis(50))
+        .connect_timeout(Duration::from_millis(50))
+        .retry_config(fast_timeout_retry_config(2))
+        .build()
+        .unwrap();
+
+    let request =
+        tokio::spawn(async move { QuotesBuilder::new(&client).symbols(["AAPL"]).fetch().await });
+
+    for _ in 0..3 {
+        let req = server.recv_request_timeout(Duration::from_secs(1)).await;
+        assert!(
+            String::from_utf8_lossy(&req).starts_with("GET /v7/finance/quote?symbols=AAPL"),
+            "unexpected request: {:?}",
+            String::from_utf8_lossy(&req)
+        );
+    }
+
+    let err = tokio::time::timeout(Duration::from_secs(1), request)
+        .await
+        .expect("configured timeout request should finish")
+        .unwrap()
+        .unwrap_err();
+
+    assert_http_error(err);
+    server.assert_no_pending_request();
 }
 
 #[tokio::test]

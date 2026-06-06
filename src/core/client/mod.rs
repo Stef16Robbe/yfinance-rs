@@ -27,6 +27,14 @@ use tokio::sync::RwLock;
 use url::Url;
 
 const DEFAULT_CACHE_MAX_ENTRIES: usize = 1024;
+const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
+const DEFAULT_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct HttpTimeouts {
+    request: Duration,
+    connect: Duration,
+}
 
 #[derive(Debug)]
 struct CacheEntry {
@@ -421,6 +429,19 @@ pub struct YfClientBuilder {
 }
 
 impl YfClientBuilder {
+    const fn http_timeouts(&self) -> HttpTimeouts {
+        HttpTimeouts {
+            request: match self.timeout {
+                Some(timeout) => timeout,
+                None => DEFAULT_REQUEST_TIMEOUT,
+            },
+            connect: match self.connect_timeout {
+                Some(timeout) => timeout,
+                None => DEFAULT_CONNECT_TIMEOUT,
+            },
+        }
+    }
+
     /// Sets the `User-Agent` header for all HTTP requests and WebSocket connections.
     ///
     /// The user agent is applied consistently across all request types:
@@ -559,7 +580,7 @@ impl YfClientBuilder {
 
     /// Sets a global timeout for the entire HTTP request.
     ///
-    /// Default: none.
+    /// Default for clients built without [`YfClientBuilder::custom_client`]: 30 seconds.
     #[must_use]
     pub const fn timeout(mut self, dur: Duration) -> Self {
         self.timeout = Some(dur);
@@ -568,7 +589,7 @@ impl YfClientBuilder {
 
     /// Sets a timeout for the connection phase of an HTTP request.
     ///
-    /// Default: none.
+    /// Default for clients built without [`YfClientBuilder::custom_client`]: 10 seconds.
     #[must_use]
     pub const fn connect_timeout(mut self, dur: Duration) -> Self {
         self.connect_timeout = Some(dur);
@@ -613,7 +634,8 @@ impl YfClientBuilder {
     /// connection pooling, or other reqwest-specific options. When this is set,
     /// other HTTP-related builder methods (timeout, `connect_timeout`, proxy) are ignored.
     /// Yahoo authentication cookies are still handled by `YfClient`, so custom
-    /// clients do not need `reqwest`'s cookie store enabled.
+    /// clients do not need `reqwest`'s cookie store enabled. Builder-level
+    /// default timeouts are not applied to custom clients.
     ///
     /// # Example
     ///
@@ -773,6 +795,7 @@ impl YfClientBuilder {
     ///
     /// Returns an error if the base URLs are invalid or the HTTP client fails to build.
     pub fn build(self) -> Result<YfClient, YfError> {
+        let timeouts = self.http_timeouts();
         let base_chart = self.base_chart.unwrap_or(Url::parse(DEFAULT_BASE_CHART)?);
         let base_quote_api = self
             .base_quote_api
@@ -807,12 +830,8 @@ impl YfClientBuilder {
         } else {
             let mut httpb = reqwest::Client::builder().cookie_store(true);
 
-            if let Some(t) = self.timeout {
-                httpb = httpb.timeout(t);
-            }
-            if let Some(ct) = self.connect_timeout {
-                httpb = httpb.connect_timeout(ct);
-            }
+            httpb = httpb.timeout(timeouts.request);
+            httpb = httpb.connect_timeout(timeouts.connect);
             if let Some(proxy) = self.proxy {
                 httpb = httpb.proxy(proxy);
             }
@@ -993,6 +1012,31 @@ mod tests {
         Instant::now()
             .checked_sub(Duration::from_secs(1))
             .expect("instant supports recent past")
+    }
+
+    #[test]
+    fn builder_defaults_to_bounded_http_timeouts() {
+        assert_eq!(
+            YfClientBuilder::default().http_timeouts(),
+            HttpTimeouts {
+                request: DEFAULT_REQUEST_TIMEOUT,
+                connect: DEFAULT_CONNECT_TIMEOUT,
+            }
+        );
+    }
+
+    #[test]
+    fn builder_http_timeouts_are_overridable() {
+        let request = Duration::from_secs(7);
+        let connect = Duration::from_secs(2);
+
+        assert_eq!(
+            YfClientBuilder::default()
+                .timeout(request)
+                .connect_timeout(connect)
+                .http_timeouts(),
+            HttpTimeouts { request, connect }
+        );
     }
 
     async fn insert_cache_entry(client: &YfClient, url: &Url, body: &str, expires_at: Instant) {

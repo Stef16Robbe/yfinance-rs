@@ -86,6 +86,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- `YfClient::default()` and builder-created clients now apply a 30-second total
+  request timeout and a 10-second connect timeout by default, so stalled
+  connections fail and can trigger timeout retries instead of hanging forever.
 - Listing-currency inference now reaches Yahoo exchange alias fallbacks such as
   `NASDAQ`, `LONDON`, and `FRA` before strict exchange parsing can reject them.
 - Cached quoteSummary and fundamentals-timeseries responses are now returned before
