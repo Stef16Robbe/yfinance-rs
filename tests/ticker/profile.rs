@@ -1,7 +1,7 @@
 use httpmock::{Method::GET, MockServer};
 use paft::fundamentals::profile::Profile;
 use url::Url;
-use yfinance_rs::{Ticker, YfClient};
+use yfinance_rs::{Ticker, YfClient, YfError};
 
 #[tokio::test]
 async fn offline_profile_uses_recorded_fixture() {
@@ -78,5 +78,28 @@ async fn live_profile_smoke_and_or_record() {
             }
             _ => panic!("expected company profile"),
         }
+    }
+}
+
+#[tokio::test]
+#[ignore = "exercise live Yahoo Finance API"]
+async fn live_profile_unsupported_quote_types_are_provider_data_errors() {
+    if !crate::common::live_or_record_enabled() {
+        return;
+    }
+
+    let client = YfClient::builder().build().unwrap();
+
+    for (sym, quote_type) in [("^GSPC", "INDEX"), ("BTC-USD", "CRYPTOCURRENCY")] {
+        let err = Ticker::new(&client, sym).profile().await.unwrap_err();
+        assert!(
+            matches!(
+                err,
+                YfError::InvalidData(ref message)
+                    if message.contains("profile unavailable")
+                        && message.contains(quote_type)
+            ),
+            "{sym} should report unsupported profile quoteType {quote_type} as provider data, got {err:?}"
+        );
     }
 }

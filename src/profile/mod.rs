@@ -30,8 +30,8 @@ impl YahooProfileKind {
             "EQUITY" => Ok(Self::Company),
             "ETF" => Ok(Self::Fund(FundQuoteKind::Etf)),
             "MUTUALFUND" => Ok(Self::Fund(FundQuoteKind::MutualFund)),
-            other => Err(YfError::InvalidParams(format!(
-                "unsupported quoteType: {other}"
+            other => Err(YfError::InvalidData(format!(
+                "profile unavailable for Yahoo quoteType {other}"
             ))),
         }
     }

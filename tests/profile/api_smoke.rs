@@ -2,7 +2,7 @@ use crate::common::setup_server;
 use httpmock::Method::GET;
 use paft::fundamentals::profile::Profile;
 use url::Url;
-use yfinance_rs::YfClient;
+use yfinance_rs::{YfClient, YfError};
 
 #[tokio::test]
 async fn profile_api_company_happy() {
@@ -187,5 +187,60 @@ async fn profile_api_mutual_fund_happy() {
             assert_eq!(f.kind.to_string(), "MUTUAL_FUND");
         }
         _ => panic!("expected Fund"),
+    }
+}
+
+#[tokio::test]
+async fn profile_api_unsupported_quote_type_is_provider_data_error() {
+    for (sym, quote_type) in [("^GSPC", "INDEX"), ("BTC-USD", "CRYPTOCURRENCY")] {
+        let server = setup_server();
+        let crumb = "test-crumb";
+
+        let mock = server.mock(|when, then| {
+            when.method(GET)
+                .path(format!("/v10/finance/quoteSummary/{sym}"))
+                .query_param("modules", "assetProfile,quoteType,fundProfile")
+                .query_param("crumb", crumb);
+            then.status(200)
+                .header("content-type", "application/json")
+                .body(
+                    serde_json::json!({
+                        "quoteSummary": {
+                            "error": null,
+                            "result": [{
+                                "quoteType": {
+                                    "quoteType": quote_type,
+                                    "longName": sym,
+                                    "symbol": sym
+                                }
+                            }]
+                        }
+                    })
+                    .to_string(),
+                );
+        });
+
+        let client = YfClient::builder()
+            .base_quote_api(
+                Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+            )
+            ._preauth("cookie", crumb)
+            .build()
+            .unwrap();
+
+        let err = yfinance_rs::profile::load_profile(&client, sym)
+            .await
+            .unwrap_err();
+        mock.assert();
+
+        assert!(
+            matches!(
+                err,
+                YfError::InvalidData(ref message)
+                    if message.contains("profile unavailable")
+                        && message.contains(quote_type)
+            ),
+            "{sym} {quote_type} should fail as provider data, got {err:?}"
+        );
     }
 }

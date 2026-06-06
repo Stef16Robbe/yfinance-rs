@@ -90,6 +90,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- `profile()` now reports valid symbols with unsupported Yahoo instrument types
+  such as indexes and cryptocurrencies as provider data errors instead of
+  invalid caller parameters.
 - Batch quotes with diagnostics now report requested symbols that Yahoo omits
   from the v7 response instead of silently returning a shorter quote vector.
 - `YfClient::default()` and builder-created clients now apply a 30-second total
