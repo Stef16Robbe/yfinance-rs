@@ -248,6 +248,57 @@ async fn stream_websocket_replies_to_ping() {
 }
 
 #[tokio::test]
+async fn stream_websocket_fallback_to_polling_after_idle_timeout() {
+    let server = crate::common::setup_server();
+
+    let mock = server.mock(|when, then| {
+        when.method(httpmock::Method::GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "AAPL");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(crate::common::fixture("quote_v7", "AAPL", "json"));
+    });
+
+    let (stream_url, websocket_thread) = spawn_websocket_server(|websocket| {
+        let subscription = websocket
+            .read()
+            .expect("server should receive websocket subscription");
+        assert_subscription(subscription, &["AAPL"]);
+
+        thread::sleep(Duration::from_millis(300));
+    });
+
+    let client = yfinance_rs::YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .base_stream(stream_url)
+        .build()
+        .unwrap();
+
+    let builder = yfinance_rs::StreamBuilder::new(&client)
+        .symbols(["AAPL"])
+        .method(StreamMethod::WebsocketWithFallback)
+        .interval(Duration::from_millis(40))
+        .websocket_idle_timeout(Duration::from_millis(80));
+
+    let (handle, mut rx) = builder.start().await.unwrap();
+
+    let got = timeout(Duration::from_secs(3), rx.recv()).await;
+    handle.abort();
+    websocket_thread
+        .join()
+        .expect("websocket server thread panicked");
+
+    mock.assert();
+
+    let update = got
+        .expect("timed out waiting for fallback stream update")
+        .expect("stream closed without falling back after websocket idle timeout");
+
+    assert_eq!(update.instrument.symbol.as_str(), "AAPL");
+}
+
+#[tokio::test]
 async fn stream_websocket_fallback_to_polling_offline() {
     let server = crate::common::setup_server();
 

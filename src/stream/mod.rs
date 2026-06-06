@@ -31,6 +31,7 @@ use paft::market::quote::QuoteUpdate;
 use paft::money::{PriceAmount, QuantityAmount};
 
 const UNTYPED_STREAM_ASSET_KIND: &str = "YAHOO_STREAM_UNTYPED";
+const DEFAULT_WEBSOCKET_IDLE_TIMEOUT: Duration = Duration::from_secs(90);
 
 // Yahoo Finance websocket wire types (generated from `yaticker.proto`).
 mod wire_ws {
@@ -113,6 +114,7 @@ pub struct StreamBuilder {
     symbols: Vec<String>,
     cfg: StreamConfig,
     method: StreamMethod,
+    ws_idle_timeout: Duration,
     options: CallOptions,
 }
 
@@ -125,6 +127,7 @@ impl StreamBuilder {
             symbols: Vec::new(),
             cfg: StreamConfig::default(),
             method: StreamMethod::default(),
+            ws_idle_timeout: DEFAULT_WEBSOCKET_IDLE_TIMEOUT,
             options: CallOptions::default(),
         }
     }
@@ -182,6 +185,16 @@ impl StreamBuilder {
         self
     }
 
+    /// Sets how long a WebSocket stream may receive no frames before treating the socket as dead.
+    ///
+    /// Yahoo normally sends WebSocket ping frames while quote traffic is idle, so the default waits
+    /// for multiple missed heartbeat windows before falling back or closing the stream.
+    #[must_use]
+    pub const fn websocket_idle_timeout(mut self, timeout: Duration) -> Self {
+        self.ws_idle_timeout = timeout;
+        self
+    }
+
     fn validated_symbols(&self) -> Result<Vec<String>, crate::core::YfError> {
         if self.symbols.is_empty() {
             return Err(crate::core::YfError::InvalidParams(
@@ -191,6 +204,11 @@ impl StreamBuilder {
         if self.cfg.interval.is_zero() {
             return Err(crate::core::YfError::InvalidParams(
                 "stream interval must be greater than zero".into(),
+            ));
+        }
+        if self.ws_idle_timeout.is_zero() {
+            return Err(crate::core::YfError::InvalidParams(
+                "websocket idle timeout must be greater than zero".into(),
             ));
         }
 
@@ -230,6 +248,7 @@ impl StreamBuilder {
             let symbols = symbols.clone();
             let cfg = self.cfg.clone();
             let method = self.method;
+            let ws_idle_timeout = self.ws_idle_timeout;
 
             let mut stop_rx = stop_rx;
 
@@ -238,9 +257,15 @@ impl StreamBuilder {
             async move {
                 match method {
                     StreamMethod::Websocket => {
-                        if let Err(e) =
-                            run_websocket_stream(&client, symbols, tx, &mut stop_rx, startup_tx)
-                                .await
+                        if let Err(e) = run_websocket_stream(
+                            &client,
+                            symbols,
+                            tx,
+                            &mut stop_rx,
+                            startup_tx,
+                            ws_idle_timeout,
+                        )
+                        .await
                         {
                             crate::core::logging::trace_warn!(
                                 error = %e,
@@ -258,6 +283,7 @@ impl StreamBuilder {
                             tx,
                             &mut stop_rx,
                             &options,
+                            ws_idle_timeout,
                         )
                         .await;
                     }
@@ -313,6 +339,14 @@ fn websocket_remote_closed_error() -> YfError {
     WsError::ConnectionClosed.into()
 }
 
+fn websocket_idle_timeout_error(timeout: Duration) -> YfError {
+    WsError::Io(std::io::Error::new(
+        std::io::ErrorKind::TimedOut,
+        format!("websocket stream received no frames for {timeout:?}"),
+    ))
+    .into()
+}
+
 fn websocket_stop_requested(stop_rx: &mut oneshot::Receiver<()>) -> bool {
     !matches!(stop_rx.try_recv(), Err(oneshot::error::TryRecvError::Empty))
 }
@@ -324,6 +358,7 @@ async fn run_websocket_stream(
     tx: mpsc::Sender<QuoteUpdate>,
     stop_rx: &mut oneshot::Receiver<()>,
     startup_tx: Option<oneshot::Sender<Result<(), YfError>>>,
+    ws_idle_timeout: Duration,
 ) -> Result<(), YfError> {
     let startup_result = async {
         let base = client.base_stream();
@@ -453,6 +488,11 @@ async fn run_websocket_stream(
                     }
                 }
             },
+            // Yahoo sends ping frames during idle periods. Missing several of those likely means
+            // the TCP/WebSocket connection is half-open, so reconnect or fall back to polling.
+            () = tokio::time::sleep(ws_idle_timeout) => {
+                return Err(websocket_idle_timeout_error(ws_idle_timeout));
+            },
             _ = &mut *stop_rx => {
                 break;
             }
@@ -468,6 +508,7 @@ async fn run_websocket_stream_with_fallback(
     tx: tokio::sync::mpsc::Sender<QuoteUpdate>,
     stop_rx: &mut tokio::sync::oneshot::Receiver<()>,
     options: &CallOptions,
+    ws_idle_timeout: Duration,
 ) {
     let mut ticker = tokio::time::interval(cfg.interval);
     let mut last_price: HashMap<String, Option<f64>> = HashMap::new();
@@ -477,7 +518,16 @@ async fn run_websocket_stream_with_fallback(
             break;
         }
 
-        match run_websocket_stream(&client, symbols.clone(), tx.clone(), stop_rx, None).await {
+        match run_websocket_stream(
+            &client,
+            symbols.clone(),
+            tx.clone(),
+            stop_rx,
+            None,
+            ws_idle_timeout,
+        )
+        .await
+        {
             Ok(()) => break,
             Err(e) => {
                 crate::core::logging::trace_warn!(
