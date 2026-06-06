@@ -444,10 +444,8 @@ async fn run_websocket_stream(
                             }
                         }
                     }
-                    Some(Ok(WsMessage::Ping(payload))) => {
-                        write.send(WsMessage::Pong(payload)).await?;
-                    }
-                    Some(Ok(WsMessage::Pong(_) | WsMessage::Frame(_))) => {}
+                    // Tungstenite queues ping replies automatically; keep polling so they flush.
+                    Some(Ok(WsMessage::Ping(_) | WsMessage::Pong(_) | WsMessage::Frame(_))) => {}
                     Some(Ok(WsMessage::Close(_))) => {
                         write.flush().await?;
                         if websocket_stop_requested(stop_rx) {

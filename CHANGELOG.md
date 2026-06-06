@@ -111,6 +111,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Polling streams with `diff_only(true)` now advance their last-price filter
   only after a quote update is successfully emitted, so a skipped malformed
   quote cannot suppress a later valid quote at the same price.
+- WebSocket streams now rely on tungstenite's automatic ping replies instead of
+  writing explicit pong frames from the stream loop.
 - WebSocket quote updates now preserve equity prices when Yahoo omits the
   currency field but includes an exchange code, and they no longer project
   protobuf default zero prices as real monetary values.
