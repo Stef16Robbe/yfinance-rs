@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Public builder constructors now consistently borrow `&YfClient`, including
   `QuotesBuilder::new`, and builder execution methods borrow the configured
   builder instead of consuming it.
+- `HistoryService::fetch_full_history()` now returns an unboxed `impl Future + Send`
+  instead of a pinned boxed future; callers can still `.await` it directly, but
+  custom trait implementors must update their signatures.
 - `ScreenerNumber` is now an opaque validated value. Floating-point values must
   be constructed with `ScreenerNumber::new`, while integer values still use the
   existing `From` conversions.
@@ -254,6 +257,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
+- Remove remaining unnecessary `Box::pin(...).await` calls now that the crate's
+  MSRV supports direct async/await patterns throughout those paths.
 - `DownloadBuilder` now caps per-symbol history fetch concurrency to 8 requests by default and exposes `DownloadConcurrency` plus `DownloadBuilder::concurrency()` for callers that need a different limit.
 - Centralize repeated per-call builder option setters through one internal macro.
 - Clean up example output so holder rows, corporate actions, historical action dates, and handled live Yahoo errors render as user-facing text instead of debug-shaped values.

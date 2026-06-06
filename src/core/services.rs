@@ -36,13 +36,11 @@ pub trait HistoryService: Send + Sync {
     /// * `req` - A `HistoryRequest` struct containing all the parameters for the query.
     ///
     /// # Returns
-    /// A `Future` that resolves to a `Result` containing either a `HistoryResponse` on success
-    /// or a `YfError` on failure.
-    fn fetch_full_history<'a>(
-        &'a self,
-        symbol: &'a str,
+    /// A future that resolves to a `Result` containing either a `HistoryResponse` on success
+    /// or a `YfError` on failure. The future is unboxed and must be `Send`.
+    fn fetch_full_history(
+        &self,
+        symbol: &str,
         req: HistoryRequest,
-    ) -> core::pin::Pin<
-        Box<dyn core::future::Future<Output = Result<HistoryResponse, YfError>> + Send + 'a>,
-    >;
+    ) -> impl core::future::Future<Output = Result<HistoryResponse, YfError>> + Send;
 }

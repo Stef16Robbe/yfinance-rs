@@ -131,7 +131,7 @@ impl Ticker {
     /// or strict data-quality mode rejects a projection issue.
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), err, fields(symbol = %self.symbol)))]
     pub async fn info(&self) -> Result<Info, YfError> {
-        Box::pin(info::fetch_info(&self.client, &self.symbol, &self.options)).await
+        info::fetch_info(&self.client, &self.symbol, &self.options).await
     }
 
     /// Fetches aggregate `Info` with projection diagnostics for optional submodules.
@@ -141,12 +141,7 @@ impl Ticker {
     /// This method will return an error if the required quote data cannot be fetched
     /// or strict data-quality mode rejects a projection issue.
     pub async fn info_with_diagnostics(&self) -> Result<YfResponse<Info>, YfError> {
-        Box::pin(info::fetch_info_with_diagnostics(
-            &self.client,
-            &self.symbol,
-            &self.options,
-        ))
-        .await
+        info::fetch_info_with_diagnostics(&self.client, &self.symbol, &self.options).await
     }
 
     /// Fetches aggregate `Info` and fails if any optional submodule cannot be loaded.
@@ -157,13 +152,11 @@ impl Ticker {
     /// or any optional submodule fails to project cleanly.
     pub async fn info_strict(&self) -> Result<Info, YfError> {
         let options = self.options.clone().strict();
-        Ok(Box::pin(info::fetch_info_with_diagnostics(
-            &self.client,
-            &self.symbol,
-            &options,
-        ))
-        .await?
-        .into_data())
+        Ok(
+            info::fetch_info_with_diagnostics(&self.client, &self.symbol, &options)
+                .await?
+                .into_data(),
+        )
     }
 
     /// Fetches the company, ETF, or mutual-fund profile for the ticker.

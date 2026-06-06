@@ -63,8 +63,7 @@ pub(super) async fn fetch_info_with_diagnostics(
 ) -> Result<YfResponse<Info>, YfError> {
     let symbol = normalize_symbol(symbol)?;
     let mut ctx = ProjectionContext::new("info", options.data_quality());
-    let (quote, quote_summary_parts) =
-        Box::pin(fetch_info_parts(client, &symbol, options, &mut ctx)).await?;
+    let (quote, quote_summary_parts) = fetch_info_parts(client, &symbol, options, &mut ctx).await?;
     let quote_summary = project_info_quote_summary_parts(&mut ctx, &symbol, quote_summary_parts)?;
 
     let key_statistics = quote.to_key_statistics_with_context(&mut ctx)?;
