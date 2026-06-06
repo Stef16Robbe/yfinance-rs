@@ -101,6 +101,21 @@ impl Ticker {
         self
     }
 
+    /// Sets how provider projection issues are handled for subsequent API calls.
+    ///
+    /// Builders created from this ticker inherit this setting.
+    #[must_use]
+    pub const fn data_quality(mut self, policy: DataQuality) -> Self {
+        self.options.data_quality = policy;
+        self
+    }
+
+    /// Fails when Yahoo data cannot be projected losslessly.
+    #[must_use]
+    pub const fn strict(self) -> Self {
+        self.data_quality(DataQuality::Strict)
+    }
+
     /// Fetches a comprehensive `Info` struct containing quote, profile, calendar, and analysis data.
     ///
     /// This method conveniently aggregates data from multiple endpoints into a single struct,
@@ -112,7 +127,8 @@ impl Ticker {
     ///
     /// # Errors
     ///
-    /// This method will return an error if the required quote data cannot be fetched.
+    /// This method will return an error if the required quote data cannot be fetched
+    /// or strict data-quality mode rejects a projection issue.
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), err, fields(symbol = %self.symbol)))]
     pub async fn info(&self) -> Result<Info, YfError> {
         Box::pin(info::fetch_info(&self.client, &self.symbol, &self.options)).await
@@ -122,16 +138,13 @@ impl Ticker {
     ///
     /// # Errors
     ///
-    /// This method will return an error if the required quote data cannot be fetched.
+    /// This method will return an error if the required quote data cannot be fetched
+    /// or strict data-quality mode rejects a projection issue.
     pub async fn info_with_diagnostics(&self) -> Result<YfResponse<Info>, YfError> {
-        let options = self
-            .options
-            .clone()
-            .with_data_quality(DataQuality::BestEffort);
         Box::pin(info::fetch_info_with_diagnostics(
             &self.client,
             &self.symbol,
-            &options,
+            &self.options,
         ))
         .await
     }
@@ -173,7 +186,8 @@ impl Ticker {
     ///
     /// # Errors
     ///
-    /// This method will return an error if the request fails or the response cannot be parsed.
+    /// This method will return an error if the request fails, the response cannot be parsed,
+    /// or strict data-quality mode rejects a projection issue.
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), err, fields(symbol = %self.symbol)))]
     pub async fn quote(&self) -> Result<Quote, YfError> {
         quote::fetch_quote(&self.client, &self.symbol, &self.options).await
@@ -183,20 +197,18 @@ impl Ticker {
     ///
     /// # Errors
     ///
-    /// This method will return an error if the request fails or the response cannot be parsed.
+    /// This method will return an error if the request fails, the response cannot be parsed,
+    /// or strict data-quality mode rejects a projection issue.
     pub async fn quote_with_diagnostics(&self) -> Result<YfResponse<Quote>, YfError> {
-        let options = self
-            .options
-            .clone()
-            .with_data_quality(DataQuality::BestEffort);
-        quote::fetch_quote_with_diagnostics(&self.client, &self.symbol, &options).await
+        quote::fetch_quote_with_diagnostics(&self.client, &self.symbol, &self.options).await
     }
 
     /// Fetches fast ticker information, including a quote snapshot and moving averages.
     ///
     /// # Errors
     ///
-    /// This method will return an error if the request fails or the response cannot be parsed.
+    /// This method will return an error if the request fails, the response cannot be parsed,
+    /// or strict data-quality mode rejects a projection issue.
     pub async fn fast_info(&self) -> Result<FastInfo, YfError> {
         quote::fetch_fast_info(&self.client, &self.symbol, &self.options).await
     }
@@ -205,13 +217,10 @@ impl Ticker {
     ///
     /// # Errors
     ///
-    /// This method will return an error if the request fails or the response cannot be parsed.
+    /// This method will return an error if the request fails, the response cannot be parsed,
+    /// or strict data-quality mode rejects a projection issue.
     pub async fn fast_info_with_diagnostics(&self) -> Result<YfResponse<FastInfo>, YfError> {
-        let options = self
-            .options
-            .clone()
-            .with_data_quality(DataQuality::BestEffort);
-        quote::fetch_fast_info_with_diagnostics(&self.client, &self.symbol, &options).await
+        quote::fetch_fast_info_with_diagnostics(&self.client, &self.symbol, &self.options).await
     }
 
     /// Fetches valuation, dividend, volume, and risk statistics for the ticker.
@@ -220,7 +229,8 @@ impl Ticker {
     ///
     /// # Errors
     ///
-    /// This method will return an error if the request fails or the response cannot be parsed.
+    /// This method will return an error if the request fails, the response cannot be parsed,
+    /// or strict data-quality mode rejects a projection issue.
     pub async fn key_statistics(&self) -> Result<KeyStatistics, YfError> {
         quote::fetch_key_statistics(&self.client, &self.symbol, &self.options).await
     }
@@ -229,15 +239,13 @@ impl Ticker {
     ///
     /// # Errors
     ///
-    /// This method will return an error if the request fails or the response cannot be parsed.
+    /// This method will return an error if the request fails, the response cannot be parsed,
+    /// or strict data-quality mode rejects a projection issue.
     pub async fn key_statistics_with_diagnostics(
         &self,
     ) -> Result<YfResponse<KeyStatistics>, YfError> {
-        let options = self
-            .options
-            .clone()
-            .with_data_quality(DataQuality::BestEffort);
-        quote::fetch_key_statistics_with_diagnostics(&self.client, &self.symbol, &options).await
+        quote::fetch_key_statistics_with_diagnostics(&self.client, &self.symbol, &self.options)
+            .await
     }
 
     /* ---------------- News convenience ---------------- */
@@ -247,6 +255,7 @@ impl Ticker {
     pub fn news_builder(&self) -> NewsBuilder {
         NewsBuilder::new(&self.client, &self.symbol)
             .cache_mode(self.options.cache_mode())
+            .data_quality(self.options.data_quality())
             .retry_policy(self.options.retry_override().cloned())
     }
 
@@ -254,7 +263,8 @@ impl Ticker {
     ///
     /// # Errors
     ///
-    /// This method will return an error if the request fails or the response cannot be parsed.
+    /// This method will return an error if the request fails, the response cannot be parsed,
+    /// or strict data-quality mode rejects a projection issue.
     pub async fn news(&self) -> Result<Vec<NewsArticle>, YfError> {
         self.news_builder().fetch().await
     }
@@ -266,6 +276,7 @@ impl Ticker {
     pub fn history_builder(&self) -> HistoryBuilder {
         HistoryBuilder::new(&self.client, &self.symbol)
             .cache_mode(self.options.cache_mode())
+            .data_quality(self.options.data_quality())
             .retry_policy(self.options.retry_override().cloned())
     }
 
@@ -280,7 +291,8 @@ impl Ticker {
     ///
     /// # Errors
     ///
-    /// This method will return an error if the request fails or the response cannot be parsed.
+    /// This method will return an error if the request fails, the response cannot be parsed,
+    /// or strict data-quality mode rejects a projection issue.
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), err, fields(symbol = %self.symbol)))]
     pub async fn history(
         &self,
@@ -368,7 +380,8 @@ impl Ticker {
     ///
     /// # Errors
     ///
-    /// This method will return an error if the request fails or the response cannot be parsed.
+    /// This method will return an error if the request fails, the response cannot be parsed,
+    /// or strict data-quality mode rejects a projection issue.
     pub async fn option_chain(&self, date: Option<i64>) -> Result<OptionChain, YfError> {
         options::option_chain(&self.client, &self.symbol, date, &self.options).await
     }
@@ -379,16 +392,14 @@ impl Ticker {
     ///
     /// # Errors
     ///
-    /// This method will return an error if the request fails or the response cannot be parsed.
+    /// This method will return an error if the request fails, the response cannot be parsed,
+    /// or strict data-quality mode rejects a projection issue.
     pub async fn option_chain_with_diagnostics(
         &self,
         date: Option<i64>,
     ) -> Result<YfResponse<OptionChain>, YfError> {
-        let options = self
-            .options
-            .clone()
-            .with_data_quality(DataQuality::BestEffort);
-        options::option_chain_with_diagnostics(&self.client, &self.symbol, date, &options).await
+        options::option_chain_with_diagnostics(&self.client, &self.symbol, date, &self.options)
+            .await
     }
 
     /* ---------------- Holders convenience ---------------- */
@@ -396,6 +407,7 @@ impl Ticker {
     fn holders_builder(&self) -> HoldersBuilder {
         HoldersBuilder::new(&self.client, &self.symbol)
             .cache_mode(self.options.cache_mode())
+            .data_quality(self.options.data_quality())
             .retry_policy(self.options.retry_override().cloned())
     }
 
@@ -460,6 +472,7 @@ impl Ticker {
     fn analysis_builder(&self) -> AnalysisBuilder {
         AnalysisBuilder::new(&self.client, &self.symbol)
             .cache_mode(self.options.cache_mode())
+            .data_quality(self.options.data_quality())
             .retry_policy(self.options.retry_override().cloned())
     }
 
@@ -531,6 +544,7 @@ impl Ticker {
     fn esg_builder(&self) -> EsgBuilder {
         EsgBuilder::new(&self.client, &self.symbol)
             .cache_mode(self.options.cache_mode())
+            .data_quality(self.options.data_quality())
             .retry_policy(self.options.retry_override().cloned())
     }
 
@@ -558,6 +572,7 @@ impl Ticker {
     fn fundamentals_builder(&self) -> FundamentalsBuilder {
         FundamentalsBuilder::new(&self.client, &self.symbol)
             .cache_mode(self.options.cache_mode())
+            .data_quality(self.options.data_quality())
             .retry_policy(self.options.retry_override().cloned())
     }
 

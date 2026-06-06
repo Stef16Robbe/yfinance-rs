@@ -4,6 +4,8 @@ mod common;
 mod actions;
 #[path = "ticker/capital_gains.rs"]
 mod capital_gains;
+#[path = "ticker/data_quality.rs"]
+mod data_quality;
 #[path = "ticker/fast_info.rs"]
 mod fast_info;
 #[path = "ticker/history_convenience.rs"]
