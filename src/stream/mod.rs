@@ -95,7 +95,7 @@ impl StreamHandle {
 /// Defines the transport method for streaming quote data.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum StreamMethod {
-    /// Attempt to use `WebSockets`, and fall back to polling if the connection fails. (Default)
+    /// Attempt to use `WebSockets`, using polling between reconnect attempts. (Default)
     #[default]
     WebsocketWithFallback,
     /// Use `WebSockets` only.
@@ -251,24 +251,15 @@ impl StreamBuilder {
                         }
                     }
                     StreamMethod::WebsocketWithFallback => {
-                        if let Err(e) = run_websocket_stream(
-                            &client,
-                            symbols.clone(),
-                            tx.clone(),
+                        run_websocket_stream_with_fallback(
+                            client,
+                            symbols,
+                            cfg,
+                            tx,
                             &mut stop_rx,
-                            None,
+                            &options,
                         )
-                        .await
-                        {
-                            crate::core::logging::trace_warn!(
-                                error = %e,
-                                "websocket stream failed; falling back to polling"
-                            );
-                            #[cfg(not(feature = "tracing"))]
-                            let _ = &e;
-                            run_polling_stream(client, symbols, cfg, tx, &mut stop_rx, &options)
-                                .await;
-                        }
+                        .await;
                     }
                     StreamMethod::Polling => {
                         run_polling_stream(client, symbols, cfg, tx, &mut stop_rx, &options).await;
@@ -468,6 +459,53 @@ async fn run_websocket_stream(
         }
     }
     Ok(())
+}
+
+async fn run_websocket_stream_with_fallback(
+    client: crate::core::YfClient,
+    symbols: Vec<String>,
+    cfg: StreamConfig,
+    tx: tokio::sync::mpsc::Sender<QuoteUpdate>,
+    stop_rx: &mut tokio::sync::oneshot::Receiver<()>,
+    options: &CallOptions,
+) {
+    let mut ticker = tokio::time::interval(cfg.interval);
+    let mut last_price: HashMap<String, Option<f64>> = HashMap::new();
+
+    loop {
+        if tx.is_closed() || websocket_stop_requested(stop_rx) {
+            break;
+        }
+
+        match run_websocket_stream(&client, symbols.clone(), tx.clone(), stop_rx, None).await {
+            Ok(()) => break,
+            Err(e) => {
+                crate::core::logging::trace_warn!(
+                    error = %e,
+                    "websocket stream failed; polling once before reconnect"
+                );
+                #[cfg(not(feature = "tracing"))]
+                let _ = &e;
+            }
+        }
+
+        if !wait_for_poll_tick(&mut ticker, &tx, stop_rx).await {
+            break;
+        }
+        if !poll_stream_once(
+            &client,
+            &symbols,
+            &cfg,
+            &tx,
+            stop_rx,
+            options,
+            &mut last_price,
+        )
+        .await
+        {
+            break;
+        }
+    }
 }
 
 fn decode_ws_pricing(text: &str) -> Result<wire_ws::PricingData, YfError> {
@@ -674,46 +712,67 @@ async fn run_polling_stream(
     let mut ticker = tokio::time::interval(cfg.interval);
     let mut last_price: HashMap<String, Option<f64>> = HashMap::new();
 
-    let symbol_slices: Vec<&str> = symbols.iter().map(AsRef::as_ref).collect();
-
     loop {
-        tokio::select! {
-            _ = ticker.tick() => {
-                if tx.is_closed() { break; }
-            }
-            _ = &mut *stop_rx => { break; }
-        }
-
-        if tx.is_closed() {
+        if !wait_for_poll_tick(&mut ticker, &tx, stop_rx).await {
             break;
         }
-
-        let fetch = crate::core::quotes::fetch_v7_quotes(&client, &symbol_slices, options);
-        let quotes = tokio::select! {
-            result = fetch => result,
-            _ = &mut *stop_rx => { break; }
-        };
-
-        match quotes {
-            Ok(quotes) => {
-                if !handle_polling_quotes(&client, &tx, cfg.diff_only, &mut last_price, quotes)
-                    .await
-                {
-                    break;
-                }
-            }
-            Err(e) => {
-                crate::core::logging::trace_debug!(
-                    error = %e,
-                    "polling stream quote fetch failed"
-                );
-                #[cfg(not(feature = "tracing"))]
-                let _ = e;
-            }
-        }
-
-        if tx.is_closed() {
+        if !poll_stream_once(
+            &client,
+            &symbols,
+            &cfg,
+            &tx,
+            stop_rx,
+            options,
+            &mut last_price,
+        )
+        .await
+        {
             break;
+        }
+    }
+}
+
+async fn wait_for_poll_tick(
+    ticker: &mut tokio::time::Interval,
+    tx: &tokio::sync::mpsc::Sender<QuoteUpdate>,
+    stop_rx: &mut tokio::sync::oneshot::Receiver<()>,
+) -> bool {
+    tokio::select! {
+        _ = ticker.tick() => !tx.is_closed(),
+        _ = &mut *stop_rx => false,
+    }
+}
+
+async fn poll_stream_once(
+    client: &crate::core::YfClient,
+    symbols: &[String],
+    cfg: &StreamConfig,
+    tx: &tokio::sync::mpsc::Sender<QuoteUpdate>,
+    stop_rx: &mut tokio::sync::oneshot::Receiver<()>,
+    options: &CallOptions,
+    last_price: &mut HashMap<String, Option<f64>>,
+) -> bool {
+    if tx.is_closed() {
+        return false;
+    }
+
+    let symbol_slices: Vec<&str> = symbols.iter().map(AsRef::as_ref).collect();
+    let fetch = crate::core::quotes::fetch_v7_quotes(client, &symbol_slices, options);
+    let quotes = tokio::select! {
+        result = fetch => result,
+        _ = &mut *stop_rx => return false,
+    };
+
+    match quotes {
+        Ok(quotes) => handle_polling_quotes(client, tx, cfg.diff_only, last_price, quotes).await,
+        Err(e) => {
+            crate::core::logging::trace_debug!(
+                error = %e,
+                "polling stream quote fetch failed"
+            );
+            #[cfg(not(feature = "tracing"))]
+            let _ = e;
+            !tx.is_closed()
         }
     }
 }

@@ -39,6 +39,8 @@ struct TestPricingData {
     pub price_hint: i64,
 }
 
+type WebsocketHandler = Box<dyn FnOnce(&mut WebSocket<TcpStream>) + Send>;
+
 fn encode_test_pricing_data(message: &TestPricingData) -> String {
     let mut bytes = Vec::new();
     message.encode(&mut bytes).unwrap();
@@ -63,6 +65,29 @@ fn spawn_websocket_server(
 
         let mut websocket = accept(stream).expect("server should accept websocket handshake");
         handler(&mut websocket);
+    });
+
+    (url, handle)
+}
+
+fn spawn_websocket_server_sequence(handlers: Vec<WebsocketHandler>) -> (Url, JoinHandle<()>) {
+    let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+    let addr = listener.local_addr().unwrap();
+    let url = Url::parse(&format!("ws://{addr}/")).unwrap();
+
+    let handle = thread::spawn(move || {
+        for handler in handlers {
+            let stream = accept_websocket_connection(&listener);
+            stream
+                .set_read_timeout(Some(Duration::from_secs(3)))
+                .unwrap();
+            stream
+                .set_write_timeout(Some(Duration::from_secs(3)))
+                .unwrap();
+
+            let mut websocket = accept(stream).expect("server should accept websocket handshake");
+            handler(&mut websocket);
+        }
     });
 
     (url, handle)
@@ -318,6 +343,92 @@ async fn stream_websocket_fallback_to_polling_after_remote_close() {
         .expect("stream closed without falling back to polling");
 
     assert_eq!(update.instrument.symbol.as_str(), "AAPL");
+}
+
+#[tokio::test]
+async fn stream_websocket_fallback_reconnects_after_polling() {
+    let server = crate::common::setup_server();
+
+    let mock = server.mock(|when, then| {
+        when.method(httpmock::Method::GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "AAPL");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(crate::common::fixture("quote_v7", "AAPL", "json"));
+    });
+
+    let ws_update_price = 314.6_f32;
+    let (stream_url, websocket_thread) = spawn_websocket_server_sequence(vec![
+        Box::new(|websocket| {
+            let subscription = websocket
+                .read()
+                .expect("server should receive first websocket subscription");
+            assert_subscription(subscription, &["AAPL"]);
+
+            websocket
+                .send(TestWsMessage::Close(None))
+                .expect("server should send close frame");
+        }),
+        Box::new(move |websocket| {
+            let subscription = websocket
+                .read()
+                .expect("server should receive second websocket subscription");
+            assert_subscription(subscription, &["AAPL"]);
+
+            let payload = encode_test_pricing_data(&TestPricingData {
+                id: "AAPL".to_string(),
+                price: ws_update_price,
+                time: 1_780_426_509_000,
+                currency: "USD".to_string(),
+                exchange: "NMS".to_string(),
+                quote_type: 8,
+                day_volume: 26_248_990,
+                previous_close: 313.0,
+                price_hint: 2,
+            });
+            let frame = serde_json::json!({ "message": payload }).to_string();
+            websocket
+                .send(TestWsMessage::Text(frame.into()))
+                .expect("server should send pricing update after reconnect");
+        }),
+    ]);
+
+    let client = yfinance_rs::YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .base_stream(stream_url)
+        .build()
+        .unwrap();
+
+    let builder = yfinance_rs::StreamBuilder::new(&client)
+        .symbols(["AAPL"])
+        .method(StreamMethod::WebsocketWithFallback)
+        .interval(Duration::from_millis(40));
+
+    let (handle, mut rx) = builder.start().await.unwrap();
+
+    let websocket_update = timeout(Duration::from_secs(3), async {
+        while let Some(update) = rx.recv().await {
+            let price = update
+                .price
+                .as_ref()
+                .map(yfinance_rs::core::conversions::money_to_f64);
+            if price.is_some_and(|price| (price - f64::from(ws_update_price)).abs() < 0.01) {
+                return update;
+            }
+        }
+        panic!("stream closed before websocket reconnect update");
+    })
+    .await
+    .expect("timed out waiting for websocket reconnect update");
+
+    handle.abort();
+    websocket_thread
+        .join()
+        .expect("websocket server thread panicked");
+
+    mock.assert();
+    assert_eq!(websocket_update.instrument.symbol.as_str(), "AAPL");
 }
 
 #[tokio::test]

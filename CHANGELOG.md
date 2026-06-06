@@ -120,6 +120,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Polling streams now observe stop requests while a quote HTTP request is in
   flight, so `StreamHandle::stop()` no longer waits for a stalled request to
   time out.
+- `StreamMethod::WebsocketWithFallback` now retries WebSocket connections after
+  fallback polling instead of staying in polling mode forever after the first
+  WebSocket drop.
 - WebSocket streams now rely on tungstenite's automatic ping replies instead of
   writing explicit pong frames from the stream loop.
 - WebSocket quote updates now preserve equity prices when Yahoo omits the
