@@ -105,6 +105,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Response-cache hits now return under a shared read lock and promote LRU state
   only when the write lock is immediately available, avoiding write-lock
   contention across concurrent cache hits.
+- Internal LRU caches now use the `lru` crate instead of a custom linked-list
+  map, avoiding key clones during cache-hit promotion.
 - `profile()` now reports valid symbols with unsupported Yahoo instrument types
   such as indexes and cryptocurrencies as provider data errors instead of
   invalid caller parameters.

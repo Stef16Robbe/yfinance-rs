@@ -15,6 +15,7 @@ pub(crate) use urls::{SymbolEndpoint, normalize_symbol, normalize_symbols};
 use constants::{
     DEFAULT_BASE_CHART, DEFAULT_BASE_QUOTE_API, DEFAULT_COOKIE_URL, DEFAULT_CRUMB_URL, USER_AGENT,
 };
+use lru::LruCache;
 use reqwest::Client;
 use std::borrow::Borrow;
 use std::collections::HashMap;
@@ -36,47 +37,45 @@ struct HttpTimeouts {
     connect: Duration,
 }
 
-#[derive(Debug)]
-struct LruEntry<K, V> {
-    value: V,
-    newer: Option<K>,
-    older: Option<K>,
-}
-
-#[derive(Debug)]
 struct LruMap<K, V> {
-    entries: HashMap<K, LruEntry<K, V>>,
-    newest: Option<K>,
-    oldest: Option<K>,
+    entries: LruCache<K, V>,
 }
 
-impl<K, V> Default for LruMap<K, V> {
+impl<K, V> std::fmt::Debug for LruMap<K, V>
+where
+    K: Eq + Hash + std::fmt::Debug,
+    V: std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.entries.fmt(f)
+    }
+}
+
+impl<K, V> Default for LruMap<K, V>
+where
+    K: Eq + Hash,
+{
     fn default() -> Self {
         Self {
-            entries: HashMap::new(),
-            newest: None,
-            oldest: None,
+            entries: LruCache::unbounded(),
         }
     }
 }
 
 impl<K, V> LruMap<K, V>
 where
-    K: Clone + Eq + Hash,
+    K: Eq + Hash,
 {
+    fn bounded(max_entries: usize) -> Self {
+        Self {
+            entries: LruCache::new(
+                NonZeroUsize::new(max_entries).expect("LRU capacity is non-zero"),
+            ),
+        }
+    }
+
     fn insert_newest(&mut self, key: K, value: V) -> Option<V> {
-        let previous = self.remove(&key);
-        let linked_key = key.clone();
-        self.entries.insert(
-            key,
-            LruEntry {
-                value,
-                newer: None,
-                older: None,
-            },
-        );
-        self.attach_newest(&linked_key);
-        previous
+        self.entries.put(key, value)
     }
 
     fn get_ref<Q>(&self, key: &Q) -> Option<&V>
@@ -84,7 +83,7 @@ where
         K: Borrow<Q>,
         Q: Eq + Hash + ?Sized,
     {
-        self.entries.get(key).map(|entry| &entry.value)
+        self.entries.peek(key)
     }
 
     fn get_cloned<Q>(&mut self, key: &Q) -> Option<V>
@@ -93,9 +92,7 @@ where
         Q: Eq + Hash + ?Sized,
         V: Clone,
     {
-        let value = self.entries.get(key).map(|entry| entry.value.clone())?;
-        self.touch(key);
-        Some(value)
+        self.entries.get(key).cloned()
     }
 
     fn remove<Q>(&mut self, key: &Q) -> Option<V>
@@ -103,42 +100,31 @@ where
         K: Borrow<Q>,
         Q: Eq + Hash + ?Sized,
     {
-        let stored_key = self
-            .entries
-            .get_key_value(key)
-            .map(|(stored_key, _)| stored_key.clone())?;
-
-        self.detach(&stored_key);
-        self.entries
-            .remove::<K>(&stored_key)
-            .map(|entry| entry.value)
+        self.entries.pop(key)
     }
 
     fn clear(&mut self) {
         self.entries.clear();
-        self.newest = None;
-        self.oldest = None;
     }
 
     fn evict_lru_entries(&mut self, max_entries: usize) {
         while self.entries.len() > max_entries {
-            let Some(key) = self.oldest.clone() else {
+            if self.entries.pop_lru().is_none() {
                 break;
-            };
-            self.remove(&key);
+            }
         }
     }
 
     fn iter(&self) -> impl Iterator<Item = (&K, &V)> {
-        self.entries.iter().map(|(key, entry)| (key, &entry.value))
+        self.entries.iter()
     }
 
     fn keys(&self) -> impl Iterator<Item = &K> {
-        self.entries.keys()
+        self.entries.iter().map(|(key, _)| key)
     }
 
     fn values(&self) -> impl Iterator<Item = &V> {
-        self.entries.values().map(|entry| &entry.value)
+        self.entries.iter().map(|(_, value)| value)
     }
 
     #[cfg(test)]
@@ -152,7 +138,7 @@ where
         K: Borrow<Q>,
         Q: Eq + Hash + ?Sized,
     {
-        self.entries.contains_key(key)
+        self.entries.peek(key).is_some()
     }
 
     fn touch<Q>(&mut self, key: &Q) -> bool
@@ -160,91 +146,37 @@ where
         K: Borrow<Q>,
         Q: Eq + Hash + ?Sized,
     {
-        let Some(stored_key) = self.entries.get_key_value(key).map(|(key, _)| key.clone()) else {
-            return false;
-        };
-
-        if self.newest.as_ref() == Some(&stored_key) {
-            return true;
-        }
-
-        self.detach(&stored_key);
-        self.attach_newest(&stored_key);
-        true
-    }
-
-    fn detach(&mut self, key: &K) {
-        let Some((newer, older)) = self
-            .entries
-            .get(key)
-            .map(|entry| (entry.newer.clone(), entry.older.clone()))
-        else {
-            return;
-        };
-
-        match &newer {
-            Some(newer_key) => {
-                if let Some(newer_entry) = self.entries.get_mut(newer_key) {
-                    newer_entry.older.clone_from(&older);
-                }
-            }
-            None => self.newest.clone_from(&older),
-        }
-
-        match &older {
-            Some(older_key) => {
-                if let Some(older_entry) = self.entries.get_mut(older_key) {
-                    older_entry.newer.clone_from(&newer);
-                }
-            }
-            None => self.oldest.clone_from(&newer),
-        }
-
-        if let Some(entry) = self.entries.get_mut(key) {
-            entry.newer = None;
-            entry.older = None;
-        }
-    }
-
-    fn attach_newest(&mut self, key: &K) {
-        let previous_newest = self.newest.replace(key.clone());
-
-        if let Some(previous_newest_key) = &previous_newest {
-            if let Some(previous_newest_entry) = self.entries.get_mut(previous_newest_key) {
-                previous_newest_entry.newer = Some(key.clone());
-            }
-        } else {
-            self.oldest = Some(key.clone());
-        }
-
-        if let Some(entry) = self.entries.get_mut(key) {
-            entry.newer = None;
-            entry.older = previous_newest;
-        }
+        self.entries.get(key).is_some()
     }
 }
 
-#[derive(Debug)]
 pub(crate) struct BoundedLruMap<K, V> {
     entries: LruMap<K, V>,
-    max_entries: usize,
+}
+
+impl<K, V> std::fmt::Debug for BoundedLruMap<K, V>
+where
+    K: Eq + Hash + std::fmt::Debug,
+    V: std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.entries.fmt(f)
+    }
 }
 
 impl<K, V> BoundedLruMap<K, V>
 where
-    K: Clone + Eq + Hash,
+    K: Eq + Hash,
 {
     fn new(max_entries: usize) -> Self {
         debug_assert!(max_entries > 0);
         Self {
-            entries: LruMap::default(),
-            max_entries,
+            entries: LruMap::bounded(max_entries),
         }
     }
 
     pub(crate) fn insert(&mut self, key: K, value: V) {
         self.entries.insert_newest(key, value);
-        self.entries.evict_lru_entries(self.max_entries);
     }
 
     pub(crate) fn get_cloned<Q>(&mut self, key: &Q) -> Option<V>
@@ -1367,6 +1299,71 @@ mod tests {
         Instant::now()
             .checked_sub(Duration::from_secs(1))
             .expect("instant supports recent past")
+    }
+
+    #[derive(Debug)]
+    struct CloneCountingKey {
+        value: String,
+        clones: Arc<std::sync::atomic::AtomicUsize>,
+    }
+
+    impl CloneCountingKey {
+        fn new(value: &str, clones: &Arc<std::sync::atomic::AtomicUsize>) -> Self {
+            Self {
+                value: value.to_string(),
+                clones: Arc::clone(clones),
+            }
+        }
+    }
+
+    impl Clone for CloneCountingKey {
+        fn clone(&self) -> Self {
+            self.clones
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            Self {
+                value: self.value.clone(),
+                clones: Arc::clone(&self.clones),
+            }
+        }
+    }
+
+    impl PartialEq for CloneCountingKey {
+        fn eq(&self, other: &Self) -> bool {
+            self.value == other.value
+        }
+    }
+
+    impl Eq for CloneCountingKey {}
+
+    impl Hash for CloneCountingKey {
+        fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+            self.value.hash(state);
+        }
+    }
+
+    impl Borrow<str> for CloneCountingKey {
+        fn borrow(&self) -> &str {
+            &self.value
+        }
+    }
+
+    #[test]
+    fn lru_cache_hit_promotion_does_not_clone_keys() {
+        let clones = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let mut cache = BoundedLruMap::new(2);
+        cache.insert(CloneCountingKey::new("AAPL", &clones), "aapl");
+        cache.insert(CloneCountingKey::new("MSFT", &clones), "msft");
+
+        clones.store(0, std::sync::atomic::Ordering::Relaxed);
+
+        assert_eq!(cache.get_cloned("AAPL"), Some("aapl"));
+        assert_eq!(clones.load(std::sync::atomic::Ordering::Relaxed), 0);
+
+        cache.insert(CloneCountingKey::new("GOOGL", &clones), "googl");
+
+        assert!(cache.contains_key("AAPL"));
+        assert!(!cache.contains_key("MSFT"));
+        assert!(cache.contains_key("GOOGL"));
     }
 
     #[test]
