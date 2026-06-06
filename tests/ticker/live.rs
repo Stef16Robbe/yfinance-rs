@@ -53,6 +53,41 @@ async fn live_ticker_key_statistics_for_record() {
 
 #[tokio::test]
 #[ignore = "exercise live Yahoo Finance API"]
+async fn live_ticker_dividend_yield_convention_for_record() {
+    if !crate::common::live_or_record_enabled() {
+        return;
+    }
+
+    let client = yfinance_rs::YfClient::builder().build().unwrap();
+    let sym = "AAPL";
+    let t = yfinance_rs::Ticker::new(&client, sym);
+    let quote = t.quote().await.unwrap();
+    let stats = t.key_statistics().await.unwrap();
+
+    if crate::common::is_recording() {
+        assert!(
+            crate::common::fixture_exists("quote_v7", sym, "json"),
+            "recording pass should persist quote_v7 fixture for {sym}"
+        );
+        assert!(
+            crate::common::fixture_exists(
+                crate::common::KEY_STATISTICS_FIXTURE_ENDPOINT,
+                sym,
+                "json"
+            ),
+            "recording pass should persist quoteSummary key statistics fixture for {sym}"
+        );
+    } else {
+        assert_eq!(quote.instrument.symbol.as_str(), sym);
+        assert!(
+            stats.dividend_yield_forward.is_some(),
+            "live {sym} key statistics should include a forward dividend yield"
+        );
+    }
+}
+
+#[tokio::test]
+#[ignore = "exercise live Yahoo Finance API"]
 async fn live_ticker_currency_unit_scale_fixtures_for_record() {
     if !crate::common::live_or_record_enabled() {
         return;

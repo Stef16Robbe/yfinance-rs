@@ -56,6 +56,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 
 - Add adapter-level projection diagnostics through `YfResponse<T>`, `YfDiagnostics`, `YfWarning`, `ProjectionIssue`, and `DataQuality`, plus `strict()` and `*_with_diagnostics()` entry points on history, download, holders, fundamentals, analysis, ESG, news, search, and `Ticker::info()`.
+- Add fixture-backed coverage for Yahoo's v7 and quoteSummary dividend-yield
+  wire conventions, locking both paths to `paft`'s fractional yield model.
 - History, holders, fundamentals, analysis, ESG, news, search, download, and aggregate info calls can now distinguish absent optional provider data from present Yahoo data that was dropped or omitted while projecting into strict `paft` values.
 - Add `YfWarning::CoercedPresentField` for present provider fields that are represented only after a lossy coercion such as rounding.
 - Add projection diagnostics entry points for quotes, fast info, key statistics, option chains, and screeners, including `Ticker::*_with_diagnostics()` methods and `QuotesBuilder::fetch_with_diagnostics()`.

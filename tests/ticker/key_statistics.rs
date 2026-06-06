@@ -3,6 +3,7 @@ use paft::Decimal;
 use paft::fundamentals::statistics::KeyStatistics;
 use paft::money::{Currency, IsoCurrency};
 use serde_json::Value;
+use std::str::FromStr;
 use url::Url;
 use yfinance_rs::core::conversions::{CurrencyValue, DecimalValue, money_to_f64};
 use yfinance_rs::{ProjectionIssue, Ticker, YfClient, YfWarning};
@@ -114,6 +115,29 @@ fn raw_summary_decimal(module: &Value, field: &str) -> Option<Decimal> {
     raw_decimal(&module[field]["raw"])
 }
 
+fn displayed_percent_points(module: &Value, field: &str) -> Decimal {
+    let formatted = module[field]["fmt"]
+        .as_str()
+        .unwrap_or_else(|| panic!("quoteSummary fixture should contain {field}.fmt"));
+    let percent = formatted
+        .strip_suffix('%')
+        .unwrap_or_else(|| panic!("{field}.fmt should be a percent string, got {formatted:?}"));
+    Decimal::from_str(percent)
+        .unwrap_or_else(|err| panic!("{field}.fmt should parse as decimal percent points: {err}"))
+}
+
+fn assert_decimal_near(actual: Decimal, expected: Decimal, tolerance: Decimal, label: &str) {
+    let diff = if actual >= expected {
+        actual - expected
+    } else {
+        expected - actual
+    };
+    assert!(
+        diff <= tolerance,
+        "{label}: expected {expected} +/- {tolerance}, got {actual}"
+    );
+}
+
 fn mock_quote_v7_body<'a>(server: &'a MockServer, symbol: &'a str, body: String) -> Mock<'a> {
     server.mock(move |when, then| {
         when.method(GET)
@@ -151,6 +175,24 @@ fn key_statistics_client(server: &MockServer, crumb: &str) -> YfClient {
         ._preauth("cookie", crumb)
         .build()
         .unwrap()
+}
+
+async fn key_statistics_from_bodies(
+    symbol: &str,
+    quote_body: String,
+    key_statistics_body: String,
+) -> KeyStatistics {
+    let server = MockServer::start();
+    let crumb = "test-crumb";
+    let quote_mock = mock_quote_v7_body(&server, symbol, quote_body);
+    let key_statistics_mock = mock_key_statistics_body(&server, symbol, crumb, key_statistics_body);
+    let client = key_statistics_client(&server, crumb);
+
+    let stats = Ticker::new(&client, symbol).key_statistics().await.unwrap();
+
+    quote_mock.assert();
+    key_statistics_mock.assert();
+    stats
 }
 
 fn assert_currency_value<T: CurrencyValue + DecimalValue>(
@@ -709,6 +751,108 @@ async fn key_statistics_v7_dividend_yield_units_are_fixture_locked() {
         stats.dividend_yield_forward,
         Some(forward_raw),
         "dividendYield must not be kept as raw percent points"
+    );
+}
+
+#[tokio::test]
+async fn aapl_dividend_yield_conventions_reconcile_across_recorded_paths() {
+    let sym = "AAPL";
+    let (quote_fixture, raw_quote_fixture) = recorded_quote(sym);
+    let (key_statistics_fixture, raw_key_statistics_fixture) = recorded_key_statistics(sym);
+    let raw_quote = first_quote(&raw_quote_fixture, sym);
+    let quote_summary = quote_summary_result(&raw_key_statistics_fixture, sym);
+    let summary_detail = &quote_summary["summaryDetail"];
+
+    let v7_percent_points = Decimal::try_from(raw_quote["dividendYield"].as_f64().unwrap())
+        .expect("quote_v7 fixture should contain dividendYield");
+    let quote_summary_fraction =
+        Decimal::try_from(summary_detail["dividendYield"]["raw"].as_f64().unwrap())
+            .expect("quoteSummary fixture should contain summaryDetail.dividendYield.raw");
+    let displayed_fraction =
+        displayed_percent_points(summary_detail, "dividendYield") / Decimal::from(100);
+    let yield_tolerance = Decimal::new(1, 8);
+
+    assert!(
+        v7_percent_points > Decimal::new(1, 2),
+        "quote_v7 dividendYield should be recorded as displayed percent points"
+    );
+    assert!(
+        quote_summary_fraction < Decimal::new(1, 1),
+        "quoteSummary summaryDetail.dividendYield raw should be recorded as a fraction"
+    );
+    assert_decimal_near(
+        v7_percent_points / Decimal::from(100),
+        displayed_fraction,
+        yield_tolerance,
+        "v7 dividendYield",
+    );
+    assert_decimal_near(
+        quote_summary_fraction,
+        displayed_fraction,
+        yield_tolerance,
+        "quoteSummary dividendYield",
+    );
+
+    let server = MockServer::start();
+    let quote_mock = mock_quote_v7_body(&server, sym, quote_fixture.clone());
+    let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+    let quote = Ticker::new(&client, sym).quote().await.unwrap();
+    quote_mock.assert();
+    assert_eq!(quote.instrument.symbol.as_str(), sym);
+
+    let v7_only_stats = key_statistics_from_bodies(
+        sym,
+        quote_fixture.clone(),
+        r#"{"quoteSummary":{"result":[{}],"error":null}}"#.to_string(),
+    )
+    .await;
+
+    let quote_summary_only_quote = format!(
+        r#"{{
+          "quoteResponse": {{
+            "result": [{{
+              "symbol": "{sym}",
+              "quoteType": "EQUITY",
+              "currency": "USD"
+            }}],
+            "error": null
+          }}
+        }}"#
+    );
+    let quote_summary_only_stats = key_statistics_from_bodies(
+        sym,
+        quote_summary_only_quote,
+        key_statistics_fixture.clone(),
+    )
+    .await;
+    let merged_stats = key_statistics_from_bodies(sym, quote_fixture, key_statistics_fixture).await;
+
+    assert_decimal_near(
+        v7_only_stats
+            .dividend_yield_forward
+            .expect("v7 path should map dividend_yield_forward"),
+        displayed_fraction,
+        yield_tolerance,
+        "v7 mapped dividend_yield_forward",
+    );
+    assert_decimal_near(
+        quote_summary_only_stats
+            .dividend_yield_forward
+            .expect("quoteSummary path should map dividend_yield_forward"),
+        displayed_fraction,
+        yield_tolerance,
+        "quoteSummary mapped dividend_yield_forward",
+    );
+    assert_decimal_near(
+        merged_stats
+            .dividend_yield_forward
+            .expect("merged path should map dividend_yield_forward"),
+        displayed_fraction,
+        yield_tolerance,
+        "merged dividend_yield_forward",
     );
 }
 
