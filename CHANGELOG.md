@@ -79,6 +79,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - The live diagnostics audit now includes `XRP-USD` quote and stream checks to
   exercise low-price crypto decimal precision.
 
+### Dependencies
+
+- Use the published `paft` 0.9.0 crate instead of tracking the Git `develop`
+  branch.
+
 ### Fixed
 
 - Listing-currency inference now reaches Yahoo exchange alias fallbacks such as
