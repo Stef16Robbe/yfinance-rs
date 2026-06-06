@@ -161,6 +161,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `DownloadBuilder` best-effort batches now preserve successful symbols when an
   individual history fetch fails, reporting the failed symbol as a dropped
   download-entry diagnostic instead of aborting the whole batch.
+- `DownloadBuilder::between()` now rejects invalid date ranges as a top-level
+  `YfError::InvalidDates` instead of converting each per-symbol failure into
+  best-effort diagnostics.
 - `DownloadBuilder` best-effort batches now drop only the symbol whose chart metadata lacks
   a usable instrument kind and report a diagnostic, instead of failing the whole batch.
 - `ScreenerNumber` no longer exposes public enum variants that can bypass

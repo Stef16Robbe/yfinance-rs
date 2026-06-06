@@ -94,6 +94,9 @@ impl DownloadBuilder {
                 .timestamp_opt(p2, 0)
                 .single()
                 .ok_or_else(|| YfError::InvalidParams("invalid period2".into()))?;
+            if start >= end {
+                return Err(YfError::InvalidDates);
+            }
             Ok(Some((start, end)))
         } else {
             Ok(None)

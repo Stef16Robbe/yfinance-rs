@@ -432,6 +432,24 @@ async fn download_between_params_applied_to_all_symbols() {
     assert!(!msft.history.candles.is_empty());
 }
 
+#[tokio::test]
+async fn download_between_rejects_invalid_dates_as_top_level_error() {
+    use chrono::{TimeZone, Utc};
+
+    let start = Utc.with_ymd_and_hms(2024, 1, 10, 0, 0, 0).unwrap();
+    let end = Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap();
+    let client = YfClient::default();
+
+    let err = DownloadBuilder::new(&client)
+        .symbols(["AAPL", "MSFT"])
+        .between(start, end)
+        .run()
+        .await
+        .unwrap_err();
+
+    assert!(matches!(err, YfError::InvalidDates));
+}
+
 /* ---------- Parity knob checks using cached live fixtures ---------- */
 
 #[tokio::test]
