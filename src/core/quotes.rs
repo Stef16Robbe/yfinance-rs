@@ -1564,7 +1564,7 @@ pub async fn fetch_v7_quote_values(
         .result
         .ok_or_else(|| YfError::MissingData("v7 quoteResponse.result missing".into()))?;
 
-    store_v7_quote_side_effects_from_values(client, symbols, &nodes).await;
+    store_v7_quote_side_effects_from_values(client, symbols, &nodes);
 
     Ok(nodes)
 }
@@ -1643,7 +1643,7 @@ fn quote_node_diag_key_from_value(value: &Value, idx: usize) -> String {
         .map_or_else(|| format!("result[{idx}]"), ToString::to_string)
 }
 
-async fn store_v7_quote_side_effects_from_values(
+fn store_v7_quote_side_effects_from_values(
     client: &YfClient,
     requested_symbols: &[&str],
     values: &[Value],
@@ -1652,10 +1652,10 @@ async fn store_v7_quote_side_effects_from_values(
         .iter()
         .filter_map(|value| serde_json::from_value(value.clone()).ok())
         .collect::<Vec<_>>();
-    store_v7_quote_side_effects(client, requested_symbols, &nodes).await;
+    store_v7_quote_side_effects(client, requested_symbols, &nodes);
 }
 
-async fn store_v7_quote_side_effects(
+fn store_v7_quote_side_effects(
     client: &YfClient,
     requested_symbols: &[&str],
     nodes: &[V7QuoteNode],
@@ -1665,9 +1665,9 @@ async fn store_v7_quote_side_effects(
     for node in nodes {
         let provider_symbol = nonempty_symbol(wire_str(&node.symbol));
         if let Some(symbol) = provider_symbol {
-            store_quote_node_hints(client, symbol, node).await;
-            store_requested_alias_hints(client, requested_symbols, symbol, node).await;
-            store_quote_node_instrument(client, symbol, node).await;
+            store_quote_node_hints(client, symbol, node);
+            store_requested_alias_hints(client, requested_symbols, symbol, node);
+            store_quote_node_instrument(client, symbol, node);
         }
 
         mark_resolved_requested_symbol(requested_symbols, &mut resolved_requests, provider_symbol);
@@ -1675,38 +1675,34 @@ async fn store_v7_quote_side_effects(
         if requested_symbols.len() == 1
             && provider_symbol.is_none_or(|symbol| !same_symbol(symbol, requested_symbols[0]))
         {
-            store_quote_node_hints(client, requested_symbols[0], node).await;
+            store_quote_node_hints(client, requested_symbols[0], node);
         }
     }
 
     for (symbol, resolved) in requested_symbols.iter().zip(resolved_requests) {
         if !resolved {
-            client
-                .store_currency_hints(
-                    symbol,
-                    CurrencyHints::from_quote(None, None, None, None, None),
-                )
-                .await;
+            client.store_currency_hints(
+                symbol,
+                CurrencyHints::from_quote(None, None, None, None, None),
+            );
         }
     }
 }
 
-async fn store_quote_node_hints(client: &YfClient, symbol: &str, node: &V7QuoteNode) {
-    client
-        .store_currency_hints(
-            symbol,
-            CurrencyHints::from_quote(
-                wire_str(&node.currency),
-                wire_str(&node.financial_currency),
-                wire_str(&node.exchange),
-                wire_str(&node.full_exchange_name),
-                wire_str(&node.quote_type),
-            ),
-        )
-        .await;
+fn store_quote_node_hints(client: &YfClient, symbol: &str, node: &V7QuoteNode) {
+    client.store_currency_hints(
+        symbol,
+        CurrencyHints::from_quote(
+            wire_str(&node.currency),
+            wire_str(&node.financial_currency),
+            wire_str(&node.exchange),
+            wire_str(&node.full_exchange_name),
+            wire_str(&node.quote_type),
+        ),
+    );
 }
 
-async fn store_quote_node_instrument(client: &YfClient, symbol: &str, node: &V7QuoteNode) {
+fn store_quote_node_instrument(client: &YfClient, symbol: &str, node: &V7QuoteNode) {
     let exch = node.exchange();
     let Some(kind) = wire_str(&node.quote_type).and_then(|s| parse_yahoo_quote_type(s).ok()) else {
         return;
@@ -1717,11 +1713,11 @@ async fn store_quote_node_instrument(client: &YfClient, symbol: &str, node: &V7Q
         None => Instrument::from_symbol(symbol, kind),
     };
     if let Ok(inst) = inst {
-        client.store_instrument(symbol.to_string(), inst).await;
+        client.store_instrument(symbol.to_string(), inst);
     }
 }
 
-async fn store_requested_alias_hints(
+fn store_requested_alias_hints(
     client: &YfClient,
     requested_symbols: &[&str],
     provider_symbol: &str,
@@ -1729,7 +1725,7 @@ async fn store_requested_alias_hints(
 ) {
     for requested in requested_symbols {
         if same_symbol(provider_symbol, requested) && !same_cache_key(provider_symbol, requested) {
-            store_quote_node_hints(client, requested, node).await;
+            store_quote_node_hints(client, requested, node);
         }
     }
 }

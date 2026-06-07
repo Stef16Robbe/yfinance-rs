@@ -179,7 +179,7 @@ impl DownloadBuilder {
         }
     }
 
-    async fn process_joined_results(
+    fn process_joined_results(
         &self,
         joined: Vec<(String, YfResponse<HistoryResponse>)>,
         ctx: &mut ProjectionContext,
@@ -193,7 +193,7 @@ impl DownloadBuilder {
             resp.price_basis = self.back_adjust_price_basis(resp.price_basis);
             self.apply_rounding_if_enabled(&mut resp.candles);
 
-            let Some(instrument) = self.client.cached_instrument(&sym).await else {
+            let Some(instrument) = self.client.cached_instrument(&sym) else {
                 ctx.dropped_item(
                     "download_entry",
                     Some(sym),
@@ -404,7 +404,7 @@ impl DownloadBuilder {
             .map(|(_, sym, full)| (sym, full))
             .collect();
 
-        let response = self.process_joined_results(joined, &mut ctx).await?;
+        let response = self.process_joined_results(joined, &mut ctx)?;
         Ok(ctx.finish(response))
     }
 }

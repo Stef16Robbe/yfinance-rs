@@ -254,8 +254,7 @@ async fn fetch_info_quote_summary_parts(
             symbol,
             value.clone(),
             options,
-        )
-        .await,
+        ),
         analysis: analysis::price_target_and_recommendation_summary_from_quote_summary_value(
             client,
             symbol,

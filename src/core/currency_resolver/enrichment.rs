@@ -23,7 +23,7 @@ struct EarningsCurrency {
 
 impl YfClient {
     pub(super) async fn enrich_quote_hints(&self, symbol: &str, options: &CallOptions) {
-        let hints = self.cached_currency_hints(symbol).await;
+        let hints = self.cached_currency_hints(symbol);
         if !hints.is_unknown(CurrencyHintField::Quote)
             && !hints.is_unknown(CurrencyHintField::Financial)
         {
@@ -49,7 +49,6 @@ impl YfClient {
     ) {
         if !self
             .cached_currency_hints(symbol)
-            .await
             .is_unknown(CurrencyHintField::QuoteSummaryFinancial)
         {
             return;
@@ -75,14 +74,12 @@ impl YfClient {
         self.store_currency_hints(
             symbol,
             CurrencyHints::from_quote_summary_financial(financial_currency.as_deref()),
-        )
-        .await;
+        );
     }
 
     pub(super) async fn enrich_profile_hints(&self, symbol: &str, options: &CallOptions) {
         if !self
             .cached_currency_hints(symbol)
-            .await
             .is_unknown(CurrencyHintField::ProfileCountry)
         {
             return;
@@ -98,8 +95,7 @@ impl YfClient {
                 .address
                 .as_ref()
                 .and_then(|address| address.country.as_deref());
-            self.store_currency_hints(symbol, CurrencyHints::from_profile(country, None, None))
-                .await;
+            self.store_currency_hints(symbol, CurrencyHints::from_profile(country, None, None));
         }
     }
 }

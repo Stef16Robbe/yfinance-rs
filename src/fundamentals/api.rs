@@ -1029,12 +1029,10 @@ pub(super) async fn earnings(
         "financialCurrency",
         &e.financial_currency,
     )?;
-    client
-        .store_currency_hints(
-            symbol,
-            CurrencyHints::from_quote_summary_financial(financial_currency.as_deref()),
-        )
-        .await;
+    client.store_currency_hints(
+        symbol,
+        CurrencyHints::from_quote_summary_financial(financial_currency.as_deref()),
+    );
     let (currency, currency_issue) = if earnings_has_monetary_values(e) {
         let projected_currency = project_currency_resolution(
             &mut ctx,

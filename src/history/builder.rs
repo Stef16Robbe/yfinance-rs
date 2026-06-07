@@ -199,19 +199,17 @@ impl HistoryBuilder {
         )
         .await?;
 
-        cache_history_instrument(&self.client, &symbol, fetched.meta.as_ref()).await?;
+        cache_history_instrument(&self.client, &symbol, fetched.meta.as_ref())?;
         if let Some(meta) = fetched.meta.as_ref() {
-            self.client
-                .store_currency_hints(
-                    &symbol,
-                    CurrencyHints::from_chart(
-                        meta.currency.as_deref(),
-                        meta.exchange_name.as_deref(),
-                        meta.full_exchange_name.as_deref(),
-                        meta.instrument_type.as_deref(),
-                    ),
-                )
-                .await;
+            self.client.store_currency_hints(
+                &symbol,
+                CurrencyHints::from_chart(
+                    meta.currency.as_deref(),
+                    meta.exchange_name.as_deref(),
+                    meta.full_exchange_name.as_deref(),
+                    meta.instrument_type.as_deref(),
+                ),
+            );
         }
 
         // 2) Corporate actions & split ratios
@@ -490,7 +488,7 @@ fn parse_history_timezone(
     Ok(None)
 }
 
-async fn cache_history_instrument(
+fn cache_history_instrument(
     client: &YfClient,
     requested_symbol: &str,
     meta: Option<&MetaNode>,
@@ -515,9 +513,7 @@ async fn cache_history_instrument(
     ]);
 
     let instrument = match exchange {
-        Some(exchange) => {
-            Instrument::from_symbol_and_exchange(requested_symbol, exchange, kind.clone())
-        }
+        Some(exchange) => Instrument::from_symbol_and_exchange(requested_symbol, exchange, kind),
         None => Instrument::from_symbol(requested_symbol, kind),
     };
 
@@ -525,18 +521,14 @@ async fn cache_history_instrument(
         return Ok(());
     };
 
-    client
-        .store_instrument(requested_symbol.to_string(), instrument.clone())
-        .await;
+    client.store_instrument(requested_symbol.to_string(), instrument.clone());
     if let Some(provider_symbol) = meta
         .symbol
         .as_deref()
         .map(str::trim)
         .filter(|symbol| !symbol.is_empty() && *symbol != requested_symbol)
     {
-        client
-            .store_instrument(provider_symbol.to_string(), instrument)
-            .await;
+        client.store_instrument(provider_symbol.to_string(), instrument);
     }
 
     Ok(())

@@ -15,9 +15,9 @@ pub(crate) use urls::{SymbolEndpoint, normalize_symbol, normalize_symbols};
 use constants::{
     DEFAULT_BASE_CHART, DEFAULT_BASE_QUOTE_API, DEFAULT_COOKIE_URL, DEFAULT_CRUMB_URL, USER_AGENT,
 };
-use lru::LruCache;
+use moka::ops::compute::Op;
+use moka::sync::Cache as MokaCache;
 use reqwest::Client;
-use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::num::NonZeroUsize;
@@ -37,181 +37,73 @@ struct HttpTimeouts {
     connect: Duration,
 }
 
-struct LruMap<K, V> {
-    entries: LruCache<K, V>,
+pub(crate) struct BoundedMokaMap<K, V> {
+    entries: MokaCache<K, V>,
 }
 
-impl<K, V> std::fmt::Debug for LruMap<K, V>
+impl<K, V> std::fmt::Debug for BoundedMokaMap<K, V>
 where
     K: Eq + Hash + std::fmt::Debug,
     V: std::fmt::Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.entries.fmt(f)
+        f.debug_struct("BoundedMokaMap").finish_non_exhaustive()
     }
 }
 
-impl<K, V> Default for LruMap<K, V>
+impl<K, V> BoundedMokaMap<K, V>
 where
-    K: Eq + Hash,
-{
-    fn default() -> Self {
-        Self {
-            entries: LruCache::unbounded(),
-        }
-    }
-}
-
-impl<K, V> LruMap<K, V>
-where
-    K: Eq + Hash,
-{
-    fn bounded(max_entries: usize) -> Self {
-        Self {
-            entries: LruCache::new(
-                NonZeroUsize::new(max_entries).expect("LRU capacity is non-zero"),
-            ),
-        }
-    }
-
-    fn insert_newest(&mut self, key: K, value: V) -> Option<V> {
-        self.entries.put(key, value)
-    }
-
-    fn get_ref<Q>(&self, key: &Q) -> Option<&V>
-    where
-        K: Borrow<Q>,
-        Q: Eq + Hash + ?Sized,
-    {
-        self.entries.peek(key)
-    }
-
-    fn get_cloned<Q>(&mut self, key: &Q) -> Option<V>
-    where
-        K: Borrow<Q>,
-        Q: Eq + Hash + ?Sized,
-        V: Clone,
-    {
-        self.entries.get(key).cloned()
-    }
-
-    fn remove<Q>(&mut self, key: &Q) -> Option<V>
-    where
-        K: Borrow<Q>,
-        Q: Eq + Hash + ?Sized,
-    {
-        self.entries.pop(key)
-    }
-
-    fn clear(&mut self) {
-        self.entries.clear();
-    }
-
-    fn evict_lru_entries(&mut self, max_entries: usize) {
-        while self.entries.len() > max_entries {
-            if self.entries.pop_lru().is_none() {
-                break;
-            }
-        }
-    }
-
-    fn iter(&self) -> impl Iterator<Item = (&K, &V)> {
-        self.entries.iter()
-    }
-
-    fn keys(&self) -> impl Iterator<Item = &K> {
-        self.entries.iter().map(|(key, _)| key)
-    }
-
-    fn values(&self) -> impl Iterator<Item = &V> {
-        self.entries.iter().map(|(_, value)| value)
-    }
-
-    #[cfg(test)]
-    fn len(&self) -> usize {
-        self.entries.len()
-    }
-
-    #[cfg(test)]
-    fn contains_key<Q>(&self, key: &Q) -> bool
-    where
-        K: Borrow<Q>,
-        Q: Eq + Hash + ?Sized,
-    {
-        self.entries.peek(key).is_some()
-    }
-
-    fn touch<Q>(&mut self, key: &Q) -> bool
-    where
-        K: Borrow<Q>,
-        Q: Eq + Hash + ?Sized,
-    {
-        self.entries.get(key).is_some()
-    }
-}
-
-pub(crate) struct BoundedLruMap<K, V> {
-    entries: LruMap<K, V>,
-}
-
-impl<K, V> std::fmt::Debug for BoundedLruMap<K, V>
-where
-    K: Eq + Hash + std::fmt::Debug,
-    V: std::fmt::Debug,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.entries.fmt(f)
-    }
-}
-
-impl<K, V> BoundedLruMap<K, V>
-where
-    K: Eq + Hash,
+    K: Eq + Hash + Send + Sync + 'static,
+    V: Clone + Send + Sync + 'static,
 {
     fn new(max_entries: usize) -> Self {
         debug_assert!(max_entries > 0);
         Self {
-            entries: LruMap::bounded(max_entries),
+            entries: MokaCache::builder()
+                .max_capacity(max_entries.try_into().unwrap_or(u64::MAX))
+                .build(),
         }
     }
 
-    pub(crate) fn insert(&mut self, key: K, value: V) {
-        self.entries.insert_newest(key, value);
+    pub(crate) fn insert(&self, key: K, value: V) {
+        self.entries.insert(key, value);
+        self.entries.run_pending_tasks();
     }
 
-    pub(crate) fn get_cloned<Q>(&mut self, key: &Q) -> Option<V>
-    where
-        K: Borrow<Q>,
-        Q: Eq + Hash + ?Sized,
-        V: Clone,
-    {
-        self.entries.get_cloned(key)
+    pub(crate) fn get_cloned(&self, key: &K) -> Option<V> {
+        self.entries.get(key)
     }
 
-    pub(crate) fn remove<Q>(&mut self, key: &Q) -> Option<V>
-    where
-        K: Borrow<Q>,
-        Q: Eq + Hash + ?Sized,
-    {
-        self.entries.remove(key)
+    pub(crate) fn compute_with(&self, key: K, f: impl FnOnce(Option<V>) -> V) -> V {
+        let result = self
+            .entries
+            .entry(key)
+            .and_compute_with(|maybe_entry| Op::Put(f(maybe_entry.map(moka::Entry::into_value))));
+        self.entries.run_pending_tasks();
+        result
+            .into_entry()
+            .expect("compute always puts a value")
+            .into_value()
     }
 
-    pub(crate) fn clear(&mut self) {
-        self.entries.clear();
+    pub(crate) fn clear(&self) {
+        self.entries.invalidate_all();
+        self.entries.run_pending_tasks();
     }
 
     #[cfg(test)]
     pub(crate) fn len(&self) -> usize {
-        self.entries.len()
+        self.entries.run_pending_tasks();
+        usize::try_from(self.entries.entry_count()).expect("cache entry count fits usize")
     }
+}
 
-    #[cfg(test)]
-    pub(crate) fn contains_key<Q>(&self, key: &Q) -> bool
-    where
-        K: Borrow<Q>,
-        Q: Eq + Hash + ?Sized,
-    {
-        self.entries.contains_key(key)
+impl<V> BoundedMokaMap<String, V>
+where
+    V: Clone + Send + Sync + 'static,
+{
+    pub(crate) fn get_str(&self, key: &str) -> Option<V> {
+        self.entries.get(key)
     }
 }
 
@@ -221,133 +113,101 @@ struct CacheEntry {
     expires_at: Instant,
 }
 
-#[derive(Debug, Default)]
-struct CacheMap {
-    entries: LruMap<String, CacheEntry>,
-    next_expiration_scan_at: Option<Instant>,
-}
-
-#[derive(Debug)]
 struct CacheStore {
-    map: RwLock<CacheMap>,
+    entries: MokaCache<String, CacheEntry>,
     default_ttl: Option<Duration>,
     endpoint_ttls: HashMap<CacheEndpoint, Duration>,
     max_entries: usize,
 }
 
+impl std::fmt::Debug for CacheStore {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CacheStore")
+            .field("default_ttl", &self.default_ttl)
+            .field("endpoint_ttls", &self.endpoint_ttls)
+            .field("max_entries", &self.max_entries)
+            .finish_non_exhaustive()
+    }
+}
+
 impl CacheStore {
+    fn new(
+        default_ttl: Option<Duration>,
+        endpoint_ttls: HashMap<CacheEndpoint, Duration>,
+        max_entries: usize,
+    ) -> Self {
+        Self {
+            entries: MokaCache::builder()
+                .max_capacity(max_entries.try_into().unwrap_or(u64::MAX))
+                .support_invalidation_closures()
+                .build(),
+            default_ttl,
+            endpoint_ttls,
+            max_entries,
+        }
+    }
+
     fn ttl_for(&self, endpoint: CacheEndpoint, ttl_override: Option<Duration>) -> Option<Duration> {
         ttl_override
             .or_else(|| self.endpoint_ttls.get(&endpoint).copied())
             .or(self.default_ttl)
     }
-}
 
-impl CacheMap {
-    fn get_fresh_shared(&mut self, key: &str, now: Instant) -> Option<Arc<str>> {
-        if self.entry_expired(key, now) {
+    fn get_fresh_shared(&self, key: &str, now: Instant) -> Option<Arc<str>> {
+        let entry = self.entries.get(key)?;
+        if now > entry.expires_at {
             self.remove(key);
             return None;
         }
 
-        self.entries.get_cloned(key).map(|entry| entry.body)
+        Some(entry.body)
     }
 
-    fn touch_fresh(&mut self, key: &str, now: Instant) {
-        if self
-            .entries
-            .get_ref(key)
-            .is_some_and(|entry| now <= entry.expires_at)
-        {
-            self.entries.touch(key);
-        }
-    }
-
-    fn insert(&mut self, key: &str, body: String, expires_at: Instant) {
-        self.entries.insert_newest(
-            key.to_string(),
+    fn insert(&self, key: String, body: String, expires_at: Instant) {
+        self.entries.insert(
+            key,
             CacheEntry {
                 body: Arc::from(body),
                 expires_at,
             },
         );
-        self.note_expiration(expires_at);
+        self.entries.run_pending_tasks();
     }
 
-    fn remove(&mut self, key: &str) -> Option<CacheEntry> {
-        self.entries.remove(key)
+    fn remove(&self, key: &str) {
+        self.entries.invalidate(key);
+        self.entries.run_pending_tasks();
     }
 
-    fn clear(&mut self) {
-        self.entries.clear();
-        self.next_expiration_scan_at = None;
+    fn clear(&self) {
+        self.entries.invalidate_all();
+        self.entries.run_pending_tasks();
     }
 
-    fn remove_url(&mut self, url: &Url) {
-        let keys = self
+    fn remove_url(&self, url: &Url) {
+        let target = url.as_str().to_string();
+        let _ = self
             .entries
-            .keys()
-            .filter(|key| cache_key_matches_url(key, url))
-            .cloned()
-            .collect::<Vec<_>>();
-        for key in keys {
-            self.remove(&key);
-        }
-        self.refresh_next_expiration_scan();
+            .invalidate_entries_if(move |key, _| cache_key_matches_url_str(key, &target));
+        self.entries.run_pending_tasks();
     }
 
-    fn prune_expired_if_due(&mut self, now: Instant) {
-        if self
-            .next_expiration_scan_at
-            .is_some_and(|next_scan| now <= next_scan)
-        {
-            return;
-        }
-
-        let expired_keys = self
+    fn prune_expired(&self, now: Instant) {
+        let _ = self
             .entries
-            .iter()
-            .filter(|(_, entry)| now > entry.expires_at)
-            .map(|(key, _)| key.clone())
-            .collect::<Vec<_>>();
-
-        for key in expired_keys {
-            self.remove(&key);
-        }
-        self.refresh_next_expiration_scan();
-    }
-
-    fn evict_lru_entries(&mut self, max_entries: usize) {
-        self.entries.evict_lru_entries(max_entries);
+            .invalidate_entries_if(move |_, entry| now > entry.expires_at);
+        self.entries.run_pending_tasks();
     }
 
     #[cfg(test)]
     fn len(&self) -> usize {
-        self.entries.len()
+        self.entries.run_pending_tasks();
+        usize::try_from(self.entries.entry_count()).expect("cache entry count fits usize")
     }
 
     #[cfg(test)]
     fn contains_key(&self, key: &str) -> bool {
         self.entries.contains_key(key)
-    }
-
-    fn entry_expired(&self, key: &str, now: Instant) -> bool {
-        self.entries
-            .get_ref(key)
-            .is_some_and(|entry| now > entry.expires_at)
-    }
-
-    fn note_expiration(&mut self, expires_at: Instant) {
-        if self
-            .next_expiration_scan_at
-            .is_none_or(|next_scan| expires_at < next_scan)
-        {
-            self.next_expiration_scan_at = Some(expires_at);
-        }
-    }
-
-    fn refresh_next_expiration_scan(&mut self) {
-        self.next_expiration_scan_at = self.entries.values().map(|entry| entry.expires_at).min();
     }
 }
 
@@ -369,8 +229,8 @@ fn cache_key_url(key: &str) -> &str {
     key
 }
 
-fn cache_key_matches_url(key: &str, url: &Url) -> bool {
-    cache_key_url(key) == url.as_str()
+fn cache_key_matches_url_str(key: &str, url: &str) -> bool {
+    cache_key_url(key) == url
 }
 
 #[derive(Debug, Default)]
@@ -405,10 +265,10 @@ pub struct YfClient {
     credential_fetch_lock: Arc<tokio::sync::Mutex<()>>,
 
     retry: RetryConfig,
-    pub(crate) currency_cache: Arc<RwLock<BoundedLruMap<CurrencyCacheKey, ResolvedCurrency>>>,
-    pub(crate) currency_hints: Arc<RwLock<BoundedLruMap<String, CurrencyHints>>>,
+    pub(crate) currency_cache: Arc<BoundedMokaMap<CurrencyCacheKey, ResolvedCurrency>>,
+    pub(crate) currency_hints: Arc<BoundedMokaMap<String, CurrencyHints>>,
     // Cache of resolved instruments by original ticker string
-    instrument_cache: Arc<RwLock<BoundedLruMap<String, paft::domain::Instrument>>>,
+    instrument_cache: Arc<BoundedMokaMap<String, paft::domain::Instrument>>,
     cache: Option<Arc<CacheStore>>,
 }
 
@@ -457,44 +317,25 @@ impl YfClient {
         self.cache.is_some()
     }
 
-    pub(crate) async fn cache_get(&self, url: &Url) -> Option<Arc<str>> {
-        self.cache_get_key(&url_cache_key(url)).await
+    pub(crate) fn cache_get(&self, url: &Url) -> Option<Arc<str>> {
+        self.cache_get_key(&url_cache_key(url))
     }
 
-    pub(crate) async fn cache_get_key(&self, key: &str) -> Option<Arc<str>> {
-        let store = self.cache.as_ref()?;
-        let now = Instant::now();
-
-        {
-            let guard = store.map.read().await;
-            let entry = guard.entries.get_ref(key)?;
-            if now <= entry.expires_at {
-                let body = Arc::clone(&entry.body);
-                drop(guard);
-                // Promote only when uncontended; cache hits should not serialize on LRU updates.
-                if let Ok(mut guard) = store.map.try_write() {
-                    guard.touch_fresh(key, now);
-                }
-                return Some(body);
-            }
-        }
-
-        let mut guard = store.map.write().await;
-        guard.get_fresh_shared(key, now)
+    pub(crate) fn cache_get_key(&self, key: &str) -> Option<Arc<str>> {
+        self.cache.as_ref()?.get_fresh_shared(key, Instant::now())
     }
 
-    pub(crate) async fn cache_put(
+    pub(crate) fn cache_put(
         &self,
         endpoint: CacheEndpoint,
         url: &Url,
         body: &str,
         ttl_override: Option<Duration>,
     ) {
-        self.cache_put_key(endpoint, url_cache_key(url), body, ttl_override)
-            .await;
+        self.cache_put_key(endpoint, url_cache_key(url), body, ttl_override);
     }
 
-    pub(crate) async fn cache_put_key(
+    pub(crate) fn cache_put_key(
         &self,
         endpoint: CacheEndpoint,
         key: String,
@@ -509,17 +350,13 @@ impl YfClient {
             return;
         };
         let now = Instant::now();
-        let expires_at = now + ttl;
-        let max_entries = store.max_entries;
-        let mut guard = store.map.write().await;
-        guard.prune_expired_if_due(now);
-        guard.insert(&key, body.to_string(), expires_at);
-        guard.evict_lru_entries(max_entries);
+        store.prune_expired(now);
+        store.insert(key, body.to_string(), now + ttl);
     }
 
-    pub(crate) async fn cache_remove_key(&self, key: &str) {
+    pub(crate) fn cache_remove_key(&self, key: &str) {
         if let Some(store) = &self.cache {
-            store.map.write().await.remove(key);
+            store.remove(key);
         }
     }
 
@@ -527,40 +364,35 @@ impl YfClient {
         post_cache_key(url, body)
     }
 
-    // -------- instrument cache (async) --------
-    pub(crate) async fn cached_instrument(&self, key: &str) -> Option<paft::domain::Instrument> {
-        let mut guard = self.instrument_cache.write().await;
-        guard.get_cloned(key)
+    // -------- instrument cache --------
+    pub(crate) fn cached_instrument(&self, key: &str) -> Option<paft::domain::Instrument> {
+        self.instrument_cache.get_str(key)
     }
 
-    pub(crate) async fn store_instrument(&self, key: String, inst: paft::domain::Instrument) {
-        let mut guard = self.instrument_cache.write().await;
-        guard.insert(key, inst);
+    pub(crate) fn store_instrument(&self, key: String, inst: paft::domain::Instrument) {
+        self.instrument_cache.insert(key, inst);
     }
 
     /// Clears the entire in-memory cache.
     ///
-    /// This is an asynchronous operation that acquires write locks on the URL,
-    /// currency, and instrument caches. Currency and instrument caches are cleared
-    /// even when URL response caching is disabled.
-    pub async fn clear_cache(&self) {
+    /// Currency and instrument caches are cleared even when URL response caching is
+    /// disabled.
+    pub fn clear_cache(&self) {
         if let Some(store) = &self.cache {
-            let mut guard = store.map.write().await;
-            guard.clear();
+            store.clear();
         }
-        self.currency_cache.write().await.clear();
-        self.currency_hints.write().await.clear();
-        self.instrument_cache.write().await.clear();
+        self.currency_cache.clear();
+        self.currency_hints.clear();
+        self.instrument_cache.clear();
     }
 
     /// Removes a specific URL-based entry from the in-memory cache.
     ///
     /// This is useful if you know that the data for a specific request has become stale.
     /// It does nothing if caching is disabled for the client.
-    pub async fn invalidate_cache_entry(&self, url: &Url) {
+    pub fn invalidate_cache_entry(&self, url: &Url) {
         if let Some(store) = &self.cache {
-            let mut guard = store.map.write().await;
-            guard.remove_url(url);
+            store.remove_url(url);
         }
     }
 
@@ -901,10 +733,9 @@ impl YfClientBuilder {
 
     /// Sets the maximum number of in-memory response-cache entries.
     ///
-    /// The cache removes requested expired entries on read, lazily prunes other
-    /// expired entries on writes when the next known expiry is due, and then
-    /// evicts least-recently-used entries based on writes and uncontended read-hit
-    /// promotion. The default is 1024 entries.
+    /// The cache removes requested expired entries on read, prunes other expired
+    /// entries on writes, and bounds total entries with Moka's concurrent
+    /// admission and eviction policy. The default is 1024 entries.
     #[must_use]
     pub const fn cache_max_entries(mut self, max_entries: NonZeroUsize) -> Self {
         self.cache_max_entries = Some(max_entries);
@@ -1181,18 +1012,16 @@ impl YfClientBuilder {
             state: Arc::new(RwLock::new(initial_state)),
             credential_fetch_lock: Arc::new(tokio::sync::Mutex::new(())),
             retry,
-            currency_cache: Arc::new(RwLock::new(BoundedLruMap::new(side_cache_max_entries))),
-            currency_hints: Arc::new(RwLock::new(BoundedLruMap::new(side_cache_max_entries))),
-            instrument_cache: Arc::new(RwLock::new(BoundedLruMap::new(side_cache_max_entries))),
+            currency_cache: Arc::new(BoundedMokaMap::new(side_cache_max_entries)),
+            currency_hints: Arc::new(BoundedMokaMap::new(side_cache_max_entries)),
+            instrument_cache: Arc::new(BoundedMokaMap::new(side_cache_max_entries)),
             cache: (self.cache_ttl.is_some() || !self.cache_ttls.is_empty()).then(|| {
-                Arc::new(CacheStore {
-                    map: RwLock::new(CacheMap::default()),
-                    default_ttl: self.cache_ttl,
-                    endpoint_ttls: self.cache_ttls,
-                    max_entries: self
-                        .cache_max_entries
+                Arc::new(CacheStore::new(
+                    self.cache_ttl,
+                    self.cache_ttls,
+                    self.cache_max_entries
                         .map_or(DEFAULT_CACHE_MAX_ENTRIES, NonZeroUsize::get),
-                })
+                ))
             }),
         })
     }
@@ -1354,29 +1183,24 @@ mod tests {
         }
     }
 
-    impl Borrow<str> for CloneCountingKey {
-        fn borrow(&self) -> &str {
-            &self.value
-        }
-    }
-
     #[test]
-    fn lru_cache_hit_promotion_does_not_clone_keys() {
+    fn bounded_moka_map_hit_does_not_clone_keys() {
         let clones = Arc::new(std::sync::atomic::AtomicUsize::new(0));
-        let mut cache = BoundedLruMap::new(2);
+        let cache = BoundedMokaMap::new(2);
         cache.insert(CloneCountingKey::new("AAPL", &clones), "aapl");
         cache.insert(CloneCountingKey::new("MSFT", &clones), "msft");
 
         clones.store(0, std::sync::atomic::Ordering::Relaxed);
 
-        assert_eq!(cache.get_cloned("AAPL"), Some("aapl"));
+        assert_eq!(
+            cache.get_cloned(&CloneCountingKey::new("AAPL", &clones)),
+            Some("aapl")
+        );
         assert_eq!(clones.load(std::sync::atomic::Ordering::Relaxed), 0);
 
         cache.insert(CloneCountingKey::new("GOOGL", &clones), "googl");
 
-        assert!(cache.contains_key("AAPL"));
-        assert!(!cache.contains_key("MSFT"));
-        assert!(cache.contains_key("GOOGL"));
+        assert!(cache.len() <= 2);
     }
 
     #[test]
@@ -1441,63 +1265,56 @@ mod tests {
         no_cookie.assert();
     }
 
-    async fn insert_cache_entry(client: &YfClient, url: &Url, body: &str, expires_at: Instant) {
+    fn insert_cache_entry(client: &YfClient, url: &Url, body: &str, expires_at: Instant) {
         let store = client.cache.as_ref().expect("cache is enabled");
-        store
-            .map
-            .write()
-            .await
-            .insert(url.as_str(), body.to_string(), expires_at);
+        store.insert(url.as_str().to_string(), body.to_string(), expires_at);
     }
 
-    #[tokio::test]
-    async fn cache_get_removes_expired_entry() {
+    #[test]
+    fn cache_get_removes_expired_entry() {
         let client = cached_client();
         let url = test_url("https://example.test/data?symbol=AAPL");
 
-        insert_cache_entry(&client, &url, "stale", expired_at()).await;
+        insert_cache_entry(&client, &url, "stale", expired_at());
 
-        assert!(client.cache_get(&url).await.is_none());
+        assert!(client.cache_get(&url).is_none());
 
         let has_entry = {
             let store = client.cache.as_ref().expect("cache is enabled");
-            let guard = store.map.read().await;
-            guard.contains_key(url.as_str())
+            store.contains_key(url.as_str())
         };
         assert!(!has_entry);
     }
 
-    #[tokio::test]
-    async fn cache_get_does_not_prune_unrelated_expired_entries() {
+    #[test]
+    fn cache_get_does_not_prune_unrelated_expired_entries() {
         let client = cached_client();
         let expired_url = test_url("https://example.test/old?symbol=AAPL");
         let fresh_url = test_url("https://example.test/new?symbol=MSFT");
 
-        insert_cache_entry(&client, &expired_url, "stale", expired_at()).await;
+        insert_cache_entry(&client, &expired_url, "stale", expired_at());
         insert_cache_entry(
             &client,
             &fresh_url,
             "fresh",
             Instant::now() + Duration::from_mins(1),
-        )
-        .await;
+        );
 
-        assert_eq!(client.cache_get(&fresh_url).await.as_deref(), Some("fresh"));
+        assert_eq!(client.cache_get(&fresh_url).as_deref(), Some("fresh"));
 
         let (has_expired, has_fresh) = {
             let store = client.cache.as_ref().expect("cache is enabled");
-            let guard = store.map.read().await;
             (
-                guard.contains_key(expired_url.as_str()),
-                guard.contains_key(fresh_url.as_str()),
+                store.contains_key(expired_url.as_str()),
+                store.contains_key(fresh_url.as_str()),
             )
         };
         assert!(has_expired);
         assert!(has_fresh);
     }
 
-    #[tokio::test]
-    async fn cache_get_fresh_hit_does_not_wait_for_lru_promotion() {
+    #[test]
+    fn cache_get_fresh_hits_do_not_require_async_lock() {
         let client = cached_client();
         let url = test_url("https://example.test/hit?symbol=AAPL");
 
@@ -1506,59 +1323,46 @@ mod tests {
             &url,
             "fresh",
             Instant::now() + Duration::from_mins(1),
-        )
-        .await;
+        );
 
-        let store = client.cache.as_ref().expect("cache is enabled");
-        let _read_guard = store.map.read().await;
+        let hits: Vec<_> = (0..32).map(|_| client.cache_get(&url)).collect();
 
-        let hit = tokio::time::timeout(Duration::from_millis(100), client.cache_get(&url))
-            .await
-            .expect("cache hit should not wait for a write lock to promote LRU state");
-
-        assert_eq!(hit.as_deref(), Some("fresh"));
+        assert!(hits.iter().all(|hit| hit.as_deref() == Some("fresh")));
     }
 
-    #[tokio::test]
-    async fn cache_get_reuses_cached_body_allocation() {
+    #[test]
+    fn cache_get_reuses_cached_body_allocation() {
         let client = cached_client();
         let url = test_url("https://example.test/large?symbol=AAPL");
 
-        client
-            .cache_put(CacheEndpoint::Chart, &url, "large-body", None)
-            .await;
+        client.cache_put(CacheEndpoint::Chart, &url, "large-body", None);
 
         let first = client
             .cache_get(&url)
-            .await
             .expect("first cache hit should return body");
         let second = client
             .cache_get(&url)
-            .await
             .expect("second cache hit should return body");
 
         assert_eq!(first.as_ref(), "large-body");
         assert!(Arc::ptr_eq(&first, &second));
     }
 
-    #[tokio::test]
-    async fn cache_put_prunes_expired_entries() {
+    #[test]
+    fn cache_put_prunes_expired_entries() {
         let client = cached_client();
         let expired_url = test_url("https://example.test/old?symbol=AAPL");
         let fresh_url = test_url("https://example.test/new?symbol=MSFT");
 
-        insert_cache_entry(&client, &expired_url, "stale", expired_at()).await;
-        client
-            .cache_put(CacheEndpoint::Chart, &fresh_url, "fresh", None)
-            .await;
+        insert_cache_entry(&client, &expired_url, "stale", expired_at());
+        client.cache_put(CacheEndpoint::Chart, &fresh_url, "fresh", None);
 
         let (len, has_expired, has_fresh) = {
             let store = client.cache.as_ref().expect("cache is enabled");
-            let guard = store.map.read().await;
             (
-                guard.len(),
-                guard.contains_key(expired_url.as_str()),
-                guard.contains_key(fresh_url.as_str()),
+                store.len(),
+                store.contains_key(expired_url.as_str()),
+                store.contains_key(fresh_url.as_str()),
             )
         };
         assert_eq!(len, 1);
@@ -1566,8 +1370,8 @@ mod tests {
         assert!(has_fresh);
     }
 
-    #[tokio::test]
-    async fn cache_put_evicts_least_recently_used_entry() {
+    #[test]
+    fn cache_put_bounds_entry_count() {
         let client = YfClient::builder()
             .cache_ttl(Duration::from_mins(1))
             .cache_max_entries(NonZeroUsize::new(2).expect("non-zero"))
@@ -1577,14 +1381,12 @@ mod tests {
         let b = test_url("https://example.test/b");
         let c = test_url("https://example.test/c");
 
-        client.cache_put(CacheEndpoint::Chart, &a, "a", None).await;
-        client.cache_put(CacheEndpoint::Chart, &b, "b", None).await;
-        assert_eq!(client.cache_get(&a).await.as_deref(), Some("a"));
-        client.cache_put(CacheEndpoint::Chart, &c, "c", None).await;
+        client.cache_put(CacheEndpoint::Chart, &a, "a", None);
+        client.cache_put(CacheEndpoint::Chart, &b, "b", None);
+        client.cache_put(CacheEndpoint::Chart, &c, "c", None);
 
-        assert_eq!(client.cache_get(&a).await.as_deref(), Some("a"));
-        assert!(client.cache_get(&b).await.is_none());
-        assert_eq!(client.cache_get(&c).await.as_deref(), Some("c"));
+        let store = client.cache.as_ref().expect("cache is enabled");
+        assert!(store.len() <= 2);
     }
 
     fn test_instrument(symbol: &str) -> paft::domain::Instrument {
@@ -1592,33 +1394,24 @@ mod tests {
             .expect("valid test instrument")
     }
 
-    #[tokio::test]
-    async fn instrument_side_cache_evicts_least_recently_used_entry() {
+    #[test]
+    fn instrument_side_cache_bounds_entry_count() {
         let client = YfClient::builder()
             .side_cache_max_entries(NonZeroUsize::new(2).expect("non-zero"))
             .build()
             .expect("client builds");
 
-        client
-            .store_instrument("AAPL".to_string(), test_instrument("AAPL"))
-            .await;
-        client
-            .store_instrument("MSFT".to_string(), test_instrument("MSFT"))
-            .await;
-        assert!(client.cached_instrument("AAPL").await.is_some());
+        client.store_instrument("AAPL".to_string(), test_instrument("AAPL"));
+        client.store_instrument("MSFT".to_string(), test_instrument("MSFT"));
+        assert!(client.cached_instrument("AAPL").is_some());
 
-        client
-            .store_instrument("GOOGL".to_string(), test_instrument("GOOGL"))
-            .await;
+        client.store_instrument("GOOGL".to_string(), test_instrument("GOOGL"));
 
-        assert!(client.cached_instrument("AAPL").await.is_some());
-        assert!(client.cached_instrument("MSFT").await.is_none());
-        assert!(client.cached_instrument("GOOGL").await.is_some());
-        assert_eq!(client.instrument_cache.read().await.len(), 2);
+        assert!(client.instrument_cache.len() <= 2);
     }
 
-    #[tokio::test]
-    async fn endpoint_ttl_enables_only_that_endpoint_without_global_ttl() {
+    #[test]
+    fn endpoint_ttl_enables_only_that_endpoint_without_global_ttl() {
         let client = YfClient::builder()
             .cache_ttl_for(CacheEndpoint::Quote, Duration::from_mins(1))
             .build()
@@ -1626,15 +1419,11 @@ mod tests {
         let quote = test_url("https://example.test/v7/finance/quote?symbols=AAPL");
         let chart = test_url("https://example.test/v8/finance/chart/AAPL");
 
-        client
-            .cache_put(CacheEndpoint::Quote, &quote, "quote", None)
-            .await;
-        client
-            .cache_put(CacheEndpoint::Chart, &chart, "chart", None)
-            .await;
+        client.cache_put(CacheEndpoint::Quote, &quote, "quote", None);
+        client.cache_put(CacheEndpoint::Chart, &chart, "chart", None);
 
-        assert_eq!(client.cache_get(&quote).await.as_deref(), Some("quote"));
-        assert!(client.cache_get(&chart).await.is_none());
+        assert_eq!(client.cache_get(&quote).as_deref(), Some("quote"));
+        assert!(client.cache_get(&chart).is_none());
     }
 
     #[test]

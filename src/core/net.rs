@@ -131,8 +131,8 @@ pub async fn fetch_text_cached(
 ) -> Result<String, YfError> {
     let cache_key = client_cache_key(url);
     if config.options.cache_mode().reads(config.cache_endpoint)
-        && let Some(text) = client.cache_get_key(&cache_key).await
-        && cached_body_is_valid(client, &cache_key, text.as_ref(), config.cache_validator).await
+        && let Some(text) = client.cache_get_key(&cache_key)
+        && cached_body_is_valid(client, &cache_key, text.as_ref(), config.cache_validator)
     {
         return Ok(text.to_string());
     }
@@ -150,9 +150,7 @@ pub async fn fetch_text_cached(
 
     if cache_write_enabled(client, config.options, config.cache_endpoint) {
         validate_cache_body(config.cache_validator, &text)?;
-        client
-            .cache_put_key(config.cache_endpoint, cache_key, &text, None)
-            .await;
+        client.cache_put_key(config.cache_endpoint, cache_key, &text, None);
     }
 
     Ok(text)
@@ -169,12 +167,12 @@ where
 {
     let cache_key = YfClient::post_cache_key(url, body_json);
     if config.options.cache_mode().reads(config.cache_endpoint)
-        && let Some(body) = client.cache_get_key(&cache_key).await
-        && cached_body_is_valid(client, &cache_key, body.as_ref(), config.cache_validator).await
+        && let Some(body) = client.cache_get_key(&cache_key)
+        && cached_body_is_valid(client, &cache_key, body.as_ref(), config.cache_validator)
     {
         match serde_json::from_str(body.as_ref()) {
             Ok(data) => return Ok(data),
-            Err(_) => client.cache_remove_key(&cache_key).await,
+            Err(_) => client.cache_remove_key(&cache_key),
         }
     }
 
@@ -198,9 +196,7 @@ where
     let data = serde_json::from_str(&body).map_err(YfError::Json)?;
 
     if cache_write_enabled(client, config.options, config.cache_endpoint) {
-        client
-            .cache_put_key(config.cache_endpoint, cache_key, &body, None)
-            .await;
+        client.cache_put_key(config.cache_endpoint, cache_key, &body, None);
     }
 
     Ok(data)
@@ -275,7 +271,7 @@ where
         }
         AuthMode::RequiredCrumb => {
             if let Some(attempt) =
-                read_cached_auth_attempt(client, base_url.clone(), &cache_key, config, true).await
+                read_cached_auth_attempt(client, base_url.clone(), &cache_key, config, true)
             {
                 return match attempt {
                     CachedAuthAttempt::Success { body, url } => Ok((body, url)),
@@ -329,9 +325,7 @@ where
         cache_key,
         config,
         detect_invalid_crumb_body,
-    )
-    .await
-    {
+    ) {
         return Ok(match attempt {
             CachedAuthAttempt::Success { body, url } => AuthAttempt::Success { body, url },
             CachedAuthAttempt::InvalidCrumb => AuthAttempt::InvalidCrumb,
@@ -359,15 +353,13 @@ where
 
     if cache_write_enabled(client, config.options, config.cache_endpoint) {
         validate_cache_body(config.cache_validator, &body)?;
-        client
-            .cache_put_key(config.cache_endpoint, cache_key.to_string(), &body, None)
-            .await;
+        client.cache_put_key(config.cache_endpoint, cache_key.to_string(), &body, None);
     }
 
     Ok(AuthAttempt::Success { body, url })
 }
 
-async fn read_cached_auth_attempt(
+fn read_cached_auth_attempt(
     client: &YfClient,
     url: Url,
     cache_key: &str,
@@ -378,12 +370,12 @@ async fn read_cached_auth_attempt(
         return None;
     }
 
-    let body = client.cache_get_key(cache_key).await?;
+    let body = client.cache_get_key(cache_key)?;
     if should_retry_invalid_crumb_body(config, detect_invalid_crumb_body, body.as_ref()) {
-        client.cache_remove_key(cache_key).await;
+        client.cache_remove_key(cache_key);
         return Some(CachedAuthAttempt::InvalidCrumb);
     }
-    if !cached_body_is_valid(client, cache_key, body.as_ref(), config.cache_validator).await {
+    if !cached_body_is_valid(client, cache_key, body.as_ref(), config.cache_validator) {
         return None;
     }
 
@@ -403,7 +395,7 @@ async fn retry_with_fresh_crumb<F>(
 where
     F: Fn(Url) -> reqwest::RequestBuilder + Send + Sync,
 {
-    client.cache_remove_key(cache_key).await;
+    client.cache_remove_key(cache_key);
     client.clear_crumb().await;
     let crumb = ensure_crumb(client, "Crumb is not set after refreshing credentials").await?;
     let crumb_url = url_with_crumb(base_url, &crumb);
@@ -471,7 +463,7 @@ const fn cache_write_enabled(
     client.cache_enabled() && options.cache_mode().writes(endpoint)
 }
 
-async fn cached_body_is_valid(
+fn cached_body_is_valid(
     client: &YfClient,
     cache_key: &str,
     body: &str,
@@ -480,7 +472,7 @@ async fn cached_body_is_valid(
     if validate_cache_body(validator, body).is_ok() {
         true
     } else {
-        client.cache_remove_key(cache_key).await;
+        client.cache_remove_key(cache_key);
         false
     }
 }
@@ -622,9 +614,7 @@ mod tests {
             "/v10/finance/quoteSummary/AAPL?modules=summaryDetail",
         );
         let cache_key = base_url.as_str().to_string();
-        client
-            .cache_put_key(CacheEndpoint::QuoteSummary, cache_key, OK_BODY, None)
-            .await;
+        client.cache_put_key(CacheEndpoint::QuoteSummary, cache_key, OK_BODY, None);
 
         let (body, used_url) = fetch_text_with_auth_retry(
             &client,
@@ -658,14 +648,12 @@ mod tests {
         let client = cached_client(&server);
         let base_url = server_url(&server, "/v7/finance/quote?symbols=AAPL");
         let cache_key = base_url.as_str().to_string();
-        client
-            .cache_put_key(
-                CacheEndpoint::Quote,
-                cache_key.clone(),
-                INVALID_CRUMB_BODY,
-                None,
-            )
-            .await;
+        client.cache_put_key(
+            CacheEndpoint::Quote,
+            cache_key.clone(),
+            INVALID_CRUMB_BODY,
+            None,
+        );
 
         let (body, used_url) =
             fetch_text_with_auth_retry(&client, base_url, quote_auth_config(), |url| {
@@ -680,10 +668,7 @@ mod tests {
                 .query_pairs()
                 .any(|(key, value)| { key == "crumb" && value == "fresh-crumb" })
         );
-        assert_eq!(
-            client.cache_get_key(&cache_key).await.as_deref(),
-            Some(OK_BODY)
-        );
+        assert_eq!(client.cache_get_key(&cache_key).as_deref(), Some(OK_BODY));
         api.assert();
     }
 
@@ -723,7 +708,7 @@ mod tests {
             ),
             other => panic!("expected auth error, got {other:?}"),
         }
-        assert!(client.cache_get_key(&cache_key).await.is_none());
+        assert!(client.cache_get_key(&cache_key).is_none());
         api.assert();
     }
 }

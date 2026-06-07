@@ -2,57 +2,57 @@ use super::{CurrencyCacheKey, CurrencyCacheKind, CurrencyHints, ResolvedCurrency
 use crate::core::YfClient;
 
 impl YfClient {
-    pub(crate) async fn store_currency_hints(&self, symbol: &str, hints: CurrencyHints) {
-        let mut guard = self.currency_hints.write().await;
+    pub(crate) fn store_currency_hints(&self, symbol: &str, hints: CurrencyHints) {
         let key = symbol.to_string();
-        let mut hints = hints;
-        if let Some(mut existing) = guard.remove(symbol) {
-            existing.merge(hints);
-            hints = existing;
-        }
-        guard.insert(key, hints);
+        self.currency_hints.compute_with(key, |existing| {
+            let mut hints = hints;
+            if let Some(mut existing) = existing {
+                existing.merge(hints);
+                hints = existing;
+            }
+            hints
+        });
     }
 
-    pub(crate) async fn cached_currency_hints(&self, symbol: &str) -> CurrencyHints {
-        self.currency_hints
-            .write()
-            .await
-            .get_cloned(symbol)
-            .unwrap_or_default()
+    pub(crate) fn cached_currency_hints(&self, symbol: &str) -> CurrencyHints {
+        self.currency_hints.get_str(symbol).unwrap_or_default()
     }
 
-    pub(crate) async fn store_resolved_currency(
+    pub(crate) fn store_resolved_currency(
         &self,
         symbol: &str,
         kind: CurrencyCacheKind,
         resolved: ResolvedCurrency,
     ) {
-        let mut guard = self.currency_cache.write().await;
         let key = CurrencyCacheKey::new(symbol, kind);
-        let should_store = guard
-            .get_cloned(&key)
-            .as_ref()
-            .is_none_or(|existing| resolved.cache_rank_ge(existing));
+        let mut candidate = Some(resolved);
+        self.currency_cache.compute_with(key, |existing| {
+            if existing.as_ref().is_some_and(|existing| {
+                !candidate
+                    .as_ref()
+                    .expect("candidate currency is available")
+                    .cache_rank_ge(existing)
+            }) {
+                return existing.expect("existing currency was checked");
+            }
 
-        if should_store {
+            let resolved = candidate.take().expect("candidate currency is stored once");
             crate::core::logging::trace_debug!(
                 symbol,
                 kind = ?kind,
                 evidence = ?resolved.evidence(),
                 "cached resolved currency"
             );
-            guard.insert(key, resolved);
-        }
+            resolved
+        });
     }
 
-    pub(crate) async fn cached_resolved_currency(
+    pub(crate) fn cached_resolved_currency(
         &self,
         symbol: &str,
         kind: CurrencyCacheKind,
     ) -> Option<ResolvedCurrency> {
         self.currency_cache
-            .write()
-            .await
             .get_cloned(&CurrencyCacheKey::new(symbol, kind))
             .map(|resolved| resolved.with_cached_acquisition(kind))
     }

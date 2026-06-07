@@ -123,17 +123,15 @@ pub async fn option_chain_with_diagnostics(
     let first = first_option_result(env)?;
 
     if let Some(quote) = first.quote.as_ref() {
-        client
-            .store_currency_hints(
-                &symbol,
-                CurrencyHints::from_options_quote(
-                    wire_str(&quote.currency),
-                    wire_str(&quote.exchange),
-                    wire_str(&quote.full_exchange_name),
-                    wire_str(&quote.quote_type),
-                ),
-            )
-            .await;
+        client.store_currency_hints(
+            &symbol,
+            CurrencyHints::from_options_quote(
+                wire_str(&quote.currency),
+                wire_str(&quote.exchange),
+                wire_str(&quote.full_exchange_name),
+                wire_str(&quote.quote_type),
+            ),
+        );
     }
 
     let currency_from_response = currency_from_result(&first);
@@ -188,8 +186,7 @@ pub async fn option_chain_with_diagnostics(
         &symbol,
         underlying_from_response,
         raw_underlying_quote_type,
-    )
-    .await?;
+    )?;
 
     let mut contracts = Vec::new();
     project_option_side(
@@ -219,23 +216,19 @@ pub async fn option_chain_with_diagnostics(
     }))
 }
 
-async fn underlying_instrument(
+fn underlying_instrument(
     client: &YfClient,
     symbol: &str,
     response_instrument: Option<Instrument>,
     raw_quote_type: Option<String>,
 ) -> Result<Instrument, YfError> {
     if let Some(instrument) = response_instrument {
-        client
-            .store_instrument(symbol.to_string(), instrument.clone())
-            .await;
-        client
-            .store_instrument(instrument.symbol.as_str().to_string(), instrument.clone())
-            .await;
+        client.store_instrument(symbol.to_string(), instrument.clone());
+        client.store_instrument(instrument.symbol.as_str().to_string(), instrument.clone());
         return Ok(instrument);
     }
 
-    if let Some(instrument) = client.cached_instrument(symbol).await {
+    if let Some(instrument) = client.cached_instrument(symbol) {
         return Ok(instrument);
     }
 

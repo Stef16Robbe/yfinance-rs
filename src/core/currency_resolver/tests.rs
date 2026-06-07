@@ -80,31 +80,24 @@ fn assert_inferred_currency_projection(
 #[tokio::test]
 async fn direct_provider_replaces_weaker_profile_cache() {
     let client = YfClient::default();
-    client
-        .store_resolved_currency(
-            "TEST",
-            CurrencyCacheKind::Reporting,
-            ResolvedCurrency::profile_country_heuristic(unit("GBP")),
-        )
-        .await;
-    client
-        .store_resolved_currency(
-            "TEST",
-            CurrencyCacheKind::Reporting,
-            ResolvedCurrency::direct_provider(unit("USD"), DirectCurrencyField::FinancialCurrency),
-        )
-        .await;
-    client
-        .store_resolved_currency(
-            "TEST",
-            CurrencyCacheKind::Reporting,
-            ResolvedCurrency::profile_country_heuristic(unit("GBP")),
-        )
-        .await;
+    client.store_resolved_currency(
+        "TEST",
+        CurrencyCacheKind::Reporting,
+        ResolvedCurrency::profile_country_heuristic(unit("GBP")),
+    );
+    client.store_resolved_currency(
+        "TEST",
+        CurrencyCacheKind::Reporting,
+        ResolvedCurrency::direct_provider(unit("USD"), DirectCurrencyField::FinancialCurrency),
+    );
+    client.store_resolved_currency(
+        "TEST",
+        CurrencyCacheKind::Reporting,
+        ResolvedCurrency::profile_country_heuristic(unit("GBP")),
+    );
 
     let resolved = client
         .cached_resolved_currency("TEST", CurrencyCacheKind::Reporting)
-        .await
         .expect("cached currency");
     assert_eq!(currency(&resolved.unit), Currency::Iso(IsoCurrency::USD));
 }
@@ -112,31 +105,24 @@ async fn direct_provider_replaces_weaker_profile_cache() {
 #[tokio::test]
 async fn direct_provider_replaces_weaker_enriched_cache() {
     let client = YfClient::default();
-    client
-        .store_resolved_currency(
-            "TEST",
-            CurrencyCacheKind::Trading,
-            ResolvedCurrency::quote_enrichment(unit("GBP")),
-        )
-        .await;
-    client
-        .store_resolved_currency(
-            "TEST",
-            CurrencyCacheKind::Trading,
-            ResolvedCurrency::direct_provider(unit("USD"), DirectCurrencyField::ChartMeta),
-        )
-        .await;
-    client
-        .store_resolved_currency(
-            "TEST",
-            CurrencyCacheKind::Trading,
-            ResolvedCurrency::quote_enrichment(unit("GBP")),
-        )
-        .await;
+    client.store_resolved_currency(
+        "TEST",
+        CurrencyCacheKind::Trading,
+        ResolvedCurrency::quote_enrichment(unit("GBP")),
+    );
+    client.store_resolved_currency(
+        "TEST",
+        CurrencyCacheKind::Trading,
+        ResolvedCurrency::direct_provider(unit("USD"), DirectCurrencyField::ChartMeta),
+    );
+    client.store_resolved_currency(
+        "TEST",
+        CurrencyCacheKind::Trading,
+        ResolvedCurrency::quote_enrichment(unit("GBP")),
+    );
 
     let resolved = client
         .cached_resolved_currency("TEST", CurrencyCacheKind::Trading)
-        .await
         .expect("cached currency");
     assert_eq!(currency(&resolved.unit), Currency::Iso(IsoCurrency::USD));
 }
@@ -144,128 +130,77 @@ async fn direct_provider_replaces_weaker_enriched_cache() {
 #[tokio::test]
 async fn direct_provider_does_not_replace_stronger_override_cache_entry() {
     let client = YfClient::default();
-    client
-        .store_resolved_currency(
-            "TEST",
-            CurrencyCacheKind::Reporting,
-            ResolvedCurrency::override_currency(unit("GBP")),
-        )
-        .await;
-    client
-        .store_resolved_currency(
-            "TEST",
-            CurrencyCacheKind::Reporting,
-            ResolvedCurrency::direct_provider(unit("USD"), DirectCurrencyField::FinancialCurrency),
-        )
-        .await;
+    client.store_resolved_currency(
+        "TEST",
+        CurrencyCacheKind::Reporting,
+        ResolvedCurrency::override_currency(unit("GBP")),
+    );
+    client.store_resolved_currency(
+        "TEST",
+        CurrencyCacheKind::Reporting,
+        ResolvedCurrency::direct_provider(unit("USD"), DirectCurrencyField::FinancialCurrency),
+    );
 
     let resolved = client
         .cached_resolved_currency("TEST", CurrencyCacheKind::Reporting)
-        .await
         .expect("cached currency");
     assert_eq!(currency(&resolved.unit), Currency::Iso(IsoCurrency::GBP));
 }
 
 #[tokio::test]
-async fn currency_side_caches_evict_least_recently_used_entries() {
+async fn currency_side_caches_bound_entry_count() {
     let client = YfClient::builder()
         .side_cache_max_entries(NonZeroUsize::new(2).expect("non-zero"))
         .build()
         .expect("client builds");
 
-    client
-        .store_resolved_currency(
-            "AAPL",
-            CurrencyCacheKind::Trading,
-            ResolvedCurrency::quote_enrichment(unit("USD")),
-        )
-        .await;
-    client
-        .store_resolved_currency(
-            "MSFT",
-            CurrencyCacheKind::Trading,
-            ResolvedCurrency::quote_enrichment(unit("USD")),
-        )
-        .await;
+    client.store_resolved_currency(
+        "AAPL",
+        CurrencyCacheKind::Trading,
+        ResolvedCurrency::quote_enrichment(unit("USD")),
+    );
+    client.store_resolved_currency(
+        "MSFT",
+        CurrencyCacheKind::Trading,
+        ResolvedCurrency::quote_enrichment(unit("USD")),
+    );
     assert!(
         client
             .cached_resolved_currency("AAPL", CurrencyCacheKind::Trading)
-            .await
             .is_some()
     );
-    client
-        .store_resolved_currency(
-            "GOOGL",
-            CurrencyCacheKind::Trading,
-            ResolvedCurrency::quote_enrichment(unit("USD")),
-        )
-        .await;
-
-    assert!(
-        client
-            .cached_resolved_currency("AAPL", CurrencyCacheKind::Trading)
-            .await
-            .is_some()
+    client.store_resolved_currency(
+        "GOOGL",
+        CurrencyCacheKind::Trading,
+        ResolvedCurrency::quote_enrichment(unit("USD")),
     );
-    assert!(
-        client
-            .cached_resolved_currency("MSFT", CurrencyCacheKind::Trading)
-            .await
-            .is_none()
-    );
-    assert!(
-        client
-            .cached_resolved_currency("GOOGL", CurrencyCacheKind::Trading)
-            .await
-            .is_some()
-    );
-    assert_eq!(client.currency_cache.read().await.len(), 2);
 
-    client
-        .store_currency_hints(
-            "AAPL",
-            CurrencyHints::from_quote(Some("USD"), None, None, None, None),
-        )
-        .await;
-    client
-        .store_currency_hints(
-            "MSFT",
-            CurrencyHints::from_quote(Some("USD"), None, None, None, None),
-        )
-        .await;
-    let _ = client.cached_currency_hints("AAPL").await;
-    client
-        .store_currency_hints(
-            "GOOGL",
-            CurrencyHints::from_quote(Some("USD"), None, None, None, None),
-        )
-        .await;
+    assert!(client.currency_cache.len() <= 2);
 
-    let (has_aapl, has_msft, has_googl, len) = {
-        let guard = client.currency_hints.read().await;
-        (
-            guard.contains_key("AAPL"),
-            guard.contains_key("MSFT"),
-            guard.contains_key("GOOGL"),
-            guard.len(),
-        )
-    };
-    assert!(has_aapl);
-    assert!(!has_msft);
-    assert!(has_googl);
-    assert_eq!(len, 2);
+    client.store_currency_hints(
+        "AAPL",
+        CurrencyHints::from_quote(Some("USD"), None, None, None, None),
+    );
+    client.store_currency_hints(
+        "MSFT",
+        CurrencyHints::from_quote(Some("USD"), None, None, None, None),
+    );
+    client.store_currency_hints(
+        "GOOGL",
+        CurrencyHints::from_quote(Some("USD"), None, None, None, None),
+    );
+
+    assert!(client.currency_hints.len() <= 2);
 }
 
 #[tokio::test]
 async fn override_resolution_does_not_poison_inferred_cache() {
     let client = YfClient::default();
-    client
-        .store_resolved_currency(
-            "TEST",
-            CurrencyCacheKind::Reporting,
-            ResolvedCurrency::profile_country_heuristic(unit("GBP")),
-        )
-        .await;
+    client.store_resolved_currency(
+        "TEST",
+        CurrencyCacheKind::Reporting,
+        ResolvedCurrency::profile_country_heuristic(unit("GBP")),
+    );
 
     let override_unit = client
         .resolve_reporting_currency_unit(
@@ -309,19 +244,15 @@ async fn override_currency_without_metadata_is_invalid_params() {
 #[tokio::test]
 async fn provider_hint_replaces_cached_listing_heuristic() {
     let client = YfClient::default();
-    client
-        .store_resolved_currency(
-            "TEST",
-            CurrencyCacheKind::Trading,
-            ResolvedCurrency::listing_heuristic(unit("GBP")),
-        )
-        .await;
-    client
-        .store_currency_hints(
-            "TEST",
-            CurrencyHints::from_quote(Some("USD"), None, None, None, None),
-        )
-        .await;
+    client.store_resolved_currency(
+        "TEST",
+        CurrencyCacheKind::Trading,
+        ResolvedCurrency::listing_heuristic(unit("GBP")),
+    );
+    client.store_currency_hints(
+        "TEST",
+        CurrencyHints::from_quote(Some("USD"), None, None, None, None),
+    );
 
     let resolved = client
         .resolve_trading_currency_unit("TEST", None, TradingCurrencyEvidence::None, &test_options())
@@ -348,13 +279,11 @@ async fn cached_reporting_profile_heuristic_retries_unknown_enrichment() {
         .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
         .build()
         .unwrap();
-    client
-        .store_resolved_currency(
-            "TEST",
-            CurrencyCacheKind::Reporting,
-            ResolvedCurrency::profile_country_heuristic(unit("GBP")),
-        )
-        .await;
+    client.store_resolved_currency(
+        "TEST",
+        CurrencyCacheKind::Reporting,
+        ResolvedCurrency::profile_country_heuristic(unit("GBP")),
+    );
 
     let resolved = client
         .resolve_reporting_currency_unit(
@@ -373,20 +302,16 @@ async fn cached_reporting_profile_heuristic_retries_unknown_enrichment() {
 #[tokio::test]
 async fn purpose_and_resolution_mode_use_their_own_cache_semantics() {
     let client = YfClient::default();
-    client
-        .store_resolved_currency(
-            "TEST",
-            CurrencyCacheKind::Reporting,
-            ResolvedCurrency::direct_provider(unit("EUR"), DirectCurrencyField::FinancialCurrency),
-        )
-        .await;
-    client
-        .store_resolved_currency(
-            "TEST",
-            CurrencyCacheKind::Trading,
-            ResolvedCurrency::direct_provider(unit("GBP"), DirectCurrencyField::ChartMeta),
-        )
-        .await;
+    client.store_resolved_currency(
+        "TEST",
+        CurrencyCacheKind::Reporting,
+        ResolvedCurrency::direct_provider(unit("EUR"), DirectCurrencyField::FinancialCurrency),
+    );
+    client.store_resolved_currency(
+        "TEST",
+        CurrencyCacheKind::Trading,
+        ResolvedCurrency::direct_provider(unit("GBP"), DirectCurrencyField::ChartMeta),
+    );
 
     let analyst_unit = client
         .resolve_analyst_estimate_currency_unit(
@@ -423,13 +348,11 @@ async fn purpose_and_resolution_mode_use_their_own_cache_semantics() {
 #[tokio::test]
 async fn analyst_direct_currency_does_not_poison_symbol_cache() {
     let client = YfClient::default();
-    client
-        .store_resolved_currency(
-            "TEST",
-            CurrencyCacheKind::Reporting,
-            ResolvedCurrency::direct_provider(unit("GBP"), DirectCurrencyField::FinancialCurrency),
-        )
-        .await;
+    client.store_resolved_currency(
+        "TEST",
+        CurrencyCacheKind::Reporting,
+        ResolvedCurrency::direct_provider(unit("GBP"), DirectCurrencyField::FinancialCurrency),
+    );
 
     let direct = client
         .resolve_analyst_estimate_currency_unit(
@@ -444,7 +367,6 @@ async fn analyst_direct_currency_does_not_poison_symbol_cache() {
     assert!(
         client
             .cached_resolved_currency("TEST", CurrencyCacheKind::Reporting)
-            .await
             .is_some_and(|resolved| currency(&resolved.unit) == Currency::Iso(IsoCurrency::GBP))
     );
 
@@ -513,7 +435,6 @@ async fn invalid_enriched_currency_is_invalid_data() {
     assert!(
         !client
             .cached_currency_hints("BAD")
-            .await
             .hint(CurrencyHintField::Quote)
             .is_unknown()
     );
@@ -634,12 +555,10 @@ async fn invalid_direct_currency_projects_as_omitted_data() {
 async fn listing_heuristic_emits_currency_inferred_and_fails_strict() {
     let symbol = "TSCO.L";
     let client = YfClient::default();
-    client
-        .store_currency_hints(
-            symbol,
-            CurrencyHints::from_quote(None, None, None, None, None),
-        )
-        .await;
+    client.store_currency_hints(
+        symbol,
+        CurrencyHints::from_quote(None, None, None, None, None),
+    );
 
     let resolved = client
         .resolve_trading_currency(symbol, None, TradingCurrencyEvidence::None, &test_options())
@@ -664,21 +583,15 @@ async fn listing_heuristic_emits_currency_inferred_and_fails_strict() {
 async fn profile_country_heuristic_emits_currency_inferred_and_fails_strict() {
     let symbol = "PROFILEONLY";
     let client = YfClient::default();
-    client
-        .store_currency_hints(
-            symbol,
-            CurrencyHints::from_quote(None, None, None, None, None),
-        )
-        .await;
-    client
-        .store_currency_hints(symbol, CurrencyHints::from_quote_summary_financial(None))
-        .await;
-    client
-        .store_currency_hints(
-            symbol,
-            CurrencyHints::from_profile(Some("United Kingdom"), None, None),
-        )
-        .await;
+    client.store_currency_hints(
+        symbol,
+        CurrencyHints::from_quote(None, None, None, None, None),
+    );
+    client.store_currency_hints(symbol, CurrencyHints::from_quote_summary_financial(None));
+    client.store_currency_hints(
+        symbol,
+        CurrencyHints::from_profile(Some("United Kingdom"), None, None),
+    );
 
     let resolved = client
         .resolve_reporting_currency(
@@ -757,7 +670,6 @@ async fn failed_quote_enrichment_is_not_cached() {
     assert!(
         client
             .cached_currency_hints("MISS")
-            .await
             .hint(CurrencyHintField::Quote)
             .is_unknown()
     );
@@ -786,7 +698,6 @@ async fn successful_missing_quote_currency_is_cached() {
     assert!(
         !client
             .cached_currency_hints("MISS")
-            .await
             .hint(CurrencyHintField::Quote)
             .is_unknown()
     );
@@ -812,7 +723,7 @@ async fn successful_empty_quote_response_caches_requested_symbol_missing() {
     client.enrich_quote_hints("MISS", &test_options()).await;
 
     assert_eq!(quote_mock.calls(), 1);
-    let hints = client.cached_currency_hints("MISS").await;
+    let hints = client.cached_currency_hints("MISS");
     assert!(!hints.hint(CurrencyHintField::Quote).is_unknown());
     assert!(!hints.hint(CurrencyHintField::Financial).is_unknown());
 }
@@ -839,7 +750,7 @@ async fn successful_normalized_quote_response_caches_requested_symbol_key() {
     client.enrich_quote_hints("miss", &test_options()).await;
 
     assert_eq!(quote_mock.calls(), 1);
-    let hints = client.cached_currency_hints("miss").await;
+    let hints = client.cached_currency_hints("miss");
     assert!(hints.hint(CurrencyHintField::Quote).present().is_some());
     assert!(!hints.hint(CurrencyHintField::Financial).is_unknown());
 }

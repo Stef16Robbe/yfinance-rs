@@ -44,7 +44,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 3. --- Cache Management ---
     println!("--- Managing the client cache ---");
-    client.clear_cache().await;
+    client.clear_cache();
     println!("Client cache cleared.");
     let quote3 = aapl.quote().await?;
     println!(

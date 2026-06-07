@@ -534,7 +534,7 @@ async fn run_websocket_stream(
 
                         match decode_ws_pricing(&text) {
                             Ok(ticker) => {
-                                if let Some(update) = map_ws_pricing_to_update(client, &ticker).await
+                                if let Some(update) = map_ws_pricing_to_update(client, &ticker)
                                     && tx.send(update).await.is_err() { return Ok(()); }
                             },
                             Err(e) => {
@@ -552,7 +552,7 @@ async fn run_websocket_stream(
                         // Try to interpret as UTF-8 JSON-wrapped base64 first
                         let handled = if let Ok(as_text) = std::str::from_utf8(&bin) {
                             if let Ok(ticker) = decode_ws_pricing(as_text) {
-                                if let Some(update) = map_ws_pricing_to_update(client, &ticker).await
+                                if let Some(update) = map_ws_pricing_to_update(client, &ticker)
                                     && tx.send(update).await.is_err() { return Ok(()); }
                                 true
                             } else { false }
@@ -561,7 +561,7 @@ async fn run_websocket_stream(
                         if !handled {
                             match wire_ws::PricingData::decode(&*bin) {
                                 Ok(ticker) => {
-                                    if let Some(update) = map_ws_pricing_to_update(client, &ticker).await
+                                    if let Some(update) = map_ws_pricing_to_update(client, &ticker)
                                         && tx.send(update).await.is_err() { return Ok(()); }
                                 }
                                 Err(e) => {
@@ -724,12 +724,12 @@ fn decode_ws_pricing(text: &str) -> Result<wire_ws::PricingData, YfError> {
     Ok(ticker)
 }
 
-async fn resolve_stream_instrument(
+fn resolve_stream_instrument(
     client: &YfClient,
     symbol: &str,
     kind: Option<AssetKind>,
 ) -> Option<Instrument> {
-    if let Some(instrument) = client.cached_instrument(symbol).await {
+    if let Some(instrument) = client.cached_instrument(symbol) {
         return Some(instrument);
     }
 
@@ -744,9 +744,7 @@ async fn resolve_stream_instrument(
     };
 
     if should_cache {
-        client
-            .store_instrument(symbol.to_string(), instrument.clone())
-            .await;
+        client.store_instrument(symbol.to_string(), instrument.clone());
     }
 
     Some(instrument)
@@ -821,7 +819,7 @@ fn ws_price_from_f32(
     currency_unit.price_amount_from_decimal(value)
 }
 
-async fn map_ws_pricing_to_update(
+fn map_ws_pricing_to_update(
     client: &YfClient,
     ticker: &wire_ws::PricingData,
 ) -> Option<QuoteUpdate> {
@@ -829,8 +827,7 @@ async fn map_ws_pricing_to_update(
         client,
         &ticker.id,
         stream_quote_type_to_asset_kind(ticker.quote_type),
-    )
-    .await?;
+    )?;
     let timestamp = match ws_pricing_timestamp(ticker) {
         Ok(timestamp) => timestamp,
         Err(error) => {
@@ -1026,7 +1023,7 @@ async fn handle_polling_quotes(
             .as_ref()
             .map(String::as_str)
             .and_then(|value| parse_yahoo_quote_type(value).ok());
-        let Some(instrument) = resolve_stream_instrument(client, &sym_s, kind).await else {
+        let Some(instrument) = resolve_stream_instrument(client, &sym_s, kind) else {
             continue;
         };
         if tx

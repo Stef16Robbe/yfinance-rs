@@ -222,18 +222,15 @@ impl YfClient {
             })?;
             let resolved = ResolvedCurrency::direct_provider(unit, field);
             if let DirectCurrencyCache::Store(cache_kind) = spec.direct_cache() {
-                self.store_resolved_currency(symbol, cache_kind, resolved.clone())
-                    .await;
+                self.store_resolved_currency(symbol, cache_kind, resolved.clone());
             }
             return Ok(resolved);
         }
 
         let cache_kind = spec.mode().cache_kind();
-        let cached = self.cached_resolved_currency(symbol, cache_kind).await;
+        let cached = self.cached_resolved_currency(symbol, cache_kind);
         if let Some(resolved) = cached.as_ref()
-            && self
-                .cached_resolution_is_final(symbol, spec.mode(), resolved)
-                .await
+            && self.cached_resolution_is_final(symbol, spec.mode(), resolved)
         {
             return Ok(resolved.clone());
         }
@@ -259,50 +256,40 @@ impl YfClient {
     ) -> Result<ResolvedCurrency, YfError> {
         let mut invalid_evidence = Vec::new();
 
-        if let Some(resolved) = self
-            .resolve_first_hint(
-                symbol,
-                spec.mode().cache_kind(),
-                &TRADING_QUOTE_HINTS,
-                &mut invalid_evidence,
-            )
-            .await
-        {
+        if let Some(resolved) = self.resolve_first_hint(
+            symbol,
+            spec.mode().cache_kind(),
+            &TRADING_QUOTE_HINTS,
+            &mut invalid_evidence,
+        ) {
             return Ok(resolved);
         }
 
         self.enrich_quote_hints(symbol, options).await;
-        if let Some(resolved) = self
-            .resolve_first_hint(
-                symbol,
-                spec.mode().cache_kind(),
-                &TRADING_QUOTE_HINTS,
-                &mut invalid_evidence,
-            )
-            .await
-        {
+        if let Some(resolved) = self.resolve_first_hint(
+            symbol,
+            spec.mode().cache_kind(),
+            &TRADING_QUOTE_HINTS,
+            &mut invalid_evidence,
+        ) {
             return Ok(resolved);
         }
 
-        let hints = self.cached_currency_hints(symbol).await;
+        let hints = self.cached_currency_hints(symbol);
         if let Some(unit) = inference::infer_listing_currency(symbol, &hints) {
             let resolved = ResolvedCurrency::listing_heuristic(unit)
                 .with_invalid_evidence(std::mem::take(&mut invalid_evidence));
-            self.store_resolved_currency(symbol, spec.mode().cache_kind(), resolved.clone())
-                .await;
+            self.store_resolved_currency(symbol, spec.mode().cache_kind(), resolved.clone());
             return Ok(resolved);
         }
 
         self.enrich_profile_hints(symbol, options).await;
-        if let Some(resolved) = self
-            .resolve_first_hint(
-                symbol,
-                spec.mode().cache_kind(),
-                &TRADING_PROFILE_HINTS,
-                &mut invalid_evidence,
-            )
-            .await
-        {
+        if let Some(resolved) = self.resolve_first_hint(
+            symbol,
+            spec.mode().cache_kind(),
+            &TRADING_PROFILE_HINTS,
+            &mut invalid_evidence,
+        ) {
             return Ok(resolved);
         }
 
@@ -334,55 +321,43 @@ impl YfClient {
     ) -> Result<ResolvedCurrency, YfError> {
         let mut invalid_evidence = Vec::new();
 
-        if let Some(resolved) = self
-            .resolve_first_hint(
-                symbol,
-                spec.mode().cache_kind(),
-                &REPORTING_CACHED_HINTS,
-                &mut invalid_evidence,
-            )
-            .await
-        {
+        if let Some(resolved) = self.resolve_first_hint(
+            symbol,
+            spec.mode().cache_kind(),
+            &REPORTING_CACHED_HINTS,
+            &mut invalid_evidence,
+        ) {
             return Ok(resolved);
         }
 
         self.enrich_quote_hints(symbol, options).await;
-        if let Some(resolved) = self
-            .resolve_first_hint(
-                symbol,
-                spec.mode().cache_kind(),
-                &REPORTING_QUOTE_HINTS,
-                &mut invalid_evidence,
-            )
-            .await
-        {
+        if let Some(resolved) = self.resolve_first_hint(
+            symbol,
+            spec.mode().cache_kind(),
+            &REPORTING_QUOTE_HINTS,
+            &mut invalid_evidence,
+        ) {
             return Ok(resolved);
         }
 
         self.enrich_quote_summary_reporting_hints(symbol, options)
             .await;
-        if let Some(resolved) = self
-            .resolve_first_hint(
-                symbol,
-                spec.mode().cache_kind(),
-                &REPORTING_QUOTE_SUMMARY_HINTS,
-                &mut invalid_evidence,
-            )
-            .await
-        {
+        if let Some(resolved) = self.resolve_first_hint(
+            symbol,
+            spec.mode().cache_kind(),
+            &REPORTING_QUOTE_SUMMARY_HINTS,
+            &mut invalid_evidence,
+        ) {
             return Ok(resolved);
         }
 
         self.enrich_profile_hints(symbol, options).await;
-        if let Some(resolved) = self
-            .resolve_first_hint(
-                symbol,
-                spec.mode().cache_kind(),
-                &REPORTING_PROFILE_HINTS,
-                &mut invalid_evidence,
-            )
-            .await
-        {
+        if let Some(resolved) = self.resolve_first_hint(
+            symbol,
+            spec.mode().cache_kind(),
+            &REPORTING_PROFILE_HINTS,
+            &mut invalid_evidence,
+        ) {
             return Ok(resolved);
         }
 
@@ -405,14 +380,14 @@ impl YfClient {
         )))
     }
 
-    async fn resolve_first_hint(
+    fn resolve_first_hint(
         &self,
         symbol: &str,
         cache_kind: CurrencyCacheKind,
         evidence: &[HintEvidence],
         invalid_evidence: &mut Vec<InvalidCurrencyEvidence>,
     ) -> Option<ResolvedCurrency> {
-        let hints = self.cached_currency_hints(symbol).await;
+        let hints = self.cached_currency_hints(symbol);
         for hint in evidence {
             if let Some(code) = hints.invalid_code(hint.field) {
                 push_invalid_currency_evidence(invalid_evidence, hint.field, code);
@@ -425,8 +400,7 @@ impl YfClient {
                 let resolved = value
                     .resolved_currency()
                     .with_invalid_evidence(std::mem::take(invalid_evidence));
-                self.store_resolved_currency(symbol, cache_kind, resolved.clone())
-                    .await;
+                self.store_resolved_currency(symbol, cache_kind, resolved.clone());
                 return Some(resolved);
             }
         }
@@ -434,7 +408,7 @@ impl YfClient {
         None
     }
 
-    async fn cached_resolution_is_final(
+    fn cached_resolution_is_final(
         &self,
         symbol: &str,
         mode: CurrencyResolutionMode,
@@ -444,7 +418,7 @@ impl YfClient {
             return true;
         }
 
-        let hints = self.cached_currency_hints(symbol).await;
+        let hints = self.cached_currency_hints(symbol);
         match mode {
             CurrencyResolutionMode::TradingLike => hints.is_missing(CurrencyHintField::Quote),
             CurrencyResolutionMode::ReportingLike => {

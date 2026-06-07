@@ -313,7 +313,7 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
         }
 
         if self.options.cache_mode().reads(CacheEndpoint::Screener)
-            && let Some(body) = self.client.cache_get(&url).await
+            && let Some(body) = self.client.cache_get(&url)
         {
             return parse_screener_body_with_diagnostics(&body, self.options.data_quality());
         }
@@ -322,8 +322,7 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
         let (body, _) = self.get_with_auth_retry(url, screener.id()).await?;
         if self.options.cache_mode().writes(CacheEndpoint::Screener) {
             self.client
-                .cache_put(CacheEndpoint::Screener, &cache_url, &body, None)
-                .await;
+                .cache_put(CacheEndpoint::Screener, &cache_url, &body, None);
         }
         parse_screener_body_with_diagnostics(&body, self.options.data_quality())
     }

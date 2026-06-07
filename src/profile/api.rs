@@ -23,10 +23,10 @@ pub async fn load_from_quote_summary_api(
     )
     .await?;
 
-    load_from_quote_summary_result(client, symbol, first).await
+    load_from_quote_summary_result(client, symbol, first)
 }
 
-pub(super) async fn load_from_quote_summary_result(
+pub(super) fn load_from_quote_summary_result(
     client: &YfClient,
     symbol: &str,
     first: V10Result,
@@ -59,16 +59,14 @@ pub(super) async fn load_from_quote_summary_result(
                 .as_ref()
                 .and_then(|q| q.exchange.as_ref().map(String::as_str));
             let country = sp.country.as_ref().cloned();
-            client
-                .store_currency_hints(
-                    symbol,
-                    CurrencyHints::from_profile(
-                        country.as_deref(),
-                        exchange,
-                        Some(YahooProfileKind::Company.quote_type()),
-                    ),
-                )
-                .await;
+            client.store_currency_hints(
+                symbol,
+                CurrencyHints::from_profile(
+                    country.as_deref(),
+                    exchange,
+                    Some(YahooProfileKind::Company.quote_type()),
+                ),
+            );
             let address = Address {
                 street1: sp.address1.into_option(),
                 street2: sp.address2.into_option(),
@@ -102,12 +100,10 @@ pub(super) async fn load_from_quote_summary_result(
                 .quote_type
                 .as_ref()
                 .and_then(|q| q.exchange.as_ref().map(String::as_str));
-            client
-                .store_currency_hints(
-                    symbol,
-                    CurrencyHints::from_profile(None, exchange, Some(fund_quote_kind.quote_type())),
-                )
-                .await;
+            client.store_currency_hints(
+                symbol,
+                CurrencyHints::from_profile(None, exchange, Some(fund_quote_kind.quote_type())),
+            );
 
             // Validate ISIN if present, return None if invalid
             let validated_isin = fp

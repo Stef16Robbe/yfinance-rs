@@ -131,17 +131,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   listing-currency scaling.
 - Search requests now reject empty or whitespace-only queries with
   `YfError::InvalidParams` before contacting Yahoo.
-- Currency and instrument side caches are now bounded LRU caches instead of
+- Currency and instrument side caches are now bounded caches instead of
   unbounded `HashMap`s, with `YfClientBuilder::side_cache_max_entries()` for
   tuning the per-cache limit.
-- Response-cache reads no longer prune the entire cache on every lookup, and
-  bounded caches now evict from a maintained LRU list instead of repeatedly
-  scanning for the oldest access.
-- Response-cache hits now return under a shared read lock and promote LRU state
-  only when the write lock is immediately available, avoiding write-lock
-  contention across concurrent cache hits.
-- Internal LRU caches now use the `lru` crate instead of a custom linked-list
-  map, avoiding key clones during cache-hit promotion.
+- Response and side caches now use `moka` for bounded concurrent storage,
+  avoiding async `RwLock` serialization and best-effort LRU promotion on cache
+  hits.
+- `YfClient::clear_cache()` and `YfClient::invalidate_cache_entry()` are now
+  synchronous because in-memory cache operations no longer acquire async locks.
+- Response-cache reads no longer prune the entire cache on every lookup; stale
+  entries are removed on access and expired entries are pruned on writes.
 - Response-cache bodies are now stored as shared strings, so cache hits no
   longer allocate and copy the entire cached response body.
 - History candle assembly now preallocates its output buffer using the shortest
@@ -338,7 +337,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Internal currency resolution now uses purpose-specific evidence types rather than a generic raw currency-code argument, reducing the chance that endpoint-specific fields mutate the wrong contextual cache.
 - `None` currency overrides continue to auto-enrich by querying Yahoo for stronger currency evidence when an endpoint omits currency data. `Some(currency)` overrides remain per-call only and no longer mutate inferred currency caches.
 - `YfClient::clear_cache()` now clears URL response cache, currency hint cache, resolved currency cache, and instrument cache; `invalidate_cache_entry()` remains URL-cache only.
-- In-memory response caching now has per-endpoint TTL overrides through `YfClientBuilder::cache_ttl_for`, a default 1024-entry cap, and least-recently-used eviction via `YfClientBuilder::cache_max_entries`.
+- In-memory response caching now has per-endpoint TTL overrides through `YfClientBuilder::cache_ttl_for`, a default 1024-entry cap, and bounded eviction via `YfClientBuilder::cache_max_entries`.
 - Simplify fundamentals statement and analyst earnings-trend projection internals without changing the public API.
 - Extract shared internal projection helpers for required fields, optional parser diagnostics, and optional value projection; analyst estimate currencies are now resolved once per direct-code group instead of per row.
 - CI now covers `main` and `develop` with separate MSRV, formatting, lint, offline-test, and package dry-run jobs, while Yahoo live smoke testing runs in a separate non-required workflow.

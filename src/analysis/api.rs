@@ -591,12 +591,10 @@ async fn map_analyst_price_target(
         "financialCurrency",
         &fd.financial_currency,
     )?;
-    client
-        .store_currency_hints(
-            symbol,
-            CurrencyHints::from_quote_summary_financial(financial_currency.as_deref()),
-        )
-        .await;
+    client.store_currency_hints(
+        symbol,
+        CurrencyHints::from_quote_summary_financial(financial_currency.as_deref()),
+    );
 
     let mean = optional_raw_value_from_wire(
         &mut ctx,
