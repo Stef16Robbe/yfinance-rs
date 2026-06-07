@@ -332,7 +332,7 @@ where
         });
     }
 
-    let req = client.with_auth_cookie(build_request(url.clone())).await;
+    let req = client.with_auth_cookie(build_request(url.clone()));
     let resp = client
         .send_with_retry(req, config.options.retry_override())
         .await?;
@@ -396,7 +396,7 @@ where
     F: Fn(Url) -> reqwest::RequestBuilder + Send + Sync,
 {
     client.cache_remove_key(cache_key);
-    client.clear_crumb().await;
+    client.clear_crumb();
     let crumb = ensure_crumb(client, "Crumb is not set after refreshing credentials").await?;
     let crumb_url = url_with_crumb(base_url, &crumb);
     let retry_options = config
@@ -438,7 +438,6 @@ async fn ensure_crumb(client: &YfClient, missing_message: &str) -> Result<String
     client.ensure_credentials().await?;
     client
         .crumb()
-        .await
         .ok_or_else(|| YfError::Auth(missing_message.into()))
 }
 

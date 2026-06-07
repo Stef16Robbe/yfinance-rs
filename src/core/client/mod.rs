@@ -21,9 +21,8 @@ use reqwest::Client;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::num::NonZeroUsize;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::time::{Duration, Instant};
-use tokio::sync::RwLock;
 use url::Url;
 
 const DEFAULT_CACHE_MAX_ENTRIES: usize = 1024;
@@ -355,6 +354,14 @@ impl YfClient {
 
     pub(crate) fn user_agent(&self) -> &str {
         &self.user_agent
+    }
+
+    fn read_state(&self) -> RwLockReadGuard<'_, ClientState> {
+        self.state.read().expect("client state lock poisoned")
+    }
+
+    fn write_state(&self) -> RwLockWriteGuard<'_, ClientState> {
+        self.state.write().expect("client state lock poisoned")
     }
 
     pub(crate) const fn base_quote_v7(&self) -> &Url {
@@ -1227,7 +1234,7 @@ mod tests {
             .expect("client builds");
 
         {
-            let mut state = client.state.blocking_write();
+            let mut state = client.write_state();
             state.cookie = Some("state-cookie-secret".to_string());
             state.crumb = Some("state-crumb-secret".to_string());
         }

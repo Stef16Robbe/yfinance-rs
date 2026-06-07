@@ -161,6 +161,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Response and side caches now use `moka` for bounded concurrent storage,
   avoiding async `RwLock` serialization and best-effort LRU promotion on cache
   hits.
+- Credential state now uses a synchronous `RwLock`, avoiding async lock
+  scheduling overhead when reading or updating in-memory cookie/crumb values.
 - `YfClient::clear_cache()` and `YfClient::invalidate_cache_entry()` are now
   synchronous because in-memory cache operations no longer acquire async locks.
 - Response-cache reads no longer prune the entire cache on every lookup; stale
