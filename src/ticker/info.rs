@@ -239,31 +239,18 @@ async fn fetch_info_quote_summary_parts(
     symbol: &str,
     options: &CallOptions,
 ) -> Result<InfoQuoteSummaryParts, YfError> {
-    let value = quotesummary::fetch_module_value(
-        client,
-        symbol,
-        INFO_QUOTE_SUMMARY_MODULES,
-        "info",
-        options,
-    )
-    .await?;
+    let body =
+        quotesummary::fetch_body(client, symbol, INFO_QUOTE_SUMMARY_MODULES, "info", options)
+            .await?;
+    let raw = quotesummary::module_result_raw_value(&body)?;
 
     Ok(InfoQuoteSummaryParts {
-        key_statistics: crate::core::quotes::quote_summary_key_statistics_from_value(value.clone()),
-        profile: crate::profile::load_profile_from_quote_summary_value(
-            client,
-            symbol,
-            value.clone(),
-            options,
-        ),
-        analysis: analysis::price_target_and_recommendation_summary_from_quote_summary_value(
-            client,
-            symbol,
-            None,
-            value.clone(),
-            options,
+        key_statistics: crate::core::quotes::quote_summary_key_statistics_from_raw(raw),
+        profile: crate::profile::load_profile_from_quote_summary_raw(client, symbol, raw, options),
+        analysis: analysis::price_target_and_recommendation_summary_from_quote_summary_raw(
+            client, symbol, None, raw, options,
         )
         .await,
-        calendar: fundamentals::calendar_from_quote_summary_value(value, options.data_quality()),
+        calendar: fundamentals::calendar_from_quote_summary_raw(raw, options.data_quality()),
     })
 }

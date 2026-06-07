@@ -17,11 +17,11 @@ use crate::{
             optional_price_f64_with_currency_issue, optional_u32_from_i64,
             optional_u32_from_raw_f64, parse_optional, required_period,
         },
-        wire::{BufferedWireValue, RawNum, WireField, WireValue},
+        wire::{BorrowedWireValue, RawNum, WireField, WireValue},
     },
 };
 
-use super::fetch::fetch_modules;
+use super::fetch::{fetch_modules_body, parse_modules};
 use super::model::{PriceTarget, RecommendationRow, RecommendationSummary, UpgradeDowngradeRow};
 use super::wire::{
     EarningsEstimateNode, EarningsTrendItemNode, EpsRevisionsNode, EpsTrendNode, FinancialDataNode,
@@ -89,7 +89,7 @@ fn module_ref<'a, T>(
 }
 
 fn key_from_wire(value: &WireValue<String>) -> Option<String> {
-    value.cloned_string()
+    value.as_ref().cloned()
 }
 
 fn required_period_from_wire(
@@ -133,7 +133,7 @@ fn required_i64_from_wire(
                 key,
                 ProjectionIssue::InvalidField {
                     field,
-                    details: details.clone(),
+                    details: details.to_string(),
                 },
             )?;
             Ok(None)
@@ -178,7 +178,8 @@ pub(super) async fn recommendation_trend(
     options: &CallOptions,
 ) -> Result<YfResponse<Vec<RecommendationRow>>, YfError> {
     let mut ctx = ProjectionContext::new("analysis", options.data_quality());
-    let root = fetch_modules(client, symbol, "recommendationTrend", options).await?;
+    let body = fetch_modules_body(client, symbol, "recommendationTrend", options).await?;
+    let root = parse_modules(&body)?;
 
     let Some(recommendation_trend) = module_ref(
         &mut ctx,
@@ -236,7 +237,9 @@ pub(super) async fn recommendation_summary(
     symbol: &str,
     options: &CallOptions,
 ) -> Result<YfResponse<RecommendationSummary>, YfError> {
-    let root = fetch_modules(client, symbol, "recommendationTrend,financialData", options).await?;
+    let body =
+        fetch_modules_body(client, symbol, "recommendationTrend,financialData", options).await?;
+    let root = parse_modules(&body)?;
 
     map_recommendation_summary(
         symbol,
@@ -249,8 +252,8 @@ pub(super) async fn recommendation_summary(
 #[allow(clippy::too_many_lines)]
 fn map_recommendation_summary(
     symbol: &str,
-    recommendation_trend: &BufferedWireValue<RecommendationTrendNode>,
-    financial_data: &BufferedWireValue<FinancialDataNode>,
+    recommendation_trend: &BorrowedWireValue<'_, RecommendationTrendNode<'_>>,
+    financial_data: &BorrowedWireValue<'_, FinancialDataNode>,
     data_quality: DataQuality,
 ) -> Result<YfResponse<RecommendationSummary>, YfError> {
     let mut ctx = ProjectionContext::new("analysis", data_quality);
@@ -369,7 +372,8 @@ pub(super) async fn upgrades_downgrades(
     options: &CallOptions,
 ) -> Result<YfResponse<Vec<UpgradeDowngradeRow>>, YfError> {
     let mut ctx = ProjectionContext::new("analysis", options.data_quality());
-    let root = fetch_modules(client, symbol, "upgradeDowngradeHistory", options).await?;
+    let body = fetch_modules_body(client, symbol, "upgradeDowngradeHistory", options).await?;
+    let root = parse_modules(&body)?;
 
     let Some(upgrade_downgrade_history) = module_ref(
         &mut ctx,
@@ -515,7 +519,8 @@ pub(super) async fn analyst_price_target(
     override_currency: Option<Currency>,
     options: &CallOptions,
 ) -> Result<YfResponse<PriceTarget>, YfError> {
-    let root = fetch_modules(client, symbol, "financialData", options).await?;
+    let body = fetch_modules_body(client, symbol, "financialData", options).await?;
+    let root = parse_modules(&body)?;
     map_analyst_price_target(
         client,
         symbol,
@@ -531,7 +536,7 @@ async fn map_analyst_price_target(
     client: &YfClient,
     symbol: &str,
     override_currency: Option<Currency>,
-    financial_data: &BufferedWireValue<FinancialDataNode>,
+    financial_data: &BorrowedWireValue<'_, FinancialDataNode>,
     options: &CallOptions,
 ) -> Result<YfResponse<PriceTarget>, YfError> {
     let mut ctx = ProjectionContext::new("analysis", options.data_quality());
@@ -644,14 +649,15 @@ async fn map_analyst_price_target(
     }))
 }
 
-pub(super) async fn price_target_and_recommendation_summary_from_quote_summary_value(
+pub(super) async fn price_target_and_recommendation_summary_from_quote_summary_raw(
     client: &YfClient,
     symbol: &str,
     override_currency: Option<Currency>,
-    value: serde_json::Value,
+    raw: &serde_json::value::RawValue,
     options: &CallOptions,
 ) -> Result<super::InfoAnalysisParts, YfError> {
-    let root: super::wire::V10Result = serde_json::from_value(value).map_err(YfError::Json)?;
+    let root: super::wire::V10Result<'_> =
+        serde_json::from_str(raw.get()).map_err(YfError::Json)?;
     Ok(map_price_target_and_recommendation_summary(
         client,
         symbol,
@@ -666,7 +672,7 @@ async fn map_price_target_and_recommendation_summary(
     client: &YfClient,
     symbol: &str,
     override_currency: Option<Currency>,
-    root: &super::wire::V10Result,
+    root: &super::wire::V10Result<'_>,
     options: &CallOptions,
 ) -> super::InfoAnalysisParts {
     let price_target = map_analyst_price_target(
@@ -854,7 +860,7 @@ impl RawEarningsEstimate {
     fn from_wire(
         ctx: &mut ProjectionContext,
         key: Option<&str>,
-        node: &BufferedWireValue<EarningsEstimateNode>,
+        node: &BorrowedWireValue<'_, EarningsEstimateNode>,
     ) -> Result<Self, YfError> {
         let Some(node) = node.optional_ref_field(
             ctx,
@@ -932,7 +938,7 @@ impl RawRevenueEstimate {
     fn from_wire(
         ctx: &mut ProjectionContext,
         key: Option<&str>,
-        node: &BufferedWireValue<RevenueEstimateNode>,
+        node: &BorrowedWireValue<'_, RevenueEstimateNode>,
     ) -> Result<Self, YfError> {
         let Some(node) = node.optional_ref_field(
             ctx,
@@ -1015,7 +1021,7 @@ impl RawEpsTrend {
     fn from_wire(
         ctx: &mut ProjectionContext,
         key: Option<&str>,
-        node: &BufferedWireValue<EpsTrendNode>,
+        node: &BorrowedWireValue<'_, EpsTrendNode>,
     ) -> Result<Self, YfError> {
         let Some(node) =
             node.optional_ref_field(ctx, "earningsTrend[].epsTrend", key, "epsTrend")?
@@ -1066,7 +1072,7 @@ impl RawEpsRevisions {
     fn from_wire(
         ctx: &mut ProjectionContext,
         key: Option<&str>,
-        node: &BufferedWireValue<EpsRevisionsNode>,
+        node: &BorrowedWireValue<'_, EpsRevisionsNode>,
     ) -> Result<Self, YfError> {
         let Some(node) =
             node.optional_ref_field(ctx, "earningsTrend[].epsRevisions", key, "epsRevisions")?
@@ -1115,7 +1121,7 @@ struct RawEarningsTrendItem {
 impl RawEarningsTrendItem {
     fn from_node(
         ctx: &mut ProjectionContext,
-        node: &EarningsTrendItemNode,
+        node: &EarningsTrendItemNode<'_>,
     ) -> Result<Self, YfError> {
         let key = key_from_wire(&node.period);
 
@@ -1489,7 +1495,8 @@ pub(super) async fn earnings_trend(
     options: &CallOptions,
 ) -> Result<YfResponse<Vec<EarningsTrendRow>>, YfError> {
     let mut ctx = ProjectionContext::new("analysis", options.data_quality());
-    let root = fetch_modules(client, symbol, "earningsTrend", options).await?;
+    let body = fetch_modules_body(client, symbol, "earningsTrend", options).await?;
+    let root = parse_modules(&body)?;
 
     let Some(earnings_trend) = module_ref(
         &mut ctx,

@@ -7,7 +7,7 @@ use crate::{
         currency_resolver::CurrencyHints,
         diagnostics::{WireProjection, optional_projected},
         quotesummary,
-        wire::{BufferedWireValue, WireField, WireValue},
+        wire::{BorrowedWireValue, WireField, WireValue},
     },
 };
 use paft::domain::Isin;
@@ -20,7 +20,7 @@ pub async fn load_from_quote_summary_api_with_diagnostics(
     symbol: &str,
     options: &CallOptions,
 ) -> Result<YfResponse<Profile>, YfError> {
-    let first: V10Result = quotesummary::fetch_module_result(
+    let body = quotesummary::fetch_body(
         client,
         symbol,
         "assetProfile,quoteType,fundProfile",
@@ -28,6 +28,7 @@ pub async fn load_from_quote_summary_api_with_diagnostics(
         options,
     )
     .await?;
+    let first: V10Result<'_> = quotesummary::parse_module_result(&body)?;
 
     load_from_quote_summary_result_with_diagnostics(client, symbol, &first, options.data_quality())
 }
@@ -35,7 +36,7 @@ pub async fn load_from_quote_summary_api_with_diagnostics(
 pub(super) fn load_from_quote_summary_result_with_diagnostics(
     client: &YfClient,
     symbol: &str,
-    first: &V10Result,
+    first: &V10Result<'_>,
     data_quality: crate::core::DataQuality,
 ) -> Result<YfResponse<Profile>, YfError> {
     let mut ctx = ProjectionContext::new("profile", data_quality);
@@ -67,7 +68,7 @@ struct ProfileBase<'a> {
 fn profile_base<'a>(
     ctx: &mut ProjectionContext,
     symbol: &str,
-    first: &'a V10Result,
+    first: &'a V10Result<'_>,
 ) -> Result<ProfileBase<'a>, YfError> {
     let Some(quote_type) = module_ref(ctx, "quoteType", "quoteType", &first.quote_type)? else {
         return Err(YfError::MissingData("quoteType missing".into()));
@@ -110,7 +111,7 @@ fn map_company_profile(
     ctx: &mut ProjectionContext,
     client: &YfClient,
     symbol: &str,
-    first: &V10Result,
+    first: &V10Result<'_>,
     name: String,
     exchange: Option<&str>,
 ) -> Result<Profile, YfError> {
@@ -203,7 +204,7 @@ fn map_fund_profile(
     ctx: &mut ProjectionContext,
     client: &YfClient,
     symbol: &str,
-    first: &V10Result,
+    first: &V10Result<'_>,
     name: String,
     exchange: Option<&str>,
     fund_quote_kind: super::FundQuoteKind,
@@ -277,16 +278,13 @@ fn optional_isin(
 /* --------- Minimal serde mapping for the API JSON --------- */
 
 #[derive(Deserialize)]
-pub(super) struct V10Result {
-    #[serde(rename = "assetProfile")]
-    #[serde(default)]
-    asset_profile: BufferedWireValue<V10AssetProfile>,
-    #[serde(rename = "fundProfile")]
-    #[serde(default)]
-    fund_profile: BufferedWireValue<V10FundProfile>,
-    #[serde(rename = "quoteType")]
-    #[serde(default)]
-    quote_type: BufferedWireValue<V10QuoteType>,
+pub(super) struct V10Result<'a> {
+    #[serde(rename = "assetProfile", default, borrow)]
+    asset_profile: BorrowedWireValue<'a, V10AssetProfile>,
+    #[serde(rename = "fundProfile", default, borrow)]
+    fund_profile: BorrowedWireValue<'a, V10FundProfile>,
+    #[serde(rename = "quoteType", default, borrow)]
+    quote_type: BorrowedWireValue<'a, V10QuoteType>,
 }
 
 #[derive(Deserialize)]

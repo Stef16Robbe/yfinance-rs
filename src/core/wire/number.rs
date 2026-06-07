@@ -3,9 +3,8 @@ use std::str::FromStr;
 use paft::Decimal;
 use rust_decimal::prelude::ToPrimitive;
 use serde::{Deserialize, Deserializer, de};
+use serde_field_result::{Field, FieldDecode, FieldError, ScalarFieldDecode};
 use serde_json::{Number, Value};
-
-use super::scalar::{ScalarWire, WireDecode, WireDecoded};
 
 #[derive(Clone, Copy, Debug)]
 pub struct JsonDecimal {
@@ -23,13 +22,13 @@ impl<'de> Deserialize<'de> for JsonDecimal {
     where
         D: Deserializer<'de>,
     {
-        match <Self as WireDecode<'de>>::decode_wire(deserializer)? {
-            WireDecoded::Valid(value) => Ok(value),
-            WireDecoded::Missing => Err(de::Error::invalid_type(
+        match <Self as FieldDecode<'de>>::decode_field(deserializer)? {
+            Field::Valid(value) => Ok(value),
+            Field::Missing => Err(de::Error::invalid_type(
                 de::Unexpected::Unit,
                 &"JSON number or numeric string",
             )),
-            WireDecoded::Invalid(details) => Err(de::Error::custom(details)),
+            Field::Invalid(error) => Err(de::Error::custom(error)),
         }
     }
 }
@@ -50,13 +49,13 @@ impl<'de> Deserialize<'de> for JsonU64 {
     where
         D: Deserializer<'de>,
     {
-        match <Self as WireDecode<'de>>::decode_wire(deserializer)? {
-            WireDecoded::Valid(value) => Ok(value),
-            WireDecoded::Missing => Err(de::Error::invalid_type(
+        match <Self as FieldDecode<'de>>::decode_field(deserializer)? {
+            Field::Valid(value) => Ok(value),
+            Field::Missing => Err(de::Error::invalid_type(
                 de::Unexpected::Unit,
                 &"unsigned integer or unsigned integer string",
             )),
-            WireDecoded::Invalid(details) => Err(de::Error::custom(details)),
+            Field::Invalid(error) => Err(de::Error::custom(error)),
         }
     }
 }
@@ -97,65 +96,93 @@ fn decimal_from_json_number(number: &Number) -> Result<Decimal, String> {
 }
 
 fn decimal_from_str(value: &str) -> Result<Decimal, String> {
+    decimal_from_str_field(value).map_err(FieldError::into_message)
+}
+
+fn decimal_from_str_field(value: &str) -> Result<Decimal, FieldError> {
     if value.is_empty() {
-        return Err("empty numeric value".into());
+        return Err(FieldError::static_message("empty numeric value"));
     }
     Decimal::from_str(value)
         .or_else(|_| Decimal::from_scientific(value))
-        .map_err(|err| format!("cannot parse decimal {value:?}: {err}"))
+        .map_err(|err| FieldError::new(format!("cannot parse decimal {value:?}: {err}")))
 }
 
-fn u64_from_decimal(decimal: Decimal) -> Result<u64, String> {
+fn decimal_from_f64_field(value: f64) -> Result<Decimal, FieldError> {
+    Decimal::try_from(value)
+        .map_err(|err| FieldError::new(format!("cannot parse decimal {value:?}: {err}")))
+}
+
+fn u64_from_decimal(decimal: Decimal) -> Result<u64, FieldError> {
     if decimal.is_sign_negative() || !decimal.fract().is_zero() {
-        return Err(format!("cannot convert decimal {decimal} to u64"));
+        return Err(FieldError::new(format!(
+            "cannot convert decimal {decimal} to u64"
+        )));
     }
     decimal
         .to_u64()
-        .ok_or_else(|| format!("cannot convert decimal {decimal} to u64"))
+        .ok_or_else(|| FieldError::new(format!("cannot convert decimal {decimal} to u64")))
 }
 
-impl ScalarWire for JsonDecimal {
+fn u64_from_f64(value: f64) -> Result<u64, FieldError> {
+    const MAX_EXACT_U64_IN_F64: f64 = 9_007_199_254_740_992.0;
+
+    if (0.0..=MAX_EXACT_U64_IN_F64).contains(&value)
+        && value.fract() == 0.0
+        && let Some(value) = value.to_u64()
+    {
+        return Ok(value);
+    }
+
+    decimal_from_f64_field(value).and_then(u64_from_decimal)
+}
+
+impl ScalarFieldDecode for JsonDecimal {
     const EXPECTED: &'static str = "JSON number or numeric string";
 
-    fn from_i64(value: i64) -> Result<Self, String> {
+    fn from_i64(value: i64) -> Result<Self, FieldError> {
         Ok(Self {
             value: Decimal::from(value),
         })
     }
 
-    fn from_u64(value: u64) -> Result<Self, String> {
+    fn from_u64(value: u64) -> Result<Self, FieldError> {
         Ok(Self {
             value: Decimal::from(value),
         })
     }
 
-    fn from_f64(value: f64) -> Result<Self, String> {
-        decimal_from_str(&value.to_string()).map(|value| Self { value })
+    fn from_f64(value: f64) -> Result<Self, FieldError> {
+        decimal_from_f64_field(value).map(|value| Self { value })
     }
 
-    fn from_str(value: &str) -> Result<Self, String> {
-        decimal_from_str(value.trim()).map(|value| Self { value })
+    fn from_str(value: &str) -> Result<Self, FieldError> {
+        decimal_from_str_field(value.trim()).map(|value| Self { value })
     }
 }
 
-impl ScalarWire for JsonU64 {
+impl ScalarFieldDecode for JsonU64 {
     const EXPECTED: &'static str = "unsigned integer or unsigned integer string";
 
-    fn from_i64(value: i64) -> Result<Self, String> {
+    fn from_i64(value: i64) -> Result<Self, FieldError> {
         u64_from_decimal(Decimal::from(value)).map(|value| Self { value })
     }
 
-    fn from_u64(value: u64) -> Result<Self, String> {
+    fn from_u64(value: u64) -> Result<Self, FieldError> {
         Ok(Self { value })
     }
 
-    fn from_f64(value: f64) -> Result<Self, String> {
-        let decimal = decimal_from_str(&value.to_string())?;
-        u64_from_decimal(decimal).map(|value| Self { value })
+    fn from_f64(value: f64) -> Result<Self, FieldError> {
+        u64_from_f64(value).map(|value| Self { value })
     }
 
-    fn from_str(value: &str) -> Result<Self, String> {
-        let decimal = decimal_from_str(value.trim())?;
+    fn from_str(value: &str) -> Result<Self, FieldError> {
+        let value = value.trim();
+        if let Ok(value) = value.parse() {
+            return Ok(Self { value });
+        }
+
+        let decimal = decimal_from_str_field(value)?;
         u64_from_decimal(decimal).map(|value| Self { value })
     }
 }

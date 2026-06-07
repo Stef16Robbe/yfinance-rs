@@ -1,5 +1,5 @@
 // src/core/quotes.rs
-use std::fmt::Write as _;
+use std::{borrow::Cow, fmt::Write as _};
 
 use serde::Deserialize;
 use serde_json::Value;
@@ -14,7 +14,9 @@ use crate::{
         diagnostics::{WireProjection, optional_decimal_f64},
         models::{FastInfo, MovingAverages},
         net, quotesummary,
-        wire::{JsonDecimal, JsonU64, RawDate, RawDecimal, RawNum, RawNumU64, WireValue},
+        wire::{
+            JsonDecimal, JsonU64, RawDate, RawDecimal, RawNum, RawNumU64, WireField, WireValue,
+        },
         yahoo_vocab::{first_parsed_yahoo_exchange, parse_yahoo_exchange, parse_yahoo_quote_type},
     },
 };
@@ -163,7 +165,7 @@ fn required_wire_str_projection<'a>(
         WireValue::Missing => Err(ProjectionIssue::MissingRequiredField { field }),
         WireValue::Invalid(details) => Err(ProjectionIssue::InvalidField {
             field,
-            details: details.clone(),
+            details: details.to_string(),
         }),
     }
 }
@@ -184,7 +186,7 @@ struct V7KeyStatisticsFields {
 
 impl V7QuoteNode {
     fn symbol_key(&self) -> Option<String> {
-        self.symbol.cloned_string()
+        self.symbol.as_ref().cloned()
     }
 
     fn currency_units(&self) -> QuoteCurrencyUnits {
@@ -884,7 +886,7 @@ fn nonempty(value: &str) -> Option<&str> {
 
 fn parse_currency_unit(
     code: Option<&str>,
-    invalid_details: Option<&str>,
+    invalid_details: Option<Cow<'_, str>>,
     field: &'static str,
     major: bool,
 ) -> (Option<ResolvedCurrencyUnit>, Option<ProjectionIssue>) {
@@ -1271,10 +1273,10 @@ fn optional_date(
     }
 }
 
-pub fn quote_summary_key_statistics_from_value(
-    value: serde_json::Value,
+pub fn quote_summary_key_statistics_from_raw(
+    raw: &serde_json::value::RawValue,
 ) -> Result<QuoteSummaryKeyStatistics, YfError> {
-    serde_json::from_value(value).map_err(YfError::Json)
+    serde_json::from_str(raw.get()).map_err(YfError::Json)
 }
 
 pub fn merge_key_statistics(
@@ -1343,14 +1345,16 @@ pub async fn fetch_quote_summary_key_statistics(
     symbol: &str,
     options: &CallOptions,
 ) -> Result<QuoteSummaryKeyStatistics, YfError> {
-    quotesummary::fetch_module_result(
+    let body = quotesummary::fetch_body(
         client,
         symbol,
         KEY_STATISTICS_MODULES,
         "key_statistics",
         options,
     )
-    .await
+    .await?;
+
+    quotesummary::parse_module_result(&body)
 }
 
 /// Centralized function to fetch one or more quotes from the v7 API.

@@ -1,34 +1,30 @@
 use serde::Deserialize;
 
-use crate::core::wire::{BufferedWireValue, RawNum, WireValue};
+use crate::core::wire::{BorrowedWireValue, RawNum, WireValue};
 
 /* ---------------- Serde mapping (only what we need) ---------------- */
 
 #[derive(Deserialize)]
-pub struct V10Result {
-    #[serde(rename = "recommendationTrend")]
-    #[serde(default)]
-    pub(crate) recommendation_trend: BufferedWireValue<RecommendationTrendNode>,
+pub struct V10Result<'a> {
+    #[serde(rename = "recommendationTrend", default, borrow)]
+    pub(crate) recommendation_trend: BorrowedWireValue<'a, RecommendationTrendNode<'a>>,
 
-    #[serde(rename = "upgradeDowngradeHistory")]
-    #[serde(default)]
-    pub(crate) upgrade_downgrade_history: BufferedWireValue<UpgradeDowngradeHistoryNode>,
+    #[serde(rename = "upgradeDowngradeHistory", default, borrow)]
+    pub(crate) upgrade_downgrade_history: BorrowedWireValue<'a, UpgradeDowngradeHistoryNode<'a>>,
 
-    #[serde(rename = "financialData")]
-    #[serde(default)]
-    pub(crate) financial_data: BufferedWireValue<FinancialDataNode>,
+    #[serde(rename = "financialData", default, borrow)]
+    pub(crate) financial_data: BorrowedWireValue<'a, FinancialDataNode>,
 
-    #[serde(rename = "earningsTrend")]
-    #[serde(default)]
-    pub(crate) earnings_trend: BufferedWireValue<EarningsTrendNode>,
+    #[serde(rename = "earningsTrend", default, borrow)]
+    pub(crate) earnings_trend: BorrowedWireValue<'a, EarningsTrendNode<'a>>,
 }
 
 /* --- recommendation trend --- */
 
 #[derive(Deserialize)]
-pub struct RecommendationTrendNode {
-    #[serde(default)]
-    pub(crate) trend: BufferedWireValue<Vec<RecommendationNode>>,
+pub struct RecommendationTrendNode<'a> {
+    #[serde(default, borrow)]
+    pub(crate) trend: BorrowedWireValue<'a, Vec<RecommendationNode>>,
 }
 
 #[derive(Deserialize)]
@@ -54,9 +50,9 @@ pub struct RecommendationNode {
 /* --- upgrades / downgrades --- */
 
 #[derive(Deserialize)]
-pub struct UpgradeDowngradeHistoryNode {
-    #[serde(default)]
-    pub(crate) history: BufferedWireValue<Vec<UpgradeNode>>,
+pub struct UpgradeDowngradeHistoryNode<'a> {
+    #[serde(default, borrow)]
+    pub(crate) history: BorrowedWireValue<'a, Vec<UpgradeNode>>,
 }
 
 #[derive(Deserialize)]
@@ -111,29 +107,25 @@ pub struct FinancialDataNode {
 }
 
 #[derive(Deserialize)]
-pub struct EarningsTrendNode {
-    #[serde(default)]
-    pub(crate) trend: BufferedWireValue<Vec<EarningsTrendItemNode>>,
+pub struct EarningsTrendNode<'a> {
+    #[serde(default, borrow)]
+    pub(crate) trend: BorrowedWireValue<'a, Vec<EarningsTrendItemNode<'a>>>,
 }
 
 #[derive(Deserialize)]
-pub struct EarningsTrendItemNode {
+pub struct EarningsTrendItemNode<'a> {
     #[serde(default)]
     pub(crate) period: WireValue<String>,
     #[serde(default)]
     pub(crate) growth: WireValue<RawNum<f64>>,
-    #[serde(rename = "earningsEstimate")]
-    #[serde(default)]
-    pub(crate) earnings_estimate: BufferedWireValue<EarningsEstimateNode>,
-    #[serde(rename = "revenueEstimate")]
-    #[serde(default)]
-    pub(crate) revenue_estimate: BufferedWireValue<RevenueEstimateNode>,
-    #[serde(rename = "epsTrend")]
-    #[serde(default)]
-    pub(crate) eps_trend: BufferedWireValue<EpsTrendNode>,
-    #[serde(rename = "epsRevisions")]
-    #[serde(default)]
-    pub(crate) eps_revisions: BufferedWireValue<EpsRevisionsNode>,
+    #[serde(rename = "earningsEstimate", default, borrow)]
+    pub(crate) earnings_estimate: BorrowedWireValue<'a, EarningsEstimateNode>,
+    #[serde(rename = "revenueEstimate", default, borrow)]
+    pub(crate) revenue_estimate: BorrowedWireValue<'a, RevenueEstimateNode>,
+    #[serde(rename = "epsTrend", default, borrow)]
+    pub(crate) eps_trend: BorrowedWireValue<'a, EpsTrendNode>,
+    #[serde(rename = "epsRevisions", default, borrow)]
+    pub(crate) eps_revisions: BorrowedWireValue<'a, EpsRevisionsNode>,
 }
 
 #[derive(Deserialize)]

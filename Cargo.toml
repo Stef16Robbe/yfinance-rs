@@ -24,6 +24,7 @@ chrono-tz = { version = "0.10", features = ["serde"] }
 reqwest = { version = "0.12.24", default-features = false, features = ["json", "rustls-tls-native-roots", "gzip", "brotli", "deflate", "cookies"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = { version = "1.0.145", features = ["raw_value"] }
+serde_field_result = { path = "../serde_field_result", features = ["json"] }
 thiserror = "2.0"
 url = "2.5.7"
 tokio = { version = "1.48", features = ["macros", "rt-multi-thread", "sync", "time"] }

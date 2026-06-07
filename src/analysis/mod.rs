@@ -164,18 +164,18 @@ impl AnalysisBuilder {
     }
 }
 
-pub(crate) async fn price_target_and_recommendation_summary_from_quote_summary_value(
+pub(crate) async fn price_target_and_recommendation_summary_from_quote_summary_raw(
     client: &YfClient,
     symbol: &str,
     override_currency: Option<Currency>,
-    value: serde_json::Value,
+    raw: &serde_json::value::RawValue,
     options: &CallOptions,
 ) -> Result<InfoAnalysisParts, YfError> {
-    api::price_target_and_recommendation_summary_from_quote_summary_value(
+    api::price_target_and_recommendation_summary_from_quote_summary_raw(
         client,
         symbol,
         override_currency,
-        value,
+        raw,
         options,
     )
     .await

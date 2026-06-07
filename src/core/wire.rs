@@ -1,11 +1,10 @@
 mod number;
 mod raw;
-mod scalar;
 mod value;
 
 pub use number::{JsonDecimal, JsonU64, decimal_from_json_value};
 pub use raw::{RawDate, RawDecimal, RawNum, RawNumU64, from_raw_date};
-pub use value::{BufferedWireValue, WireField, WireValue};
+pub use value::{BorrowedWireValue, BufferedWireValue, WireField, WireValue};
 
 #[cfg(test)]
 mod tests {
@@ -75,7 +74,7 @@ mod tests {
 
         let row: Row = serde_json::from_str(r#"{"nested":{"value":[]},"after":9}"#).unwrap();
 
-        assert!(matches!(row.nested.0, WireValue::Invalid(_)));
+        assert!(matches!(row.nested, BufferedWireValue::Invalid { .. }));
         assert!(matches!(row.after, WireValue::Valid(9)));
     }
 }

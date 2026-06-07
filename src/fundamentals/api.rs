@@ -15,7 +15,7 @@ use crate::{
             WireProjection, optional_money_decimal_with_currency_issue,
             optional_price_f64_with_currency_issue, required_period, required_timestamp,
         },
-        wire::{BufferedWireValue, RawDate, RawDecimal, RawNumU64, WireField, WireValue},
+        wire::{BorrowedWireValue, RawDate, RawDecimal, RawNumU64, WireField, WireValue},
     },
     fundamentals::wire::{TimeseriesData, TimeseriesEnvelope},
 };
@@ -24,7 +24,7 @@ use paft::fundamentals::profile::ShareCount;
 use paft::money::{Currency, Money};
 use url::Url;
 
-use super::fetch::fetch_modules;
+use super::fetch::{fetch_modules_body, parse_modules};
 use super::{
     BalanceSheetRow, CashflowRow, Earnings, EarningsQuarter, EarningsQuarterEps, EarningsYear,
     IncomeStatementRow,
@@ -74,7 +74,7 @@ fn required_i64_from_wire(
                 key,
                 ProjectionIssue::InvalidField {
                     field,
-                    details: details.clone(),
+                    details: details.to_string(),
                 },
             )?;
             Ok(None)
@@ -105,9 +105,9 @@ fn required_period_from_wire(
 }
 
 #[derive(serde::Deserialize)]
-struct TimeseriesValueDecimal {
+struct TimeseriesValueDecimal<'a> {
     #[serde(rename = "currencyCode")]
-    currency_code: Option<String>,
+    currency_code: Option<&'a str>,
     #[serde(rename = "reportedValue")]
     #[serde(default)]
     reported_value: WireValue<RawDecimal>,
@@ -133,7 +133,7 @@ struct TimeseriesRequest<'a> {
 
 struct TimeseriesItem<'a, T> {
     key: &'a str,
-    values_json: &'a serde_json::Value,
+    values_json: &'a serde_json::value::RawValue,
     rows_map: &'a mut BTreeMap<i64, T>,
     timestamps: &'a [i64],
     prefix: &'a str,
@@ -169,7 +169,7 @@ where
     let url = timeseries_url(client, &symbol, prefix, keys)?;
     let body = fetch_timeseries_body(client, &symbol, endpoint_name, prefix, url, options).await?;
 
-    let envelope: TimeseriesEnvelope = serde_json::from_str(&body).map_err(YfError::Json)?;
+    let envelope: TimeseriesEnvelope<'_> = serde_json::from_str(&body).map_err(YfError::Json)?;
     let result_vec = timeseries_results(envelope)?;
 
     if result_vec.is_empty() {
@@ -225,7 +225,7 @@ where
         for (key, values_json) in item.values {
             process_item(TimeseriesItem {
                 key: &key,
-                values_json: &values_json,
+                values_json,
                 rows_map: &mut rows_map,
                 timestamps: &timestamps,
                 prefix,
@@ -241,8 +241,8 @@ where
     Ok(ctx.finish(rows_map.into_values().rev().collect()))
 }
 
-fn item_is_empty_metadata(item: &TimeseriesData) -> bool {
-    !item.meta.is_null() && item.timestamp.is_none() && item.values.is_empty()
+fn item_is_empty_metadata(item: &TimeseriesData<'_>) -> bool {
+    item.meta.is_some() && item.timestamp.is_none() && item.values.is_empty()
 }
 
 async fn fetch_timeseries_body(
@@ -276,11 +276,13 @@ async fn fetch_timeseries_body(
 }
 
 fn validate_timeseries_body(body: &str) -> Result<(), YfError> {
-    let envelope: TimeseriesEnvelope = serde_json::from_str(body).map_err(YfError::Json)?;
+    let envelope: TimeseriesEnvelope<'_> = serde_json::from_str(body).map_err(YfError::Json)?;
     timeseries_results(envelope).map(|_| ())
 }
 
-fn timeseries_results(envelope: TimeseriesEnvelope) -> Result<Vec<TimeseriesData>, YfError> {
+fn timeseries_results(
+    envelope: TimeseriesEnvelope<'_>,
+) -> Result<Vec<TimeseriesData<'_>>, YfError> {
     reject_timeseries_error(&envelope)?;
 
     envelope
@@ -289,7 +291,7 @@ fn timeseries_results(envelope: TimeseriesEnvelope) -> Result<Vec<TimeseriesData
         .ok_or_else(|| YfError::MissingData("missing timeseries result".into()))
 }
 
-fn reject_timeseries_error(envelope: &TimeseriesEnvelope) -> Result<(), YfError> {
+fn reject_timeseries_error(envelope: &TimeseriesEnvelope<'_>) -> Result<(), YfError> {
     if let Some(error) = envelope
         .timeseries
         .as_ref()
@@ -312,17 +314,25 @@ fn reject_timeseries_error(envelope: &TimeseriesEnvelope) -> Result<(), YfError>
     Ok(())
 }
 
-fn timeseries_error_message(error: &serde_json::Value) -> String {
-    ["description", "message", "code"]
-        .into_iter()
-        .find_map(|field| {
-            error
-                .get(field)
-                .and_then(serde_json::Value::as_str)
+#[derive(serde::Deserialize)]
+struct TimeseriesErrorText<'a> {
+    description: Option<&'a str>,
+    message: Option<&'a str>,
+    code: Option<&'a str>,
+}
+
+fn timeseries_error_message(error: &serde_json::value::RawValue) -> String {
+    serde_json::from_str::<TimeseriesErrorText<'_>>(error.get())
+        .ok()
+        .and_then(|error| {
+            [error.description, error.message, error.code]
+                .into_iter()
+                .flatten()
                 .map(str::trim)
-                .filter(|value| !value.is_empty())
+                .find(|value| !value.is_empty())
+                .map(str::to_owned)
         })
-        .map_or_else(|| error.to_string(), str::to_owned)
+        .unwrap_or_else(|| error.get().to_owned())
 }
 
 fn timeseries_url(
@@ -391,43 +401,46 @@ fn timestamp_days_before(end_ts: i64, lookback_days: i64) -> i64 {
 }
 
 fn timeseries_currency_evidence(
-    result: &[TimeseriesData],
+    result: &[TimeseriesData<'_>],
     prefix: &str,
     monetary_keys: &[&str],
 ) -> (Option<String>, bool) {
-    let monetary_types = monetary_keys
-        .iter()
-        .map(|key| format!("{prefix}{key}"))
-        .collect::<Vec<_>>();
     let mut currency_code: Option<String> = None;
     let mut invalid_currency_code: Option<String> = None;
     let mut needs_currency = false;
 
     for item in result {
         for (key, values_json) in &item.values {
-            if !monetary_types
-                .iter()
-                .any(|monetary_key| monetary_key == key)
-            {
+            let Some(field) = key.strip_prefix(prefix) else {
+                continue;
+            };
+            if !monetary_keys.contains(&field) {
                 continue;
             }
 
-            let Some(values) = values_json.as_array() else {
+            let Ok(values) =
+                serde_json::from_str::<Vec<&serde_json::value::RawValue>>(values_json.get())
+            else {
                 continue;
             };
 
             for value in values {
+                let Ok(value) = serde_json::from_str::<TimeseriesCurrencyProbe<'_>>(value.get())
+                else {
+                    continue;
+                };
+
                 if value
-                    .pointer("/reportedValue/raw")
-                    .is_none_or(serde_json::Value::is_null)
+                    .reported_value
+                    .and_then(|reported| reported.raw)
+                    .is_none()
                 {
                     continue;
                 }
 
                 needs_currency = true;
                 let Some(code) = value
-                    .get("currencyCode")
-                    .and_then(serde_json::Value::as_str)
+                    .currency_code
                     .map(str::trim)
                     .filter(|code| !code.is_empty())
                 else {
@@ -446,38 +459,53 @@ fn timeseries_currency_evidence(
     (currency_code.or(invalid_currency_code), needs_currency)
 }
 
+#[derive(serde::Deserialize)]
+struct TimeseriesCurrencyProbe<'a> {
+    #[serde(rename = "currencyCode")]
+    currency_code: Option<&'a str>,
+    #[serde(rename = "reportedValue")]
+    #[serde(default, borrow)]
+    reported_value: Option<TimeseriesReportedProbe<'a>>,
+}
+
+#[derive(serde::Deserialize)]
+struct TimeseriesReportedProbe<'a> {
+    #[serde(default, borrow)]
+    raw: Option<&'a serde_json::value::RawValue>,
+}
+
 fn period_from_timestamp(timestamp: i64) -> Result<ReportingPeriod, YfError> {
     ReportingPeriod::date(i64_to_date(timestamp)?)
         .map_err(|err| YfError::InvalidData(format!("invalid reporting period: {err}")))
 }
 
-fn parse_timeseries_values<T>(
+fn parse_timeseries_values<'de, T>(
     ctx: &mut ProjectionContext,
     key: &str,
-    values_json: &serde_json::Value,
+    values_json: &'de serde_json::value::RawValue,
 ) -> Result<Option<Vec<Option<T>>>, YfError>
 where
-    T: serde::de::DeserializeOwned,
+    T: serde::Deserialize<'de>,
 {
-    let Some(values) = values_json.as_array() else {
-        let details = match serde_json::from_value::<Vec<T>>(values_json.clone()) {
-            Ok(_) => "expected timeseries values array".to_string(),
-            Err(err) => err.to_string(),
+    let values =
+        match serde_json::from_str::<Vec<&'de serde_json::value::RawValue>>(values_json.get()) {
+            Ok(values) => values,
+            Err(err) => {
+                ctx.dropped_item(
+                    "timeseries_item",
+                    Some(key),
+                    ProjectionIssue::InvalidField {
+                        field: "values",
+                        details: err.to_string(),
+                    },
+                )?;
+                return Ok(None);
+            }
         };
-        ctx.dropped_item(
-            "timeseries_item",
-            Some(key),
-            ProjectionIssue::InvalidField {
-                field: "values",
-                details,
-            },
-        )?;
-        return Ok(None);
-    };
 
     let mut parsed = Vec::with_capacity(values.len());
-    for (idx, value) in values.iter().enumerate() {
-        match serde_json::from_value(value.clone()) {
+    for (idx, value) in values.into_iter().enumerate() {
+        match serde_json::from_str(value.get()) {
             Ok(value) => parsed.push(Some(value)),
             Err(err) => {
                 parsed.push(None);
@@ -503,7 +531,7 @@ fn parsed_timeseries_value<T>(values: &[Option<T>], idx: usize) -> Option<&T> {
 
 fn reported_decimal_at(
     ctx: &mut ProjectionContext,
-    values: &[Option<TimeseriesValueDecimal>],
+    values: &[Option<TimeseriesValueDecimal<'_>>],
     idx: usize,
     key: &str,
 ) -> Result<Option<paft::Decimal>, YfError> {
@@ -553,7 +581,7 @@ fn reported_share_count_at(
 }
 
 fn timeseries_value_currency_issue(
-    value: &TimeseriesValueDecimal,
+    value: &TimeseriesValueDecimal<'_>,
     expected_code: Option<&str>,
     ignore_value_currency_codes: bool,
 ) -> Option<ProjectionIssue> {
@@ -563,8 +591,8 @@ fn timeseries_value_currency_issue(
 
     let code = value
         .currency_code
-        .as_deref()
-        .map(str::trim)
+        .as_ref()
+        .map(|code| code.trim())
         .filter(|code| !code.is_empty())?;
 
     let Some(unit) = ResolvedCurrencyUnit::from_code(code) else {
@@ -982,7 +1010,7 @@ pub(super) async fn cashflow(
     Ok(ctx.finish(result.data))
 }
 
-fn earnings_has_monetary_values(earnings: &crate::fundamentals::wire::EarningsNode) -> bool {
+fn earnings_has_monetary_values(earnings: &crate::fundamentals::wire::EarningsNode<'_>) -> bool {
     let decimal_present = |value: &WireValue<crate::core::wire::RawDecimal>| {
         value.as_ref().and_then(|v| v.raw.as_ref()).is_some()
     };
@@ -1014,7 +1042,8 @@ pub(super) async fn earnings(
     options: &CallOptions,
 ) -> Result<YfResponse<Earnings>, YfError> {
     let mut ctx = ProjectionContext::new("earnings", options.data_quality());
-    let root = fetch_modules(client, symbol, "earnings", options).await?;
+    let body = fetch_modules_body(client, symbol, "earnings", options).await?;
+    let root = parse_modules(&body)?;
     let Some(e) = module_ref(&mut ctx, "earnings", "earnings", &root.earnings)? else {
         ctx.unavailable_feature("earnings")?;
         return Ok(ctx.finish(Earnings::default()));
@@ -1284,20 +1313,22 @@ pub(super) async fn calendar(
     symbol: &str,
     options: &CallOptions,
 ) -> Result<YfResponse<super::Calendar>, YfError> {
-    let root = fetch_modules(client, symbol, "calendarEvents", options).await?;
+    let body = fetch_modules_body(client, symbol, "calendarEvents", options).await?;
+    let root = parse_modules(&body)?;
     map_calendar(&root, options.data_quality())
 }
 
-pub(super) fn calendar_from_quote_summary_value(
-    value: serde_json::Value,
+pub(super) fn calendar_from_quote_summary_raw(
+    raw: &serde_json::value::RawValue,
     data_quality: DataQuality,
 ) -> Result<YfResponse<super::Calendar>, YfError> {
-    let root: super::wire::V10Result = serde_json::from_value(value).map_err(YfError::Json)?;
+    let root: super::wire::V10Result<'_> =
+        serde_json::from_str(raw.get()).map_err(YfError::Json)?;
     map_calendar(&root, data_quality)
 }
 
 fn map_calendar(
-    root: &super::wire::V10Result,
+    root: &super::wire::V10Result<'_>,
     data_quality: DataQuality,
 ) -> Result<YfResponse<super::Calendar>, YfError> {
     let mut ctx = ProjectionContext::new("calendar", data_quality);
@@ -1339,7 +1370,7 @@ fn map_calendar(
 
 fn calendar_earnings_dates(
     ctx: &mut ProjectionContext,
-    earnings: &BufferedWireValue<super::wire::CalendarEarningsNode>,
+    earnings: &BorrowedWireValue<'_, super::wire::CalendarEarningsNode<'_>>,
 ) -> Result<Vec<DateTime<Utc>>, YfError> {
     let mut out = Vec::new();
     let Some(earnings) =
@@ -1445,10 +1476,10 @@ pub(super) async fn shares(
     )
     .await?;
 
-    let envelope: TimeseriesEnvelope = serde_json::from_str(&body).map_err(YfError::Json)?;
+    let envelope: TimeseriesEnvelope<'_> = serde_json::from_str(&body).map_err(YfError::Json)?;
     let result_vec = timeseries_results(envelope)?;
 
-    let result_data: Option<TimeseriesData> = result_vec
+    let result_data: Option<TimeseriesData<'_>> = result_vec
         .into_iter()
         .find(|data| data.values.contains_key(type_key));
 
@@ -1466,7 +1497,7 @@ pub(super) async fn shares(
     };
 
     let Some(values) =
-        parse_timeseries_values::<super::wire::TimeseriesValue>(&mut ctx, type_key, &values_json)?
+        parse_timeseries_values::<super::wire::TimeseriesValue>(&mut ctx, type_key, values_json)?
     else {
         return Ok(ctx.finish(Vec::new()));
     };

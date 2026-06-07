@@ -230,7 +230,7 @@ impl WireQuote {
 
     fn project(self, ctx: &mut ProjectionContext) -> Result<ScreenerResult, YfError> {
         let wire = self;
-        let key = wire.symbol.cloned_string();
+        let key = wire.symbol.as_ref().cloned();
         let fields = wire.fields(ctx, key.as_deref())?;
 
         let quote_type = fields

@@ -5,10 +5,10 @@ use serde::{
     Deserialize, Deserializer,
     de::{IgnoredAny, MapAccess, SeqAccess, Visitor},
 };
+use serde_field_result::{Field, FieldDecode, invalid_seq};
 
 use super::{
     number::{JsonDecimal, JsonU64, de_decimal_from_json, de_u64_from_json},
-    scalar::{WireDecode, WireDecoded, drain_seq, unexpected},
     value::WireValue,
 };
 
@@ -38,11 +38,11 @@ pub struct RawNumU64 {
     pub(crate) raw: Option<u64>,
 }
 
-impl<'de, T> WireDecode<'de> for RawNum<T>
+impl<'de, T> FieldDecode<'de> for RawNum<T>
 where
-    T: WireDecode<'de>,
+    T: FieldDecode<'de>,
 {
-    fn decode_wire<D>(deserializer: D) -> Result<WireDecoded<Self>, D::Error>
+    fn decode_field<D>(deserializer: D) -> Result<Field<Self>, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -50,8 +50,8 @@ where
     }
 }
 
-impl<'de> WireDecode<'de> for RawDecimal {
-    fn decode_wire<D>(deserializer: D) -> Result<WireDecoded<Self>, D::Error>
+impl<'de> FieldDecode<'de> for RawDecimal {
+    fn decode_field<D>(deserializer: D) -> Result<Field<Self>, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -63,8 +63,8 @@ impl<'de> WireDecode<'de> for RawDecimal {
     }
 }
 
-impl<'de> WireDecode<'de> for RawDate {
-    fn decode_wire<D>(deserializer: D) -> Result<WireDecoded<Self>, D::Error>
+impl<'de> FieldDecode<'de> for RawDate {
+    fn decode_field<D>(deserializer: D) -> Result<Field<Self>, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -72,8 +72,8 @@ impl<'de> WireDecode<'de> for RawDate {
     }
 }
 
-impl<'de> WireDecode<'de> for RawNumU64 {
-    fn decode_wire<D>(deserializer: D) -> Result<WireDecoded<Self>, D::Error>
+impl<'de> FieldDecode<'de> for RawNumU64 {
+    fn decode_field<D>(deserializer: D) -> Result<Field<Self>, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -85,29 +85,29 @@ impl<'de> WireDecode<'de> for RawNumU64 {
     }
 }
 
-fn decode_raw_map<'de, D, T>(deserializer: D) -> Result<WireDecoded<Option<T>>, D::Error>
+fn decode_raw_map<'de, D, T>(deserializer: D) -> Result<Field<Option<T>>, D::Error>
 where
     D: Deserializer<'de>,
-    T: WireDecode<'de>,
+    T: FieldDecode<'de>,
 {
     struct RawMapVisitor<T>(PhantomData<T>);
 
     impl<'de, T> Visitor<'de> for RawMapVisitor<T>
     where
-        T: WireDecode<'de>,
+        T: FieldDecode<'de>,
     {
-        type Value = WireDecoded<Option<T>>;
+        type Value = Field<Option<T>>;
 
         fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
             formatter.write_str(RAW_OBJECT)
         }
 
         fn visit_unit<E>(self) -> Result<Self::Value, E> {
-            Ok(WireDecoded::Missing)
+            Ok(Field::Missing)
         }
 
         fn visit_none<E>(self) -> Result<Self::Value, E> {
-            Ok(WireDecoded::Missing)
+            Ok(Field::Missing)
         }
 
         fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
@@ -122,9 +122,9 @@ where
                     RawField::Raw => match map.next_value::<WireValue<T>>()? {
                         WireValue::Missing => raw = None,
                         WireValue::Valid(value) => raw = Some(value),
-                        WireValue::Invalid(details) => {
+                        WireValue::Invalid(error) => {
                             if invalid.is_none() {
-                                invalid = Some(details);
+                                invalid = Some(error);
                             }
                         }
                     },
@@ -134,7 +134,7 @@ where
                 }
             }
 
-            Ok(invalid.map_or_else(|| WireDecoded::Valid(raw), WireDecoded::Invalid))
+            Ok(invalid.map_or_else(|| Field::Valid(raw), Field::Invalid))
         }
 
         fn visit_bool<E>(self, value: bool) -> Result<Self::Value, E> {
@@ -165,8 +165,7 @@ where
         where
             A: SeqAccess<'de>,
         {
-            drain_seq(&mut seq)?;
-            Ok(invalid_raw("array"))
+            invalid_seq(&mut seq, unexpected(RAW_OBJECT, "array"))
         }
     }
 
@@ -175,8 +174,12 @@ where
 
 const RAW_OBJECT: &str = "Yahoo raw value object";
 
-fn invalid_raw<T>(actual: impl fmt::Display) -> WireDecoded<T> {
-    WireDecoded::Invalid(unexpected(RAW_OBJECT, actual))
+fn invalid_raw<T>(actual: impl fmt::Display) -> Field<T> {
+    Field::invalid(unexpected(RAW_OBJECT, actual))
+}
+
+fn unexpected(expected: &'static str, actual: impl fmt::Display) -> String {
+    format!("expected {expected}, got {actual}")
 }
 
 #[derive(Deserialize)]

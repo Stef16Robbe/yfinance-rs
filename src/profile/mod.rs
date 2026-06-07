@@ -73,13 +73,13 @@ fn resolve_fund_kind(
     Ok(string_to_fund_kind(legal_type)?.unwrap_or_else(|| quote_kind.fund_kind()))
 }
 
-pub(crate) fn load_profile_from_quote_summary_value(
+pub(crate) fn load_profile_from_quote_summary_raw(
     client: &YfClient,
     symbol: &str,
-    value: serde_json::Value,
+    raw: &serde_json::value::RawValue,
     options: &CallOptions,
 ) -> Result<YfResponse<Profile>, YfError> {
-    let root: api::V10Result = serde_json::from_value(value).map_err(YfError::Json)?;
+    let root: api::V10Result<'_> = serde_json::from_str(raw.get()).map_err(YfError::Json)?;
     api::load_from_quote_summary_result_with_diagnostics(
         client,
         symbol,

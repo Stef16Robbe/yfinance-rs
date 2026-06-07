@@ -101,6 +101,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Dependencies
 
+- Use `serde_field_result` for recoverable provider wire-field
+  deserialization.
 - Use the published `paft` 0.9.0 crate instead of tracking the Git `develop`
   branch.
 - Remove the Boa JavaScript parser dependencies from ISIN lookup.
@@ -132,6 +134,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   direct Serde visitors instead of buffering each field as `serde_json::Value`,
   composite fallback fields buffer as `serde_json::RawValue`, and shared
   projection methods replace per-module optional wire-field wrappers.
+- QuoteSummary projection now parses module results from the response body and
+  uses borrowed raw JSON for recoverable composite fields, avoiding owned
+  `serde_json::Value` hops and raw-buffer copies on the hot paths.
+- Fundamentals timeseries projection now parses flattened values from borrowed
+  raw JSON slices instead of cloning `serde_json::Value` subtrees for each row.
 - ESG, holders, and fundamentals timeseries raw-wrapper fields now use the same
   recoverable `WireValue` path, so malformed optional raw values produce field
   diagnostics without failing or dropping otherwise usable sibling data.

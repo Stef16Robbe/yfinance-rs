@@ -1,11 +1,14 @@
-use super::wire::V10Result;
 use crate::core::{CallOptions, YfClient, YfError, quotesummary};
 
-pub(super) async fn fetch_modules(
+pub(super) async fn fetch_modules_body(
     client: &YfClient,
     symbol: &str,
     modules: &str,
     options: &CallOptions,
-) -> Result<V10Result, YfError> {
-    quotesummary::fetch_module_result(client, symbol, modules, "analysis", options).await
+) -> Result<String, YfError> {
+    quotesummary::fetch_body(client, symbol, modules, "analysis", options).await
+}
+
+pub(super) fn parse_modules(body: &str) -> Result<super::wire::V10Result<'_>, YfError> {
+    quotesummary::parse_module_result(body)
 }

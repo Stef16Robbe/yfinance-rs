@@ -733,5 +733,7 @@ struct OptContractNode {
 }
 
 fn currency_from_result(node: &OptResultNode) -> Option<String> {
-    node.quote.as_ref().and_then(|q| q.currency.cloned_string())
+    node.quote
+        .as_ref()
+        .and_then(|q| q.currency.as_ref().cloned())
 }

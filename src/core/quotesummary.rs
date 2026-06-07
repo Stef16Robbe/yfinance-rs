@@ -3,26 +3,30 @@ use crate::core::{
     client::{CacheEndpoint, SymbolEndpoint, normalize_symbol},
     net,
 };
+use serde_json::value::RawValue;
+use std::borrow::Cow;
+
 use serde::Deserialize;
 
 #[cfg(feature = "debug-dumps")]
 use crate::profile::debug::debug_dump_api;
 
 #[derive(Deserialize)]
-pub struct V10Envelope {
-    #[serde(rename = "quoteSummary")]
-    pub(crate) quote_summary: Option<V10QuoteSummary>,
+struct BorrowedV10Envelope<'a> {
+    #[serde(rename = "quoteSummary", borrow)]
+    quote_summary: Option<BorrowedV10QuoteSummary<'a>>,
 }
 
 #[derive(Deserialize)]
-pub struct V10QuoteSummary {
-    pub(crate) result: Option<Vec<serde_json::Value>>,
-    pub(crate) error: Option<V10Error>,
+struct BorrowedV10QuoteSummary<'a> {
+    #[serde(borrow)]
+    result: Option<Vec<&'a RawValue>>,
+    error: Option<BorrowedV10Error<'a>>,
 }
 
 #[derive(Deserialize)]
-pub struct V10Error {
-    pub(crate) description: String,
+struct BorrowedV10Error<'a> {
+    description: Cow<'a, str>,
 }
 
 #[cfg_attr(
@@ -33,13 +37,13 @@ pub struct V10Error {
         fields(symbol = %symbol, modules = %modules, caller = %caller)
     )
 )]
-pub async fn fetch(
+pub async fn fetch_body(
     client: &YfClient,
     symbol: &str,
     modules: &str,
     caller: &str,
     options: &CallOptions,
-) -> Result<V10Envelope, YfError> {
+) -> Result<String, YfError> {
     let symbol = normalize_symbol(symbol)?;
 
     async fn attempt_fetch(
@@ -48,7 +52,7 @@ pub async fn fetch(
         modules: &str,
         caller: &str,
         options: &CallOptions,
-    ) -> Result<V10Envelope, YfError> {
+    ) -> Result<String, YfError> {
         let mut url = client.symbol_url(SymbolEndpoint::QuoteSummary, symbol)?;
         url.query_pairs_mut().append_pair("modules", modules);
 
@@ -78,22 +82,22 @@ pub async fn fetch(
         #[cfg(feature = "debug-dumps")]
         let _ = debug_dump_api(symbol, &text);
 
-        serde_json::from_str(&text).map_err(YfError::Json)
+        Ok(text)
     }
 
-    let env = attempt_fetch(client, &symbol, modules, caller, options).await?;
+    let text = attempt_fetch(client, &symbol, modules, caller, options).await?;
 
-    reject_quote_summary_error(&env)?;
+    validate_quote_summary_body(&text)?;
 
-    Ok(env)
+    Ok(text)
 }
 
 fn validate_quote_summary_body(body: &str) -> Result<(), YfError> {
-    let env: V10Envelope = serde_json::from_str(body).map_err(YfError::Json)?;
-    reject_quote_summary_error(&env)
+    let env: BorrowedV10Envelope<'_> = serde_json::from_str(body).map_err(YfError::Json)?;
+    reject_borrowed_quote_summary_error(&env)
 }
 
-fn reject_quote_summary_error(env: &V10Envelope) -> Result<(), YfError> {
+fn reject_borrowed_quote_summary_error(env: &BorrowedV10Envelope<'_>) -> Result<(), YfError> {
     if let Some(error) = env.quote_summary.as_ref().and_then(|qs| qs.error.as_ref()) {
         crate::core::logging::trace_error!(
             description = %error.description,
@@ -103,6 +107,31 @@ fn reject_quote_summary_error(env: &V10Envelope) -> Result<(), YfError> {
     }
 
     Ok(())
+}
+
+pub fn module_result_raw_value<'a>(body: &'a str) -> Result<&'a RawValue, YfError> {
+    let env: BorrowedV10Envelope<'a> = serde_json::from_str(body).map_err(YfError::Json)?;
+
+    reject_borrowed_quote_summary_error(&env)?;
+
+    env.quote_summary
+        .and_then(|qs| qs.result)
+        .and_then(|mut v| v.pop())
+        .ok_or_else(|| YfError::MissingData("empty quoteSummary result".into()))
+}
+
+pub fn parse_module_result<'de, T>(body: &'de str) -> Result<T, YfError>
+where
+    T: serde::Deserialize<'de>,
+{
+    parse_module_result_raw(module_result_raw_value(body)?)
+}
+
+pub fn parse_module_result_raw<'de, T>(raw: &'de RawValue) -> Result<T, YfError>
+where
+    T: serde::Deserialize<'de>,
+{
+    serde_json::from_str(raw.get()).map_err(YfError::Json)
 }
 
 pub async fn fetch_module_result<T>(
@@ -115,22 +144,7 @@ pub async fn fetch_module_result<T>(
 where
     T: for<'de> serde::Deserialize<'de>,
 {
-    let result_val = fetch_module_value(client, symbol, modules, caller, options).await?;
+    let body = fetch_body(client, symbol, modules, caller, options).await?;
 
-    serde_json::from_value(result_val).map_err(YfError::Json)
-}
-
-pub async fn fetch_module_value(
-    client: &YfClient,
-    symbol: &str,
-    modules: &str,
-    caller: &str,
-    options: &CallOptions,
-) -> Result<serde_json::Value, YfError> {
-    let env = fetch(client, symbol, modules, caller, options).await?;
-
-    env.quote_summary
-        .and_then(|qs| qs.result)
-        .and_then(|mut v| v.pop())
-        .ok_or_else(|| YfError::MissingData("empty quoteSummary result".into()))
+    parse_module_result(&body)
 }
