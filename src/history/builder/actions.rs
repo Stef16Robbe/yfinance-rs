@@ -3,12 +3,38 @@ use crate::core::{
     currency_resolver::ResolvedCurrencyUnit,
 };
 use crate::history::wire::Events;
+use paft::Decimal;
 use paft::market::action::Action;
 use std::num::NonZeroU32;
 
-const SPLIT_SCALE: f64 = 1_000_000.0;
+pub(super) type ExtractedActions = (Vec<Action>, Vec<(i64, SplitRatio)>);
 
-pub type ExtractedActions = (Vec<Action>, Vec<(i64, f64)>);
+#[derive(Clone, Copy, Debug)]
+pub(super) struct SplitRatio {
+    numerator: NonZeroU32,
+    denominator: NonZeroU32,
+}
+
+impl SplitRatio {
+    const fn new(numerator: NonZeroU32, denominator: NonZeroU32) -> Self {
+        Self {
+            numerator,
+            denominator,
+        }
+    }
+
+    pub(super) const fn numerator(self) -> NonZeroU32 {
+        self.numerator
+    }
+
+    pub(super) const fn denominator(self) -> NonZeroU32 {
+        self.denominator
+    }
+
+    pub(super) fn as_f64(self) -> f64 {
+        f64::from(self.numerator.get()) / f64::from(self.denominator.get())
+    }
+}
 
 #[allow(clippy::too_many_lines)]
 pub fn extract_actions(
@@ -17,7 +43,7 @@ pub fn extract_actions(
     ctx: &mut ProjectionContext,
 ) -> Result<ExtractedActions, YfError> {
     let mut out: Vec<Action> = Vec::new();
-    let mut split_events: Vec<(i64, f64)> = Vec::new();
+    let mut split_events: Vec<(i64, SplitRatio)> = Vec::new();
 
     let Some(ev) = events else {
         return Ok((out, split_events));
@@ -169,7 +195,7 @@ pub fn extract_actions(
                     continue;
                 }
             };
-            let Some((num, den)) = normalize_split_event(s) else {
+            let Some(split_ratio) = normalize_split_event(s) else {
                 ctx.dropped_item(
                     "split",
                     Some(k.clone()),
@@ -183,12 +209,11 @@ pub fn extract_actions(
 
             out.push(Action::Split {
                 date,
-                numerator: num,
-                denominator: den,
+                numerator: split_ratio.numerator(),
+                denominator: split_ratio.denominator(),
             });
 
-            let ratio = f64::from(num.get()) / f64::from(den.get());
-            split_events.push((ts, ratio));
+            split_events.push((ts, split_ratio));
         }
     }
 
@@ -226,9 +251,7 @@ fn event_timestamp(key: &str, date: Option<i64>) -> Option<i64> {
     key.parse::<i64>().ok().or(date)
 }
 
-fn normalize_split_event(
-    split: &crate::history::wire::SplitEvent,
-) -> Option<(NonZeroU32, NonZeroU32)> {
+fn normalize_split_event(split: &crate::history::wire::SplitEvent) -> Option<SplitRatio> {
     if let (Some(numerator), Some(denominator)) = (split.numerator, split.denominator)
         && let Some(pair) = normalize_split_pair(numerator, denominator)
     {
@@ -238,7 +261,7 @@ fn normalize_split_event(
     split.split_ratio.as_deref().and_then(normalize_split_ratio)
 }
 
-fn normalize_split_ratio(ratio: &str) -> Option<(NonZeroU32, NonZeroU32)> {
+fn normalize_split_ratio(ratio: &str) -> Option<SplitRatio> {
     let ratio = ratio.trim();
     for separator in ['/', ':'] {
         if let Some((numerator, denominator)) = ratio.split_once(separator) {
@@ -249,45 +272,49 @@ fn normalize_split_ratio(ratio: &str) -> Option<(NonZeroU32, NonZeroU32)> {
         }
     }
 
-    normalize_split_pair(parse_split_component(ratio)?, 1.0)
+    normalize_split_pair(parse_split_component(ratio)?, Decimal::ONE)
 }
 
-fn parse_split_component(value: &str) -> Option<f64> {
-    let value = value.trim().parse::<f64>().ok()?;
-    value.is_finite().then_some(value)
+fn parse_split_component(value: &str) -> Option<Decimal> {
+    let value = value.trim();
+    if value.is_empty() {
+        return None;
+    }
+    value
+        .parse::<Decimal>()
+        .or_else(|_| Decimal::from_scientific(value))
+        .ok()
 }
 
-fn normalize_split_pair(numerator: f64, denominator: f64) -> Option<(NonZeroU32, NonZeroU32)> {
-    if !numerator.is_finite() || !denominator.is_finite() || numerator <= 0.0 || denominator <= 0.0
-    {
-        return None;
-    }
+fn normalize_split_pair(numerator: Decimal, denominator: Decimal) -> Option<SplitRatio> {
+    let (numerator, numerator_scale) = split_component_parts(numerator)?;
+    let (denominator, denominator_scale) = split_component_parts(denominator)?;
+    let scale = numerator_scale.max(denominator_scale);
 
-    let numerator = scaled_split_component(numerator)?;
-    let denominator = scaled_split_component(denominator)?;
-    if numerator == 0 || denominator == 0 {
-        return None;
-    }
+    let numerator = numerator.checked_mul(pow10(scale - numerator_scale)?)?;
+    let denominator = denominator.checked_mul(pow10(scale - denominator_scale)?)?;
 
     let gcd = gcd(numerator, denominator);
     let numerator = numerator / gcd;
     let denominator = denominator / gcd;
 
-    Some((
+    Some(SplitRatio::new(
         NonZeroU32::new(u32::try_from(numerator).ok()?)?,
         NonZeroU32::new(u32::try_from(denominator).ok()?)?,
     ))
 }
 
-fn scaled_split_component(value: f64) -> Option<u128> {
-    let scaled = (value * SPLIT_SCALE).round();
-    let max_scaled = f64::from(u32::MAX) * SPLIT_SCALE;
-    if !scaled.is_finite() || scaled < 0.0 || scaled > max_scaled {
+fn split_component_parts(value: Decimal) -> Option<(u128, u32)> {
+    let value = value.normalize();
+    let mantissa = value.mantissa();
+    if mantissa <= 0 {
         return None;
     }
+    Some((u128::try_from(mantissa).ok()?, value.scale()))
+}
 
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-    Some(scaled as u128)
+const fn pow10(exponent: u32) -> Option<u128> {
+    10_u128.checked_pow(exponent)
 }
 
 const fn gcd(mut a: u128, mut b: u128) -> u128 {

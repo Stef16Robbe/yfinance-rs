@@ -143,7 +143,7 @@ where
         .map_err(serde::de::Error::custom)
 }
 
-fn decimal_from_json_value(value: Value) -> Result<Decimal, String> {
+pub fn decimal_from_json_value(value: Value) -> Result<Decimal, String> {
     match value {
         Value::Number(number) => decimal_from_json_number(&number),
         Value::String(value) => decimal_from_str(value.trim()),

@@ -1,4 +1,6 @@
-pub fn cumulative_split_after(ts: &[i64], split_events: &[(i64, f64)]) -> Vec<f64> {
+use super::actions::SplitRatio;
+
+pub fn cumulative_split_after(ts: &[i64], split_events: &[(i64, SplitRatio)]) -> Vec<f64> {
     let mut out = vec![1.0; ts.len()];
     if split_events.is_empty() || ts.is_empty() {
         return out;
@@ -10,7 +12,7 @@ pub fn cumulative_split_after(ts: &[i64], split_events: &[(i64, f64)]) -> Vec<f6
     for i in (0..ts.len()).rev() {
         while sp_idx > 0 && split_events[sp_idx - 1].0 > ts[i] {
             sp_idx -= 1;
-            running *= split_events[sp_idx].1;
+            running *= split_events[sp_idx].1.as_f64();
         }
         out[i] = running;
     }

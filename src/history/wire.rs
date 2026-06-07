@@ -1,5 +1,8 @@
+use crate::core::wire::decimal_from_json_value;
+use paft::Decimal;
 use serde::Deserialize;
 use serde::Deserializer;
+use serde_json::Value;
 use std::collections::BTreeMap;
 
 #[derive(Deserialize)]
@@ -97,10 +100,10 @@ pub struct DividendEvent {
 
 #[derive(Deserialize, Clone)]
 pub struct SplitEvent {
-    #[serde(default, deserialize_with = "de_opt_f64_from_mixed")]
-    pub(crate) numerator: Option<f64>,
-    #[serde(default, deserialize_with = "de_opt_f64_from_mixed")]
-    pub(crate) denominator: Option<f64>,
+    #[serde(default, deserialize_with = "de_opt_decimal_from_mixed")]
+    pub(crate) numerator: Option<Decimal>,
+    #[serde(default, deserialize_with = "de_opt_decimal_from_mixed")]
+    pub(crate) denominator: Option<Decimal>,
     #[serde(rename = "splitRatio")]
     pub(crate) split_ratio: Option<String>,
     pub(crate) date: Option<i64>,
@@ -113,49 +116,18 @@ pub struct CapitalGainEvent {
     pub(crate) currency: Option<String>,
 }
 
-/// Accepts numeric split components as integers, floats, numeric strings, or null/missing.
+/// Accepts numeric split components as integers, decimals, numeric strings, or null/missing.
 ///
 /// Yahoo can emit fractional split components for preferred-share adjustments
-/// (for example `1.262838`). Keep the wire layer permissive and normalize the
+/// (for example `1.262838`). Keep the wire layer exact and normalize the
 /// pair later, where both numerator and denominator are available together.
-fn de_opt_f64_from_mixed<'de, D>(deserializer: D) -> Result<Option<f64>, D::Error>
+fn de_opt_decimal_from_mixed<'de, D>(deserializer: D) -> Result<Option<Decimal>, D::Error>
 where
     D: Deserializer<'de>,
 {
-    use serde::de::Error;
-    use serde_json::Value;
-
-    let v = Option::<Value>::deserialize(deserializer)?;
-    let some = match v {
-        None | Some(Value::Null) => return Ok(None),
-        Some(Value::Number(n)) => {
-            let Some(f) = n.as_f64() else {
-                return Err(D::Error::custom("unsupported number type for split field"));
-            };
-            if !f.is_finite() {
-                return Err(D::Error::custom("non-finite number for split field"));
-            }
-            Some(f)
-        }
-        Some(Value::String(s)) => {
-            let s = s.trim();
-            if s.is_empty() {
-                None
-            } else {
-                let f = s.parse::<f64>().map_err(|_| {
-                    D::Error::custom(format!("invalid numeric string '{s}' for split field"))
-                })?;
-                if !f.is_finite() {
-                    return Err(D::Error::custom("non-finite string for split field"));
-                }
-                Some(f)
-            }
-        }
-        Some(other) => {
-            return Err(D::Error::custom(format!(
-                "unexpected JSON type for split field: {other}"
-            )));
-        }
-    };
-    Ok(some)
+    Option::<Value>::deserialize(deserializer).map(|value| {
+        value
+            .filter(|value| !value.is_null())
+            .and_then(|value| decimal_from_json_value(value).ok())
+    })
 }

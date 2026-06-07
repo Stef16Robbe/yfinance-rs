@@ -60,6 +60,77 @@ async fn history_tolerates_fractional_split_components() {
 }
 
 #[tokio::test]
+async fn history_preserves_split_precision_beyond_six_decimal_places() {
+    let server = MockServer::start();
+    let body = r#"{
+      "chart": {
+        "result": [{
+          "meta": { "currency": "USD" },
+          "timestamp": [1000, 2000],
+          "indicators": {
+            "quote": [{
+              "open": [100.0, 100.0],
+              "high": [100.0, 100.0],
+              "low": [100.0, 100.0],
+              "close": [100.0, 100.0],
+              "volume": [10, 10]
+            }],
+            "adjclose": []
+          },
+          "events": {
+            "splits": {
+              "2000": {
+                "date": 2000,
+                "numerator": "1.0000004",
+                "denominator": "1",
+                "splitRatio": "1.0000004/1"
+              }
+            }
+          }
+        }],
+        "error": null
+      }
+    }"#;
+
+    let mock = server.mock(|when, then| {
+        when.method(GET).path("/v8/finance/chart/PRECISE");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let client = YfClient::builder()
+        .base_chart(Url::parse(&format!("{}/v8/finance/chart/", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+
+    let response = HistoryBuilder::new(&client, "PRECISE")
+        .interval(Interval::D1)
+        .auto_adjust(true)
+        .actions(true)
+        .fetch_full()
+        .await
+        .unwrap();
+
+    mock.assert();
+    assert_eq!(response.candles.len(), 2);
+    assert_eq!(response.actions.len(), 1);
+    assert!(
+        matches!(
+            response.actions[0],
+            Action::Split {
+                date,
+                numerator,
+                denominator,
+            } if date == date_from_ts(2000)
+                && numerator.get() == 2_500_001
+                && denominator.get() == 2_500_000
+        ),
+        "split components should be reduced exactly, without six-decimal scaling"
+    );
+}
+
+#[tokio::test]
 async fn history_skips_split_components_that_overflow_action_ratio() {
     let server = MockServer::start();
     let body = r#"{
