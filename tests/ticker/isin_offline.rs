@@ -27,7 +27,7 @@ async fn offline_isin_rejects_invalid_check_digit() {
 }
 
 #[tokio::test]
-async fn offline_isin_raw_fallback_requires_symbol_match() {
+async fn offline_isin_business_insider_rows_require_symbol_match() {
     let isin = lookup_isin(
         "AAPL",
         r#"mmSuggestDeliver(0, new Array("Name", "Category", "Keywords"), new Array(new Array("Microsoft Corp.", "Stocks", "MSFT|US5949181045|MSFT||MSFT")), 1, 0);"#,
@@ -71,7 +71,7 @@ async fn offline_isin_does_not_match_base_symbol_for_suffix_qualified_query() {
 }
 
 #[tokio::test]
-async fn offline_isin_raw_fallback_preserves_exchange_suffix() {
+async fn offline_isin_business_insider_rows_preserve_exchange_suffix() {
     let isin = lookup_isin(
         "VOD.L",
         r#"mmSuggestDeliver(0, new Array("Name", "Category", "Keywords"), new Array(new Array("Vodafone Group PLC", "Stocks", "VOD|US0378331005|VOD||VOD")), 1, 0);"#,

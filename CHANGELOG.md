@@ -98,6 +98,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- ISIN lookup now parses Business Insider's `mmSuggestDeliver` wire shape into
+  typed rows instead of walking arbitrary JSON containers and guessing keys.
 - HTTP and WebSocket TLS now both use rustls with native root certificates,
   avoiding mismatched certificate stores and the extra bundled webpki root set.
 - Embedded `ws://` and `wss://` URLs now have sensitive query parameters
