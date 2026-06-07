@@ -59,6 +59,7 @@ pub(super) async fn fetch_news(
             endpoint: &endpoint,
             fixture_key: &symbol,
             ext: "json",
+            cache_validator: None,
         },
     )
     .await?;

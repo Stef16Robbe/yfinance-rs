@@ -391,6 +391,7 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
                 fixture_key,
                 ext: "json",
                 retry_on_invalid_crumb_body: true,
+                cache_validator: Some(super::response::validate_screener_body),
             },
             |url| {
                 self.client
@@ -420,6 +421,7 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
                 fixture_key,
                 ext: "json",
                 retry_on_invalid_crumb_body: true,
+                cache_validator: Some(super::response::validate_screener_body),
             },
             |url| {
                 self.client

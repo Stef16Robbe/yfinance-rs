@@ -134,6 +134,84 @@ async fn quote_summary_http_error_maps_status_and_is_not_cached() {
 }
 
 #[tokio::test]
+async fn quote_summary_api_error_is_not_cached() {
+    let server = MockServer::start();
+    let sym = "AAPL";
+
+    let mut error = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "earnings")
+            .query_param("crumb", "crumb");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "quoteSummary": {
+                    "result": null,
+                    "error": { "description": "temporary yahoo error" }
+                  }
+                }"#,
+            );
+    });
+
+    let client = YfClient::builder()
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._preauth("cookie", "crumb")
+        .cache_ttl(Duration::from_secs(61))
+        .retry_enabled(false)
+        .build()
+        .unwrap();
+
+    let ticker = Ticker::new(&client, sym);
+    let err = ticker
+        .earnings(Some(Currency::Iso(IsoCurrency::USD)))
+        .await
+        .unwrap_err();
+
+    error.assert();
+    assert!(
+        matches!(err, YfError::Api(ref message) if message.contains("temporary yahoo error")),
+        "expected Yahoo API error, got {err:?}"
+    );
+
+    error.delete();
+    let ok = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "earnings")
+            .query_param("crumb", "crumb");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "quoteSummary": {
+                    "result": [{
+                      "earnings": {
+                        "financialsChart": { "yearly": [], "quarterly": [] },
+                        "earningsChart": { "quarterly": [] }
+                      }
+                    }],
+                    "error": null
+                  }
+                }"#,
+            );
+    });
+
+    let earnings = ticker
+        .earnings(Some(Currency::Iso(IsoCurrency::USD)))
+        .await
+        .unwrap();
+
+    ok.assert();
+    assert!(earnings.yearly.is_empty());
+    assert!(earnings.quarterly.is_empty());
+    assert!(earnings.quarterly_eps.is_empty());
+}
+
+#[tokio::test]
 async fn fundamentals_timeseries_http_error_maps_status_and_is_not_cached() {
     let server = MockServer::start();
     let sym = "MSFT";
@@ -181,6 +259,81 @@ async fn fundamentals_timeseries_http_error_maps_status_and_is_not_cached() {
     }
 
     rate_limited.delete();
+    let ok = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!(
+                "/ws/fundamentals-timeseries/v1/finance/timeseries/{sym}"
+            ))
+            .query_param("symbol", sym)
+            .query_param("type", "annualOrdinarySharesNumber")
+            .query_param("crumb", "crumb")
+            .query_param_exists("period1")
+            .query_param_exists("period2");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(r#"{"timeseries":{"result":[]}}"#);
+    });
+
+    let shares = ticker.shares().await.unwrap();
+
+    ok.assert();
+    assert!(shares.is_empty());
+}
+
+#[tokio::test]
+async fn fundamentals_timeseries_api_error_is_not_cached() {
+    let server = MockServer::start();
+    let sym = "MSFT";
+
+    let mut api_error = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!(
+                "/ws/fundamentals-timeseries/v1/finance/timeseries/{sym}"
+            ))
+            .query_param("symbol", sym)
+            .query_param("type", "annualOrdinarySharesNumber")
+            .query_param("crumb", "crumb")
+            .query_param_exists("period1")
+            .query_param_exists("period2");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "finance": {
+                    "result": null,
+                    "error": {
+                      "code": "Bad Request",
+                      "description": "temporary timeseries error"
+                    }
+                  }
+                }"#,
+            );
+    });
+
+    let client = YfClient::builder()
+        .base_timeseries(
+            Url::parse(&format!(
+                "{}/ws/fundamentals-timeseries/v1/finance/timeseries/",
+                server.base_url()
+            ))
+            .unwrap(),
+        )
+        ._preauth("cookie", "crumb")
+        .cache_ttl(Duration::from_secs(61))
+        .retry_enabled(false)
+        .build()
+        .unwrap();
+
+    let ticker = Ticker::new(&client, sym);
+    let err = ticker.shares().await.unwrap_err();
+
+    api_error.assert();
+    assert!(
+        matches!(err, YfError::Api(ref message) if message.contains("temporary timeseries error")),
+        "expected Yahoo API error, got {err:?}"
+    );
+
+    api_error.delete();
     let ok = server.mock(|when, then| {
         when.method(GET)
             .path(format!(

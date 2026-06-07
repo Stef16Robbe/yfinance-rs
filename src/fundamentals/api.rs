@@ -294,12 +294,18 @@ async fn fetch_timeseries_body(
             fixture_key: symbol,
             ext: "json",
             retry_on_invalid_crumb_body: true,
+            cache_validator: Some(validate_timeseries_body),
         },
         |url| client.http().get(url),
     )
     .await?;
 
     Ok(body)
+}
+
+fn validate_timeseries_body(body: &str) -> Result<(), YfError> {
+    let envelope: TimeseriesEnvelope = serde_json::from_str(body).map_err(YfError::Json)?;
+    timeseries_results(envelope).map(|_| ())
 }
 
 fn timeseries_results(envelope: TimeseriesEnvelope) -> Result<Vec<TimeseriesData>, YfError> {
@@ -1431,6 +1437,7 @@ pub(super) async fn shares(
             fixture_key: &symbol,
             ext: "json",
             retry_on_invalid_crumb_body: true,
+            cache_validator: Some(validate_timeseries_body),
         },
         |url| client.http().get(url),
     )

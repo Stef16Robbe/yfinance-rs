@@ -284,6 +284,7 @@ impl SearchBuilder {
                 fixture_key: query,
                 ext: "json",
                 retry_on_invalid_crumb_body: true,
+                cache_validator: Some(validate_search_body),
             },
             |url| {
                 self.client
@@ -334,6 +335,15 @@ impl SearchBuilder {
         if let Some(r) = region {
             qp.append_pair("region", r);
         }
+    }
+}
+
+fn validate_search_body(body: &str) -> Result<(), YfError> {
+    let env: V1SearchEnvelope = serde_json::from_str(body).map_err(YfError::Json)?;
+    if env.quotes.is_some() {
+        Ok(())
+    } else {
+        Err(YfError::MissingData("search quotes missing".into()))
     }
 }
 

@@ -69,6 +69,7 @@ pub async fn fetch(
                 fixture_key: symbol,
                 ext: "json",
                 retry_on_invalid_crumb_body: true,
+                cache_validator: Some(validate_quote_summary_body),
             },
             |url| client.http().get(url),
         )
@@ -82,6 +83,17 @@ pub async fn fetch(
 
     let env = attempt_fetch(client, &symbol, modules, caller, options).await?;
 
+    reject_quote_summary_error(&env)?;
+
+    Ok(env)
+}
+
+fn validate_quote_summary_body(body: &str) -> Result<(), YfError> {
+    let env: V10Envelope = serde_json::from_str(body).map_err(YfError::Json)?;
+    reject_quote_summary_error(&env)
+}
+
+fn reject_quote_summary_error(env: &V10Envelope) -> Result<(), YfError> {
     if let Some(error) = env.quote_summary.as_ref().and_then(|qs| qs.error.as_ref()) {
         crate::core::logging::trace_error!(
             description = %error.description,
@@ -90,7 +102,7 @@ pub async fn fetch(
         return Err(YfError::Api(format!("yahoo error: {}", error.description)));
     }
 
-    Ok(env)
+    Ok(())
 }
 
 pub async fn fetch_module_result<T>(

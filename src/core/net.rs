@@ -10,6 +10,8 @@ use crate::core::{
     redaction::RedactedUrl,
 };
 
+pub type CacheBodyValidator = fn(&str) -> Result<(), YfError>;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum AuthMode {
     OptionalCrumb,
@@ -26,6 +28,7 @@ pub struct AuthFetchConfig<'a> {
     pub fixture_key: &'a str,
     pub ext: &'a str,
     pub retry_on_invalid_crumb_body: bool,
+    pub cache_validator: Option<CacheBodyValidator>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -35,6 +38,7 @@ pub struct CacheFetchConfig<'a> {
     pub endpoint: &'a str,
     pub fixture_key: &'a str,
     pub ext: &'a str,
+    pub cache_validator: Option<CacheBodyValidator>,
 }
 
 enum AuthAttempt {
@@ -125,8 +129,10 @@ pub async fn fetch_text_cached(
     url: &Url,
     config: CacheFetchConfig<'_>,
 ) -> Result<String, YfError> {
+    let cache_key = client_cache_key(url);
     if config.options.cache_mode().reads(config.cache_endpoint)
-        && let Some(text) = client.cache_get(url).await
+        && let Some(text) = client.cache_get_key(&cache_key).await
+        && cached_body_is_valid(client, &cache_key, text.as_ref(), config.cache_validator).await
     {
         return Ok(text.to_string());
     }
@@ -142,9 +148,10 @@ pub async fn fetch_text_cached(
     )
     .await?;
 
-    if config.options.cache_mode().writes(config.cache_endpoint) {
+    if cache_write_enabled(client, config.options, config.cache_endpoint) {
+        validate_cache_body(config.cache_validator, &text)?;
         client
-            .cache_put(config.cache_endpoint, url, &text, None)
+            .cache_put_key(config.cache_endpoint, cache_key, &text, None)
             .await;
     }
 
@@ -163,8 +170,12 @@ where
     let cache_key = YfClient::post_cache_key(url, body_json);
     if config.options.cache_mode().reads(config.cache_endpoint)
         && let Some(body) = client.cache_get_key(&cache_key).await
+        && cached_body_is_valid(client, &cache_key, body.as_ref(), config.cache_validator).await
     {
-        return serde_json::from_str(body.as_ref()).map_err(YfError::Json);
+        match serde_json::from_str(body.as_ref()) {
+            Ok(data) => return Ok(data),
+            Err(_) => client.cache_remove_key(&cache_key).await,
+        }
     }
 
     let req = client
@@ -183,13 +194,16 @@ where
     )
     .await?;
 
-    if config.options.cache_mode().writes(config.cache_endpoint) {
+    validate_cache_body(config.cache_validator, &body)?;
+    let data = serde_json::from_str(&body).map_err(YfError::Json)?;
+
+    if cache_write_enabled(client, config.options, config.cache_endpoint) {
         client
             .cache_put_key(config.cache_endpoint, cache_key, &body, None)
             .await;
     }
 
-    serde_json::from_str(&body).map_err(YfError::Json)
+    Ok(data)
 }
 
 pub async fn fetch_text_with_auth_retry<F>(
@@ -343,7 +357,8 @@ where
         return Ok(AuthAttempt::InvalidCrumb);
     }
 
-    if config.options.cache_mode().writes(config.cache_endpoint) {
+    if cache_write_enabled(client, config.options, config.cache_endpoint) {
+        validate_cache_body(config.cache_validator, &body)?;
         client
             .cache_put_key(config.cache_endpoint, cache_key.to_string(), &body, None)
             .await;
@@ -367,6 +382,9 @@ async fn read_cached_auth_attempt(
     if should_retry_invalid_crumb_body(config, detect_invalid_crumb_body, body.as_ref()) {
         client.cache_remove_key(cache_key).await;
         return Some(CachedAuthAttempt::InvalidCrumb);
+    }
+    if !cached_body_is_valid(client, cache_key, body.as_ref(), config.cache_validator).await {
+        return None;
     }
 
     Some(CachedAuthAttempt::Success {
@@ -441,6 +459,32 @@ fn client_cache_key(url: &Url) -> String {
     url.as_str().to_string()
 }
 
+fn validate_cache_body(validator: Option<CacheBodyValidator>, body: &str) -> Result<(), YfError> {
+    validator.map_or(Ok(()), |validate| validate(body))
+}
+
+const fn cache_write_enabled(
+    client: &YfClient,
+    options: &CallOptions,
+    endpoint: CacheEndpoint,
+) -> bool {
+    client.cache_enabled() && options.cache_mode().writes(endpoint)
+}
+
+async fn cached_body_is_valid(
+    client: &YfClient,
+    cache_key: &str,
+    body: &str,
+    validator: Option<CacheBodyValidator>,
+) -> bool {
+    if validate_cache_body(validator, body).is_ok() {
+        true
+    } else {
+        client.cache_remove_key(cache_key).await;
+        false
+    }
+}
+
 fn should_retry_invalid_crumb_body(
     config: AuthFetchConfig<'_>,
     detect_invalid_crumb_body: bool,
@@ -494,6 +538,7 @@ mod tests {
             fixture_key: "AAPL",
             ext: "json",
             retry_on_invalid_crumb_body: true,
+            cache_validator: None,
         }
     }
 
@@ -508,6 +553,7 @@ mod tests {
             fixture_key: "AAPL",
             ext: "json",
             retry_on_invalid_crumb_body: true,
+            cache_validator: None,
         }
     }
 

@@ -1104,6 +1104,7 @@ pub async fn fetch_v7_quote_values(
             fixture_key: &fixture_key,
             ext: "json",
             retry_on_invalid_crumb_body: true,
+            cache_validator: Some(validate_v7_quote_body),
         },
         |url| client.http().get(url).header("accept", "application/json"),
     )
@@ -1113,13 +1114,7 @@ pub async fn fetch_v7_quote_values(
     let quote_response = env
         .quote_response
         .ok_or_else(|| YfError::MissingData("v7 quoteResponse missing".into()))?;
-    if let Some(error) = quote_response.error.as_ref() {
-        crate::core::logging::trace_error!(
-            description = %error.description,
-            "quoteResponse error"
-        );
-        return Err(YfError::Api(format!("yahoo error: {}", error.description)));
-    }
+    reject_v7_quote_error(&quote_response)?;
 
     let nodes = quote_response
         .result
@@ -1128,6 +1123,26 @@ pub async fn fetch_v7_quote_values(
     store_v7_quote_side_effects_from_values(client, symbols, &nodes).await;
 
     Ok(nodes)
+}
+
+fn validate_v7_quote_body(body: &str) -> Result<(), YfError> {
+    let env: V7Envelope = serde_json::from_str(body).map_err(YfError::Json)?;
+    let quote_response = env
+        .quote_response
+        .ok_or_else(|| YfError::MissingData("v7 quoteResponse missing".into()))?;
+    reject_v7_quote_error(&quote_response)
+}
+
+fn reject_v7_quote_error(quote_response: &V7QuoteResponse) -> Result<(), YfError> {
+    if let Some(error) = quote_response.error.as_ref() {
+        crate::core::logging::trace_error!(
+            description = %error.description,
+            "quoteResponse error"
+        );
+        return Err(YfError::Api(format!("yahoo error: {}", error.description)));
+    }
+
+    Ok(())
 }
 
 pub fn quote_node_from_value_with_context(

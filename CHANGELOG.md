@@ -98,6 +98,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Successful HTTP responses are now validated against endpoint provider-error
+  envelopes before being written to the response cache, and stale cached bodies
+  that fail the same validation are evicted instead of replayed.
 - `Ticker::info()` now returns `None` for optional quoteSummary-backed fields
   when Yahoo omits their backing modules, instead of returning empty/default
   values inside `Some(...)`. Missing `calendarEvents` now allows the v7 quote

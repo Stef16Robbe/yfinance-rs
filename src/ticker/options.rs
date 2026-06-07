@@ -547,6 +547,7 @@ async fn fetch_options_raw(
             fixture_key: &fixture_key,
             ext: "json",
             retry_on_invalid_crumb_body: true,
+            cache_validator: Some(validate_options_body),
         },
         |url| client.http().get(url).header("accept", "application/json"),
     )
@@ -565,6 +566,11 @@ struct OptEnvelope {
 struct OptChainNode {
     result: Option<Vec<OptResultNode>>,
     error: Option<serde_json::Value>,
+}
+
+fn validate_options_body(body: &str) -> Result<(), YfError> {
+    let env: OptEnvelope = serde_json::from_str(body).map_err(YfError::Json)?;
+    first_option_result(env).map(|_| ())
 }
 
 #[derive(Deserialize)]

@@ -72,11 +72,16 @@ pub async fn fetch_chart(
             endpoint: "history_chart",
             fixture_key: &symbol,
             ext: "json",
+            cache_validator: Some(validate_chart_body),
         },
     )
     .await?;
 
     decode_chart(&body)
+}
+
+fn validate_chart_body(body: &str) -> Result<(), crate::core::YfError> {
+    decode_chart(body).map(|_| ())
 }
 
 // NEW helper to keep fetch_chart compact

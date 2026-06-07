@@ -65,9 +65,7 @@ pub(super) fn parse_screener_body_with_diagnostics(
 ) -> Result<YfResponse<ScreenerResponse>, YfError> {
     let mut ctx = ProjectionContext::new("screener", data_quality);
     let env: WireEnvelope = serde_json::from_str(body)?;
-    if let Some(error) = env.finance.error {
-        return Err(YfError::Api(error.to_string()));
-    }
+    reject_screener_error(&env)?;
 
     let result = env
         .finance
@@ -102,6 +100,19 @@ pub(super) fn parse_screener_body_with_diagnostics(
     }
 
     Ok(ctx.finish(ScreenerResponse { count, results }))
+}
+
+pub(super) fn validate_screener_body(body: &str) -> Result<(), YfError> {
+    let env: WireEnvelope = serde_json::from_str(body)?;
+    reject_screener_error(&env)
+}
+
+fn reject_screener_error(env: &WireEnvelope) -> Result<(), YfError> {
+    if let Some(error) = env.finance.error.as_ref() {
+        return Err(YfError::Api(error.to_string()));
+    }
+
+    Ok(())
 }
 
 #[derive(Debug, Deserialize)]
