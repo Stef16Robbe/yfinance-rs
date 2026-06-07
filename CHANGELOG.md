@@ -98,6 +98,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- `Ticker::info()` now returns `None` for optional quoteSummary-backed fields
+  when Yahoo omits their backing modules, instead of returning empty/default
+  values inside `Some(...)`. Missing `calendarEvents` now allows the v7 quote
+  dividend-date fallback to populate `Info::calendar`.
 - QuoteSummary-backed analysis, earnings, calendar, and profile projection now
   tolerate wrong-type optional fields without failing the whole endpoint with
   `YfError::Json`; diagnostics-backed paths report the affected field instead.

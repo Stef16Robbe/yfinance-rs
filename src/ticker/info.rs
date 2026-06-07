@@ -1,7 +1,7 @@
 use crate::{
     YfClient, YfError, YfResponse, analysis,
     core::client::normalize_symbol,
-    core::{CallOptions, ProjectionContext, quotesummary},
+    core::{CallOptions, ProjectionContext, YfDiagnostics, YfWarning, quotesummary},
     fundamentals,
     profile::Profile,
     ticker::Info,
@@ -33,17 +33,42 @@ fn log_err_async<T>(
     }
 }
 
-fn log_response_async<T>(
+fn log_optional_response_async<T>(
     ctx: &mut ProjectionContext,
     res: Result<YfResponse<T>, YfError>,
     name: &'static str,
     symbol: &str,
+    unavailable_features: &[&'static str],
 ) -> Result<Option<T>, YfError> {
     let Some(response) = log_err_async(ctx, res, name, symbol)? else {
         return Ok(None);
     };
-    ctx.extend(response.diagnostics);
-    Ok(Some(response.data))
+    let YfResponse { data, diagnostics } = response;
+    let unavailable = diagnostics_has_unavailable_feature(&diagnostics, unavailable_features);
+    ctx.extend(diagnostics);
+
+    if unavailable {
+        Ok(None)
+    } else {
+        Ok(Some(data))
+    }
+}
+
+fn diagnostics_has_unavailable_feature(
+    diagnostics: &YfDiagnostics,
+    unavailable_features: &[&'static str],
+) -> bool {
+    diagnostics.warnings.iter().any(|warning| {
+        let YfWarning::ProviderFeatureUnavailable { feature, .. } = warning else {
+            return false;
+        };
+        unavailable_features.iter().any(|unavailable| {
+            *feature == *unavailable
+                || feature
+                    .strip_prefix(unavailable)
+                    .is_some_and(|suffix| suffix.starts_with('.'))
+        })
+    })
 }
 
 pub(super) async fn fetch_info(
@@ -145,13 +170,19 @@ fn project_info_quote_summary_parts(
     let profile = log_err_async(ctx, parts.profile, "profile", symbol)?;
     let (price_target, recommendation_summary) = match parts.analysis {
         Ok(analysis) => {
-            let price_target =
-                log_response_async(ctx, analysis.price_target, "price_target", symbol)?;
-            let recommendation_summary = log_response_async(
+            let price_target = log_optional_response_async(
+                ctx,
+                analysis.price_target,
+                "price_target",
+                symbol,
+                &["financialData"],
+            )?;
+            let recommendation_summary = log_optional_response_async(
                 ctx,
                 analysis.recommendation_summary,
                 "recommendations_summary",
                 symbol,
+                &["recommendationTrend"],
             )?;
             (price_target, recommendation_summary)
         }
@@ -166,7 +197,8 @@ fn project_info_quote_summary_parts(
             (None, None)
         }
     };
-    let calendar = log_response_async(ctx, parts.calendar, "calendar", symbol)?;
+    let calendar =
+        log_optional_response_async(ctx, parts.calendar, "calendar", symbol, &["calendarEvents"])?;
 
     Ok(ProjectedInfoQuoteSummaryParts {
         key_statistics,

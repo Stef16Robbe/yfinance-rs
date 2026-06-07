@@ -3,7 +3,7 @@ use paft::fundamentals::profile::Profile;
 use std::time::Duration;
 use url::Url;
 use yfinance_rs::{
-    Ticker, YfClient,
+    ProjectionIssue, Ticker, YfClient, YfWarning,
     core::{
         client::{Backoff, CacheMode, RetryConfig},
         conversions::money_to_f64,
@@ -156,6 +156,64 @@ async fn offline_info_uses_recorded_fixtures() {
             .is_some(),
         "dividend payment date should fall back to v7 quote dividendDate"
     );
+}
+
+#[tokio::test]
+async fn ticker_info_missing_optional_quote_summary_modules_are_none() {
+    let server = MockServer::start();
+    let sym = "MSFT";
+    let crumb = "crumb";
+    let quote_mock = mock_info_quote(&server, sym);
+    let info_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", INFO_QUOTE_SUMMARY_MODULES)
+            .query_param("crumb", crumb);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(r#"{"quoteSummary":{"result":[{}],"error":null}}"#);
+    });
+
+    let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._preauth("cookie", crumb)
+        .retry_enabled(false)
+        .build()
+        .unwrap();
+
+    let response = Ticker::new(&client, sym)
+        .info_with_diagnostics()
+        .await
+        .unwrap();
+
+    quote_mock.assert();
+    info_mock.assert();
+    assert!(response.data.price_target.is_none());
+    assert!(response.data.recommendation_summary.is_none());
+    assert!(
+        response
+            .data
+            .calendar
+            .and_then(|calendar| calendar.dividend_payment_date)
+            .is_some(),
+        "missing calendarEvents should not block the v7 quote dividendDate fallback"
+    );
+    for feature in ["financialData", "recommendationTrend", "calendarEvents"] {
+        assert!(
+            response.diagnostics.warnings.iter().any(|warning| matches!(
+                warning,
+                YfWarning::ProviderFeatureUnavailable {
+                    feature: actual,
+                    reason: ProjectionIssue::ProviderUnavailable { .. },
+                    ..
+                } if *actual == feature
+            )),
+            "expected unavailable-feature diagnostic for {feature}"
+        );
+    }
 }
 
 #[tokio::test]
