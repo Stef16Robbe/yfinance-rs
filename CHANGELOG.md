@@ -203,6 +203,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - WebSocket startup is now cancellable and bounded by
   `StreamBuilder::websocket_connect_timeout()`, and fallback reconnect attempts
   use capped exponential backoff while HTTP polling continues.
+- WebSocket startup timeout handling now uses Tokio's `timeout` wrapper while
+  preserving independent stop cancellation.
 - Custom screener POST requests now reuse the already serialized JSON body
   instead of serializing the same `serde_json::Value` twice.
 - WebSocket streams now rely on tungstenite's automatic ping replies instead of

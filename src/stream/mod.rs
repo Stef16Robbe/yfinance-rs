@@ -491,9 +491,8 @@ async fn run_websocket_stream(
     };
 
     let startup_result = select! {
-        result = startup => result,
-        () = tokio::time::sleep(timeouts.connect) => {
-            Err(websocket_connect_timeout_error(timeouts.connect))
+        result = tokio::time::timeout(timeouts.connect, startup) => {
+            result.unwrap_or_else(|_| Err(websocket_connect_timeout_error(timeouts.connect)))
         },
         _ = &mut *stop_rx => return Ok(()),
     };
