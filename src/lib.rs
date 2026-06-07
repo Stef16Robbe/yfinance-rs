@@ -150,8 +150,9 @@ pub mod ticker;
 
 // Core types that are provider-specific
 pub use core::{
-    CacheEndpoint, CacheMode, DataQuality, ProjectionIssue, RetryConfig, YfClient, YfClientBuilder,
-    YfCurrencyInference, YfCurrencyPurpose, YfDiagnostics, YfError, YfResponse, YfWarning,
+    Backoff, CacheEndpoint, CacheMode, DataQuality, HistoryRequest, HistoryService,
+    ProjectionIssue, RetryConfig, YfClient, YfClientBuilder, YfCurrencyInference,
+    YfCurrencyPurpose, YfDiagnostics, YfError, YfResponse, YfWarning,
 };
 
 /// `DataFrame` conversion traits re-exported from `paft`.
@@ -176,12 +177,13 @@ pub use quote::{QuotesBuilder, quotes, quotes_with_diagnostics};
 pub use screener::{
     EquityQuery, EquitySector, EtfCategory, EtfQuery, FundCategory, FundQuery, PercentPoints,
     PredefinedScreener, Rating, Region, ResultOffset, ScreenerBuilder, ScreenerCount,
-    ScreenerNumber, ScreenerResponse, ScreenerResult, SortDirection, YahooExchangeCode,
-    equity_fields, etf_fields, fund_fields, screen, screen_with_diagnostics,
+    ScreenerNumber, ScreenerQuery, ScreenerResponse, ScreenerResult, SortDirection,
+    YahooExchangeCode, YahooQuoteType, equity_fields, etf_fields, fund_fields, screen,
+    screen_with_diagnostics,
 };
 pub use search::{SearchBuilder, search};
 pub use stream::{StreamBuilder, StreamConfig, StreamHandle, StreamMethod};
-pub use ticker::{FastInfo, Info, Ticker};
+pub use ticker::{FastInfo, Info, MovingAverages, Ticker};
 
 /// Initialize a default tracing subscriber for tests/examples when the
 /// `tracing-subscriber` feature is enabled. No-op otherwise.

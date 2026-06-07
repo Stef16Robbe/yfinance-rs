@@ -14,9 +14,9 @@ use httpmock::Method::GET;
 use tokio::sync::mpsc::{self as tokio_mpsc, UnboundedReceiver, error::TryRecvError};
 use url::Url;
 use yfinance_rs::{
-    QuotesBuilder, StreamBuilder, StreamMethod, YfClient, YfCurrencyInference, YfCurrencyPurpose,
-    YfError,
-    core::client::{Backoff, RetryConfig},
+    Backoff, HistoryRequest, HistoryService, MovingAverages, QuotesBuilder, RetryConfig,
+    ScreenerQuery, StreamBuilder, StreamMethod, YahooQuoteType, YfClient, YfCurrencyInference,
+    YfCurrencyPurpose, YfError,
 };
 
 fn invalid_retry_with_factor(factor: f64) -> RetryConfig {
@@ -51,6 +51,26 @@ fn public_currency_diagnostics_expose_purpose_and_inference() {
         YfCurrencyInference::ProfileCountryHeuristic.to_string(),
         "profile-country heuristic"
     );
+}
+
+#[test]
+fn crate_root_reexports_common_public_types() {
+    fn assert_history_service<T: HistoryService>() {}
+
+    assert_history_service::<YfClient>();
+    assert_eq!(
+        std::any::type_name::<HistoryRequest>(),
+        "yfinance_rs::core::services::HistoryRequest"
+    );
+    assert_eq!(
+        std::any::type_name::<MovingAverages>(),
+        "yfinance_rs::core::models::MovingAverages"
+    );
+    assert_eq!(
+        std::any::type_name::<ScreenerQuery<yfinance_rs::screener::Equity>>(),
+        "yfinance_rs::screener::query::ScreenerQuery<yfinance_rs::screener::query::Equity>"
+    );
+    assert_eq!(YahooQuoteType::Equity, YahooQuoteType::Equity);
 }
 
 struct CaptureServer {
