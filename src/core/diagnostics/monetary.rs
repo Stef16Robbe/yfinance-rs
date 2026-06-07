@@ -7,7 +7,7 @@ use paft::{Decimal, Ratio};
 pub fn optional_decimal_f64(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     value: Option<f64>,
     target: &'static str,
 ) -> Result<Option<Decimal>, YfError> {
@@ -19,7 +19,7 @@ pub fn optional_decimal_f64(
 pub fn optional_ratio_f64(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     value: Option<f64>,
     target: &'static str,
 ) -> Result<Option<Ratio>, YfError> {
@@ -33,7 +33,7 @@ pub fn optional_ratio_f64(
 pub fn optional_money_u64_with_currency_issue(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     unit: Option<&ResolvedCurrencyUnit>,
     currency_issue: Option<&ProjectionIssue>,
     value: Option<u64>,
@@ -62,7 +62,7 @@ struct CurrencyUnitContext<'a> {
 pub fn optional_money_i64_with_currency_issue(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     unit: Option<&ResolvedCurrencyUnit>,
     currency_issue: Option<&ProjectionIssue>,
     value: Option<i64>,
@@ -85,7 +85,7 @@ pub fn optional_money_i64_with_currency_issue(
 pub fn optional_money_decimal_with_currency_issue(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     unit: Option<&ResolvedCurrencyUnit>,
     currency_issue: Option<&ProjectionIssue>,
     value: Option<Decimal>,
@@ -108,7 +108,7 @@ pub fn optional_money_decimal_with_currency_issue(
 pub fn optional_price_f64_with_currency_issue(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     unit: Option<&ResolvedCurrencyUnit>,
     currency_issue: Option<&ProjectionIssue>,
     value: Option<f64>,
@@ -131,7 +131,7 @@ pub fn optional_price_f64_with_currency_issue(
 fn optional_with_unit_with_currency_issue<T, U>(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     currency: CurrencyUnitContext<'_>,
     value: Option<T>,
     target: &'static str,

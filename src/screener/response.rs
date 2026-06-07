@@ -87,7 +87,7 @@ pub(super) fn parse_screener_body_with_diagnostics(
             Err(err) => {
                 ctx.dropped_item(
                     "screener_result",
-                    key,
+                    key.as_deref(),
                     ProjectionIssue::InvalidField {
                         field: "quote",
                         details: err.to_string(),
@@ -143,7 +143,7 @@ fn wire_string(value: &WireValue<String>) -> Option<String> {
 fn optional_screener_string(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     value: &WireValue<String>,
 ) -> Result<Option<String>, YfError> {
     optional_wire_cloned(ctx, path, key, path, value)
@@ -152,7 +152,7 @@ fn optional_screener_string(
 fn optional_screener_f64(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     value: &WireValue<f64>,
 ) -> Result<Option<f64>, YfError> {
     optional_wire_copied(ctx, path, key, path, value)
@@ -161,7 +161,7 @@ fn optional_screener_f64(
 fn optional_screener_u64(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     value: &WireValue<JsonU64>,
 ) -> Result<Option<u64>, YfError> {
     Ok(optional_wire_copied(ctx, path, key, path, value)?.map(JsonU64::into_u64))
@@ -170,7 +170,7 @@ fn optional_screener_u64(
 fn optional_screener_decimal(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     value: &WireValue<JsonDecimal>,
 ) -> Result<Option<paft::Decimal>, YfError> {
     Ok(optional_wire_copied(ctx, path, key, path, value)?.map(JsonDecimal::into_decimal))
@@ -234,50 +234,40 @@ impl WireQuote {
     fn fields(
         &self,
         ctx: &mut ProjectionContext,
-        key: Option<String>,
+        key: Option<&str>,
     ) -> Result<ScreenerWireFields, YfError> {
         Ok(ScreenerWireFields {
-            symbol: optional_screener_string(ctx, "symbol", key.clone(), &self.symbol)?,
-            short_name: optional_screener_string(ctx, "shortName", key.clone(), &self.short_name)?,
-            long_name: optional_screener_string(ctx, "longName", key.clone(), &self.long_name)?,
-            quote_type_raw: optional_screener_string(
-                ctx,
-                "quoteType",
-                key.clone(),
-                &self.quote_type,
-            )?,
-            exchange_raw: optional_screener_string(ctx, "exchange", key.clone(), &self.exchange)?,
+            symbol: optional_screener_string(ctx, "symbol", key, &self.symbol)?,
+            short_name: optional_screener_string(ctx, "shortName", key, &self.short_name)?,
+            long_name: optional_screener_string(ctx, "longName", key, &self.long_name)?,
+            quote_type_raw: optional_screener_string(ctx, "quoteType", key, &self.quote_type)?,
+            exchange_raw: optional_screener_string(ctx, "exchange", key, &self.exchange)?,
             exchange_display: optional_screener_string(
                 ctx,
                 "exchDisp",
-                key.clone(),
+                key,
                 &self.exchange_display,
             )?,
-            type_display: optional_screener_string(
-                ctx,
-                "typeDisp",
-                key.clone(),
-                &self.type_display,
-            )?,
+            type_display: optional_screener_string(ctx, "typeDisp", key, &self.type_display)?,
             regular_market_price: optional_screener_f64(
                 ctx,
                 "regularMarketPrice",
-                key.clone(),
+                key,
                 &self.regular_market_price,
             )?,
             regular_market_change_percent: optional_screener_f64(
                 ctx,
                 "regularMarketChangePercent",
-                key.clone(),
+                key,
                 &self.regular_market_change_percent,
             )?,
             regular_market_volume: optional_screener_u64(
                 ctx,
                 "regularMarketVolume",
-                key.clone(),
+                key,
                 &self.regular_market_volume,
             )?,
-            market_cap: optional_screener_decimal(ctx, "marketCap", key.clone(), &self.market_cap)?,
+            market_cap: optional_screener_decimal(ctx, "marketCap", key, &self.market_cap)?,
             currency_raw: optional_screener_string(ctx, "currency", key, &self.currency)?,
         })
     }
@@ -285,7 +275,7 @@ impl WireQuote {
     fn project(self, ctx: &mut ProjectionContext) -> Result<ScreenerResult, YfError> {
         let wire = self;
         let key = wire_string(&wire.symbol);
-        let fields = wire.fields(ctx, key.clone())?;
+        let fields = wire.fields(ctx, key.as_deref())?;
 
         let quote_type = fields
             .quote_type_raw
@@ -296,7 +286,7 @@ impl WireQuote {
         {
             ctx.omitted_present_field(
                 "quoteType",
-                key.clone(),
+                key.as_deref(),
                 ProjectionIssue::InvalidField {
                     field: "quoteType",
                     details: format!("unsupported Yahoo quote type {value:?}"),
@@ -318,7 +308,7 @@ impl WireQuote {
                 Err(err) => {
                     ctx.omitted_present_field(
                         "exchange",
-                        key.clone(),
+                        key.as_deref(),
                         ProjectionIssue::InvalidField {
                             field: "exchange",
                             details: err.to_string(),
@@ -335,7 +325,7 @@ impl WireQuote {
             .and_then(YahooExchangeCode::parse);
         let instrument = project_instrument(
             ctx,
-            key.clone(),
+            key.as_deref(),
             fields.symbol.as_deref(),
             asset_kind,
             exchange.clone(),
@@ -349,7 +339,7 @@ impl WireQuote {
         let price = optional_screener_price(
             ctx,
             "regularMarketPrice",
-            key.clone(),
+            key.as_deref(),
             currency,
             fields.regular_market_price,
             "screener price",
@@ -357,7 +347,7 @@ impl WireQuote {
         let market_cap = optional_screener_money(
             ctx,
             "marketCap",
-            key,
+            key.as_deref(),
             currency,
             fields.market_cap,
             "screener market cap",
@@ -393,7 +383,7 @@ fn screener_quote_diag_key(value: &Value, idx: usize) -> String {
 
 fn project_instrument(
     ctx: &mut ProjectionContext,
-    key: Option<String>,
+    key: Option<&str>,
     symbol: Option<&str>,
     asset_kind: Option<paft::domain::AssetKind>,
     exchange: Option<Exchange>,
@@ -447,7 +437,7 @@ struct ScreenerCurrencyRef<'a> {
 fn optional_screener_price(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     currency: ScreenerCurrencyRef<'_>,
     value: Option<f64>,
     target: &'static str,
@@ -466,7 +456,7 @@ fn optional_screener_price(
 fn optional_screener_money(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     currency: ScreenerCurrencyRef<'_>,
     value: Option<paft::Decimal>,
     target: &'static str,
@@ -484,7 +474,7 @@ fn optional_screener_money(
 fn optional_screener_currency_value<T, U>(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     currency: ScreenerCurrencyRef<'_>,
     value: Option<T>,
     target: &'static str,

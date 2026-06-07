@@ -196,7 +196,7 @@ impl DownloadBuilder {
             let Some(instrument) = self.client.cached_instrument(&sym) else {
                 ctx.dropped_item(
                     "download_entry",
-                    Some(sym),
+                    Some(sym.as_str()),
                     ProjectionIssue::MissingRequiredField {
                         field: "chart.meta.instrumentType",
                     },
@@ -391,7 +391,7 @@ impl DownloadBuilder {
         for (_, sym, err) in failed {
             ctx.dropped_item(
                 "download_entry",
-                Some(sym),
+                Some(sym.as_str()),
                 ProjectionIssue::ProviderError {
                     message: format!("history fetch failed: {err}"),
                 },

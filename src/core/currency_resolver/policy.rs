@@ -43,7 +43,7 @@ pub fn project_currency_resolution(
             for invalid in resolved.invalid_evidence() {
                 ctx.omitted_present_field(
                     invalid.path(),
-                    Some(symbol.to_string()),
+                    Some(symbol),
                     ProjectionIssue::InvalidCurrency {
                         code: invalid.code().to_string(),
                     },

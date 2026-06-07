@@ -54,7 +54,7 @@ pub fn extract_actions(
             let Some(ts) = event_timestamp(k, d.date) else {
                 ctx.dropped_item(
                     "dividend",
-                    Some(k.clone()),
+                    Some(k.as_str()),
                     ProjectionIssue::MissingRequiredField { field: "date" },
                 )?;
                 continue;
@@ -64,7 +64,7 @@ pub fn extract_actions(
                 Err(err) => {
                     ctx.dropped_item(
                         "dividend",
-                        Some(k.clone()),
+                        Some(k.as_str()),
                         ProjectionIssue::InvalidField {
                             field: "date",
                             details: err.to_string(),
@@ -76,7 +76,7 @@ pub fn extract_actions(
             let Some(amount) = d.amount else {
                 ctx.dropped_item(
                     "dividend",
-                    Some(k.clone()),
+                    Some(k.as_str()),
                     ProjectionIssue::MissingRequiredField { field: "amount" },
                 )?;
                 continue;
@@ -86,20 +86,20 @@ pub fn extract_actions(
                 Ok(None) => {
                     ctx.dropped_item(
                         "dividend",
-                        Some(k.clone()),
+                        Some(k.as_str()),
                         ProjectionIssue::CurrencyUnresolved,
                     )?;
                     continue;
                 }
                 Err(reason) => {
-                    ctx.dropped_item("dividend", Some(k.clone()), reason)?;
+                    ctx.dropped_item("dividend", Some(k.as_str()), reason)?;
                     continue;
                 }
             };
             let Some(amount) = currency.price_from_f64(amount) else {
                 ctx.dropped_item(
                     "dividend",
-                    Some(k.clone()),
+                    Some(k.as_str()),
                     ProjectionIssue::ConversionFailed {
                         target: "dividend amount",
                     },
@@ -115,7 +115,7 @@ pub fn extract_actions(
             let Some(ts) = event_timestamp(k, g.date) else {
                 ctx.dropped_item(
                     "capital_gain",
-                    Some(k.clone()),
+                    Some(k.as_str()),
                     ProjectionIssue::MissingRequiredField { field: "date" },
                 )?;
                 continue;
@@ -125,7 +125,7 @@ pub fn extract_actions(
                 Err(err) => {
                     ctx.dropped_item(
                         "capital_gain",
-                        Some(k.clone()),
+                        Some(k.as_str()),
                         ProjectionIssue::InvalidField {
                             field: "date",
                             details: err.to_string(),
@@ -137,7 +137,7 @@ pub fn extract_actions(
             let Some(amount) = g.amount else {
                 ctx.dropped_item(
                     "capital_gain",
-                    Some(k.clone()),
+                    Some(k.as_str()),
                     ProjectionIssue::MissingRequiredField { field: "amount" },
                 )?;
                 continue;
@@ -147,20 +147,20 @@ pub fn extract_actions(
                 Ok(None) => {
                     ctx.dropped_item(
                         "capital_gain",
-                        Some(k.clone()),
+                        Some(k.as_str()),
                         ProjectionIssue::CurrencyUnresolved,
                     )?;
                     continue;
                 }
                 Err(reason) => {
-                    ctx.dropped_item("capital_gain", Some(k.clone()), reason)?;
+                    ctx.dropped_item("capital_gain", Some(k.as_str()), reason)?;
                     continue;
                 }
             };
             let Some(gain) = currency.price_from_f64(amount) else {
                 ctx.dropped_item(
                     "capital_gain",
-                    Some(k.clone()),
+                    Some(k.as_str()),
                     ProjectionIssue::ConversionFailed {
                         target: "capital gain amount",
                     },
@@ -176,7 +176,7 @@ pub fn extract_actions(
             let Some(ts) = event_timestamp(k, s.date) else {
                 ctx.dropped_item(
                     "split",
-                    Some(k.clone()),
+                    Some(k.as_str()),
                     ProjectionIssue::MissingRequiredField { field: "date" },
                 )?;
                 continue;
@@ -186,7 +186,7 @@ pub fn extract_actions(
                 Err(err) => {
                     ctx.dropped_item(
                         "split",
-                        Some(k.clone()),
+                        Some(k.as_str()),
                         ProjectionIssue::InvalidField {
                             field: "date",
                             details: err.to_string(),
@@ -198,7 +198,7 @@ pub fn extract_actions(
             let Some(split_ratio) = normalize_split_event(s) else {
                 ctx.dropped_item(
                     "split",
-                    Some(k.clone()),
+                    Some(k.as_str()),
                     ProjectionIssue::InvalidField {
                         field: "splitRatio",
                         details: "missing, zero, negative, non-finite, or too large".into(),

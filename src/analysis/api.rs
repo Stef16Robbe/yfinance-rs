@@ -90,7 +90,7 @@ fn module_ref<'a, T>(
 fn optional_string_from_wire(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     field: &'static str,
     value: &WireValue<String>,
 ) -> Result<Option<String>, YfError> {
@@ -100,7 +100,7 @@ fn optional_string_from_wire(
 fn optional_i64_from_wire(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     field: &'static str,
     value: &WireValue<i64>,
 ) -> Result<Option<i64>, YfError> {
@@ -110,7 +110,7 @@ fn optional_i64_from_wire(
 fn optional_raw_num_from_wire<T: Copy>(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     field: &'static str,
     value: &WireValue<RawNum<T>>,
 ) -> Result<Option<RawNum<T>>, YfError> {
@@ -120,7 +120,7 @@ fn optional_raw_num_from_wire<T: Copy>(
 fn optional_raw_value_from_wire<T: Copy>(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     field: &'static str,
     value: &WireValue<RawNum<T>>,
 ) -> Result<Option<T>, YfError> {
@@ -134,7 +134,7 @@ fn key_from_wire(value: &WireValue<String>) -> Option<String> {
 fn required_period_from_wire(
     ctx: &mut ProjectionContext,
     item: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     field: &'static str,
     value: &WireValue<String>,
 ) -> Result<Option<ReportingPeriod>, YfError> {
@@ -156,7 +156,7 @@ fn required_period_from_wire(
 fn required_i64_from_wire(
     ctx: &mut ProjectionContext,
     item: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     field: &'static str,
     value: &WireValue<i64>,
 ) -> Result<Option<i64>, YfError> {
@@ -183,38 +183,22 @@ fn required_i64_from_wire(
 fn recommendation_counts(
     ctx: &mut ProjectionContext,
     paths: RecommendationCountPaths,
-    key: Option<String>,
+    key: Option<&str>,
     node: &RecommendationNode,
 ) -> Result<RecommendationCounts, YfError> {
-    let strong_buy_raw = optional_i64_from_wire(
-        ctx,
-        paths.strong_buy,
-        key.clone(),
-        "strongBuy",
-        &node.strong_buy,
-    )?;
-    let buy_raw = optional_i64_from_wire(ctx, paths.buy, key.clone(), "buy", &node.buy)?;
-    let hold_raw = optional_i64_from_wire(ctx, paths.hold, key.clone(), "hold", &node.hold)?;
-    let sell_raw = optional_i64_from_wire(ctx, paths.sell, key.clone(), "sell", &node.sell)?;
-    let strong_sell_raw = optional_i64_from_wire(
-        ctx,
-        paths.strong_sell,
-        key.clone(),
-        "strongSell",
-        &node.strong_sell,
-    )?;
+    let strong_buy_raw =
+        optional_i64_from_wire(ctx, paths.strong_buy, key, "strongBuy", &node.strong_buy)?;
+    let buy_raw = optional_i64_from_wire(ctx, paths.buy, key, "buy", &node.buy)?;
+    let hold_raw = optional_i64_from_wire(ctx, paths.hold, key, "hold", &node.hold)?;
+    let sell_raw = optional_i64_from_wire(ctx, paths.sell, key, "sell", &node.sell)?;
+    let strong_sell_raw =
+        optional_i64_from_wire(ctx, paths.strong_sell, key, "strongSell", &node.strong_sell)?;
 
     Ok((
-        optional_u32_from_i64(
-            ctx,
-            paths.strong_buy,
-            key.clone(),
-            "strongBuy",
-            strong_buy_raw,
-        )?,
-        optional_u32_from_i64(ctx, paths.buy, key.clone(), "buy", buy_raw)?,
-        optional_u32_from_i64(ctx, paths.hold, key.clone(), "hold", hold_raw)?,
-        optional_u32_from_i64(ctx, paths.sell, key.clone(), "sell", sell_raw)?,
+        optional_u32_from_i64(ctx, paths.strong_buy, key, "strongBuy", strong_buy_raw)?,
+        optional_u32_from_i64(ctx, paths.buy, key, "buy", buy_raw)?,
+        optional_u32_from_i64(ctx, paths.hold, key, "hold", hold_raw)?,
+        optional_u32_from_i64(ctx, paths.sell, key, "sell", sell_raw)?,
         optional_u32_from_i64(ctx, paths.strong_sell, key, "strongSell", strong_sell_raw)?,
     ))
 }
@@ -256,7 +240,7 @@ pub(super) async fn recommendation_trend(
         let Some(period) = required_period_from_wire(
             &mut ctx,
             "recommendation_trend",
-            key.clone(),
+            key.as_deref(),
             "period",
             &n.period,
         )?
@@ -265,7 +249,7 @@ pub(super) async fn recommendation_trend(
         };
 
         let (strong_buy, buy, hold, sell, strong_sell) =
-            recommendation_counts(&mut ctx, TREND_COUNT_PATHS, key, n)?;
+            recommendation_counts(&mut ctx, TREND_COUNT_PATHS, key.as_deref(), n)?;
 
         rows.push(RecommendationRow {
             period,
@@ -352,7 +336,7 @@ fn map_recommendation_summary(
                 Err(err) => {
                     ctx.omitted_present_field(
                         "recommendationTrend.trend[0].period",
-                        key_from_wire(&t.period),
+                        key_from_wire(&t.period).as_deref(),
                         ProjectionIssue::InvalidField {
                             field: "period",
                             details: err.to_string(),
@@ -362,8 +346,9 @@ fn map_recommendation_summary(
                 }
             }
         };
+        let period_key = key_from_wire(&t.period);
         let (sb, b, h, s, ss) =
-            recommendation_counts(&mut ctx, LATEST_COUNT_PATHS, key_from_wire(&t.period), t)?;
+            recommendation_counts(&mut ctx, LATEST_COUNT_PATHS, period_key.as_deref(), t)?;
         (latest_period, sb, b, h, s, ss)
     } else {
         (None, None, None, None, None, None)
@@ -375,14 +360,14 @@ fn map_recommendation_summary(
             optional_raw_value_from_wire(
                 &mut ctx,
                 "financialData.recommendationMean",
-                Some(symbol.to_string()),
+                Some(symbol),
                 "recommendationMean",
                 &fd.recommendation_mean,
             )?,
             optional_string_from_wire(
                 &mut ctx,
                 "financialData.recommendationKey",
-                Some(symbol.to_string()),
+                Some(symbol),
                 "recommendationKey",
                 &fd.recommendation_key,
             )?,
@@ -393,7 +378,7 @@ fn map_recommendation_summary(
     let mean = optional_decimal_f64(
         &mut ctx,
         "financialData.recommendationMean",
-        Some(symbol.to_string()),
+        Some(symbol),
         mean,
         "recommendation mean",
     )?;
@@ -446,7 +431,7 @@ pub(super) async fn upgrades_downgrades(
         let Some(ts_raw) = required_i64_from_wire(
             &mut ctx,
             "upgrade_downgrade",
-            key.clone(),
+            key.as_deref(),
             "epochGradeDate",
             &h.epoch_grade_date,
         )?
@@ -458,7 +443,7 @@ pub(super) async fn upgrades_downgrades(
             Err(err) => {
                 ctx.dropped_item(
                     "upgrade_downgrade",
-                    key,
+                    key.as_deref(),
                     ProjectionIssue::InvalidField {
                         field: "epochGradeDate",
                         details: err.to_string(),
@@ -470,7 +455,7 @@ pub(super) async fn upgrades_downgrades(
         let from_grade_value = optional_wire_value(
             &mut ctx,
             "upgradeDowngradeHistory.history[].fromGrade",
-            key.clone(),
+            key.as_deref(),
             "fromGrade",
             &h.from_grade,
         )?
@@ -478,7 +463,7 @@ pub(super) async fn upgrades_downgrades(
         let from_grade = optional_parsed::<RecommendationGrade>(
             &mut ctx,
             "upgradeDowngradeHistory.history[].fromGrade",
-            key.clone(),
+            key.as_deref(),
             "fromGrade",
             from_grade_value,
             string_to_recommendation_grade,
@@ -486,7 +471,7 @@ pub(super) async fn upgrades_downgrades(
         let to_grade_value = optional_wire_value(
             &mut ctx,
             "upgradeDowngradeHistory.history[].toGrade",
-            key.clone(),
+            key.as_deref(),
             "toGrade",
             &h.to_grade,
         )?
@@ -494,7 +479,7 @@ pub(super) async fn upgrades_downgrades(
         let to_grade = optional_parsed::<RecommendationGrade>(
             &mut ctx,
             "upgradeDowngradeHistory.history[].toGrade",
-            key.clone(),
+            key.as_deref(),
             "toGrade",
             to_grade_value,
             string_to_recommendation_grade,
@@ -502,7 +487,7 @@ pub(super) async fn upgrades_downgrades(
         let action = optional_wire_value(
             &mut ctx,
             "upgradeDowngradeHistory.history[].action",
-            key.clone(),
+            key.as_deref(),
             "action",
             &h.action,
         )?
@@ -510,7 +495,7 @@ pub(super) async fn upgrades_downgrades(
         let grade_change = optional_wire_value(
             &mut ctx,
             "upgradeDowngradeHistory.history[].gradeChange",
-            key.clone(),
+            key.as_deref(),
             "gradeChange",
             &h.grade_change,
         )?
@@ -534,7 +519,7 @@ pub(super) async fn upgrades_downgrades(
         let action = optional_parsed::<RecommendationAction>(
             &mut ctx,
             action_path,
-            key.clone(),
+            key.as_deref(),
             action_field,
             action_value,
             string_to_recommendation_action,
@@ -587,7 +572,7 @@ async fn map_analyst_price_target(
     let financial_currency = optional_string_from_wire(
         &mut ctx,
         "financialData.financialCurrency",
-        Some(symbol.to_string()),
+        Some(symbol),
         "financialCurrency",
         &fd.financial_currency,
     )?;
@@ -599,21 +584,21 @@ async fn map_analyst_price_target(
     let mean = optional_raw_value_from_wire(
         &mut ctx,
         "financialData.targetMeanPrice",
-        Some(symbol.to_string()),
+        Some(symbol),
         "targetMeanPrice",
         &fd.target_mean_price,
     )?;
     let high = optional_raw_value_from_wire(
         &mut ctx,
         "financialData.targetHighPrice",
-        Some(symbol.to_string()),
+        Some(symbol),
         "targetHighPrice",
         &fd.target_high_price,
     )?;
     let low = optional_raw_value_from_wire(
         &mut ctx,
         "financialData.targetLowPrice",
-        Some(symbol.to_string()),
+        Some(symbol),
         "targetLowPrice",
         &fd.target_low_price,
     )?;
@@ -636,7 +621,7 @@ async fn map_analyst_price_target(
     let mean = optional_price_f64_with_currency_issue(
         &mut ctx,
         "financialData.targetMeanPrice",
-        Some(symbol.to_string()),
+        Some(symbol),
         unit.as_ref(),
         currency_issue.as_ref(),
         mean,
@@ -645,7 +630,7 @@ async fn map_analyst_price_target(
     let high = optional_price_f64_with_currency_issue(
         &mut ctx,
         "financialData.targetHighPrice",
-        Some(symbol.to_string()),
+        Some(symbol),
         unit.as_ref(),
         currency_issue.as_ref(),
         high,
@@ -654,7 +639,7 @@ async fn map_analyst_price_target(
     let low = optional_price_f64_with_currency_issue(
         &mut ctx,
         "financialData.targetLowPrice",
-        Some(symbol.to_string()),
+        Some(symbol),
         unit.as_ref(),
         currency_issue.as_ref(),
         low,
@@ -664,14 +649,14 @@ async fn map_analyst_price_target(
     let number_of_analysts_raw = optional_raw_num_from_wire(
         &mut ctx,
         "financialData.numberOfAnalystOpinions",
-        Some(symbol.to_string()),
+        Some(symbol),
         "numberOfAnalystOpinions",
         &fd.number_of_analyst_opinions,
     )?;
     let number_of_analysts = optional_u32_from_raw_f64(
         &mut ctx,
         "financialData.numberOfAnalystOpinions",
-        Some(symbol.to_string()),
+        Some(symbol),
         "numberOfAnalystOpinions",
         number_of_analysts_raw,
     )?;
@@ -893,13 +878,13 @@ impl RawEarningsEstimate {
 
     fn from_wire(
         ctx: &mut ProjectionContext,
-        key: Option<String>,
+        key: Option<&str>,
         node: &WireValue<EarningsEstimateNode>,
     ) -> Result<Self, YfError> {
         let Some(node) = optional_wire_value(
             ctx,
             "earningsTrend[].earningsEstimate",
-            key.clone(),
+            key,
             "earningsEstimate",
             node,
         )?
@@ -911,42 +896,42 @@ impl RawEarningsEstimate {
             currency: optional_string_from_wire(
                 ctx,
                 "earningsTrend[].earningsEstimate.earningsCurrency",
-                key.clone(),
+                key,
                 "earningsCurrency",
                 &node.earnings_currency,
             )?,
             avg: optional_raw_value_from_wire(
                 ctx,
                 "earningsTrend[].earningsEstimate.avg",
-                key.clone(),
+                key,
                 "avg",
                 &node.avg,
             )?,
             low: optional_raw_value_from_wire(
                 ctx,
                 "earningsTrend[].earningsEstimate.low",
-                key.clone(),
+                key,
                 "low",
                 &node.low,
             )?,
             high: optional_raw_value_from_wire(
                 ctx,
                 "earningsTrend[].earningsEstimate.high",
-                key.clone(),
+                key,
                 "high",
                 &node.high,
             )?,
             year_ago_eps: optional_raw_value_from_wire(
                 ctx,
                 "earningsTrend[].earningsEstimate.yearAgoEps",
-                key.clone(),
+                key,
                 "yearAgoEps",
                 &node.year_ago_eps,
             )?,
             num_analysts: optional_raw_num_from_wire(
                 ctx,
                 "earningsTrend[].earningsEstimate.numberOfAnalysts",
-                key.clone(),
+                key,
                 "numberOfAnalysts",
                 &node.num_analysts,
             )?,
@@ -979,13 +964,13 @@ impl RawRevenueEstimate {
 
     fn from_wire(
         ctx: &mut ProjectionContext,
-        key: Option<String>,
+        key: Option<&str>,
         node: &WireValue<RevenueEstimateNode>,
     ) -> Result<Self, YfError> {
         let Some(node) = optional_wire_value(
             ctx,
             "earningsTrend[].revenueEstimate",
-            key.clone(),
+            key,
             "revenueEstimate",
             node,
         )?
@@ -997,42 +982,42 @@ impl RawRevenueEstimate {
             currency: optional_string_from_wire(
                 ctx,
                 "earningsTrend[].revenueEstimate.revenueCurrency",
-                key.clone(),
+                key,
                 "revenueCurrency",
                 &node.revenue_currency,
             )?,
             avg: optional_raw_value_from_wire(
                 ctx,
                 "earningsTrend[].revenueEstimate.avg",
-                key.clone(),
+                key,
                 "avg",
                 &node.avg,
             )?,
             low: optional_raw_value_from_wire(
                 ctx,
                 "earningsTrend[].revenueEstimate.low",
-                key.clone(),
+                key,
                 "low",
                 &node.low,
             )?,
             high: optional_raw_value_from_wire(
                 ctx,
                 "earningsTrend[].revenueEstimate.high",
-                key.clone(),
+                key,
                 "high",
                 &node.high,
             )?,
             year_ago_revenue: optional_raw_value_from_wire(
                 ctx,
                 "earningsTrend[].revenueEstimate.yearAgoRevenue",
-                key.clone(),
+                key,
                 "yearAgoRevenue",
                 &node.year_ago_revenue,
             )?,
             num_analysts: optional_raw_num_from_wire(
                 ctx,
                 "earningsTrend[].revenueEstimate.numberOfAnalysts",
-                key.clone(),
+                key,
                 "numberOfAnalysts",
                 &node.num_analysts,
             )?,
@@ -1070,16 +1055,11 @@ impl RawEpsTrend {
 
     fn from_wire(
         ctx: &mut ProjectionContext,
-        key: Option<String>,
+        key: Option<&str>,
         node: &WireValue<EpsTrendNode>,
     ) -> Result<Self, YfError> {
-        let Some(node) = optional_wire_value(
-            ctx,
-            "earningsTrend[].epsTrend",
-            key.clone(),
-            "epsTrend",
-            node,
-        )?
+        let Some(node) =
+            optional_wire_value(ctx, "earningsTrend[].epsTrend", key, "epsTrend", node)?
         else {
             return Ok(Self::default());
         };
@@ -1088,35 +1068,35 @@ impl RawEpsTrend {
             currency: optional_string_from_wire(
                 ctx,
                 "earningsTrend[].epsTrend.epsTrendCurrency",
-                key.clone(),
+                key,
                 "epsTrendCurrency",
                 &node.eps_trend_currency,
             )?,
             current: optional_raw_value_from_wire(
                 ctx,
                 "earningsTrend[].epsTrend.current",
-                key.clone(),
+                key,
                 "current",
                 &node.current,
             )?,
             seven_days_ago: optional_raw_value_from_wire(
                 ctx,
                 "earningsTrend[].epsTrend.7daysAgo",
-                key.clone(),
+                key,
                 "7daysAgo",
                 &node.seven_days_ago,
             )?,
             thirty_days_ago: optional_raw_value_from_wire(
                 ctx,
                 "earningsTrend[].epsTrend.30daysAgo",
-                key.clone(),
+                key,
                 "30daysAgo",
                 &node.thirty_days_ago,
             )?,
             sixty_days_ago: optional_raw_value_from_wire(
                 ctx,
                 "earningsTrend[].epsTrend.60daysAgo",
-                key.clone(),
+                key,
                 "60daysAgo",
                 &node.sixty_days_ago,
             )?,
@@ -1142,13 +1122,13 @@ struct RawEpsRevisions {
 impl RawEpsRevisions {
     fn from_wire(
         ctx: &mut ProjectionContext,
-        key: Option<String>,
+        key: Option<&str>,
         node: &WireValue<EpsRevisionsNode>,
     ) -> Result<Self, YfError> {
         let Some(node) = optional_wire_value(
             ctx,
             "earningsTrend[].epsRevisions",
-            key.clone(),
+            key,
             "epsRevisions",
             node,
         )?
@@ -1160,21 +1140,21 @@ impl RawEpsRevisions {
             up_7d: optional_raw_num_from_wire(
                 ctx,
                 "earningsTrend[].epsRevisions.upLast7days",
-                key.clone(),
+                key,
                 "upLast7days",
                 &node.up_last_7_days,
             )?,
             up_30d: optional_raw_num_from_wire(
                 ctx,
                 "earningsTrend[].epsRevisions.upLast30days",
-                key.clone(),
+                key,
                 "upLast30days",
                 &node.up_last_30_days,
             )?,
             down_7d: optional_raw_num_from_wire(
                 ctx,
                 "earningsTrend[].epsRevisions.downLast7days",
-                key.clone(),
+                key,
                 "downLast7days",
                 &node.down_last_7_days,
             )?,
@@ -1210,14 +1190,14 @@ impl RawEarningsTrendItem {
             growth: optional_raw_value_from_wire(
                 ctx,
                 "earningsTrend[].growth",
-                key.clone(),
+                key.as_deref(),
                 "growth",
                 &node.growth,
             )?,
-            earnings: RawEarningsEstimate::from_wire(ctx, key.clone(), &node.earnings_estimate)?,
-            revenue: RawRevenueEstimate::from_wire(ctx, key.clone(), &node.revenue_estimate)?,
-            eps_trend: RawEpsTrend::from_wire(ctx, key.clone(), &node.eps_trend)?,
-            eps_revisions: RawEpsRevisions::from_wire(ctx, key, &node.eps_revisions)?,
+            earnings: RawEarningsEstimate::from_wire(ctx, key.as_deref(), &node.earnings_estimate)?,
+            revenue: RawRevenueEstimate::from_wire(ctx, key.as_deref(), &node.revenue_estimate)?,
+            eps_trend: RawEpsTrend::from_wire(ctx, key.as_deref(), &node.eps_trend)?,
+            eps_revisions: RawEpsRevisions::from_wire(ctx, key.as_deref(), &node.eps_revisions)?,
         })
     }
 }
@@ -1613,7 +1593,7 @@ pub(super) async fn earnings_trend(
         let Some(period) = required_period_from_wire(
             &mut ctx,
             "earnings_trend",
-            key_from_wire(&item.period),
+            key_from_wire(&item.period).as_deref(),
             "period",
             &item.period,
         )?

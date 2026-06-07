@@ -14,7 +14,7 @@ use crate::{ProjectionIssue, YfClient, YfError, YfResponse};
 fn optional_search_string(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     value: &WireValue<String>,
 ) -> Result<Option<String>, YfError> {
     optional_wire_cloned(ctx, path, key, path, value)
@@ -35,7 +35,7 @@ fn parse_search_body(body: &str, ctx: &mut ProjectionContext) -> Result<SearchRe
             Err(err) => {
                 ctx.dropped_item(
                     "search_result",
-                    raw_key,
+                    raw_key.as_deref(),
                     ProjectionIssue::InvalidField {
                         field: "quote",
                         details: err.to_string(),
@@ -50,7 +50,7 @@ fn parse_search_body(body: &str, ctx: &mut ProjectionContext) -> Result<SearchRe
             .map(|symbol| symbol.trim().to_string())
             .or(raw_key);
         let Some(sym) =
-            required_wire_value(ctx, "search_result", key.clone(), "symbol", &q.symbol)?
+            required_wire_value(ctx, "search_result", key.as_deref(), "symbol", &q.symbol)?
                 .map(|sym| sym.trim().to_string())
         else {
             continue;
@@ -58,19 +58,19 @@ fn parse_search_body(body: &str, ctx: &mut ProjectionContext) -> Result<SearchRe
         if sym.is_empty() {
             ctx.dropped_item(
                 "search_result",
-                key,
+                key.as_deref(),
                 ProjectionIssue::MissingRequiredField { field: "symbol" },
             )?;
             continue;
         }
         let shortname =
-            optional_search_string(ctx, "quotes[].shortname", Some(sym.clone()), &q.shortname)?;
+            optional_search_string(ctx, "quotes[].shortname", Some(sym.as_str()), &q.shortname)?;
         let longname =
-            optional_search_string(ctx, "quotes[].longname", Some(sym.clone()), &q.longname)?;
+            optional_search_string(ctx, "quotes[].longname", Some(sym.as_str()), &q.longname)?;
         let quote_type =
-            optional_search_string(ctx, "quotes[].quoteType", Some(sym.clone()), &q.quote_type)?;
+            optional_search_string(ctx, "quotes[].quoteType", Some(sym.as_str()), &q.quote_type)?;
         let exchange =
-            optional_search_string(ctx, "quotes[].exchange", Some(sym.clone()), &q.exchange)?;
+            optional_search_string(ctx, "quotes[].exchange", Some(sym.as_str()), &q.exchange)?;
         let exchange_opt = match exchange
             .as_deref()
             .map(str::trim)
@@ -81,7 +81,7 @@ fn parse_search_body(body: &str, ctx: &mut ProjectionContext) -> Result<SearchRe
                 Err(err) => {
                     ctx.omitted_present_field(
                         "quotes[].exchange",
-                        Some(sym.clone()),
+                        Some(sym.as_str()),
                         ProjectionIssue::InvalidField {
                             field: "exchange",
                             details: err.to_string(),
@@ -101,7 +101,7 @@ fn parse_search_body(body: &str, ctx: &mut ProjectionContext) -> Result<SearchRe
             Ok(None) => {
                 ctx.dropped_item(
                     "search_result",
-                    Some(sym),
+                    Some(sym.as_str()),
                     ProjectionIssue::MissingRequiredField { field: "quoteType" },
                 )?;
                 continue;
@@ -109,7 +109,7 @@ fn parse_search_body(body: &str, ctx: &mut ProjectionContext) -> Result<SearchRe
             Err(err) => {
                 ctx.dropped_item(
                     "search_result",
-                    Some(sym),
+                    Some(sym.as_str()),
                     ProjectionIssue::InvalidField {
                         field: "quoteType",
                         details: err.to_string(),
@@ -126,7 +126,7 @@ fn parse_search_body(body: &str, ctx: &mut ProjectionContext) -> Result<SearchRe
         let Ok(instrument) = instrument else {
             ctx.dropped_item(
                 "search_result",
-                Some(sym),
+                Some(sym.as_str()),
                 ProjectionIssue::InvalidField {
                     field: "symbol",
                     details: "invalid instrument symbol".into(),

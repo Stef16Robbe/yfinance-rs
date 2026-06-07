@@ -37,13 +37,13 @@ impl ProjectionContext {
     pub(crate) fn dropped_item(
         &mut self,
         item: &'static str,
-        key: Option<String>,
+        key: Option<&str>,
         reason: ProjectionIssue,
     ) -> Result<(), YfError> {
         self.record(YfWarning::DroppedItem {
             endpoint: self.endpoint,
             item,
-            key,
+            key: key.map(str::to_owned),
             reason,
         })
     }
@@ -51,13 +51,13 @@ impl ProjectionContext {
     pub(crate) fn omitted_present_field(
         &mut self,
         path: &'static str,
-        key: Option<String>,
+        key: Option<&str>,
         reason: ProjectionIssue,
     ) -> Result<(), YfError> {
         self.record(YfWarning::OmittedPresentField {
             endpoint: self.endpoint,
             path,
-            key,
+            key: key.map(str::to_owned),
             reason,
         })
     }
@@ -65,13 +65,13 @@ impl ProjectionContext {
     pub(crate) fn coerced_present_field(
         &mut self,
         path: &'static str,
-        key: Option<String>,
+        key: Option<&str>,
         coercion: String,
     ) -> Result<(), YfError> {
         self.record(YfWarning::CoercedPresentField {
             endpoint: self.endpoint,
             path,
-            key,
+            key: key.map(str::to_owned),
             coercion,
         })
     }
@@ -107,13 +107,13 @@ impl ProjectionContext {
     pub(crate) fn repaired_data(
         &mut self,
         item: &'static str,
-        key: Option<String>,
+        key: Option<&str>,
         repair: &'static str,
     ) -> Result<(), YfError> {
         self.record(YfWarning::RepairedData {
             endpoint: self.endpoint,
             item,
-            key,
+            key: key.map(str::to_owned),
             repair,
         })
     }

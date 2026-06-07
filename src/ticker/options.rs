@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use serde::Deserialize;
 use serde_json::Value;
 use url::Url;
@@ -38,7 +40,7 @@ fn wire_string(value: &WireValue<String>) -> Option<String> {
 fn optional_option_string(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     value: &WireValue<String>,
 ) -> Result<Option<String>, YfError> {
     optional_wire_cloned(ctx, path, key, path, value)
@@ -47,7 +49,7 @@ fn optional_option_string(
 fn optional_option_i64(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     value: &WireValue<i64>,
 ) -> Result<Option<i64>, YfError> {
     optional_wire_copied(ctx, path, key, path, value)
@@ -56,7 +58,7 @@ fn optional_option_i64(
 fn optional_option_f64(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     value: &WireValue<f64>,
 ) -> Result<Option<f64>, YfError> {
     optional_wire_copied(ctx, path, key, path, value)
@@ -65,7 +67,7 @@ fn optional_option_f64(
 fn optional_option_bool(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     value: &WireValue<bool>,
 ) -> Result<Option<bool>, YfError> {
     optional_wire_copied(ctx, path, key, path, value)
@@ -74,7 +76,7 @@ fn optional_option_bool(
 fn optional_option_u64(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     value: &WireValue<JsonU64>,
 ) -> Result<Option<u64>, YfError> {
     Ok(optional_wire_copied(ctx, path, key, path, value)?.map(JsonU64::into_u64))
@@ -148,7 +150,7 @@ pub async fn option_chain_with_diagnostics(
     let expiration = optional_option_i64(
         &mut ctx,
         "expirationDate",
-        Some(symbol.clone()),
+        Some(symbol.as_str()),
         &od.expiration_date,
     )?
     .or_else(|| {
@@ -250,18 +252,14 @@ fn project_option_side(
     out: &mut Vec<OptionContract>,
 ) -> Result<(), YfError> {
     for (idx, contract) in side.unwrap_or_default().into_iter().enumerate() {
-        let key = Some(option_contract_diag_key_from_value(
-            &contract,
-            option_side,
-            expiration,
-            idx,
-        ));
-        let contract = match serde_json::from_value::<OptContractNode>(contract) {
+        let contract = match OptContractNode::deserialize(&contract) {
             Ok(contract) => contract,
             Err(err) => {
+                let key =
+                    option_contract_diag_key_from_value(&contract, option_side, expiration, idx);
                 ctx.dropped_item(
                     "option_contract",
-                    key,
+                    Some(&key),
                     ProjectionIssue::InvalidField {
                         field: "contract",
                         details: err.to_string(),
@@ -300,13 +298,13 @@ fn project_option_contract(
     let contract_expiration = optional_option_i64(
         ctx,
         "expiration",
-        key_for_diag.clone(),
+        key_for_diag.as_deref(),
         &contract.expiration,
     )?;
     let Some(exp_ts) = contract_expiration.or(expiration) else {
         ctx.dropped_item(
             "option_contract",
-            key_for_diag,
+            key_for_diag.as_deref(),
             ProjectionIssue::MissingRequiredField {
                 field: "expiration",
             },
@@ -316,7 +314,7 @@ fn project_option_contract(
     let Some(exp_dt) = Utc.timestamp_opt(exp_ts, 0).single() else {
         ctx.dropped_item(
             "option_contract",
-            key_for_diag,
+            key_for_diag.as_deref(),
             ProjectionIssue::InvalidField {
                 field: "expiration",
                 details: format!("invalid unix timestamp {exp_ts}"),
@@ -327,7 +325,7 @@ fn project_option_contract(
     let Some(strike_raw) = required_wire_value(
         ctx,
         "option_contract",
-        key_for_diag.clone(),
+        key_for_diag.as_deref(),
         "strike",
         &contract.strike,
     )?
@@ -337,7 +335,7 @@ fn project_option_contract(
     let Some(currency) = currency else {
         ctx.dropped_item(
             "option_contract",
-            key_for_diag,
+            key_for_diag.as_deref(),
             currency_issue
                 .cloned()
                 .unwrap_or(ProjectionIssue::CurrencyUnresolved),
@@ -347,7 +345,7 @@ fn project_option_contract(
     let Some(strike) = currency.price_from_f64(strike_raw) else {
         ctx.dropped_item(
             "option_contract",
-            key_for_diag,
+            key_for_diag.as_deref(),
             ProjectionIssue::ConversionFailed {
                 target: "option strike",
             },
@@ -359,37 +357,41 @@ fn project_option_contract(
     let mut key = OptionContractKey::new(underlying.clone(), option_side, strike, exp_date);
     let key_for_diag = option_contract_diag_key(contract, option_side, Some(exp_ts));
     if let Some(contract_instrument) =
-        optional_contract_instrument(ctx, key_for_diag.clone(), contract)?
+        optional_contract_instrument(ctx, key_for_diag.as_deref(), contract)?
     {
         key = key.with_contract_instrument(contract_instrument);
     }
-    let last_price =
-        optional_option_f64(ctx, "lastPrice", key_for_diag.clone(), &contract.last_price)?;
-    let bid = optional_option_f64(ctx, "bid", key_for_diag.clone(), &contract.bid)?;
-    let ask = optional_option_f64(ctx, "ask", key_for_diag.clone(), &contract.ask)?;
-    let volume = optional_option_u64(ctx, "volume", key_for_diag.clone(), &contract.volume)?;
+    let last_price = optional_option_f64(
+        ctx,
+        "lastPrice",
+        key_for_diag.as_deref(),
+        &contract.last_price,
+    )?;
+    let bid = optional_option_f64(ctx, "bid", key_for_diag.as_deref(), &contract.bid)?;
+    let ask = optional_option_f64(ctx, "ask", key_for_diag.as_deref(), &contract.ask)?;
+    let volume = optional_option_u64(ctx, "volume", key_for_diag.as_deref(), &contract.volume)?;
     let open_interest = optional_option_u64(
         ctx,
         "openInterest",
-        key_for_diag.clone(),
+        key_for_diag.as_deref(),
         &contract.open_interest,
     )?;
     let implied_volatility = optional_option_f64(
         ctx,
         "impliedVolatility",
-        key_for_diag.clone(),
+        key_for_diag.as_deref(),
         &contract.implied_volatility,
     )?;
     let in_the_money = optional_option_bool(
         ctx,
         "inTheMoney",
-        key_for_diag.clone(),
+        key_for_diag.as_deref(),
         &contract.in_the_money,
     )?;
     let last_trade_date = optional_option_i64(
         ctx,
         "lastTradeDate",
-        key_for_diag.clone(),
+        key_for_diag.as_deref(),
         &contract.last_trade_date,
     )?;
 
@@ -399,7 +401,7 @@ fn project_option_contract(
         price: optional_option_price(
             ctx,
             "lastPrice",
-            key_for_diag.clone(),
+            key_for_diag.as_deref(),
             currency,
             last_price,
             "option last price",
@@ -407,7 +409,7 @@ fn project_option_contract(
         bid: optional_option_price(
             ctx,
             "bid",
-            key_for_diag.clone(),
+            key_for_diag.as_deref(),
             currency,
             bid,
             "option bid",
@@ -415,7 +417,7 @@ fn project_option_contract(
         ask: optional_option_price(
             ctx,
             "ask",
-            key_for_diag.clone(),
+            key_for_diag.as_deref(),
             currency,
             ask,
             "option ask",
@@ -425,7 +427,7 @@ fn project_option_contract(
         implied_volatility: optional_non_negative_decimal_f64(
             ctx,
             "impliedVolatility",
-            key_for_diag.clone(),
+            key_for_diag.as_deref(),
             implied_volatility,
             "option implied volatility",
         )?,
@@ -434,7 +436,7 @@ fn project_option_contract(
         last_trade_at: optional_option_timestamp(
             ctx,
             "lastTradeDate",
-            key_for_diag,
+            key_for_diag.as_deref(),
             last_trade_date,
         )?,
         greeks: None,
@@ -444,15 +446,11 @@ fn project_option_contract(
 
 fn optional_contract_instrument(
     ctx: &mut ProjectionContext,
-    key: Option<String>,
+    key: Option<&str>,
     contract: &OptContractNode,
 ) -> Result<Option<Instrument>, YfError> {
-    let Some(symbol) = optional_option_string(
-        ctx,
-        "contractSymbol",
-        key.clone(),
-        &contract.contract_symbol,
-    )?
+    let Some(symbol) =
+        optional_option_string(ctx, "contractSymbol", key, &contract.contract_symbol)?
     else {
         return Ok(None);
     };
@@ -475,7 +473,7 @@ fn optional_contract_instrument(
 fn optional_option_price(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     currency: &ResolvedCurrencyUnit,
     value: Option<f64>,
     target: &'static str,
@@ -493,11 +491,11 @@ fn optional_option_price(
 fn optional_non_negative_decimal_f64(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     value: Option<f64>,
     target: &'static str,
 ) -> Result<Option<NonNegativeDecimal>, YfError> {
-    let Some(decimal) = optional_decimal_f64(ctx, path, key.clone(), value, target)? else {
+    let Some(decimal) = optional_decimal_f64(ctx, path, key, value, target)? else {
         return Ok(None);
     };
     if let Ok(value) = NonNegativeDecimal::new(decimal) {
@@ -511,7 +509,7 @@ fn optional_non_negative_decimal_f64(
 fn optional_option_timestamp(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     value: Option<i64>,
 ) -> Result<Option<chrono::DateTime<Utc>>, YfError> {
     let Some(value) = value else {
@@ -535,26 +533,28 @@ fn option_contract_diag_key(
     contract: &OptContractNode,
     option_side: OptionSide,
     expiration: Option<i64>,
-) -> Option<String> {
-    wire_string(&contract.contract_symbol).or_else(|| {
-        let side = match option_side {
-            OptionSide::Call => "call",
-            OptionSide::Put => "put",
-        };
-        Some(format!(
-            "{side}:{}@{}",
-            contract
-                .strike
-                .as_ref()
-                .map_or_else(|| "?".to_string(), ToString::to_string),
-            contract
-                .expiration
-                .as_ref()
-                .copied()
-                .or(expiration)
-                .map_or_else(|| "?".to_string(), |expiration| expiration.to_string())
-        ))
-    })
+) -> Option<Cow<'_, str>> {
+    wire_str(&contract.contract_symbol)
+        .map(Cow::Borrowed)
+        .or_else(|| {
+            let side = match option_side {
+                OptionSide::Call => "call",
+                OptionSide::Put => "put",
+            };
+            Some(Cow::Owned(format!(
+                "{side}:{}@{}",
+                contract
+                    .strike
+                    .as_ref()
+                    .map_or_else(|| "?".to_string(), ToString::to_string),
+                contract
+                    .expiration
+                    .as_ref()
+                    .copied()
+                    .or(expiration)
+                    .map_or_else(|| "?".to_string(), |expiration| expiration.to_string())
+            )))
+        })
 }
 
 fn option_contract_diag_key_from_value(

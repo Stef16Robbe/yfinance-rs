@@ -79,7 +79,7 @@ pub(super) async fn fetch_news(
             Err(err) => {
                 ctx.dropped_item(
                     "news_article",
-                    raw_key.clone(),
+                    raw_key.as_deref(),
                     ProjectionIssue::InvalidField {
                         field: "article",
                         details: err.to_string(),
@@ -91,7 +91,7 @@ pub(super) async fn fetch_news(
         if raw_item.ad.is_some() {
             ctx.dropped_item(
                 "news_article",
-                raw_key.clone(),
+                raw_key.as_deref(),
                 ProjectionIssue::ProviderUnavailable { feature: "article" },
             )?;
             continue;
@@ -100,7 +100,7 @@ pub(super) async fn fetch_news(
         let Some(id) = required_wire_value(
             &mut ctx,
             "news_article",
-            raw_key.clone(),
+            raw_key.as_deref(),
             "id",
             &raw_item.id,
         )?
@@ -110,40 +110,25 @@ pub(super) async fn fetch_news(
         if id.is_empty() {
             ctx.dropped_item(
                 "news_article",
-                raw_key,
+                raw_key.as_deref(),
                 ProjectionIssue::MissingRequiredField { field: "id" },
             )?;
             continue;
         }
-        let key = Some(id.clone());
+        let key = Some(id.as_str());
 
-        let Some(content) = required_wire_value(
-            &mut ctx,
-            "news_article",
-            key.clone(),
-            "content",
-            &raw_item.content,
-        )?
+        let Some(content) =
+            required_wire_value(&mut ctx, "news_article", key, "content", &raw_item.content)?
         else {
             continue;
         };
-        let Some(title) = required_wire_value(
-            &mut ctx,
-            "news_article",
-            key.clone(),
-            "title",
-            &content.title,
-        )?
-        .cloned() else {
+        let Some(title) =
+            required_wire_value(&mut ctx, "news_article", key, "title", &content.title)?.cloned()
+        else {
             continue;
         };
-        let Some(pub_date_str) = required_wire_value(
-            &mut ctx,
-            "news_article",
-            key.clone(),
-            "pubDate",
-            &content.pub_date,
-        )?
+        let Some(pub_date_str) =
+            required_wire_value(&mut ctx, "news_article", key, "pubDate", &content.pub_date)?
         else {
             continue;
         };
@@ -153,7 +138,7 @@ pub(super) async fn fetch_news(
             Err(err) => {
                 ctx.dropped_item(
                     "news_article",
-                    key.clone(),
+                    key,
                     ProjectionIssue::InvalidField {
                         field: "pubDate",
                         details: err.to_string(),
@@ -167,7 +152,7 @@ pub(super) async fn fetch_news(
             Err(err) => {
                 ctx.dropped_item(
                     "news_article",
-                    key.clone(),
+                    key,
                     ProjectionIssue::InvalidField {
                         field: "pubDate",
                         details: err.to_string(),
@@ -176,18 +161,13 @@ pub(super) async fn fetch_news(
                 continue;
             }
         };
-        let provider = optional_wire_value(
-            &mut ctx,
-            "provider",
-            key.clone(),
-            "provider",
-            &content.provider,
-        )?;
+        let provider =
+            optional_wire_value(&mut ctx, "provider", key, "provider", &content.provider)?;
         let publisher = if let Some(provider) = provider {
             optional_wire_cloned(
                 &mut ctx,
                 "provider.displayName",
-                key.clone(),
+                key,
                 "displayName",
                 &provider.display_name,
             )?
@@ -197,18 +177,12 @@ pub(super) async fn fetch_news(
         let canonical_url = optional_wire_value(
             &mut ctx,
             "canonicalUrl",
-            key.clone(),
+            key,
             "canonicalUrl",
             &content.canonical_url,
         )?;
         let link = if let Some(canonical_url) = canonical_url {
-            optional_wire_cloned(
-                &mut ctx,
-                "canonicalUrl.url",
-                key.clone(),
-                "url",
-                &canonical_url.url,
-            )?
+            optional_wire_cloned(&mut ctx, "canonicalUrl.url", key, "url", &canonical_url.url)?
         } else {
             None
         };

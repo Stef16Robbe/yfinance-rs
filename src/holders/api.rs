@@ -154,7 +154,7 @@ async fn map_ownership_list(
             Err(err) => {
                 ctx.dropped_item(
                     "institutional_holder",
-                    key,
+                    key.as_deref(),
                     ProjectionIssue::InvalidField {
                         field: "holder",
                         details: err.to_string(),
@@ -167,7 +167,7 @@ async fn map_ownership_list(
         let Some(holder) = nonempty_string(h.organization) else {
             ctx.dropped_item(
                 "institutional_holder",
-                key,
+                key.as_deref(),
                 ProjectionIssue::MissingRequiredField {
                     field: "organization",
                 },
@@ -177,7 +177,7 @@ async fn map_ownership_list(
         let Some(date_reported) = required_date(
             ctx,
             "institutional_holder",
-            Some(holder.clone()),
+            Some(holder.as_str()),
             "reportDate",
             h.date_reported,
         )?
@@ -187,7 +187,7 @@ async fn map_ownership_list(
         let value = optional_money_u64_with_currency_issue(
             ctx,
             "ownershipList[].value",
-            Some(holder.clone()),
+            Some(holder.as_str()),
             currency.unit.as_ref(),
             currency.issue.as_ref(),
             from_raw(h.value),
@@ -196,7 +196,7 @@ async fn map_ownership_list(
         let pct_held = optional_ratio_f64(
             ctx,
             "ownershipList[].pctHeld",
-            Some(holder.clone()),
+            Some(holder.as_str()),
             from_raw(h.pct_held),
             "holder percent",
         )?;
@@ -343,7 +343,7 @@ pub(super) async fn insider_transactions(
             Err(err) => {
                 ctx.dropped_item(
                     "insider_transaction",
-                    key,
+                    key.as_deref(),
                     ProjectionIssue::InvalidField {
                         field: "transaction",
                         details: err.to_string(),
@@ -357,7 +357,7 @@ pub(super) async fn insider_transactions(
         let Some(insider) = nonempty_string(t.insider) else {
             ctx.dropped_item(
                 "insider_transaction",
-                key,
+                key.as_deref(),
                 ProjectionIssue::MissingRequiredField { field: "insider" },
             )?;
             continue;
@@ -365,7 +365,7 @@ pub(super) async fn insider_transactions(
         let Some(position) = required_parsed::<InsiderPosition>(
             &mut ctx,
             "insider_transaction",
-            Some(insider.clone()),
+            Some(insider.as_str()),
             "position",
             t.position.as_deref(),
             string_to_insider_position,
@@ -379,7 +379,7 @@ pub(super) async fn insider_transactions(
             let Some(transaction_type) = required_parsed::<TransactionType>(
                 &mut ctx,
                 "insider_transaction",
-                Some(insider.clone()),
+                Some(insider.as_str()),
                 "transaction",
                 t.transaction.as_deref(),
                 string_to_transaction_type,
@@ -392,7 +392,7 @@ pub(super) async fn insider_transactions(
         let Some(transaction_date) = required_date(
             &mut ctx,
             "insider_transaction",
-            Some(insider.clone()),
+            Some(insider.as_str()),
             "startDate",
             t.start_date,
         )?
@@ -402,7 +402,7 @@ pub(super) async fn insider_transactions(
         let value = optional_money_u64_with_currency_issue(
             &mut ctx,
             "insiderTransactions.transactions[].value",
-            Some(insider.clone()),
+            Some(insider.as_str()),
             currency.unit.as_ref(),
             currency.issue.as_ref(),
             from_raw(t.value),
@@ -462,7 +462,7 @@ pub(super) async fn insider_roster_holders(
             Err(err) => {
                 ctx.dropped_item(
                     "insider_roster_holder",
-                    key,
+                    key.as_deref(),
                     ProjectionIssue::InvalidField {
                         field: "holder",
                         details: err.to_string(),
@@ -475,7 +475,7 @@ pub(super) async fn insider_roster_holders(
         let Some(name) = nonempty_string(h.name) else {
             ctx.dropped_item(
                 "insider_roster_holder",
-                key,
+                key.as_deref(),
                 ProjectionIssue::MissingRequiredField { field: "name" },
             )?;
             continue;
@@ -483,7 +483,7 @@ pub(super) async fn insider_roster_holders(
         let Some(position) = required_parsed::<InsiderPosition>(
             &mut ctx,
             "insider_roster_holder",
-            Some(name.clone()),
+            Some(name.as_str()),
             "relation",
             h.relation.as_deref(),
             string_to_insider_position,
@@ -494,7 +494,7 @@ pub(super) async fn insider_roster_holders(
         let Some(most_recent_transaction) = required_parsed::<TransactionType>(
             &mut ctx,
             "insider_roster_holder",
-            Some(name.clone()),
+            Some(name.as_str()),
             "transactionDescription",
             h.most_recent_transaction.as_deref(),
             string_to_transaction_type,
@@ -505,7 +505,7 @@ pub(super) async fn insider_roster_holders(
         let Some(latest_transaction_date) = required_date(
             &mut ctx,
             "insider_roster_holder",
-            Some(name.clone()),
+            Some(name.as_str()),
             "latestTransDate",
             h.latest_transaction_date,
         )?
@@ -515,7 +515,7 @@ pub(super) async fn insider_roster_holders(
         let Some(position_direct_date) = required_date(
             &mut ctx,
             "insider_roster_holder",
-            Some(name.clone()),
+            Some(name.as_str()),
             "positionDirectDate",
             h.position_direct_date,
         )?
@@ -553,7 +553,7 @@ pub(super) async fn net_share_purchase_activity(
     let Some(period) = required_parsed(
         &mut ctx,
         "net_share_purchase_activity",
-        period_key.clone(),
+        period_key.as_deref(),
         "period",
         n.period.as_deref(),
         crate::core::conversions::string_to_period,
@@ -574,7 +574,7 @@ pub(super) async fn net_share_purchase_activity(
         net_percent_insider_shares: optional_decimal_f64(
             &mut ctx,
             "netSharePurchaseActivity.netPercentInsiderShares",
-            period_key,
+            period_key.as_deref(),
             from_raw(n.net_percent_insider_shares),
             "net percent insider shares",
         )?,

@@ -58,7 +58,7 @@ fn module_ref<'a, T>(
 fn optional_string_from_wire(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     field: &'static str,
     value: &WireValue<String>,
 ) -> Result<Option<String>, YfError> {
@@ -68,7 +68,7 @@ fn optional_string_from_wire(
 fn optional_raw_decimal_from_wire(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     field: &'static str,
     value: &WireValue<RawDecimal>,
 ) -> Result<Option<paft::Decimal>, YfError> {
@@ -78,7 +78,7 @@ fn optional_raw_decimal_from_wire(
 fn optional_raw_num_from_wire<T: Copy>(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     field: &'static str,
     value: &WireValue<RawNum<T>>,
 ) -> Result<Option<T>, YfError> {
@@ -88,7 +88,7 @@ fn optional_raw_num_from_wire<T: Copy>(
 fn required_i64_from_wire(
     ctx: &mut ProjectionContext,
     item: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     field: &'static str,
     value: &WireValue<i64>,
 ) -> Result<Option<i64>, YfError> {
@@ -115,7 +115,7 @@ fn required_i64_from_wire(
 fn required_period_from_wire(
     ctx: &mut ProjectionContext,
     item: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     field: &'static str,
     value: &WireValue<String>,
 ) -> Result<Option<ReportingPeriod>, YfError> {
@@ -494,7 +494,7 @@ where
         };
         ctx.dropped_item(
             "timeseries_item",
-            Some(key.to_string()),
+            Some(key),
             ProjectionIssue::InvalidField {
                 field: "values",
                 details,
@@ -509,9 +509,10 @@ where
             Ok(value) => parsed.push(Some(value)),
             Err(err) => {
                 parsed.push(None);
+                let value_key = format!("{key}[{idx}]");
                 ctx.dropped_item(
                     "timeseries_value",
-                    Some(format!("{key}[{idx}]")),
+                    Some(&value_key),
                     ProjectionIssue::InvalidField {
                         field: "values",
                         details: err.to_string(),
@@ -589,7 +590,7 @@ fn row_for_timestamp<'a, T>(
     ctx: &mut ProjectionContext,
     rows_map: &'a mut BTreeMap<i64, T>,
     timestamp: i64,
-    key: String,
+    key: &str,
     create: impl FnOnce(ReportingPeriod) -> T,
 ) -> Result<Option<&'a mut T>, YfError> {
     let period = match period_from_timestamp(timestamp) {
@@ -646,8 +647,7 @@ fn process_statement_money_values<T>(
         };
 
         let row_key = format!("{field}@{timestamp}");
-        let Some(row) = row_for_timestamp(ctx, rows_map, *timestamp, row_key.clone(), create_row)?
-        else {
+        let Some(row) = row_for_timestamp(ctx, rows_map, *timestamp, &row_key, create_row)? else {
             continue;
         };
 
@@ -660,13 +660,13 @@ fn process_statement_money_values<T>(
         });
         let money = match currency_issue_for_value {
             Some(issue) => {
-                ctx.omitted_present_field("timeseries.reportedValue", Some(row_key), issue)?;
+                ctx.omitted_present_field("timeseries.reportedValue", Some(&row_key), issue)?;
                 None
             }
             None => optional_money_decimal_with_currency_issue(
                 ctx,
                 "timeseries.reportedValue",
-                Some(row_key),
+                Some(&row_key),
                 currency,
                 currency_issue,
                 Some(value),
@@ -708,14 +708,8 @@ fn process_statement_u64_values<T>(
             continue;
         };
 
-        let Some(row) = row_for_timestamp(
-            ctx,
-            rows_map,
-            *timestamp,
-            format!("{field}@{timestamp}"),
-            create_row,
-        )?
-        else {
+        let row_key = format!("{field}@{timestamp}");
+        let Some(row) = row_for_timestamp(ctx, rows_map, *timestamp, &row_key, create_row)? else {
             continue;
         };
 
@@ -972,9 +966,10 @@ pub(super) async fn cashflow(
         {
             // In timeseries API, capex is negative for cash outflow.
             if let Ok(free_cash_flow) = ocf.try_add(&capex) {
+                let key = row.period.to_string();
                 ctx.repaired_data(
                     "cash_flow",
-                    Some(row.period.to_string()),
+                    Some(&key),
                     "inferred missing free cash flow from operating cash flow and capital expenditure",
                 )?;
                 row.free_cash_flow = Some(free_cash_flow);
@@ -1025,7 +1020,7 @@ pub(super) async fn earnings(
     let financial_currency = optional_string_from_wire(
         &mut ctx,
         "earnings.financialCurrency",
-        Some(symbol.to_string()),
+        Some(symbol),
         "financialCurrency",
         &e.financial_currency,
     )?;
@@ -1086,9 +1081,10 @@ pub(super) async fn earnings(
                 continue;
             };
             let Ok(year) = i32::try_from(date) else {
+                let key = date.to_string();
                 ctx.dropped_item(
                     "earnings_year",
-                    Some(date.to_string()),
+                    Some(&key),
                     ProjectionIssue::InvalidField {
                         field: "date",
                         details: "year outside i32 range".into(),
@@ -1099,9 +1095,10 @@ pub(super) async fn earnings(
             let mut row = match EarningsYear::new(year) {
                 Ok(row) => row,
                 Err(err) => {
+                    let key = year.to_string();
                     ctx.dropped_item(
                         "earnings_year",
-                        Some(year.to_string()),
+                        Some(&key),
                         ProjectionIssue::InvalidField {
                             field: "date",
                             details: err.to_string(),
@@ -1114,21 +1111,21 @@ pub(super) async fn earnings(
             let revenue = optional_raw_decimal_from_wire(
                 &mut ctx,
                 "financialsChart.yearly[].revenue",
-                year_key.clone(),
+                year_key.as_deref(),
                 "revenue",
                 &y.revenue,
             )?;
             let earnings = optional_raw_decimal_from_wire(
                 &mut ctx,
                 "financialsChart.yearly[].earnings",
-                year_key.clone(),
+                year_key.as_deref(),
                 "earnings",
                 &y.earnings,
             )?;
             row.revenue = optional_money_decimal_with_currency_issue(
                 &mut ctx,
                 "financialsChart.yearly[].revenue",
-                year_key.clone(),
+                year_key.as_deref(),
                 currency.as_ref(),
                 currency_issue.as_ref(),
                 revenue,
@@ -1137,7 +1134,7 @@ pub(super) async fn earnings(
             row.earnings = optional_money_decimal_with_currency_issue(
                 &mut ctx,
                 "financialsChart.yearly[].earnings",
-                year_key,
+                year_key.as_deref(),
                 currency.as_ref(),
                 currency_issue.as_ref(),
                 earnings,
@@ -1161,7 +1158,7 @@ pub(super) async fn earnings(
             let Some(period) = required_period_from_wire(
                 &mut ctx,
                 "earnings_quarter",
-                q.date.as_ref().cloned(),
+                q.date.as_ref().map(String::as_str),
                 "date",
                 &q.date,
             )?
@@ -1172,14 +1169,14 @@ pub(super) async fn earnings(
             let revenue = optional_raw_decimal_from_wire(
                 &mut ctx,
                 "financialsChart.quarterly[].revenue",
-                period_key.clone(),
+                period_key.as_deref(),
                 "revenue",
                 &q.revenue,
             )?;
             let earnings = optional_raw_decimal_from_wire(
                 &mut ctx,
                 "financialsChart.quarterly[].earnings",
-                period_key.clone(),
+                period_key.as_deref(),
                 "earnings",
                 &q.earnings,
             )?;
@@ -1188,7 +1185,7 @@ pub(super) async fn earnings(
                 revenue: optional_money_decimal_with_currency_issue(
                     &mut ctx,
                     "financialsChart.quarterly[].revenue",
-                    period_key.clone(),
+                    period_key.as_deref(),
                     currency.as_ref(),
                     currency_issue.as_ref(),
                     revenue,
@@ -1197,7 +1194,7 @@ pub(super) async fn earnings(
                 earnings: optional_money_decimal_with_currency_issue(
                     &mut ctx,
                     "financialsChart.quarterly[].earnings",
-                    period_key.clone(),
+                    period_key.as_deref(),
                     currency.as_ref(),
                     currency_issue.as_ref(),
                     earnings,
@@ -1221,7 +1218,7 @@ pub(super) async fn earnings(
             let Some(period) = required_period_from_wire(
                 &mut ctx,
                 "earnings_quarter_eps",
-                q.date.as_ref().cloned(),
+                q.date.as_ref().map(String::as_str),
                 "date",
                 &q.date,
             )?
@@ -1232,14 +1229,14 @@ pub(super) async fn earnings(
             let actual = optional_raw_num_from_wire(
                 &mut ctx,
                 "earningsChart.quarterly[].actual",
-                period_key.clone(),
+                period_key.as_deref(),
                 "actual",
                 &q.actual,
             )?;
             let estimate = optional_raw_num_from_wire(
                 &mut ctx,
                 "earningsChart.quarterly[].estimate",
-                period_key.clone(),
+                period_key.as_deref(),
                 "estimate",
                 &q.estimate,
             )?;
@@ -1248,7 +1245,7 @@ pub(super) async fn earnings(
                 actual: optional_price_f64_with_currency_issue(
                     &mut ctx,
                     "earningsChart.quarterly[].actual",
-                    period_key.clone(),
+                    period_key.as_deref(),
                     currency.as_ref(),
                     currency_issue.as_ref(),
                     actual,
@@ -1257,7 +1254,7 @@ pub(super) async fn earnings(
                 estimate: optional_price_f64_with_currency_issue(
                     &mut ctx,
                     "earningsChart.quarterly[].estimate",
-                    period_key.clone(),
+                    period_key.as_deref(),
                     currency.as_ref(),
                     currency_issue.as_ref(),
                     estimate,
@@ -1358,7 +1355,7 @@ fn calendar_earnings_dates(
         if let Some(date) = required_timestamp(
             ctx,
             "calendar_earnings_date",
-            key,
+            key.as_deref(),
             "earningsDate",
             Some(*date),
         )? {
@@ -1475,9 +1472,10 @@ pub(super) async fn shares(
         let date = match i64_to_date(ts) {
             Ok(date) => date,
             Err(err) => {
+                let key = format!("{type_key}@{ts}");
                 ctx.dropped_item(
                     "share_count",
-                    Some(format!("{type_key}@{ts}")),
+                    Some(&key),
                     ProjectionIssue::InvalidField {
                         field: "timestamp",
                         details: err.to_string(),

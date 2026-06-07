@@ -475,7 +475,7 @@ fn parse_history_timezone(
             Err(err) => {
                 ctx.omitted_present_field(
                     path,
-                    meta.symbol.clone(),
+                    meta.symbol.as_deref(),
                     ProjectionIssue::InvalidField {
                         field,
                         details: err.to_string(),

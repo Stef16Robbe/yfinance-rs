@@ -5,7 +5,7 @@ use crate::core::{
 pub fn optional_u32_from_i64(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     field: &'static str,
     value: Option<i64>,
 ) -> Result<Option<u32>, YfError> {
@@ -17,7 +17,7 @@ pub fn optional_u32_from_i64(
 pub fn optional_u32_from_raw_f64(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     field: &'static str,
     value: Option<RawNum<f64>>,
 ) -> Result<Option<u32>, YfError> {

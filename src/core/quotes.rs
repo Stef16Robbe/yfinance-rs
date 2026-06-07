@@ -179,7 +179,7 @@ fn required_wire_str_projection<'a>(
 fn optional_quote_string(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     value: &WireValue<String>,
 ) -> Result<Option<String>, YfError> {
     optional_wire_cloned(ctx, path, key, path, value)
@@ -188,7 +188,7 @@ fn optional_quote_string(
 fn optional_quote_f64(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     value: &WireValue<f64>,
 ) -> Result<Option<f64>, YfError> {
     optional_wire_copied(ctx, path, key, path, value)
@@ -197,7 +197,7 @@ fn optional_quote_f64(
 fn optional_quote_i64(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     value: &WireValue<i64>,
 ) -> Result<Option<i64>, YfError> {
     optional_wire_copied(ctx, path, key, path, value)
@@ -206,7 +206,7 @@ fn optional_quote_i64(
 fn optional_quote_u64(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     value: &WireValue<JsonU64>,
 ) -> Result<Option<u64>, YfError> {
     Ok(optional_wire_copied(ctx, path, key, path, value)?.map(JsonU64::into_u64))
@@ -215,7 +215,7 @@ fn optional_quote_u64(
 fn optional_quote_decimal(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     value: &WireValue<JsonDecimal>,
 ) -> Result<Option<Decimal>, YfError> {
     Ok(optional_wire_copied(ctx, path, key, path, value)?.map(JsonDecimal::into_decimal))
@@ -269,31 +269,25 @@ impl V7QuoteNode {
         ctx: &mut ProjectionContext,
         key: Option<&str>,
     ) -> Result<Option<Exchange>, YfError> {
-        let key = key.map(str::to_owned);
         let candidates = [
             (
                 "fullExchangeName",
-                optional_quote_string(
-                    ctx,
-                    "fullExchangeName",
-                    key.clone(),
-                    &self.full_exchange_name,
-                )?,
+                optional_quote_string(ctx, "fullExchangeName", key, &self.full_exchange_name)?,
             ),
             (
                 "exchange",
-                optional_quote_string(ctx, "exchange", key.clone(), &self.exchange)?,
+                optional_quote_string(ctx, "exchange", key, &self.exchange)?,
             ),
             (
                 "market",
-                optional_quote_string(ctx, "market", key.clone(), &self.market)?,
+                optional_quote_string(ctx, "market", key, &self.market)?,
             ),
             (
                 "marketCapFigureExchange",
                 optional_quote_string(
                     ctx,
                     "marketCapFigureExchange",
-                    key.clone(),
+                    key,
                     &self.market_cap_figure_exchange,
                 )?,
             ),
@@ -377,7 +371,7 @@ impl V7QuoteNode {
         &self,
         ctx: &mut ProjectionContext,
         path: &'static str,
-        key: Option<String>,
+        key: Option<&str>,
         price: Option<f64>,
         size: Option<u64>,
     ) -> Result<Option<BookLevel>, YfError> {
@@ -397,11 +391,10 @@ impl V7QuoteNode {
     fn market_state_with_context(
         &self,
         ctx: &mut ProjectionContext,
-        key: Option<String>,
+        key: Option<&str>,
     ) -> Result<Option<MarketState>, YfError> {
-        let Some(value) =
-            optional_quote_string(ctx, "marketState", key.clone(), &self.market_state)?
-                .and_then(|value| nonempty(&value).map(str::to_owned))
+        let Some(value) = optional_quote_string(ctx, "marketState", key, &self.market_state)?
+            .and_then(|value| nonempty(&value).map(str::to_owned))
         else {
             return Ok(None);
         };
@@ -424,14 +417,10 @@ impl V7QuoteNode {
     fn as_of_with_context(
         &self,
         ctx: &mut ProjectionContext,
-        key: Option<String>,
+        key: Option<&str>,
     ) -> Result<Option<chrono::DateTime<chrono::Utc>>, YfError> {
-        let Some(timestamp) = optional_quote_i64(
-            ctx,
-            "regularMarketTime",
-            key.clone(),
-            &self.regular_market_time,
-        )?
+        let Some(timestamp) =
+            optional_quote_i64(ctx, "regularMarketTime", key, &self.regular_market_time)?
         else {
             return Ok(None);
         };
@@ -461,84 +450,84 @@ impl V7QuoteNode {
         let currency = currencies
             .quote_currency()
             .map_err(|issue| YfError::InvalidData(format!("invalid snapshot currency: {issue}")))?;
-        let name = optional_quote_string(ctx, "longName", key.clone(), &self.long_name)?.or(
-            optional_quote_string(ctx, "shortName", key.clone(), &self.short_name)?,
+        let name = optional_quote_string(ctx, "longName", key.as_deref(), &self.long_name)?.or(
+            optional_quote_string(ctx, "shortName", key.as_deref(), &self.short_name)?,
         );
         let regular_market_price = optional_quote_f64(
             ctx,
             "regularMarketPrice",
-            key.clone(),
+            key.as_deref(),
             &self.regular_market_price,
         )?;
         let regular_market_previous_close = optional_quote_f64(
             ctx,
             "regularMarketPreviousClose",
-            key.clone(),
+            key.as_deref(),
             &self.regular_market_previous_close,
         )?;
         let regular_market_open = optional_quote_f64(
             ctx,
             "regularMarketOpen",
-            key.clone(),
+            key.as_deref(),
             &self.regular_market_open,
         )?;
         let regular_market_day_high = optional_quote_f64(
             ctx,
             "regularMarketDayHigh",
-            key.clone(),
+            key.as_deref(),
             &self.regular_market_day_high,
         )?;
         let regular_market_day_low = optional_quote_f64(
             ctx,
             "regularMarketDayLow",
-            key.clone(),
+            key.as_deref(),
             &self.regular_market_day_low,
         )?;
         let regular_market_volume = optional_quote_u64(
             ctx,
             "regularMarketVolume",
-            key.clone(),
+            key.as_deref(),
             &self.regular_market_volume,
         )?;
 
         Ok(Snapshot {
             instrument: self.instrument(exchange)?,
             name,
-            market_state: self.market_state_with_context(ctx, key.clone())?,
-            as_of: self.as_of_with_context(ctx, key.clone())?,
+            market_state: self.market_state_with_context(ctx, key.as_deref())?,
+            as_of: self.as_of_with_context(ctx, key.as_deref())?,
             currency,
             last: currencies.quote_price_amount(
                 ctx,
                 "regularMarketPrice",
-                key.clone(),
+                key.as_deref(),
                 regular_market_price,
                 "snapshot last price",
             )?,
             previous_close: currencies.quote_price_amount(
                 ctx,
                 "regularMarketPreviousClose",
-                key.clone(),
+                key.as_deref(),
                 regular_market_previous_close,
                 "snapshot previous close",
             )?,
             open: currencies.quote_price_amount(
                 ctx,
                 "regularMarketOpen",
-                key.clone(),
+                key.as_deref(),
                 regular_market_open,
                 "snapshot open",
             )?,
             day_high: currencies.quote_price_amount(
                 ctx,
                 "regularMarketDayHigh",
-                key.clone(),
+                key.as_deref(),
                 regular_market_day_high,
                 "snapshot day high",
             )?,
             day_low: currencies.quote_price_amount(
                 ctx,
                 "regularMarketDayLow",
-                key,
+                key.as_deref(),
                 regular_market_day_low,
                 "snapshot day low",
             )?,
@@ -563,12 +552,16 @@ impl V7QuoteNode {
     ) -> Result<MovingAverages, YfError> {
         let key = self.symbol_key();
         let currencies = self.currency_units();
-        let fifty_day =
-            optional_quote_f64(ctx, "fiftyDayAverage", key.clone(), &self.fifty_day_average)?;
+        let fifty_day = optional_quote_f64(
+            ctx,
+            "fiftyDayAverage",
+            key.as_deref(),
+            &self.fifty_day_average,
+        )?;
         let two_hundred_day = optional_quote_f64(
             ctx,
             "twoHundredDayAverage",
-            key.clone(),
+            key.as_deref(),
             &self.two_hundred_day_average,
         )?;
 
@@ -576,14 +569,14 @@ impl V7QuoteNode {
             fifty_day: currencies.quote_price(
                 ctx,
                 "fiftyDayAverage",
-                key.clone(),
+                key.as_deref(),
                 fifty_day,
                 "50-day moving average",
             )?,
             two_hundred_day: currencies.quote_price(
                 ctx,
                 "twoHundredDayAverage",
-                key,
+                key.as_deref(),
                 two_hundred_day,
                 "200-day moving average",
             )?,
@@ -596,14 +589,14 @@ impl V7QuoteNode {
     ) -> Result<KeyStatistics, YfError> {
         let currencies = self.currency_units();
         let key = self.symbol_key();
-        let fields = self.key_statistics_fields(ctx, key.clone())?;
+        let fields = self.key_statistics_fields(ctx, key.as_deref())?;
 
         Ok(KeyStatistics {
-            as_of: self.as_of_with_context(ctx, key.clone())?,
+            as_of: self.as_of_with_context(ctx, key.as_deref())?,
             market_cap: currencies.quote_money(
                 ctx,
                 "marketCap",
-                key.clone(),
+                key.as_deref(),
                 fields.market_cap,
                 "market cap",
             )?,
@@ -611,28 +604,28 @@ impl V7QuoteNode {
             eps_trailing_twelve_months: currencies.financial_price(
                 ctx,
                 "epsTrailingTwelveMonths",
-                key.clone(),
+                key.as_deref(),
                 fields.eps_trailing_twelve_months,
                 "trailing EPS",
             )?,
             pe_trailing_twelve_months: optional_decimal_f64(
                 ctx,
                 "trailingPE",
-                key.clone(),
+                key.as_deref(),
                 fields.trailing_pe,
                 "trailing PE",
             )?,
             dividend_per_share_forward: currencies.quote_major_price(
                 ctx,
                 "dividendRate",
-                key.clone(),
+                key.as_deref(),
                 fields.dividend_rate,
                 "forward dividend per share",
             )?,
             dividend_yield_trailing: optional_decimal_f64(
                 ctx,
                 "trailingAnnualDividendYield",
-                key.clone(),
+                key.as_deref(),
                 fields.trailing_annual_dividend_yield,
                 "trailing dividend yield",
             )?,
@@ -641,7 +634,7 @@ impl V7QuoteNode {
             dividend_yield_forward: optional_decimal_f64(
                 ctx,
                 "dividendYield",
-                key.clone(),
+                key.as_deref(),
                 fields.dividend_yield,
                 "forward dividend yield",
             )?
@@ -650,76 +643,66 @@ impl V7QuoteNode {
             fifty_two_week_high: currencies.quote_price(
                 ctx,
                 "fiftyTwoWeekHigh",
-                key.clone(),
+                key.as_deref(),
                 fields.fifty_two_week_high,
                 "52-week high",
             )?,
             fifty_two_week_low: currencies.quote_price(
                 ctx,
                 "fiftyTwoWeekLow",
-                key.clone(),
+                key.as_deref(),
                 fields.fifty_two_week_low,
                 "52-week low",
             )?,
             average_daily_volume_3m: fields.average_daily_volume_3m,
-            beta: optional_decimal_f64(ctx, "beta", key, fields.beta, "beta")?,
+            beta: optional_decimal_f64(ctx, "beta", key.as_deref(), fields.beta, "beta")?,
         })
     }
 
     fn key_statistics_fields(
         &self,
         ctx: &mut ProjectionContext,
-        key: Option<String>,
+        key: Option<&str>,
     ) -> Result<V7KeyStatisticsFields, YfError> {
         Ok(V7KeyStatisticsFields {
-            market_cap: optional_quote_decimal(ctx, "marketCap", key.clone(), &self.market_cap)?,
+            market_cap: optional_quote_decimal(ctx, "marketCap", key, &self.market_cap)?,
             shares_outstanding: optional_quote_u64(
                 ctx,
                 "sharesOutstanding",
-                key.clone(),
+                key,
                 &self.shares_outstanding,
             )?,
             eps_trailing_twelve_months: optional_quote_f64(
                 ctx,
                 "epsTrailingTwelveMonths",
-                key.clone(),
+                key,
                 &self.eps_trailing_twelve_months,
             )?,
-            trailing_pe: optional_quote_f64(ctx, "trailingPE", key.clone(), &self.trailing_pe)?,
-            dividend_rate: optional_quote_f64(
-                ctx,
-                "dividendRate",
-                key.clone(),
-                &self.dividend_rate,
-            )?,
+            trailing_pe: optional_quote_f64(ctx, "trailingPE", key, &self.trailing_pe)?,
+            dividend_rate: optional_quote_f64(ctx, "dividendRate", key, &self.dividend_rate)?,
             trailing_annual_dividend_yield: optional_quote_f64(
                 ctx,
                 "trailingAnnualDividendYield",
-                key.clone(),
+                key,
                 &self.trailing_annual_dividend_yield,
             )?,
-            dividend_yield: optional_quote_f64(
-                ctx,
-                "dividendYield",
-                key.clone(),
-                &self.dividend_yield,
-            )?,
+            dividend_yield: optional_quote_f64(ctx, "dividendYield", key, &self.dividend_yield)?,
             fifty_two_week_high: optional_quote_f64(
                 ctx,
                 "fiftyTwoWeekHigh",
-                key.clone(),
+                key,
                 &self.fifty_two_week_high,
             )?,
             fifty_two_week_low: optional_quote_f64(
                 ctx,
                 "fiftyTwoWeekLow",
-                key.clone(),
+                key,
                 &self.fifty_two_week_low,
             )?,
             average_daily_volume_3m: optional_quote_u64(
                 ctx,
                 "averageDailyVolume3Month",
-                key.clone(),
+                key,
                 &self.average_daily_volume_3_month,
             )?,
             beta: optional_quote_f64(ctx, "beta", key, &self.beta)?,
@@ -732,7 +715,7 @@ impl V7QuoteNode {
     ) -> Result<Option<Calendar>, YfError> {
         let key = self.symbol_key();
         let Some(timestamp) =
-            optional_quote_i64(ctx, "dividendDate", key.clone(), &self.dividend_date)?
+            optional_quote_i64(ctx, "dividendDate", key.as_deref(), &self.dividend_date)?
         else {
             return Ok(None);
         };
@@ -745,7 +728,7 @@ impl V7QuoteNode {
             Err(err) => {
                 ctx.omitted_present_field(
                     "dividendDate",
-                    key,
+                    key.as_deref(),
                     ProjectionIssue::InvalidField {
                         field: "dividendDate",
                         details: err.to_string(),
@@ -832,7 +815,7 @@ impl QuoteCurrencyUnits {
         &self,
         ctx: &mut ProjectionContext,
         path: &'static str,
-        key: Option<String>,
+        key: Option<&str>,
         value: Option<f64>,
         target: &'static str,
     ) -> Result<Option<paft::money::Price>, YfError> {
@@ -851,7 +834,7 @@ impl QuoteCurrencyUnits {
         &self,
         ctx: &mut ProjectionContext,
         path: &'static str,
-        key: Option<String>,
+        key: Option<&str>,
         value: Option<f64>,
         target: &'static str,
     ) -> Result<Option<PriceAmount>, YfError> {
@@ -870,7 +853,7 @@ impl QuoteCurrencyUnits {
         &self,
         ctx: &mut ProjectionContext,
         path: &'static str,
-        key: Option<String>,
+        key: Option<&str>,
         value: Option<Decimal>,
         target: &'static str,
     ) -> Result<Option<paft::money::Money>, YfError> {
@@ -889,7 +872,7 @@ impl QuoteCurrencyUnits {
         &self,
         ctx: &mut ProjectionContext,
         path: &'static str,
-        key: Option<String>,
+        key: Option<&str>,
         value: Option<f64>,
         target: &'static str,
     ) -> Result<Option<paft::money::Price>, YfError> {
@@ -908,7 +891,7 @@ impl QuoteCurrencyUnits {
         &self,
         ctx: &mut ProjectionContext,
         path: &'static str,
-        key: Option<String>,
+        key: Option<&str>,
         value: Option<f64>,
         target: &'static str,
     ) -> Result<Option<paft::money::Price>, YfError> {
@@ -995,7 +978,7 @@ fn parse_currency_unit(
 fn optional_with_unit<T, U>(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     unit: Result<&ResolvedCurrencyUnit, ProjectionIssue>,
     value: Option<T>,
     target: &'static str,
@@ -1082,7 +1065,7 @@ struct DefaultKeyStatisticsNode {
 fn optional_summary_raw_f64(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     value: &WireValue<RawNum<f64>>,
 ) -> Result<Option<f64>, YfError> {
     Ok(optional_wire_copied(ctx, path, key, path, value)?.and_then(|value| value.raw))
@@ -1091,7 +1074,7 @@ fn optional_summary_raw_f64(
 fn optional_summary_raw_u64(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     value: &WireValue<RawNumU64>,
 ) -> Result<Option<u64>, YfError> {
     Ok(optional_wire_copied(ctx, path, key, path, value)?.and_then(|value| value.raw))
@@ -1100,7 +1083,7 @@ fn optional_summary_raw_u64(
 fn optional_summary_raw_decimal(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     value: &WireValue<RawDecimal>,
 ) -> Result<Option<Decimal>, YfError> {
     Ok(optional_wire_copied(ctx, path, key, path, value)?.and_then(|value| value.raw))
@@ -1109,7 +1092,7 @@ fn optional_summary_raw_decimal(
 fn optional_summary_raw_date(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     value: &WireValue<RawDate>,
 ) -> Result<Option<i64>, YfError> {
     Ok(optional_wire_copied(ctx, path, key, path, value)?.and_then(|value| value.raw))
@@ -1135,16 +1118,16 @@ struct QuoteSummaryKeyStatisticsFields {
 
 fn quote_summary_key_statistics_fields(
     ctx: &mut ProjectionContext,
-    key: Option<String>,
+    key: Option<&str>,
     summary_detail: &SummaryDetailNode,
     default_key_statistics: &DefaultKeyStatisticsNode,
 ) -> Result<QuoteSummaryKeyStatisticsFields, YfError> {
     let summary_beta =
-        optional_summary_raw_f64(ctx, "summaryDetail.beta", key.clone(), &summary_detail.beta)?;
+        optional_summary_raw_f64(ctx, "summaryDetail.beta", key, &summary_detail.beta)?;
     let default_beta = optional_summary_raw_f64(
         ctx,
         "defaultKeyStatistics.beta",
-        key.clone(),
+        key,
         &default_key_statistics.beta,
     )?;
 
@@ -1152,80 +1135,80 @@ fn quote_summary_key_statistics_fields(
         summary_currency: optional_quote_string(
             ctx,
             "summaryDetail.currency",
-            key.clone(),
+            key,
             &summary_detail.currency,
         )?,
         beta: summary_beta.or(default_beta),
         fifty_day_average: optional_summary_raw_f64(
             ctx,
             "summaryDetail.fiftyDayAverage",
-            key.clone(),
+            key,
             &summary_detail.fifty_day_average,
         )?,
         two_hundred_day_average: optional_summary_raw_f64(
             ctx,
             "summaryDetail.twoHundredDayAverage",
-            key.clone(),
+            key,
             &summary_detail.two_hundred_day_average,
         )?,
         market_cap: optional_summary_raw_decimal(
             ctx,
             "summaryDetail.marketCap",
-            key.clone(),
+            key,
             &summary_detail.market_cap,
         )?,
         shares_outstanding: optional_summary_raw_u64(
             ctx,
             "defaultKeyStatistics.sharesOutstanding",
-            key.clone(),
+            key,
             &default_key_statistics.shares_outstanding,
         )?,
         trailing_eps: optional_summary_raw_f64(
             ctx,
             "defaultKeyStatistics.trailingEps",
-            key.clone(),
+            key,
             &default_key_statistics.trailing_eps,
         )?,
         trailing_pe: optional_summary_raw_f64(
             ctx,
             "summaryDetail.trailingPE",
-            key.clone(),
+            key,
             &summary_detail.trailing_pe,
         )?,
         dividend_rate: optional_summary_raw_f64(
             ctx,
             "summaryDetail.dividendRate",
-            key.clone(),
+            key,
             &summary_detail.dividend_rate,
         )?,
         trailing_annual_dividend_yield: optional_summary_raw_f64(
             ctx,
             "summaryDetail.trailingAnnualDividendYield",
-            key.clone(),
+            key,
             &summary_detail.trailing_annual_dividend_yield,
         )?,
         dividend_yield: optional_summary_raw_f64(
             ctx,
             "summaryDetail.dividendYield",
-            key.clone(),
+            key,
             &summary_detail.dividend_yield,
         )?,
         ex_dividend_date: optional_summary_raw_date(
             ctx,
             "summaryDetail.exDividendDate",
-            key.clone(),
+            key,
             &summary_detail.ex_dividend_date,
         )?,
         fifty_two_week_high: optional_summary_raw_f64(
             ctx,
             "summaryDetail.fiftyTwoWeekHigh",
-            key.clone(),
+            key,
             &summary_detail.fifty_two_week_high,
         )?,
         fifty_two_week_low: optional_summary_raw_f64(
             ctx,
             "summaryDetail.fiftyTwoWeekLow",
-            key.clone(),
+            key,
             &summary_detail.fifty_two_week_low,
         )?,
         average_volume: optional_summary_raw_u64(
@@ -1243,12 +1226,12 @@ impl QuoteSummaryKeyStatistics {
         ctx: &mut ProjectionContext,
         symbol: &str,
     ) -> Result<(KeyStatistics, MovingAverages), YfError> {
-        let key = Some(symbol.to_string());
+        let key = Some(symbol);
         let summary_detail = self.summary_detail.unwrap_or_default();
         let default_key_statistics = self.default_key_statistics.unwrap_or_default();
         let fields = quote_summary_key_statistics_fields(
             ctx,
-            key.clone(),
+            key,
             &summary_detail,
             &default_key_statistics,
         )?;
@@ -1258,14 +1241,14 @@ impl QuoteSummaryKeyStatistics {
             fifty_day: currencies.quote_price(
                 ctx,
                 "summaryDetail.fiftyDayAverage",
-                key.clone(),
+                key,
                 fields.fifty_day_average,
                 "50-day moving average",
             )?,
             two_hundred_day: currencies.quote_price(
                 ctx,
                 "summaryDetail.twoHundredDayAverage",
-                key.clone(),
+                key,
                 fields.two_hundred_day_average,
                 "200-day moving average",
             )?,
@@ -1275,7 +1258,7 @@ impl QuoteSummaryKeyStatistics {
             market_cap: currencies.quote_money(
                 ctx,
                 "summaryDetail.marketCap",
-                key.clone(),
+                key,
                 fields.market_cap,
                 "market cap",
             )?,
@@ -1283,48 +1266,48 @@ impl QuoteSummaryKeyStatistics {
             eps_trailing_twelve_months: currencies.financial_price(
                 ctx,
                 "defaultKeyStatistics.trailingEps",
-                key.clone(),
+                key,
                 fields.trailing_eps,
                 "trailing EPS",
             )?,
             pe_trailing_twelve_months: optional_decimal_f64(
                 ctx,
                 "summaryDetail.trailingPE",
-                key.clone(),
+                key,
                 fields.trailing_pe,
                 "trailing PE",
             )?,
             dividend_per_share_forward: currencies.quote_major_price(
                 ctx,
                 "summaryDetail.dividendRate",
-                key.clone(),
+                key,
                 fields.dividend_rate,
                 "forward dividend per share",
             )?,
             dividend_yield_trailing: optional_decimal_f64(
                 ctx,
                 "summaryDetail.trailingAnnualDividendYield",
-                key.clone(),
+                key,
                 fields.trailing_annual_dividend_yield,
                 "trailing dividend yield",
             )?,
             dividend_yield_forward: optional_decimal_f64(
                 ctx,
                 "summaryDetail.dividendYield",
-                key.clone(),
+                key,
                 fields.dividend_yield,
                 "forward dividend yield",
             )?,
             ex_dividend_date: optional_date(
                 ctx,
                 "summaryDetail.exDividendDate",
-                key.clone(),
+                key,
                 fields.ex_dividend_date,
             )?,
             fifty_two_week_high: currencies.quote_price(
                 ctx,
                 "summaryDetail.fiftyTwoWeekHigh",
-                key.clone(),
+                key,
                 fields.fifty_two_week_high,
                 "52-week high",
             )?,
@@ -1336,7 +1319,7 @@ impl QuoteSummaryKeyStatistics {
                 "52-week low",
             )?,
             average_daily_volume_3m: fields.average_volume,
-            beta: optional_decimal_f64(ctx, "beta", Some(symbol.to_string()), fields.beta, "beta")?,
+            beta: optional_decimal_f64(ctx, "beta", Some(symbol), fields.beta, "beta")?,
             as_of: None,
         };
 
@@ -1357,7 +1340,7 @@ impl QuoteSummaryKeyStatistics {
 fn optional_date(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     timestamp: Option<i64>,
 ) -> Result<Option<chrono::NaiveDate>, YfError> {
     let Some(timestamp) = timestamp else {
@@ -1507,7 +1490,7 @@ pub fn report_missing_requested_quote_values(
         if !resolved {
             ctx.dropped_item(
                 "quote",
-                Some((*symbol).to_string()),
+                Some(*symbol),
                 ProjectionIssue::ProviderUnavailable { feature: "quote" },
             )?;
         }
@@ -1600,7 +1583,7 @@ pub fn quote_node_from_value_with_context(
         Err(err) => {
             ctx.dropped_item(
                 "quote",
-                key,
+                key.as_deref(),
                 ProjectionIssue::InvalidField {
                     field: "quote",
                     details: err.to_string(),
@@ -1781,7 +1764,7 @@ impl V7QuoteNode {
         let instrument = match self.instrument_projection(exchange) {
             Ok(instrument) => instrument,
             Err(reason) => {
-                ctx.dropped_item("quote", key, reason)?;
+                ctx.dropped_item("quote", key.as_deref(), reason)?;
                 return Ok(None);
             }
         };
@@ -1789,12 +1772,12 @@ impl V7QuoteNode {
         let currency = match currencies.quote_currency() {
             Ok(currency) => currency,
             Err(reason) => {
-                ctx.dropped_item("quote", key, reason)?;
+                ctx.dropped_item("quote", key.as_deref(), reason)?;
                 return Ok(None);
             }
         };
 
-        self.quote_from_instrument_with_context(ctx, key, instrument, currency)
+        self.quote_from_instrument_with_context(ctx, key.as_deref(), instrument, currency)
             .map(Some)
     }
 
@@ -1810,42 +1793,34 @@ impl V7QuoteNode {
             .quote_currency()
             .map_err(|issue| YfError::InvalidData(format!("invalid quote currency: {issue}")))?;
 
-        self.quote_from_instrument_with_context(ctx, key, instrument, currency)
+        self.quote_from_instrument_with_context(ctx, key.as_deref(), instrument, currency)
     }
 
     fn quote_from_instrument_with_context(
         &self,
         ctx: &mut ProjectionContext,
-        key: Option<String>,
+        key: Option<&str>,
         instrument: Instrument,
         currency: Currency,
     ) -> Result<Quote, YfError> {
         let currencies = self.currency_units();
-        let name = optional_quote_string(ctx, "longName", key.clone(), &self.long_name)?.or(
-            optional_quote_string(ctx, "shortName", key.clone(), &self.short_name)?,
+        let name = optional_quote_string(ctx, "longName", key, &self.long_name)?.or(
+            optional_quote_string(ctx, "shortName", key, &self.short_name)?,
         );
-        let regular_market_price = optional_quote_f64(
-            ctx,
-            "regularMarketPrice",
-            key.clone(),
-            &self.regular_market_price,
-        )?;
-        let bid = optional_quote_f64(ctx, "bid", key.clone(), &self.bid)?;
-        let bid_size = optional_quote_u64(ctx, "bidSize", key.clone(), &self.bid_size)?;
-        let ask = optional_quote_f64(ctx, "ask", key.clone(), &self.ask)?;
-        let ask_size = optional_quote_u64(ctx, "askSize", key.clone(), &self.ask_size)?;
+        let regular_market_price =
+            optional_quote_f64(ctx, "regularMarketPrice", key, &self.regular_market_price)?;
+        let bid = optional_quote_f64(ctx, "bid", key, &self.bid)?;
+        let bid_size = optional_quote_u64(ctx, "bidSize", key, &self.bid_size)?;
+        let ask = optional_quote_f64(ctx, "ask", key, &self.ask)?;
+        let ask_size = optional_quote_u64(ctx, "askSize", key, &self.ask_size)?;
         let regular_market_previous_close = optional_quote_f64(
             ctx,
             "regularMarketPreviousClose",
-            key.clone(),
+            key,
             &self.regular_market_previous_close,
         )?;
-        let regular_market_volume = optional_quote_u64(
-            ctx,
-            "regularMarketVolume",
-            key.clone(),
-            &self.regular_market_volume,
-        )?;
+        let regular_market_volume =
+            optional_quote_u64(ctx, "regularMarketVolume", key, &self.regular_market_volume)?;
 
         Ok(Quote {
             instrument,
@@ -1854,21 +1829,21 @@ impl V7QuoteNode {
             price: currencies.quote_price_amount(
                 ctx,
                 "regularMarketPrice",
-                key.clone(),
+                key,
                 regular_market_price,
                 "quote price",
             )?,
-            bid: self.positive_book_level(ctx, "bid", key.clone(), bid, bid_size)?,
-            ask: self.positive_book_level(ctx, "ask", key.clone(), ask, ask_size)?,
+            bid: self.positive_book_level(ctx, "bid", key, bid, bid_size)?,
+            ask: self.positive_book_level(ctx, "ask", key, ask, ask_size)?,
             previous_close: currencies.quote_price_amount(
                 ctx,
                 "regularMarketPreviousClose",
-                key.clone(),
+                key,
                 regular_market_previous_close,
                 "quote previous close",
             )?,
             day_volume: regular_market_volume.and_then(quantity_from_u64),
-            market_state: self.market_state_with_context(ctx, key.clone())?,
+            market_state: self.market_state_with_context(ctx, key)?,
             as_of: self.as_of_with_context(ctx, key)?,
             provider: (),
         })

@@ -6,8 +6,8 @@ use crate::core::{
 use chrono::{DateTime, NaiveDate, Utc};
 use paft::domain::ReportingPeriod;
 
-pub fn diagnostic_key(key: Option<&str>) -> Option<String> {
-    key.map(str::to_owned)
+pub const fn diagnostic_key(key: Option<&str>) -> Option<&str> {
+    key
 }
 
 pub fn nonempty(value: Option<&str>) -> Option<&str> {
@@ -21,7 +21,7 @@ pub fn nonempty_string(value: Option<String>) -> Option<String> {
 pub fn optional_projected<T, U>(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     value: Option<T>,
     project: impl FnOnce(T) -> Result<U, ProjectionIssue>,
 ) -> Result<Option<U>, YfError> {
@@ -41,7 +41,7 @@ pub fn optional_projected<T, U>(
 pub fn optional_wire_value<'a, T>(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     field: &'static str,
     value: &'a WireValue<T>,
 ) -> Result<Option<&'a T>, YfError> {
@@ -62,7 +62,7 @@ pub fn optional_wire_value<'a, T>(
 pub fn optional_wire_copied<T: Copy>(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     field: &'static str,
     value: &WireValue<T>,
 ) -> Result<Option<T>, YfError> {
@@ -72,7 +72,7 @@ pub fn optional_wire_copied<T: Copy>(
 pub fn optional_wire_cloned<T: Clone>(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     field: &'static str,
     value: &WireValue<T>,
 ) -> Result<Option<T>, YfError> {
@@ -82,7 +82,7 @@ pub fn optional_wire_cloned<T: Clone>(
 pub fn required_wire_value<'a, T>(
     ctx: &mut ProjectionContext,
     item: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     field: &'static str,
     value: &'a WireValue<T>,
 ) -> Result<Option<&'a T>, YfError> {
@@ -116,7 +116,7 @@ pub fn parse_optional<T>(
 pub fn optional_parsed<T>(
     ctx: &mut ProjectionContext,
     path: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     field: &'static str,
     value: Option<&str>,
     parse: impl FnOnce(&str) -> Result<T, YfError>,
@@ -132,7 +132,7 @@ pub fn optional_parsed<T>(
 pub fn required_parsed<T>(
     ctx: &mut ProjectionContext,
     item: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     field: &'static str,
     value: Option<&str>,
     parse: impl FnOnce(&str) -> Result<T, YfError>,
@@ -161,7 +161,7 @@ pub fn required_parsed<T>(
 pub fn required_period(
     ctx: &mut ProjectionContext,
     item: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     field: &'static str,
     value: Option<&str>,
 ) -> Result<Option<ReportingPeriod>, YfError> {
@@ -171,7 +171,7 @@ pub fn required_period(
 pub fn required_timestamp(
     ctx: &mut ProjectionContext,
     item: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     field: &'static str,
     value: Option<RawDate>,
 ) -> Result<Option<DateTime<Utc>>, YfError> {
@@ -199,7 +199,7 @@ pub fn required_timestamp(
 pub fn required_date(
     ctx: &mut ProjectionContext,
     item: &'static str,
-    key: Option<String>,
+    key: Option<&str>,
     field: &'static str,
     value: Option<RawDate>,
 ) -> Result<Option<NaiveDate>, YfError> {

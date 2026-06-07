@@ -143,6 +143,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   entries are removed on access and expired entries are pruned on writes.
 - Response-cache bodies are now stored as shared strings, so cache hits no
   longer allocate and copy the entire cached response body.
+- Projection diagnostics now borrow record keys until a warning is emitted,
+  avoiding repeated diagnostic-key string clones on successful option-chain and
+  quote-family projections.
 - History candle assembly now preallocates its output buffer using the shortest
   required OHLC/timestamp array as a safe upper bound.
 - `profile()` now reports valid symbols with unsupported Yahoo instrument types

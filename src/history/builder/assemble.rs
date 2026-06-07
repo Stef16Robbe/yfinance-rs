@@ -22,9 +22,10 @@ pub fn assemble_candles(
         let ts = match i64_to_datetime(t) {
             Ok(ts) => ts,
             Err(err) => {
+                let key = t.to_string();
                 ctx.dropped_item(
                     "candle",
-                    Some(t.to_string()),
+                    Some(&key),
                     ProjectionIssue::InvalidField {
                         field: "timestamp",
                         details: err.to_string(),
@@ -44,7 +45,8 @@ pub fn assemble_candles(
         {
             Ok(values) => values,
             Err(reason) => {
-                ctx.dropped_item("candle", Some(t.to_string()), reason)?;
+                let key = t.to_string();
+                ctx.dropped_item("candle", Some(&key), reason)?;
                 continue;
             }
         };
@@ -61,9 +63,10 @@ pub fn assemble_candles(
         }
 
         let Some((open, high, low, close)) = candle_prices(open, high, low, close, currency) else {
+            let key = t.to_string();
             ctx.dropped_item(
                 "candle",
-                Some(t.to_string()),
+                Some(&key),
                 ProjectionIssue::ConversionFailed {
                     target: "candle prices",
                 },
@@ -72,9 +75,10 @@ pub fn assemble_candles(
         };
         let close_unadj = currency.price_amount_from_f64(raw_close);
         if close_unadj.is_none() {
+            let key = t.to_string();
             ctx.omitted_present_field(
                 "quote.close_unadj",
-                Some(t.to_string()),
+                Some(&key),
                 ProjectionIssue::ConversionFailed {
                     target: "unadjusted close price",
                 },
