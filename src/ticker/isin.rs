@@ -7,6 +7,9 @@ use crate::{
 };
 use paft::domain::Isin;
 use serde::Deserialize;
+use serde_json::Value;
+
+type InsiderSuggestArgs = (Value, Vec<String>, Vec<Vec<String>>, Value, Value);
 
 #[derive(Deserialize)]
 struct JsonSuggestRow {
@@ -75,7 +78,7 @@ async fn fetch_isin_body(
 }
 
 fn parse_business_insider_suggest(body: &str, input_norm: &str) -> Option<String> {
-    let response = InsiderSuggestParser::new(body).parse()?;
+    let response = parse_business_insider_suggest_response(body)?;
     for row in &response.rows {
         if let Some(isin) = row.isin_for_symbol(input_norm) {
             crate::core::logging::trace_debug!(
@@ -86,6 +89,91 @@ fn parse_business_insider_suggest(body: &str, input_norm: &str) -> Option<String
         }
     }
     None
+}
+
+fn parse_business_insider_suggest_response(body: &str) -> Option<InsiderSuggestResponse> {
+    let args = business_insider_callback_args(body)?;
+    let json_args = business_insider_args_to_json(args)?;
+    let (_, columns, rows, _, _): InsiderSuggestArgs =
+        serde_json::from_str(&format!("[{json_args}]")).ok()?;
+    Some(InsiderSuggestResponse::from_parts(&columns, rows))
+}
+
+fn business_insider_callback_args(body: &str) -> Option<&str> {
+    let body = body.trim();
+    let body = body.strip_prefix("mmSuggestDeliver")?.trim_start();
+    let body = body.strip_prefix('(')?.trim();
+    let body = body.strip_suffix(';').unwrap_or(body).trim_end();
+    body.strip_suffix(')').map(str::trim)
+}
+
+fn business_insider_args_to_json(args: &str) -> Option<String> {
+    let mut out = String::with_capacity(args.len());
+    let mut cursor = 0;
+    let mut in_string = false;
+    let mut escaped = false;
+
+    while cursor < args.len() {
+        if in_string {
+            let ch = args[cursor..].chars().next()?;
+            out.push(ch);
+            cursor += ch.len_utf8();
+
+            if escaped {
+                escaped = false;
+            } else if ch == '\\' {
+                escaped = true;
+            } else if ch == '"' {
+                in_string = false;
+            }
+            continue;
+        }
+
+        if let Some(len) = array_constructor_len(&args[cursor..]) {
+            out.push('[');
+            cursor += len;
+            continue;
+        }
+
+        let ch = args[cursor..].chars().next()?;
+        cursor += ch.len_utf8();
+        match ch {
+            '"' => {
+                in_string = true;
+                out.push(ch);
+            }
+            ')' => out.push(']'),
+            '(' => return None,
+            _ => out.push(ch),
+        }
+    }
+
+    (!in_string).then_some(out)
+}
+
+fn array_constructor_len(input: &str) -> Option<usize> {
+    let rest = input.strip_prefix("new")?;
+    let new_len = input.len() - rest.len();
+    let ws_after_new = leading_whitespace_len(rest);
+    if ws_after_new == 0 {
+        return None;
+    }
+
+    let rest = &rest[ws_after_new..];
+    let rest = rest.strip_prefix("Array")?;
+    let array_len = "Array".len();
+    let ws_after_array = leading_whitespace_len(rest);
+    let rest = &rest[ws_after_array..];
+    rest.starts_with('(')
+        .then_some(new_len + ws_after_new + array_len + ws_after_array + '('.len_utf8())
+}
+
+fn leading_whitespace_len(input: &str) -> usize {
+    input
+        .chars()
+        .take_while(|ch| ch.is_whitespace())
+        .map(char::len_utf8)
+        .sum()
 }
 
 fn parse_json_suggest_rows(body: &str, input_norm: &str) -> Option<String> {
@@ -147,190 +235,6 @@ impl InsiderSuggestRow {
             .as_deref()
             .and_then(first_pipe_part)
             .or_else(|| self.ids.as_deref().and_then(second_pipe_part))
-    }
-}
-
-struct InsiderSuggestParser<'a> {
-    input: &'a str,
-    cursor: usize,
-}
-
-impl<'a> InsiderSuggestParser<'a> {
-    const fn new(input: &'a str) -> Self {
-        Self { input, cursor: 0 }
-    }
-
-    fn parse(mut self) -> Option<InsiderSuggestResponse> {
-        self.skip_ws();
-        self.expect("mmSuggestDeliver")?;
-        self.skip_ws();
-        self.expect("(")?;
-        self.parse_integer()?;
-        self.expect_comma()?;
-        let columns = self.parse_string_array()?;
-        self.expect_comma()?;
-        let rows = self.parse_rows_array()?;
-        self.expect_comma()?;
-        self.parse_integer()?;
-        self.expect_comma()?;
-        self.parse_integer()?;
-        self.skip_ws();
-        self.expect(")")?;
-        self.skip_ws();
-        self.consume(";");
-        self.skip_ws();
-        (self.cursor == self.input.len())
-            .then(|| InsiderSuggestResponse::from_parts(&columns, rows))
-    }
-
-    fn parse_rows_array(&mut self) -> Option<Vec<Vec<String>>> {
-        self.expect_new_array_start()?;
-        let mut rows = Vec::new();
-        if self.consume(")") {
-            return Some(rows);
-        }
-
-        loop {
-            rows.push(self.parse_string_array()?);
-            if self.consume_comma() {
-                continue;
-            }
-            self.expect(")")?;
-            return Some(rows);
-        }
-    }
-
-    fn parse_string_array(&mut self) -> Option<Vec<String>> {
-        self.expect_new_array_start()?;
-        let mut values = Vec::new();
-        if self.consume(")") {
-            return Some(values);
-        }
-
-        loop {
-            values.push(self.parse_string()?);
-            if self.consume_comma() {
-                continue;
-            }
-            self.expect(")")?;
-            return Some(values);
-        }
-    }
-
-    fn parse_string(&mut self) -> Option<String> {
-        self.skip_ws();
-        self.expect("\"")?;
-        let mut out = String::new();
-        let mut segment_start = self.cursor;
-
-        while self.cursor < self.input.len() {
-            match self.input.as_bytes()[self.cursor] {
-                b'"' => {
-                    out.push_str(&self.input[segment_start..self.cursor]);
-                    self.cursor += 1;
-                    return Some(out);
-                }
-                b'\\' => {
-                    out.push_str(&self.input[segment_start..self.cursor]);
-                    self.cursor += 1;
-                    out.push(self.parse_escape()?);
-                    segment_start = self.cursor;
-                }
-                _ => self.cursor += 1,
-            }
-        }
-
-        None
-    }
-
-    fn parse_escape(&mut self) -> Option<char> {
-        let escaped = self.input[self.cursor..].chars().next()?;
-        self.cursor += escaped.len_utf8();
-        match escaped {
-            '"' | '\\' | '/' => Some(escaped),
-            'b' => Some('\u{0008}'),
-            'f' => Some('\u{000c}'),
-            'n' => Some('\n'),
-            'r' => Some('\r'),
-            't' => Some('\t'),
-            'u' => {
-                let end = self.cursor.checked_add(4)?;
-                let hex = self.input.get(self.cursor..end)?;
-                let code = u32::from_str_radix(hex, 16).ok()?;
-                self.cursor = end;
-                char::from_u32(code)
-            }
-            _ => None,
-        }
-    }
-
-    fn parse_integer(&mut self) -> Option<i64> {
-        self.skip_ws();
-        let start = self.cursor;
-        self.consume("-");
-        while self
-            .input
-            .as_bytes()
-            .get(self.cursor)
-            .is_some_and(u8::is_ascii_digit)
-        {
-            self.cursor += 1;
-        }
-        (self.cursor > start)
-            .then(|| self.input[start..self.cursor].parse().ok())
-            .flatten()
-    }
-
-    fn expect_new_array_start(&mut self) -> Option<()> {
-        self.skip_ws();
-        self.expect("new")?;
-        self.require_ws()?;
-        self.expect("Array")?;
-        self.skip_ws();
-        self.expect("(")
-    }
-
-    fn expect_comma(&mut self) -> Option<()> {
-        self.consume_comma().then_some(())
-    }
-
-    fn consume_comma(&mut self) -> bool {
-        self.skip_ws();
-        self.consume(",")
-    }
-
-    fn expect(&mut self, token: &str) -> Option<()> {
-        self.consume(token).then_some(())
-    }
-
-    fn consume(&mut self, token: &str) -> bool {
-        self.skip_ws();
-        if self.input[self.cursor..].starts_with(token) {
-            self.cursor += token.len();
-            true
-        } else {
-            false
-        }
-    }
-
-    fn require_ws(&mut self) -> Option<()> {
-        let before = self.cursor;
-        self.skip_ws();
-        (self.cursor > before).then_some(())
-    }
-
-    fn skip_ws(&mut self) {
-        while self.input[self.cursor..]
-            .chars()
-            .next()
-            .is_some_and(char::is_whitespace)
-        {
-            self.cursor += self.input[self.cursor..]
-                .chars()
-                .next()
-                .expect("checked above")
-                .len_utf8();
-        }
     }
 }
 
