@@ -233,10 +233,19 @@ fn cache_key_matches_url_str(key: &str, url: &str) -> bool {
     cache_key_url(key) == url
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 struct ClientState {
     cookie: Option<String>,
     crumb: Option<String>,
+}
+
+impl std::fmt::Debug for ClientState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ClientState")
+            .field("cookie_present", &self.cookie.is_some())
+            .field("crumb_present", &self.crumb.is_some())
+            .finish()
+    }
 }
 
 /// The main asynchronous client for interacting with the Yahoo Finance API.
@@ -246,7 +255,7 @@ struct ClientState {
 /// across multiple tasks.
 ///
 /// Create a client using [`YfClient::builder()`] or [`YfClient::default()`].
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct YfClient {
     http: Client,
     base_chart: Url,
@@ -270,6 +279,59 @@ pub struct YfClient {
     // Cache of resolved instruments by original ticker string
     instrument_cache: Arc<BoundedMokaMap<String, paft::domain::Instrument>>,
     cache: Option<Arc<CacheStore>>,
+}
+
+impl std::fmt::Debug for YfClient {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("YfClient")
+            .field(
+                "base_chart",
+                &crate::core::redaction::RedactedUrl::new(&self.base_chart),
+            )
+            .field(
+                "base_quote_api",
+                &crate::core::redaction::RedactedUrl::new(&self.base_quote_api),
+            )
+            .field(
+                "base_quote_v7",
+                &crate::core::redaction::RedactedUrl::new(&self.base_quote_v7),
+            )
+            .field(
+                "base_options_v7",
+                &crate::core::redaction::RedactedUrl::new(&self.base_options_v7),
+            )
+            .field(
+                "base_stream",
+                &crate::core::redaction::RedactedUrl::new(&self.base_stream),
+            )
+            .field(
+                "base_news",
+                &crate::core::redaction::RedactedUrl::new(&self.base_news),
+            )
+            .field(
+                "base_insider_search",
+                &crate::core::redaction::RedactedUrl::new(&self.base_insider_search),
+            )
+            .field(
+                "base_timeseries",
+                &crate::core::redaction::RedactedUrl::new(&self.base_timeseries),
+            )
+            .field(
+                "cookie_url",
+                &crate::core::redaction::RedactedUrl::new(&self.cookie_url),
+            )
+            .field(
+                "crumb_url",
+                &crate::core::redaction::RedactedUrl::new(&self.crumb_url),
+            )
+            .field("user_agent", &self.user_agent)
+            .field("retry", &self.retry)
+            .field("currency_cache", &self.currency_cache)
+            .field("currency_hints", &self.currency_hints)
+            .field("instrument_cache", &self.instrument_cache)
+            .field("cache", &self.cache)
+            .finish_non_exhaustive()
+    }
 }
 
 impl Default for YfClient {
@@ -1135,6 +1197,53 @@ mod tests {
 
     fn test_url(url: &str) -> Url {
         Url::parse(url).expect("valid test URL")
+    }
+
+    #[test]
+    fn client_state_debug_reports_presence_without_values() {
+        let state = ClientState {
+            cookie: Some("cookie-secret".to_string()),
+            crumb: Some("crumb-secret".to_string()),
+        };
+
+        let debug = format!("{state:?}");
+
+        assert!(debug.contains("cookie_present: true"));
+        assert!(debug.contains("crumb_present: true"));
+        assert!(!debug.contains("cookie-secret"));
+        assert!(!debug.contains("crumb-secret"));
+    }
+
+    #[test]
+    fn yf_client_debug_omits_credentials_and_redacts_auth_query_params() {
+        let client = YfClient::builder()
+            .cookie_url(test_url(
+                "https://example.test/cookie?cookie=cookie-secret&symbols=AAPL",
+            ))
+            .crumb_url(test_url(
+                "https://example.test/getcrumb?crumb=crumb-secret&api_key=key-secret",
+            ))
+            .build()
+            .expect("client builds");
+
+        {
+            let mut state = client.state.blocking_write();
+            state.cookie = Some("state-cookie-secret".to_string());
+            state.crumb = Some("state-crumb-secret".to_string());
+        }
+
+        let debug = format!("{client:?}");
+
+        assert!(debug.contains("cookie=REDACTED"));
+        assert!(debug.contains("crumb=REDACTED"));
+        assert!(debug.contains("api_key=REDACTED"));
+        assert!(!debug.contains("cookie-secret"));
+        assert!(!debug.contains("crumb-secret"));
+        assert!(!debug.contains("key-secret"));
+        assert!(!debug.contains("state-cookie-secret"));
+        assert!(!debug.contains("state-crumb-secret"));
+        assert!(!debug.contains("cookie_present"));
+        assert!(!debug.contains("crumb_present"));
     }
 
     fn expired_at() -> Instant {
