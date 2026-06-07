@@ -1,7 +1,8 @@
 use crate::{
     core::{
         CallOptions, DataQuality, ProjectionContext, YfClient, YfError, YfResponse,
-        diagnostics::optional_decimal_f64, quotesummary, wire::from_raw,
+        diagnostics::{WireProjection, optional_decimal_f64},
+        quotesummary,
     },
     esg::wire::V10Result,
 };
@@ -32,27 +33,46 @@ fn map_esg_scores(
         }));
     };
 
+    let environmental = esg.environment_score.optional_raw_field(
+        &mut ctx,
+        "esgScores.environmentScore",
+        Some(symbol),
+        "environmentScore",
+    )?;
+    let social = esg.social_score.optional_raw_field(
+        &mut ctx,
+        "esgScores.socialScore",
+        Some(symbol),
+        "socialScore",
+    )?;
+    let governance = esg.governance_score.optional_raw_field(
+        &mut ctx,
+        "esgScores.governanceScore",
+        Some(symbol),
+        "governanceScore",
+    )?;
+
     // Map to paft types: paft::fundamentals::EsgScores now has only environmental/social/governance.
     let scores = EsgScores {
         environmental: optional_decimal_f64(
             &mut ctx,
             "esgScores.environmentScore",
             Some(symbol),
-            from_raw(esg.environment_score),
+            environmental,
             "ESG score",
         )?,
         social: optional_decimal_f64(
             &mut ctx,
             "esgScores.socialScore",
             Some(symbol),
-            from_raw(esg.social_score),
+            social,
             "ESG score",
         )?,
         governance: optional_decimal_f64(
             &mut ctx,
             "esgScores.governanceScore",
             Some(symbol),
-            from_raw(esg.governance_score),
+            governance,
             "ESG score",
         )?,
     };

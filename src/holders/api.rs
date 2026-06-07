@@ -6,7 +6,6 @@ use super::wire::{
     InsiderRosterHolderNode, InsiderTransactionNode, InstitutionalHolderNode, OwnershipNode,
     V10Result,
 };
-use crate::core::wire::from_raw;
 use crate::core::{
     CallOptions, ProjectionContext, ProjectionIssue, YfClient, YfError, YfResponse,
     conversions::{string_to_insider_position, string_to_transaction_type},
@@ -14,8 +13,9 @@ use crate::core::{
         CurrencyPurpose, ResolvedCurrencyUnit, TradingCurrencyEvidence, project_currency_resolution,
     },
     diagnostics::{
-        nonempty_string, optional_decimal_f64, optional_money_u64_with_currency_issue,
-        optional_ratio_f64, required_date, required_parsed,
+        WireProjection, nonempty_string, optional_decimal_f64,
+        optional_money_u64_with_currency_issue, optional_ratio_f64, required_parsed,
+        required_wire_date,
     },
     quotesummary,
 };
@@ -65,11 +65,17 @@ pub(super) async fn major_holders(
 
     let mut result = Vec::new();
 
+    let insiders = breakdown.insiders.optional_raw_field(
+        &mut ctx,
+        "majorHoldersBreakdown.insidersPercentHeld",
+        None,
+        "insidersPercentHeld",
+    )?;
     if let Some(value) = optional_ratio_f64(
         &mut ctx,
         "majorHoldersBreakdown.insidersPercentHeld",
         None,
-        from_raw(breakdown.insiders),
+        insiders,
         "major holder percent",
     )? {
         result.push(MajorHolder {
@@ -77,11 +83,17 @@ pub(super) async fn major_holders(
             value,
         });
     }
+    let institutions = breakdown.institutions.optional_raw_field(
+        &mut ctx,
+        "majorHoldersBreakdown.institutionsPercentHeld",
+        None,
+        "institutionsPercentHeld",
+    )?;
     if let Some(value) = optional_ratio_f64(
         &mut ctx,
         "majorHoldersBreakdown.institutionsPercentHeld",
         None,
-        from_raw(breakdown.institutions),
+        institutions,
         "major holder percent",
     )? {
         result.push(MajorHolder {
@@ -89,11 +101,17 @@ pub(super) async fn major_holders(
             value,
         });
     }
+    let institutions_float = breakdown.institutions_float.optional_raw_field(
+        &mut ctx,
+        "majorHoldersBreakdown.institutionsFloatPercentHeld",
+        None,
+        "institutionsFloatPercentHeld",
+    )?;
     if let Some(value) = optional_ratio_f64(
         &mut ctx,
         "majorHoldersBreakdown.institutionsFloatPercentHeld",
         None,
-        from_raw(breakdown.institutions_float),
+        institutions_float,
         "major holder percent",
     )? {
         result.push(MajorHolder {
@@ -174,36 +192,54 @@ async fn map_ownership_list(
             )?;
             continue;
         };
-        let Some(date_reported) = required_date(
+        let Some(date_reported) = required_wire_date(
             ctx,
             "institutional_holder",
             Some(holder.as_str()),
             "reportDate",
-            h.date_reported,
+            &h.date_reported,
         )?
         else {
             continue;
         };
+        let shares = h.shares.optional_raw_field(
+            ctx,
+            "ownershipList[].position",
+            Some(holder.as_str()),
+            "position",
+        )?;
+        let raw_value = h.value.optional_raw_field(
+            ctx,
+            "ownershipList[].value",
+            Some(holder.as_str()),
+            "value",
+        )?;
         let value = optional_money_u64_with_currency_issue(
             ctx,
             "ownershipList[].value",
             Some(holder.as_str()),
             currency.unit.as_ref(),
             currency.issue.as_ref(),
-            from_raw(h.value),
+            raw_value,
             "holder monetary value",
+        )?;
+        let raw_pct_held = h.pct_held.optional_raw_field(
+            ctx,
+            "ownershipList[].pctHeld",
+            Some(holder.as_str()),
+            "pctHeld",
         )?;
         let pct_held = optional_ratio_f64(
             ctx,
             "ownershipList[].pctHeld",
             Some(holder.as_str()),
-            from_raw(h.pct_held),
+            raw_pct_held,
             "holder percent",
         )?;
 
         rows.push(InstitutionalHolder {
             holder,
-            shares: from_raw(h.shares),
+            shares,
             date_reported,
             pct_held,
             value,
@@ -389,23 +425,35 @@ pub(super) async fn insider_transactions(
             };
             transaction_type
         };
-        let Some(transaction_date) = required_date(
+        let Some(transaction_date) = required_wire_date(
             &mut ctx,
             "insider_transaction",
             Some(insider.as_str()),
             "startDate",
-            t.start_date,
+            &t.start_date,
         )?
         else {
             continue;
         };
+        let shares = t.shares.optional_raw_field(
+            &mut ctx,
+            "insiderTransactions.transactions[].shares",
+            Some(insider.as_str()),
+            "shares",
+        )?;
+        let raw_value = t.value.optional_raw_field(
+            &mut ctx,
+            "insiderTransactions.transactions[].value",
+            Some(insider.as_str()),
+            "value",
+        )?;
         let value = optional_money_u64_with_currency_issue(
             &mut ctx,
             "insiderTransactions.transactions[].value",
             Some(insider.as_str()),
             currency.unit.as_ref(),
             currency.issue.as_ref(),
-            from_raw(t.value),
+            raw_value,
             "holder monetary value",
         )?;
 
@@ -413,7 +461,7 @@ pub(super) async fn insider_transactions(
             insider,
             position,
             transaction_type,
-            shares: from_raw(t.shares),
+            shares,
             value,
             transaction_date,
             url: nonempty_string(t.url),
@@ -428,8 +476,12 @@ fn infer_blank_insider_transaction_type(t: &InsiderTransactionNode) -> Option<Tr
         .transaction
         .as_deref()
         .is_none_or(|transaction| transaction.trim().is_empty());
-    let positive_shares = from_raw(t.shares).is_some_and(|shares| shares > 0);
-    let no_value = from_raw(t.value).is_none();
+    let positive_shares = t
+        .shares
+        .as_ref()
+        .and_then(|shares| shares.raw)
+        .is_some_and(|shares| shares > 0);
+    let no_value = t.value.as_ref().and_then(|value| value.raw).is_none();
 
     if blank_text && positive_shares && no_value {
         Some(TransactionType::Exercise)
@@ -502,33 +554,39 @@ pub(super) async fn insider_roster_holders(
         else {
             continue;
         };
-        let Some(latest_transaction_date) = required_date(
+        let Some(latest_transaction_date) = required_wire_date(
             &mut ctx,
             "insider_roster_holder",
             Some(name.as_str()),
             "latestTransDate",
-            h.latest_transaction_date,
+            &h.latest_transaction_date,
         )?
         else {
             continue;
         };
-        let Some(position_direct_date) = required_date(
+        let Some(position_direct_date) = required_wire_date(
             &mut ctx,
             "insider_roster_holder",
             Some(name.as_str()),
             "positionDirectDate",
-            h.position_direct_date,
+            &h.position_direct_date,
         )?
         else {
             continue;
         };
+        let shares_owned_directly = h.shares_owned_directly.optional_raw_field(
+            &mut ctx,
+            "insiderHolders.holders[].positionDirect",
+            Some(name.as_str()),
+            "positionDirect",
+        )?;
 
         rows.push(InsiderRosterHolder {
             name,
             position,
             most_recent_transaction,
             latest_transaction_date,
-            shares_owned_directly: from_raw(h.shares_owned_directly),
+            shares_owned_directly,
             position_direct_date,
         });
     }
@@ -562,20 +620,62 @@ pub(super) async fn net_share_purchase_activity(
         return Ok(ctx.finish(None));
     };
 
+    let net_percent_insider_shares = n.net_percent_insider_shares.optional_raw_field(
+        &mut ctx,
+        "netSharePurchaseActivity.netPercentInsiderShares",
+        period_key.as_deref(),
+        "netPercentInsiderShares",
+    )?;
+
     let data = Some(NetSharePurchaseActivity {
         period,
-        buy_shares: from_raw(n.buy_info_shares),
-        buy_count: from_raw(n.buy_info_count),
-        sell_shares: from_raw(n.sell_info_shares),
-        sell_count: from_raw(n.sell_info_count),
-        net_shares: from_raw(n.net_info_shares),
-        net_count: from_raw(n.net_info_count),
-        total_insider_shares: from_raw(n.total_insider_shares),
+        buy_shares: n.buy_info_shares.optional_raw_field(
+            &mut ctx,
+            "netSharePurchaseActivity.buyInfoShares",
+            period_key.as_deref(),
+            "buyInfoShares",
+        )?,
+        buy_count: n.buy_info_count.optional_raw_field(
+            &mut ctx,
+            "netSharePurchaseActivity.buyInfoCount",
+            period_key.as_deref(),
+            "buyInfoCount",
+        )?,
+        sell_shares: n.sell_info_shares.optional_raw_field(
+            &mut ctx,
+            "netSharePurchaseActivity.sellInfoShares",
+            period_key.as_deref(),
+            "sellInfoShares",
+        )?,
+        sell_count: n.sell_info_count.optional_raw_field(
+            &mut ctx,
+            "netSharePurchaseActivity.sellInfoCount",
+            period_key.as_deref(),
+            "sellInfoCount",
+        )?,
+        net_shares: n.net_info_shares.optional_raw_field(
+            &mut ctx,
+            "netSharePurchaseActivity.netInfoShares",
+            period_key.as_deref(),
+            "netInfoShares",
+        )?,
+        net_count: n.net_info_count.optional_raw_field(
+            &mut ctx,
+            "netSharePurchaseActivity.netInfoCount",
+            period_key.as_deref(),
+            "netInfoCount",
+        )?,
+        total_insider_shares: n.total_insider_shares.optional_raw_field(
+            &mut ctx,
+            "netSharePurchaseActivity.totalInsiderShares",
+            period_key.as_deref(),
+            "totalInsiderShares",
+        )?,
         net_percent_insider_shares: optional_decimal_f64(
             &mut ctx,
             "netSharePurchaseActivity.netPercentInsiderShares",
             period_key.as_deref(),
-            from_raw(n.net_percent_insider_shares),
+            net_percent_insider_shares,
             "net percent insider shares",
         )?,
     });

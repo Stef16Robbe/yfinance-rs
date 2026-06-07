@@ -586,18 +586,18 @@ async fn malformed_timeseries_value_is_reported_without_dropping_valid_periods()
             .map(paft::money::Money::currency),
         Some(&Currency::Iso(IsoCurrency::USD))
     );
-    assert!(matches!(
-        response.diagnostics.warnings.first(),
-        Some(YfWarning::DroppedItem {
-            item: "timeseries_value",
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::OmittedPresentField {
+            path: "timeseries.reportedValue",
             key: Some(key),
             reason: ProjectionIssue::InvalidField {
-                field: "values",
+                field: "reportedValue",
                 ..
             },
             ..
-        }) if key == "annualTotalRevenue[0]"
-    ));
+        } if key == "TotalRevenue@1704067200"
+    )));
 
     let err = FundamentalsBuilder::new(&client, sym)
         .strict()
@@ -923,15 +923,15 @@ async fn malformed_share_values_do_not_drop_valid_siblings() {
     assert_eq!(response.data[0].shares, 100);
     assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
         warning,
-        YfWarning::DroppedItem {
+        YfWarning::OmittedPresentField {
             endpoint: "shares",
-            item: "timeseries_value",
+            path: "timeseries.reportedValue",
             key: Some(key),
             reason: ProjectionIssue::InvalidField {
-                field: "values",
+                field: "reportedValue",
                 ..
             },
-        } if key == "annualOrdinarySharesNumber[0]"
+        } if key == "annualOrdinarySharesNumber@1704067200"
     )));
 
     let err = FundamentalsBuilder::new(&client, sym)

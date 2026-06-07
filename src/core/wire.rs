@@ -4,7 +4,7 @@ mod scalar;
 mod value;
 
 pub use number::{JsonDecimal, JsonU64, decimal_from_json_value};
-pub use raw::{RawDate, RawDecimal, RawNum, RawNumU64, from_raw, from_raw_date};
+pub use raw::{RawDate, RawDecimal, RawNum, RawNumU64, from_raw_date};
 pub use value::{BufferedWireValue, WireField, WireValue};
 
 #[cfg(test)]

@@ -24,8 +24,8 @@ pub(crate) use monetary::{
 pub(crate) use numeric::{optional_u32_from_i64, optional_u32_from_raw_f64};
 pub(crate) use projection::{
     WireProjection, diagnostic_key, nonempty, nonempty_string, optional_parsed, optional_projected,
-    optional_wire_cloned, optional_wire_value, parse_optional, required_date, required_parsed,
-    required_period, required_timestamp, required_wire_value,
+    optional_wire_cloned, optional_wire_value, parse_optional, required_parsed, required_period,
+    required_timestamp, required_wire_date, required_wire_value,
 };
 pub use response::{DataQuality, YfDiagnostics, YfResponse};
 pub use warning::YfWarning;

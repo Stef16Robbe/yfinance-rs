@@ -1,4 +1,4 @@
-use crate::core::wire::RawNum;
+use crate::core::wire::{RawNum, WireValue};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -13,10 +13,14 @@ pub struct V10Result {
 pub struct EsgScoresNode {
     // These are objects: { "raw": ... }
     #[allow(dead_code)]
-    pub(crate) total_esg: Option<RawNum<f64>>,
-    pub(crate) environment_score: Option<RawNum<f64>>,
-    pub(crate) social_score: Option<RawNum<f64>>,
-    pub(crate) governance_score: Option<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) total_esg: WireValue<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) environment_score: WireValue<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) social_score: WireValue<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) governance_score: WireValue<RawNum<f64>>,
 
     // These are primitives
     #[allow(dead_code)]

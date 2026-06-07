@@ -116,7 +116,7 @@ async fn missing_ownership_list_is_provider_unavailable() {
 }
 
 #[tokio::test]
-async fn malformed_holder_row_is_dropped_without_losing_valid_siblings() {
+async fn malformed_optional_holder_raw_field_is_omitted_without_dropping_row() {
     let sym = "BADHOLDER";
     let server = MockServer::start();
 
@@ -165,16 +165,19 @@ async fn malformed_holder_row_is_dropped_without_losing_valid_siblings() {
         .await
         .unwrap();
 
-    assert_eq!(response.data.len(), 1);
-    assert_eq!(response.data[0].holder, "Valid Capital");
+    assert_eq!(response.data.len(), 2);
+    assert_eq!(response.data[0].holder, "Malformed Capital");
+    assert!(response.data[0].shares.is_none());
+    assert_eq!(response.data[1].holder, "Valid Capital");
+    assert_eq!(response.data[1].shares, Some(10));
     assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
         warning,
-        YfWarning::DroppedItem {
+        YfWarning::OmittedPresentField {
             endpoint: "holders",
-            item: "institutional_holder",
+            path: "ownershipList[].position",
             key: Some(key),
             reason: ProjectionIssue::InvalidField {
-                field: "holder",
+                field: "position",
                 ..
             },
         } if key == "Malformed Capital"

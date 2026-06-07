@@ -33,19 +33,24 @@ pub struct IncomeHistoryNode {
 pub struct IncomeRowNode {
     #[allow(dead_code)]
     #[serde(rename = "endDate")]
-    pub(crate) end_date: Option<RawDate>,
+    #[serde(default)]
+    pub(crate) end_date: WireValue<RawDate>,
     #[allow(dead_code)]
     #[serde(rename = "totalRevenue")]
-    pub(crate) total_revenue: Option<RawDecimal>,
+    #[serde(default)]
+    pub(crate) total_revenue: WireValue<RawDecimal>,
     #[allow(dead_code)]
     #[serde(rename = "grossProfit")]
-    pub(crate) gross_profit: Option<RawDecimal>,
+    #[serde(default)]
+    pub(crate) gross_profit: WireValue<RawDecimal>,
     #[allow(dead_code)]
     #[serde(rename = "operatingIncome")]
-    pub(crate) operating_income: Option<RawDecimal>,
+    #[serde(default)]
+    pub(crate) operating_income: WireValue<RawDecimal>,
     #[allow(dead_code)]
     #[serde(rename = "netIncome")]
-    pub(crate) net_income: Option<RawDecimal>,
+    #[serde(default)]
+    pub(crate) net_income: WireValue<RawDecimal>,
 }
 
 /* --- earnings --- */
@@ -158,5 +163,6 @@ pub struct TimeseriesData {
 #[derive(Deserialize)]
 pub struct TimeseriesValue {
     #[serde(rename = "reportedValue")]
-    pub(crate) reported_value: Option<RawNumU64>,
+    #[serde(default)]
+    pub(crate) reported_value: WireValue<RawNumU64>,
 }

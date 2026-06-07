@@ -126,6 +126,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   direct Serde visitors instead of buffering each field as `serde_json::Value`,
   composite fallback fields buffer as `serde_json::RawValue`, and shared
   projection methods replace per-module optional wire-field wrappers.
+- ESG, holders, and fundamentals timeseries raw-wrapper fields now use the same
+  recoverable `WireValue` path, so malformed optional raw values produce field
+  diagnostics without failing or dropping otherwise usable sibling data.
 - `Ticker::info()` now returns `None` for optional quoteSummary-backed fields
   when Yahoo omits their backing modules, instead of returning empty/default
   values inside `Some(...)`. Missing `calendarEvents` now allows the v7 quote

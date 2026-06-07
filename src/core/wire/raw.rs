@@ -17,10 +17,6 @@ pub struct RawNum<T> {
     pub(crate) raw: Option<T>,
 }
 
-pub fn from_raw<T>(raw: Option<RawNum<T>>) -> Option<T> {
-    raw.and_then(|n| n.raw)
-}
-
 #[derive(Deserialize, Clone, Copy, Debug)]
 pub struct RawDecimal {
     #[serde(default, deserialize_with = "de_decimal_from_json")]

@@ -114,3 +114,67 @@ async fn missing_esg_module_is_reported_as_unavailable() {
         .unwrap_err();
     assert!(matches!(err, YfError::DataQuality(_)));
 }
+
+#[tokio::test]
+async fn malformed_esg_raw_score_is_omitted_without_json_error() {
+    let sym = "BADESG";
+    let server = MockServer::start();
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "esgScores")
+            .query_param("crumb", "crumb");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "quoteSummary": {
+                    "result": [{
+                      "esgScores": {
+                        "environmentScore": { "raw": "not-a-number" },
+                        "socialScore": { "raw": 2.5 },
+                        "governanceScore": { "raw": 3.5 }
+                      }
+                    }],
+                    "error": null
+                  }
+                }"#,
+            );
+    });
+
+    let client = preauthed_client(&server);
+    let response = EsgBuilder::new(&client, sym)
+        .fetch_with_diagnostics()
+        .await
+        .unwrap();
+
+    let scores = response
+        .data
+        .scores
+        .expect("valid siblings keep ESG scores");
+    assert!(scores.environmental.is_none());
+    assert!(scores.social.is_some());
+    assert!(scores.governance.is_some());
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::OmittedPresentField {
+            path: "esgScores.environmentScore",
+            key: Some(key),
+            reason: ProjectionIssue::InvalidField {
+                field: "environmentScore",
+                ..
+            },
+            ..
+        } if key == sym
+    )));
+
+    let err = EsgBuilder::new(&client, sym)
+        .strict()
+        .fetch()
+        .await
+        .unwrap_err();
+
+    mock.assert_calls(2);
+    assert!(matches!(err, YfError::DataQuality(_)));
+}

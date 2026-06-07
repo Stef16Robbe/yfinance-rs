@@ -109,13 +109,15 @@ struct TimeseriesValueDecimal {
     #[serde(rename = "currencyCode")]
     currency_code: Option<String>,
     #[serde(rename = "reportedValue")]
-    reported_value: Option<RawDecimal>,
+    #[serde(default)]
+    reported_value: WireValue<RawDecimal>,
 }
 
 #[derive(serde::Deserialize)]
 struct TimeseriesValueU64 {
     #[serde(rename = "reportedValue")]
-    reported_value: Option<RawNumU64>,
+    #[serde(default)]
+    reported_value: WireValue<RawNumU64>,
 }
 
 struct TimeseriesRequest<'a> {
@@ -500,24 +502,54 @@ fn parsed_timeseries_value<T>(values: &[Option<T>], idx: usize) -> Option<&T> {
 }
 
 fn reported_decimal_at(
+    ctx: &mut ProjectionContext,
     values: &[Option<TimeseriesValueDecimal>],
     idx: usize,
-) -> Option<paft::Decimal> {
-    parsed_timeseries_value(values, idx)
-        .and_then(|value| value.reported_value.and_then(|reported| reported.raw))
+    key: &str,
+) -> Result<Option<paft::Decimal>, YfError> {
+    let Some(value) = parsed_timeseries_value(values, idx) else {
+        return Ok(None);
+    };
+    value.reported_value.optional_raw_field(
+        ctx,
+        "timeseries.reportedValue",
+        Some(key),
+        "reportedValue",
+    )
 }
 
-fn reported_u64_at(values: &[Option<TimeseriesValueU64>], idx: usize) -> Option<u64> {
-    parsed_timeseries_value(values, idx)
-        .and_then(|value| value.reported_value.and_then(|reported| reported.raw))
+fn reported_u64_at(
+    ctx: &mut ProjectionContext,
+    values: &[Option<TimeseriesValueU64>],
+    idx: usize,
+    key: &str,
+) -> Result<Option<u64>, YfError> {
+    let Some(value) = parsed_timeseries_value(values, idx) else {
+        return Ok(None);
+    };
+    value.reported_value.optional_raw_field(
+        ctx,
+        "timeseries.reportedValue",
+        Some(key),
+        "reportedValue",
+    )
 }
 
 fn reported_share_count_at(
+    ctx: &mut ProjectionContext,
     values: &[Option<super::wire::TimeseriesValue>],
     idx: usize,
-) -> Option<u64> {
-    parsed_timeseries_value(values, idx)
-        .and_then(|value| value.reported_value.and_then(|reported| reported.raw))
+    key: &str,
+) -> Result<Option<u64>, YfError> {
+    let Some(value) = parsed_timeseries_value(values, idx) else {
+        return Ok(None);
+    };
+    value.reported_value.optional_raw_field(
+        ctx,
+        "timeseries.reportedValue",
+        Some(key),
+        "reportedValue",
+    )
 }
 
 fn timeseries_value_currency_issue(
@@ -612,11 +644,11 @@ fn process_statement_money_values<T>(
     };
 
     for (idx, timestamp) in timestamps.iter().enumerate() {
-        let Some(value) = reported_decimal_at(&values, idx) else {
+        let row_key = format!("{field}@{timestamp}");
+        let Some(value) = reported_decimal_at(ctx, &values, idx, &row_key)? else {
             continue;
         };
 
-        let row_key = format!("{field}@{timestamp}");
         let Some(row) = row_for_timestamp(ctx, rows_map, *timestamp, &row_key, create_row)? else {
             continue;
         };
@@ -674,11 +706,11 @@ fn process_statement_u64_values<T>(
     };
 
     for (idx, timestamp) in timestamps.iter().enumerate() {
-        let Some(value) = reported_u64_at(&values, idx) else {
+        let row_key = format!("{field}@{timestamp}");
+        let Some(value) = reported_u64_at(ctx, &values, idx, &row_key)? else {
             continue;
         };
 
-        let row_key = format!("{field}@{timestamp}");
         let Some(row) = row_for_timestamp(ctx, rows_map, *timestamp, &row_key, create_row)? else {
             continue;
         };
@@ -1441,7 +1473,8 @@ pub(super) async fn shares(
 
     let mut counts = Vec::new();
     for (idx, ts) in timestamps.into_iter().enumerate() {
-        let Some(shares) = reported_share_count_at(&values, idx) else {
+        let row_key = format!("{type_key}@{ts}");
+        let Some(shares) = reported_share_count_at(&mut ctx, &values, idx, &row_key)? else {
             continue;
         };
         let date = match i64_to_date(ts) {

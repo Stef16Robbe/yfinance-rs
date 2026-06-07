@@ -1,7 +1,7 @@
 use crate::core::{
     ProjectionContext, ProjectionIssue, YfError,
     conversions::{i64_to_date, i64_to_datetime, string_to_period},
-    wire::{RawDate, WireField, from_raw_date},
+    wire::{RawDate, RawDecimal, RawNum, RawNumU64, WireField, from_raw_date},
 };
 use chrono::{DateTime, NaiveDate, Utc};
 use paft::domain::ReportingPeriod;
@@ -140,9 +140,60 @@ pub trait WireProjection<T>: WireField<T> {
             .optional_copied_field(ctx, path, key, field)?
             .and_then(map))
     }
+
+    fn optional_raw_field(
+        &self,
+        ctx: &mut ProjectionContext,
+        path: &'static str,
+        key: Option<&str>,
+        field: &'static str,
+    ) -> Result<Option<T::Raw>, YfError>
+    where
+        T: Copy + WireRaw,
+    {
+        optional_wire_raw(ctx, path, key, field, self)
+    }
 }
 
 impl<T, W> WireProjection<T> for W where W: WireField<T> + ?Sized {}
+
+pub trait WireRaw {
+    type Raw;
+
+    fn raw(self) -> Option<Self::Raw>;
+}
+
+impl<T> WireRaw for RawNum<T> {
+    type Raw = T;
+
+    fn raw(self) -> Option<Self::Raw> {
+        self.raw
+    }
+}
+
+impl WireRaw for RawDecimal {
+    type Raw = paft::Decimal;
+
+    fn raw(self) -> Option<Self::Raw> {
+        self.raw
+    }
+}
+
+impl WireRaw for RawDate {
+    type Raw = i64;
+
+    fn raw(self) -> Option<Self::Raw> {
+        self.raw
+    }
+}
+
+impl WireRaw for RawNumU64 {
+    type Raw = u64;
+
+    fn raw(self) -> Option<Self::Raw> {
+        self.raw
+    }
+}
 
 pub fn optional_wire_value<'a, T, W>(
     ctx: &mut ProjectionContext,
@@ -179,6 +230,20 @@ where
     W: WireField<T> + ?Sized,
 {
     Ok(optional_wire_value(ctx, path, key, field, value)?.copied())
+}
+
+pub fn optional_wire_raw<T, W>(
+    ctx: &mut ProjectionContext,
+    path: &'static str,
+    key: Option<&str>,
+    field: &'static str,
+    value: &W,
+) -> Result<Option<T::Raw>, YfError>
+where
+    T: Copy + WireRaw,
+    W: WireField<T> + ?Sized,
+{
+    Ok(optional_wire_copied(ctx, path, key, field, value)?.and_then(WireRaw::raw))
 }
 
 pub fn optional_wire_cloned<T: Clone, W>(
@@ -314,14 +379,20 @@ pub fn required_timestamp(
     }
 }
 
-pub fn required_date(
+pub fn required_wire_date<W>(
     ctx: &mut ProjectionContext,
     item: &'static str,
     key: Option<&str>,
     field: &'static str,
-    value: Option<RawDate>,
-) -> Result<Option<NaiveDate>, YfError> {
-    let Some(raw) = from_raw_date(value) else {
+    value: &W,
+) -> Result<Option<NaiveDate>, YfError>
+where
+    W: WireField<RawDate> + ?Sized,
+{
+    let Some(value) = required_wire_value(ctx, item, key, field, value)? else {
+        return Ok(None);
+    };
+    let Some(raw) = value.raw else {
         ctx.dropped_item(item, key, ProjectionIssue::MissingRequiredField { field })?;
         return Ok(None);
     };

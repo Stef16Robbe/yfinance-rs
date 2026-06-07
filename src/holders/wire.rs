@@ -1,4 +1,4 @@
-use crate::core::wire::{RawDate, RawNum};
+use crate::core::wire::{RawDate, RawNum, WireValue};
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -28,22 +28,29 @@ pub struct OwnershipNode {
 pub struct InstitutionalHolderNode {
     pub(crate) organization: Option<String>,
     #[serde(rename = "position")]
-    pub(crate) shares: Option<RawNum<u64>>,
+    #[serde(default)]
+    pub(crate) shares: WireValue<RawNum<u64>>,
     #[serde(rename = "reportDate")]
-    pub(crate) date_reported: Option<RawDate>,
+    #[serde(default)]
+    pub(crate) date_reported: WireValue<RawDate>,
     #[serde(rename = "pctHeld")]
-    pub(crate) pct_held: Option<RawNum<f64>>,
-    pub(crate) value: Option<RawNum<u64>>,
+    #[serde(default)]
+    pub(crate) pct_held: WireValue<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) value: WireValue<RawNum<u64>>,
 }
 
 #[derive(Deserialize)]
 pub struct MajorHoldersBreakdownNode {
     #[serde(rename = "insidersPercentHeld")]
-    pub(crate) insiders: Option<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) insiders: WireValue<RawNum<f64>>,
     #[serde(rename = "institutionsPercentHeld")]
-    pub(crate) institutions: Option<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) institutions: WireValue<RawNum<f64>>,
     #[serde(rename = "institutionsFloatPercentHeld")]
-    pub(crate) institutions_float: Option<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) institutions_float: WireValue<RawNum<f64>>,
 }
 
 #[derive(Deserialize)]
@@ -59,10 +66,13 @@ pub struct InsiderTransactionNode {
     pub(crate) position: Option<String>,
     #[serde(rename = "transactionText")]
     pub(crate) transaction: Option<String>,
-    pub(crate) shares: Option<RawNum<u64>>,
-    pub(crate) value: Option<RawNum<u64>>,
+    #[serde(default)]
+    pub(crate) shares: WireValue<RawNum<u64>>,
+    #[serde(default)]
+    pub(crate) value: WireValue<RawNum<u64>>,
     #[serde(rename = "startDate")]
-    pub(crate) start_date: Option<RawDate>,
+    #[serde(default)]
+    pub(crate) start_date: WireValue<RawDate>,
     #[serde(rename = "filerUrl")]
     pub(crate) url: Option<String>,
 }
@@ -79,30 +89,41 @@ pub struct InsiderRosterHolderNode {
     #[serde(rename = "transactionDescription")]
     pub(crate) most_recent_transaction: Option<String>,
     #[serde(rename = "latestTransDate")]
-    pub(crate) latest_transaction_date: Option<RawDate>,
+    #[serde(default)]
+    pub(crate) latest_transaction_date: WireValue<RawDate>,
     #[serde(rename = "positionDirect")]
-    pub(crate) shares_owned_directly: Option<RawNum<u64>>,
+    #[serde(default)]
+    pub(crate) shares_owned_directly: WireValue<RawNum<u64>>,
     #[serde(rename = "positionDirectDate")]
-    pub(crate) position_direct_date: Option<RawDate>,
+    #[serde(default)]
+    pub(crate) position_direct_date: WireValue<RawDate>,
 }
 
 #[derive(Deserialize)]
 pub struct NetSharePurchaseActivityNode {
     pub(crate) period: Option<String>,
     #[serde(rename = "buyInfoShares")]
-    pub(crate) buy_info_shares: Option<RawNum<u64>>,
+    #[serde(default)]
+    pub(crate) buy_info_shares: WireValue<RawNum<u64>>,
     #[serde(rename = "buyInfoCount")]
-    pub(crate) buy_info_count: Option<RawNum<u64>>,
+    #[serde(default)]
+    pub(crate) buy_info_count: WireValue<RawNum<u64>>,
     #[serde(rename = "sellInfoShares")]
-    pub(crate) sell_info_shares: Option<RawNum<u64>>,
+    #[serde(default)]
+    pub(crate) sell_info_shares: WireValue<RawNum<u64>>,
     #[serde(rename = "sellInfoCount")]
-    pub(crate) sell_info_count: Option<RawNum<u64>>,
+    #[serde(default)]
+    pub(crate) sell_info_count: WireValue<RawNum<u64>>,
     #[serde(rename = "netInfoShares")]
-    pub(crate) net_info_shares: Option<RawNum<i64>>,
+    #[serde(default)]
+    pub(crate) net_info_shares: WireValue<RawNum<i64>>,
     #[serde(rename = "netInfoCount")]
-    pub(crate) net_info_count: Option<RawNum<i64>>,
+    #[serde(default)]
+    pub(crate) net_info_count: WireValue<RawNum<i64>>,
     #[serde(rename = "totalInsiderShares")]
-    pub(crate) total_insider_shares: Option<RawNum<u64>>,
+    #[serde(default)]
+    pub(crate) total_insider_shares: WireValue<RawNum<u64>>,
     #[serde(rename = "netPercentInsiderShares")]
-    pub(crate) net_percent_insider_shares: Option<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) net_percent_insider_shares: WireValue<RawNum<f64>>,
 }
