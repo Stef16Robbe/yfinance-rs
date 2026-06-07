@@ -1,5 +1,5 @@
 use std::fmt::Display;
-use yfinance_rs::{Ticker, YfClient};
+use yfinance_rs::{Decimal, Ticker, YfClient};
 
 fn display_opt<T: Display>(value: Option<T>) -> String {
     value.map_or_else(|| "N/A".to_string(), |value| value.to_string())
@@ -26,7 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             display_opt(holder.shares),
             holder.pct_held.map_or_else(
                 || "N/A".to_string(),
-                |ratio| { format!("{}", ratio.as_decimal() * paft::Decimal::from(100)) }
+                |ratio| { format!("{}", ratio.as_decimal() * Decimal::from(100)) }
             )
         );
     }

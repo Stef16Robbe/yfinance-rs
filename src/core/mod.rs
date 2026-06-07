@@ -46,6 +46,6 @@ pub use error::YfError;
 pub use models::{
     Action, AdjustmentAnchor, AdjustmentMethod, Candle, CorporateActionAdjustmentCause,
     CorporateActionAdjustmentCauses, FastInfo, HistoryMeta, HistoryResponse, Interval,
-    MovingAverages, OhlcPriceBasis, PriceBasis, Quote, Range, Snapshot,
+    MovingAverages, Ohlc, OhlcPriceBasis, PriceBasis, Quote, Range, Snapshot,
 };
 pub use services::{HistoryRequest, HistoryService};

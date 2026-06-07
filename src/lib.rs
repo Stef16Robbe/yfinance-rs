@@ -170,8 +170,6 @@ pub use fundamentals::FundamentalsBuilder;
 pub use history::HistoryBuilder;
 pub use holders::HoldersBuilder;
 pub use news::{NewsBuilder, NewsTab};
-pub use paft::fundamentals::statistics::KeyStatistics;
-pub use paft::market::responses::download::{DownloadEntry, DownloadResponse};
 pub use quote::{QuotesBuilder, quotes, quotes_with_diagnostics};
 pub use screener::{
     EquityQuery, EquitySector, EtfCategory, EtfQuery, FundCategory, FundQuery, PercentPoints,
@@ -201,13 +199,44 @@ pub fn init_tracing_for_tests() {
         .try_init();
 }
 
-// Explicitly re-export selected paft core types commonly used by users of this crate
+// Explicitly re-export selected paft types exposed by this crate's public API.
 pub use crate::core::{
     Action, AdjustmentAnchor, AdjustmentMethod, Candle, CorporateActionAdjustmentCause,
     CorporateActionAdjustmentCauses, HistoryMeta, HistoryResponse, OhlcPriceBasis, PriceBasis,
     Quote,
 };
 pub use crate::core::{Interval, Range};
+pub use paft::aggregates::Snapshot;
 pub use paft::domain::{
-    AssetKind, Exchange, Instrument, MarketState, PeriodYear, ReportingPeriod, Symbol,
+    AssetKind, Exchange, Instrument, Isin, MarketState, PeriodYear, ReportingPeriod, Symbol,
 };
+pub use paft::fundamentals::analysis::{
+    Earnings, EarningsQuarter, EarningsQuarterEps, EarningsTrendRow, EarningsYear, PriceTarget,
+    RecommendationAction, RecommendationGrade, RecommendationRow, RecommendationSummary,
+    UpgradeDowngradeRow,
+};
+pub use paft::fundamentals::esg::{EsgInvolvement, EsgScores, EsgSummary};
+pub use paft::fundamentals::holders::{
+    InsiderPosition, InsiderRosterHolder, InsiderTransaction, InstitutionalHolder, MajorHolder,
+    NetSharePurchaseActivity, TransactionType,
+};
+pub use paft::fundamentals::profile::{
+    Address, CompanyProfile as Company, FundKind, FundProfile as Fund, Profile, ShareCount,
+};
+pub use paft::fundamentals::statements::{
+    BalanceSheetRow, Calendar, CashflowRow, IncomeStatementRow,
+};
+pub use paft::fundamentals::statistics::KeyStatistics;
+pub use paft::market::news::NewsArticle;
+pub use paft::market::options::{
+    OptionChain, OptionContract, OptionContractKey, OptionGreeks, OptionSide,
+};
+pub use paft::market::orderbook::BookLevel;
+pub use paft::market::quote::QuoteUpdate;
+pub use paft::market::responses::download::{DownloadEntry, DownloadResponse};
+pub use paft::market::responses::history::Ohlc;
+pub use paft::market::responses::search::{SearchResponse, SearchResult};
+pub use paft::money::{
+    Currency, IsoCurrency, MonetaryAmount, Money, Price, PriceAmount, QuantityAmount,
+};
+pub use paft::{Decimal, NonNegativeDecimal, Ratio};

@@ -19,6 +19,7 @@ use crate::{
     EsgBuilder,
     core::client::RetryConfig,
     core::{CacheMode, CallOptions, DataQuality, YfClient, YfError, YfResponse},
+    esg::EsgSummary,
     holders::HoldersBuilder,
     news::NewsBuilder,
 };
@@ -218,7 +219,7 @@ impl Ticker {
 
     /// Fetches valuation, dividend, volume, and risk statistics for the ticker.
     ///
-    /// The values are mapped into paft's provider-agnostic [`KeyStatistics`] model.
+    /// The values are mapped into the provider-agnostic [`KeyStatistics`] model.
     ///
     /// # Errors
     ///
@@ -546,7 +547,7 @@ impl Ticker {
     /// # Errors
     ///
     /// This method will return an error if the request fails or the response cannot be parsed.
-    pub async fn sustainability(&self) -> Result<paft::fundamentals::esg::EsgSummary, YfError> {
+    pub async fn sustainability(&self) -> Result<EsgSummary, YfError> {
         self.esg_builder().fetch().await
     }
 
@@ -555,9 +556,7 @@ impl Ticker {
     /// # Errors
     ///
     /// This method will return an error if the request fails or strict data-quality mode rejects a projection issue.
-    pub async fn sustainability_with_diagnostics(
-        &self,
-    ) -> Result<YfResponse<paft::fundamentals::esg::EsgSummary>, YfError> {
+    pub async fn sustainability_with_diagnostics(&self) -> Result<YfResponse<EsgSummary>, YfError> {
         self.esg_builder().fetch_with_diagnostics().await
     }
     /* ---------------- Fundamentals convenience ---------------- */

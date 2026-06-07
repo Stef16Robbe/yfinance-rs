@@ -14,9 +14,18 @@ use httpmock::Method::GET;
 use tokio::sync::mpsc::{self as tokio_mpsc, UnboundedReceiver, error::TryRecvError};
 use url::Url;
 use yfinance_rs::{
-    Backoff, HistoryRequest, HistoryService, MovingAverages, QuotesBuilder, RetryConfig,
-    ScreenerQuery, StreamBuilder, StreamMethod, YahooQuoteType, YfClient, YfCurrencyInference,
-    YfCurrencyPurpose, YfError,
+    Address, Backoff, BalanceSheetRow, BookLevel, Calendar, Candle, CashflowRow, Company, Currency,
+    Decimal, DownloadEntry, DownloadResponse, Earnings, EarningsQuarter, EarningsQuarterEps,
+    EarningsTrendRow, EarningsYear, EsgInvolvement, EsgScores, EsgSummary, Fund, FundKind,
+    HistoryRequest, HistoryResponse, HistoryService, IncomeStatementRow, InsiderPosition,
+    InsiderRosterHolder, InsiderTransaction, InstitutionalHolder, Isin, IsoCurrency, KeyStatistics,
+    MajorHolder, Money, MovingAverages, NetSharePurchaseActivity, NewsArticle, NonNegativeDecimal,
+    Ohlc, OptionChain, OptionContract, OptionContractKey, OptionGreeks, OptionSide, Price,
+    PriceAmount, PriceTarget, Profile, QuantityAmount, Quote, QuoteUpdate, QuotesBuilder, Ratio,
+    RecommendationAction, RecommendationGrade, RecommendationRow, RecommendationSummary,
+    RetryConfig, ScreenerQuery, SearchResponse, SearchResult, ShareCount, Snapshot, StreamBuilder,
+    StreamMethod, TransactionType, UpgradeDowngradeRow, YahooQuoteType, YfClient,
+    YfCurrencyInference, YfCurrencyPurpose, YfError,
 };
 
 fn invalid_retry_with_factor(factor: f64) -> RetryConfig {
@@ -56,8 +65,70 @@ fn public_currency_diagnostics_expose_purpose_and_inference() {
 #[test]
 fn crate_root_reexports_common_public_types() {
     fn assert_history_service<T: HistoryService>() {}
+    fn assert_reexport<T>() {}
 
     assert_history_service::<YfClient>();
+    assert_reexport::<Address>();
+    assert_reexport::<BalanceSheetRow>();
+    assert_reexport::<BookLevel>();
+    assert_reexport::<Calendar>();
+    assert_reexport::<Candle>();
+    assert_reexport::<CashflowRow>();
+    assert_reexport::<Company>();
+    assert_reexport::<Currency>();
+    assert_reexport::<Decimal>();
+    assert_reexport::<DownloadEntry>();
+    assert_reexport::<DownloadResponse>();
+    assert_reexport::<Earnings>();
+    assert_reexport::<EarningsQuarter>();
+    assert_reexport::<EarningsQuarterEps>();
+    assert_reexport::<EarningsTrendRow>();
+    assert_reexport::<EarningsYear>();
+    assert_reexport::<EsgInvolvement>();
+    assert_reexport::<EsgScores>();
+    assert_reexport::<EsgSummary>();
+    assert_reexport::<Fund>();
+    assert_reexport::<FundKind>();
+    assert_reexport::<HistoryResponse>();
+    assert_reexport::<IncomeStatementRow>();
+    assert_reexport::<InsiderPosition>();
+    assert_reexport::<InsiderRosterHolder>();
+    assert_reexport::<InsiderTransaction>();
+    assert_reexport::<InstitutionalHolder>();
+    assert_reexport::<Isin>();
+    assert_reexport::<IsoCurrency>();
+    assert_reexport::<KeyStatistics>();
+    assert_reexport::<MajorHolder>();
+    assert_reexport::<Money>();
+    assert_reexport::<NetSharePurchaseActivity>();
+    assert_reexport::<NewsArticle>();
+    assert_reexport::<NonNegativeDecimal>();
+    assert_reexport::<Ohlc>();
+    assert_reexport::<OptionChain>();
+    assert_reexport::<OptionContract>();
+    assert_reexport::<OptionContractKey>();
+    assert_reexport::<OptionGreeks>();
+    assert_reexport::<OptionSide>();
+    assert_reexport::<Price>();
+    assert_reexport::<PriceAmount>();
+    assert_reexport::<PriceTarget>();
+    assert_reexport::<Profile>();
+    assert_reexport::<QuantityAmount>();
+    assert_reexport::<Quote>();
+    assert_reexport::<QuoteUpdate>();
+    assert_reexport::<Ratio>();
+    assert_reexport::<RecommendationAction>();
+    assert_reexport::<RecommendationGrade>();
+    assert_reexport::<RecommendationRow>();
+    assert_reexport::<RecommendationSummary>();
+    assert_reexport::<SearchResponse>();
+    assert_reexport::<SearchResult>();
+    assert_reexport::<ShareCount>();
+    assert_reexport::<Snapshot>();
+    assert_reexport::<TransactionType>();
+    assert_reexport::<UpgradeDowngradeRow>();
+    let usd = Currency::Iso(IsoCurrency::USD);
+    assert!(matches!(usd, Currency::Iso(IsoCurrency::USD)));
     assert_eq!(
         std::any::type_name::<HistoryRequest>(),
         "yfinance_rs::core::services::HistoryRequest"

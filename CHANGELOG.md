@@ -83,6 +83,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Add `FastInfo::moving_averages` with Yahoo's 50-day and 200-day average
   prices, matching Python yfinance's `fast_info` placement without extending
   `paft::Snapshot`.
+- Re-export common `paft` decimal, money, currency, domain, market, and
+  fundamentals model types from `yfinance_rs` so callers can construct inputs
+  and annotate returned values without depending on `paft` directly.
 - Add `Info::moving_averages` as a sibling of `snapshot` and `key_statistics`,
   so `Ticker::info()` also surfaces Yahoo's `summaryDetail` moving-average
   fields without putting technical indicators in `paft::KeyStatistics`.

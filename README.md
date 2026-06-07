@@ -217,7 +217,7 @@ See the full example: `examples/15_screeners.rs`.
 
 ### Polars DataFrames (to_dataframe)
 
-Enable the `dataframe` feature to convert paft models into a Polars `DataFrame` with `.to_dataframe()`.
+Enable the `dataframe` feature to convert returned models into a Polars `DataFrame` with `.to_dataframe()`.
 
 ```rust
 use yfinance_rs::{Interval, Range, Ticker, ToDataFrame, ToDataFrameVec, YfClient};
@@ -242,7 +242,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-Works for quotes, historical candles, fundamentals, analyst data, holders, options, and more. All `paft` structs returned by this crate implement `.to_dataframe()` when the `dataframe` feature is enabled. See the full example: `examples/14_polars_dataframes.rs`.
+Works for quotes, historical candles, fundamentals, analyst data, holders, options, and more. Returned model structs implement `.to_dataframe()` when the `dataframe` feature is enabled. See the full example: `examples/14_polars_dataframes.rs`.
 
 ### Multi-Symbol Data Download
 
@@ -350,7 +350,7 @@ share-count window, matching Python yfinance's `get_shares_full(start=None,
 end=None)` default. Use `shares_between(start, end)` or
 `quarterly_shares_between(start, end)` when you need older points.
 
-> 💡 Need to force a specific reporting currency? Pass `Some(paft::money::Currency::USD)` (or another currency) instead of `None` when calling the fundamentals/analysis helpers.
+> 💡 Need to force a specific reporting currency? Import `Currency` and `IsoCurrency` from `yfinance_rs`, then pass `Some(Currency::Iso(IsoCurrency::USD))` (or another currency) instead of `None` when calling the fundamentals/analysis helpers.
 
 ### Options Trading
 
