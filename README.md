@@ -74,7 +74,6 @@ An ergonomic, async-first Rust client for the unofficial Yahoo Finance API. It p
 
 ### Advanced Features
 
-* **Data Repair**: Automatic detection and repair of price outliers.
 * **Data Rounding**: Control price precision and rounding.
 * **Malformed Data Handling**: Drops invalid OHLC rows while preserving valid sibling data.
 * **Back Adjustment**: Alternative price adjustment methods.
@@ -261,7 +260,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .interval(Interval::D1)
         .auto_adjust(true)
         .actions(true)
-        .repair(true)
         .rounding(true)
         .run()
         .await?;

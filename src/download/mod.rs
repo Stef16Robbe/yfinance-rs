@@ -76,7 +76,6 @@ pub struct DownloadBuilder {
     include_prepost: bool,
     include_actions: bool,
     rounding: bool,
-    repair: bool,
 
     options: CallOptions,
     concurrency: DownloadConcurrency,
@@ -180,29 +179,9 @@ impl DownloadBuilder {
         }
     }
 
-    fn maybe_repair(
-        &self,
-        rows: &mut [Candle],
-        symbol: &str,
-        ctx: &mut ProjectionContext,
-    ) -> Result<(), YfError> {
-        if !self.repair {
-            return Ok(());
-        }
-        for key in repair_scale_outliers(rows) {
-            ctx.repaired_data(
-                "candle",
-                Some(format!("{symbol}:{key}")),
-                "scaled suspicious OHLC outlier",
-            )?;
-        }
-        Ok(())
-    }
-
     async fn process_joined_results(
         &self,
         joined: Vec<(String, YfResponse<HistoryResponse>)>,
-        _need_adjust_in_fetch: bool,
         ctx: &mut ProjectionContext,
     ) -> Result<DownloadResponse, YfError> {
         let mut entries: Vec<DownloadEntry> = Vec::with_capacity(joined.len());
@@ -212,7 +191,6 @@ impl DownloadBuilder {
             // apply transforms to candles
             self.apply_back_adjust(&mut resp.candles);
             resp.price_basis = self.back_adjust_price_basis(resp.price_basis);
-            self.maybe_repair(&mut resp.candles, &sym, ctx)?;
             self.apply_rounding_if_enabled(&mut resp.candles);
 
             let Some(instrument) = self.client.cached_instrument(&sym).await else {
@@ -252,7 +230,6 @@ impl DownloadBuilder {
             include_prepost: false,
             include_actions: true,
             rounding: false,
-            repair: false,
             options: CallOptions::default(),
             concurrency: DownloadConcurrency::DEFAULT,
         }
@@ -356,13 +333,6 @@ impl DownloadBuilder {
         self
     }
 
-    /// Sets whether to attempt to repair obvious price outliers (e.g., 100x errors). (Default: `false`)
-    #[must_use]
-    pub const fn repair(mut self, yes: bool) -> Self {
-        self.repair = yes;
-        self
-    }
-
     /// Executes the download by fetching data for all specified symbols concurrently.
     ///
     /// # Errors
@@ -434,9 +404,7 @@ impl DownloadBuilder {
             .map(|(_, sym, full)| (sym, full))
             .collect();
 
-        let response = self
-            .process_joined_results(joined, need_adjust_in_fetch, &mut ctx)
-            .await?;
+        let response = self.process_joined_results(joined, &mut ctx).await?;
         Ok(ctx.finish(response))
     }
 }
@@ -451,122 +419,4 @@ fn rounded_price(price: &PriceAmount) -> Option<PriceAmount> {
     let value = f64_from_price_amount(price)?;
     let decimal = rust_decimal::Decimal::from_f64(round2(value))?;
     Some(PriceAmount::new(decimal))
-}
-
-/// Very lightweight "repair" pass:
-/// If a bar's close is ~100× the average of its neighbors (or ~1/100),
-/// scale that entire bar's OHLC accordingly. Volumes are left unchanged.
-fn repair_scale_outliers(rows: &mut [Candle]) -> Vec<String> {
-    let mut repaired = Vec::new();
-    if rows.len() < 3 {
-        return repaired;
-    }
-
-    for i in 1..rows.len() - 1 {
-        // This is intentionally a single forward pass: once a bar is repaired,
-        // its corrected close becomes the previous-neighbor baseline for the
-        // next bar.
-        // Split rows at i, so left[..i] and right[i..] don't overlap.
-        let (left, right) = rows.split_at_mut(i);
-
-        // prev is in the left side (immutable is fine)
-        let prev = &left[i - 1];
-
-        // Now split the right side so we can mutably borrow the “current” bar
-        // and (immutably) the remainder where “next” lives, without overlap.
-        let Some((cur, rem)) = right.split_first_mut() else {
-            continue;
-        };
-        let next = &rem[0]; // safe because len >= 2 overall ⇒ rem has at least one
-
-        let p = &prev.ohlc.close;
-        let n = &next.ohlc.close;
-        let c = &cur.ohlc.close;
-
-        let Some(p_val) = f64_from_price_amount(p).filter(|v| v.is_finite()) else {
-            continue;
-        };
-        let Some(n_val) = f64_from_price_amount(n).filter(|v| v.is_finite()) else {
-            continue;
-        };
-        let Some(c_val) = f64_from_price_amount(c).filter(|v| v.is_finite()) else {
-            continue;
-        };
-
-        let baseline = f64::midpoint(p_val, n_val);
-        if baseline <= 0.0 {
-            continue;
-        }
-
-        let ratio = c_val / baseline;
-
-        // ~100× high
-        if ratio > 50.0 && ratio < 200.0 {
-            let scale = if (80.0..125.0).contains(&ratio) {
-                0.01
-            } else {
-                1.0 / ratio
-            };
-            if scale_row_prices(cur, scale) {
-                repaired.push(cur.ts.to_rfc3339());
-            }
-            continue;
-        }
-
-        // ~100× low
-        if ratio > 0.0 && ratio < 0.02 {
-            let scale = if (0.008..0.0125).contains(&ratio) {
-                100.0
-            } else {
-                1.0 / ratio
-            };
-            if scale_row_prices(cur, scale) {
-                repaired.push(cur.ts.to_rfc3339());
-            }
-        }
-    }
-    repaired
-}
-
-fn scale_row_prices(c: &mut Candle, scale: f64) -> bool {
-    let Some(scale) = rust_decimal::Decimal::from_f64_retain(scale) else {
-        return false;
-    };
-
-    let Some(open) = scaled_price(&c.ohlc.open, scale) else {
-        return false;
-    };
-    let Some(high) = scaled_price(&c.ohlc.high, scale) else {
-        return false;
-    };
-    let Some(low) = scaled_price(&c.ohlc.low, scale) else {
-        return false;
-    };
-    let Some(close) = scaled_price(&c.ohlc.close, scale) else {
-        return false;
-    };
-    let close_unadj = match c.close_unadj.as_ref() {
-        Some(close_unadj) => {
-            let Some(close_unadj) = scaled_price(close_unadj, scale) else {
-                return false;
-            };
-            Some(close_unadj)
-        }
-        None => None,
-    };
-
-    c.ohlc.open = open;
-    c.ohlc.high = high;
-    c.ohlc.low = low;
-    c.ohlc.close = close;
-    c.close_unadj = close_unadj;
-    true
-}
-
-fn scaled_price(price: &PriceAmount, scale: rust_decimal::Decimal) -> Option<PriceAmount> {
-    if !f64_from_price_amount(price).is_some_and(f64::is_finite) {
-        return None;
-    }
-
-    price.as_decimal().checked_mul(scale).map(PriceAmount::new)
 }

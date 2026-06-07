@@ -55,7 +55,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .interval(Interval::W1)
         .auto_adjust(false) // back_adjust is mutually exclusive with auto_adjust
         .back_adjust(true) // show back-adjustment
-        .repair(true) // show outlier repair
         .rounding(true) // show rounding
         .run()
         .await?;

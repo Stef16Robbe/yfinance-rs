@@ -40,6 +40,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Removed the always-empty `Info::esg_scores` field. Yahoo no longer returns the backing `esgScores` module; use `Ticker::sustainability()` for explicit best-effort ESG requests.
 - Removed the legacy HTML scraping fallback for profile lookups. Profiles now load only from Yahoo's quoteSummary API.
 - Removed `YfClientBuilder::base_quote()`, which only configured the deleted Yahoo quote-page scraping path.
+- Removed `DownloadBuilder::repair()` and the download price-outlier repair
+  heuristic. Downloads now preserve Yahoo candle values instead of scaling
+  suspicious-looking OHLC rows.
 - `Ticker::fast_info()` now returns yfinance-rs' own `FastInfo` struct with
   instant quote data nested under `snapshot`; existing `fast_info.last`-style
   reads should move to `fast_info.snapshot.last`.
@@ -258,9 +261,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Missing or invalid Yahoo timestamps no longer become Unix epoch/default datetimes in quote, history, news, holder, analyst, calendar, and fundamentals mappings.
 - Missing quote/search/screener/download instrument kinds no longer default to equity; provider asset-kind metadata is required where the public model needs an instrument.
 - Malformed raw OHLC rows are validated before auto-adjustment, so adjustment math cannot turn invalid Yahoo prices into emitted candles.
-- Download rounding and repair now leave values unchanged when conversion fails instead of falling back to zero.
-- Download repair now scales OHLC rows atomically, leaving the whole row unchanged if any repaired price cannot be represented.
-- Download repair now scales `Candle::close_unadj` alongside OHLC when repairing a row.
+- Download rounding now leaves values unchanged when conversion fails instead of falling back to zero.
 - History now uses `chart.meta.currency` for candles and default dividend/capital-gain currency before attempting any inferred fallback, while event-level action currencies override the chart default.
 - History best-effort responses now report unresolved candle currency as a dropped-candle diagnostic instead of aborting the whole response.
 - Yahoo unit currency codes such as `GBp`, `GBX`, `ZAc`, and `ILA` are normalized to their major ISO currencies; per-share `Price` values are scaled from quote units, while aggregate `Money` values stay in major units.
