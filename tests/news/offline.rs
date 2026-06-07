@@ -8,6 +8,41 @@ fn fixture(endpoint: &str, symbol: &str) -> String {
     crate::common::fixture(endpoint, symbol, "json")
 }
 
+const MALFORMED_NEWS_STREAM_BODY: &str = r#"{
+  "data": {
+    "tickerStream": {
+      "stream": [
+        {
+          "id": 42,
+          "content": {
+            "title": "Bad id",
+            "pubDate": "2025-01-01T00:00:00Z"
+          }
+        },
+        {
+          "content": {
+            "title": "Missing id",
+            "pubDate": "2025-01-01T00:00:00Z"
+          }
+        },
+        {
+          "id": "valid-news",
+          "content": {
+            "title": "Valid headline",
+            "pubDate": "2025-01-01T00:00:00Z",
+            "provider": {
+              "displayName": 42
+            },
+            "canonicalUrl": {
+              "url": 42
+            }
+          }
+        }
+      ]
+    }
+  }
+}"#;
+
 #[tokio::test]
 async fn offline_news_uses_recorded_fixture() {
     let server = MockServer::start();
@@ -218,40 +253,6 @@ async fn malformed_news_stream_items_are_dropped_with_diagnostics() {
             "s": [sym]
         }
     });
-    let body = r#"{
-      "data": {
-        "tickerStream": {
-          "stream": [
-            {
-              "id": 42,
-              "content": {
-                "title": "Bad id",
-                "pubDate": "2025-01-01T00:00:00Z"
-              }
-            },
-            {
-              "content": {
-                "title": "Missing id",
-                "pubDate": "2025-01-01T00:00:00Z"
-              }
-            },
-            {
-              "id": "valid-news",
-              "content": {
-                "title": "Valid headline",
-                "pubDate": "2025-01-01T00:00:00Z",
-                "provider": {
-                  "displayName": "Reuters"
-                },
-                "canonicalUrl": {
-                  "url": "https://example.com/aapl"
-                }
-              }
-            }
-          ]
-        }
-      }
-    }"#;
 
     let mock = server.mock(|when, then| {
         when.method(POST)
@@ -261,7 +262,7 @@ async fn malformed_news_stream_items_are_dropped_with_diagnostics() {
             .json_body(expected_payload);
         then.status(200)
             .header("content-type", "application/json")
-            .body(body);
+            .body(MALFORMED_NEWS_STREAM_BODY);
     });
 
     let client = YfClient::builder()
@@ -279,6 +280,8 @@ async fn malformed_news_stream_items_are_dropped_with_diagnostics() {
     assert_eq!(response.data.len(), 1);
     assert_eq!(response.data[0].uuid, "valid-news");
     assert_eq!(response.data[0].title, "Valid headline");
+    assert!(response.data[0].publisher.is_none());
+    assert!(response.data[0].link.is_none());
     assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
         warning,
         YfWarning::DroppedItem {
@@ -286,7 +289,7 @@ async fn malformed_news_stream_items_are_dropped_with_diagnostics() {
             item: "news_article",
             key: Some(key),
             reason: ProjectionIssue::InvalidField {
-                field: "article",
+                field: "id",
                 ..
             },
         } if key == "stream[0]"
@@ -300,6 +303,23 @@ async fn malformed_news_stream_items_are_dropped_with_diagnostics() {
             reason: ProjectionIssue::MissingRequiredField { field: "id" },
         } if key == "stream[1]"
     )));
+    for (path, field) in [
+        ("provider.displayName", "displayName"),
+        ("canonicalUrl.url", "url"),
+    ] {
+        assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+            warning,
+            YfWarning::OmittedPresentField {
+                endpoint: "news",
+                path: warning_path,
+                key: Some(key),
+                reason: ProjectionIssue::InvalidField {
+                    field: warning_field,
+                    ..
+                },
+            } if *warning_path == path && *warning_field == field && key == "valid-news"
+        )));
+    }
 
     let err = ticker.news_builder().strict().fetch().await.unwrap_err();
 

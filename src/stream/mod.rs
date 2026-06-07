@@ -989,10 +989,15 @@ async fn handle_polling_quotes(
     for q in quotes {
         let ts = q
             .regular_market_time
-            .and_then(|t| DateTime::from_timestamp(t, 0))
+            .as_ref()
+            .and_then(|t| DateTime::from_timestamp(*t, 0))
             .unwrap_or_else(Utc::now);
-        let sym_s = q.symbol.clone().unwrap_or_default();
-        let lp = q.regular_market_price.or(q.regular_market_previous_close);
+        let sym_s = q.symbol.as_ref().cloned().unwrap_or_default();
+        let lp = q
+            .regular_market_price
+            .as_ref()
+            .copied()
+            .or_else(|| q.regular_market_previous_close.as_ref().copied());
 
         let price_changed = if diff_only {
             last_price.get(&sym_s) != Some(&lp)
@@ -1006,7 +1011,8 @@ async fn handle_polling_quotes(
 
         let Some(currency_unit) = q
             .currency
-            .as_deref()
+            .as_ref()
+            .map(String::as_str)
             .and_then(ResolvedCurrencyUnit::from_code)
         else {
             crate::core::logging::trace_debug!(
@@ -1017,7 +1023,8 @@ async fn handle_polling_quotes(
         };
         let kind = q
             .quote_type
-            .as_deref()
+            .as_ref()
+            .map(String::as_str)
             .and_then(|value| parse_yahoo_quote_type(value).ok());
         let Some(instrument) = resolve_stream_instrument(client, &sym_s, kind).await else {
             continue;
@@ -1029,8 +1036,13 @@ async fn handle_polling_quotes(
                 price: lp.and_then(|v| currency_unit.price_amount_from_f64(v)),
                 previous_close: q
                     .regular_market_previous_close
-                    .and_then(|v| currency_unit.price_amount_from_f64(v)),
-                volume: q.regular_market_volume.and_then(quantity_from_u64),
+                    .as_ref()
+                    .and_then(|v| currency_unit.price_amount_from_f64(*v)),
+                volume: q
+                    .regular_market_volume
+                    .as_ref()
+                    .map(|v| v.into_u64())
+                    .and_then(quantity_from_u64),
                 ts,
                 provider: (),
             })

@@ -59,6 +59,53 @@ pub fn optional_wire_value<'a, T>(
     Ok(value.as_ref())
 }
 
+pub fn optional_wire_copied<T: Copy>(
+    ctx: &mut ProjectionContext,
+    path: &'static str,
+    key: Option<String>,
+    field: &'static str,
+    value: &WireValue<T>,
+) -> Result<Option<T>, YfError> {
+    Ok(optional_wire_value(ctx, path, key, field, value)?.copied())
+}
+
+pub fn optional_wire_cloned<T: Clone>(
+    ctx: &mut ProjectionContext,
+    path: &'static str,
+    key: Option<String>,
+    field: &'static str,
+    value: &WireValue<T>,
+) -> Result<Option<T>, YfError> {
+    Ok(optional_wire_value(ctx, path, key, field, value)?.cloned())
+}
+
+pub fn required_wire_value<'a, T>(
+    ctx: &mut ProjectionContext,
+    item: &'static str,
+    key: Option<String>,
+    field: &'static str,
+    value: &'a WireValue<T>,
+) -> Result<Option<&'a T>, YfError> {
+    match value {
+        WireValue::Valid(value) => Ok(Some(value)),
+        WireValue::Missing => {
+            ctx.dropped_item(item, key, ProjectionIssue::MissingRequiredField { field })?;
+            Ok(None)
+        }
+        WireValue::Invalid(details) => {
+            ctx.dropped_item(
+                item,
+                key,
+                ProjectionIssue::InvalidField {
+                    field,
+                    details: details.clone(),
+                },
+            )?;
+            Ok(None)
+        }
+    }
+}
+
 pub fn parse_optional<T>(
     value: Option<&str>,
     parse: impl FnOnce(&str) -> Result<T, YfError>,

@@ -637,7 +637,7 @@ async fn stream_polling_stop_cancels_in_flight_quote_fetch() {
 }
 
 #[tokio::test]
-async fn stream_polling_keeps_valid_quote_when_sibling_node_is_malformed() {
+async fn stream_polling_omits_malformed_optional_price_and_keeps_siblings() {
     let server = crate::common::setup_server();
 
     let body = r#"{
@@ -682,16 +682,22 @@ async fn stream_polling_keeps_valid_quote_when_sibling_node_is_malformed() {
         .interval(Duration::from_millis(50));
 
     let (handle, mut rx) = builder.start().await.unwrap();
-    let update = timeout(Duration::from_secs(3), rx.recv())
+    let first = timeout(Duration::from_secs(3), rx.recv())
         .await
         .expect("timed out waiting for polling stream update")
         .expect("stream closed without emitting an update");
+    let second = timeout(Duration::from_secs(3), rx.recv())
+        .await
+        .expect("timed out waiting for second polling stream update")
+        .expect("stream closed before second update");
     handle.abort();
     mock.assert();
 
-    assert_eq!(update.instrument.symbol.as_str(), "MSFT");
+    assert_eq!(first.instrument.symbol.as_str(), "AAPL");
+    assert!(first.price.is_none());
+    assert_eq!(second.instrument.symbol.as_str(), "MSFT");
     assert_eq!(
-        update.volume.as_ref().map(ToString::to_string),
+        second.volume.as_ref().map(ToString::to_string),
         Some("1000".into())
     );
 }

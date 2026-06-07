@@ -2,7 +2,7 @@ use httpmock::Method::GET;
 use httpmock::MockServer;
 use url::Url;
 use yfinance_rs::core::conversions::money_to_f64;
-use yfinance_rs::{Ticker, YfClient, YfError};
+use yfinance_rs::{ProjectionIssue, Ticker, YfClient, YfError, YfWarning};
 
 #[tokio::test]
 async fn fast_info_uses_previous_close_when_price_missing() {
@@ -55,6 +55,68 @@ async fn fast_info_uses_previous_close_when_price_missing() {
             .as_deref(),
         Some("NASDAQ")
     );
+}
+
+#[tokio::test]
+async fn fast_info_omits_malformed_optional_moving_average() {
+    let server = MockServer::start();
+
+    let body = r#"{
+      "quoteResponse": {
+        "result": [{
+          "symbol": "AAPL",
+          "quoteType": "EQUITY",
+          "regularMarketPrice": 199.5,
+          "regularMarketPreviousClose": 198.0,
+          "currency": "USD",
+          "fiftyDayAverage": "not-a-number",
+          "twoHundredDayAverage": 180.0
+        }],
+        "error": null
+      }
+    }"#;
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", "AAPL");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+    let ticker = Ticker::new(&client, "AAPL");
+
+    let response = ticker.fast_info_with_diagnostics().await.unwrap();
+
+    assert!(response.data.snapshot.last.is_some());
+    assert!(response.data.moving_averages.fifty_day.is_none());
+    assert!(response.data.moving_averages.two_hundred_day.is_some());
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::OmittedPresentField {
+            endpoint: "fast_info",
+            path: "fiftyDayAverage",
+            key: Some(key),
+            reason: ProjectionIssue::InvalidField {
+                field: "fiftyDayAverage",
+                ..
+            },
+        } if key == "AAPL"
+    )));
+
+    let err = Ticker::new(&client, "AAPL")
+        .strict()
+        .fast_info()
+        .await
+        .unwrap_err();
+
+    mock.assert_calls(2);
+    assert!(matches!(err, YfError::DataQuality(_)));
 }
 
 #[tokio::test]

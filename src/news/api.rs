@@ -6,6 +6,7 @@ use crate::{
         CallOptions, ProjectionContext, ProjectionIssue, YfClient, YfError,
         client::{CacheEndpoint, normalize_symbol},
         conversions::i64_to_datetime,
+        diagnostics::{optional_wire_cloned, optional_wire_value, required_wire_value},
         net,
     },
     news::{NewsTab, model::NewsArticle, tab_as_str, wire},
@@ -96,46 +97,58 @@ pub(super) async fn fetch_news(
             continue;
         }
 
-        let Some(id) = raw_item
-            .id
-            .map(|id| id.trim().to_string())
-            .filter(|id| !id.is_empty())
-        else {
+        let Some(id) = required_wire_value(
+            &mut ctx,
+            "news_article",
+            raw_key.clone(),
+            "id",
+            &raw_item.id,
+        )?
+        .map(|id| id.trim().to_string()) else {
+            continue;
+        };
+        if id.is_empty() {
             ctx.dropped_item(
                 "news_article",
                 raw_key,
                 ProjectionIssue::MissingRequiredField { field: "id" },
             )?;
             continue;
-        };
+        }
         let key = Some(id.clone());
 
-        let Some(content) = raw_item.content else {
-            ctx.dropped_item(
-                "news_article",
-                key.clone(),
-                ProjectionIssue::MissingRequiredField { field: "content" },
-            )?;
+        let Some(content) = required_wire_value(
+            &mut ctx,
+            "news_article",
+            key.clone(),
+            "content",
+            &raw_item.content,
+        )?
+        else {
             continue;
         };
-        let Some(title) = content.title else {
-            ctx.dropped_item(
-                "news_article",
-                key.clone(),
-                ProjectionIssue::MissingRequiredField { field: "title" },
-            )?;
+        let Some(title) = required_wire_value(
+            &mut ctx,
+            "news_article",
+            key.clone(),
+            "title",
+            &content.title,
+        )?
+        .cloned() else {
             continue;
         };
-        let Some(pub_date_str) = content.pub_date else {
-            ctx.dropped_item(
-                "news_article",
-                key.clone(),
-                ProjectionIssue::MissingRequiredField { field: "pubDate" },
-            )?;
+        let Some(pub_date_str) = required_wire_value(
+            &mut ctx,
+            "news_article",
+            key.clone(),
+            "pubDate",
+            &content.pub_date,
+        )?
+        else {
             continue;
         };
 
-        let timestamp = match chrono::DateTime::parse_from_rfc3339(&pub_date_str) {
+        let timestamp = match chrono::DateTime::parse_from_rfc3339(pub_date_str) {
             Ok(date) => date.timestamp(),
             Err(err) => {
                 ctx.dropped_item(
@@ -163,12 +176,48 @@ pub(super) async fn fetch_news(
                 continue;
             }
         };
+        let provider = optional_wire_value(
+            &mut ctx,
+            "provider",
+            key.clone(),
+            "provider",
+            &content.provider,
+        )?;
+        let publisher = if let Some(provider) = provider {
+            optional_wire_cloned(
+                &mut ctx,
+                "provider.displayName",
+                key.clone(),
+                "displayName",
+                &provider.display_name,
+            )?
+        } else {
+            None
+        };
+        let canonical_url = optional_wire_value(
+            &mut ctx,
+            "canonicalUrl",
+            key.clone(),
+            "canonicalUrl",
+            &content.canonical_url,
+        )?;
+        let link = if let Some(canonical_url) = canonical_url {
+            optional_wire_cloned(
+                &mut ctx,
+                "canonicalUrl.url",
+                key.clone(),
+                "url",
+                &canonical_url.url,
+            )?
+        } else {
+            None
+        };
 
         results.push(NewsArticle {
             uuid: id,
             title,
-            publisher: content.provider.and_then(|p| p.display_name),
-            link: content.canonical_url.and_then(|u| u.url),
+            publisher,
+            link,
             published_at,
             provider: (),
         });

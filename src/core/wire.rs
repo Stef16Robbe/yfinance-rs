@@ -92,6 +92,28 @@ impl<'de> Deserialize<'de> for JsonDecimal {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct JsonU64 {
+    value: u64,
+}
+
+impl JsonU64 {
+    pub(crate) const fn into_u64(self) -> u64 {
+        self.value
+    }
+}
+
+impl<'de> Deserialize<'de> for JsonU64 {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        u64_from_json_value(Value::deserialize(deserializer)?)
+            .map(|value| Self { value })
+            .map_err(serde::de::Error::custom)
+    }
+}
+
 #[derive(Deserialize, Clone, Copy)]
 pub struct RawDate {
     pub(crate) raw: Option<i64>,

@@ -4,6 +4,48 @@ use url::Url;
 use yfinance_rs::core::conversions::{money_to_currency_str, money_to_f64};
 use yfinance_rs::{ProjectionIssue, Ticker, YfClient, YfError, YfWarning};
 
+const OPTIONS_WITH_BAD_STRIKES_AND_OPTIONAL_FIELDS: &str = r#"{
+  "optionChain": {
+    "result": [{
+      "underlyingSymbol": "AAPL",
+      "quote": { "symbol": "AAPL", "quoteType": "EQUITY", "currency": "USD" },
+      "options": [{
+        "expirationDate": 1737072000,
+        "calls": [
+          {
+            "contractSymbol":"AAPL250117C00170000",
+            "strike":1e30,
+            "expiration":1737072000,
+            "lastPrice":5.0
+          },
+          {
+            "contractSymbol":"AAPL250117C00175000",
+            "strike":"not-a-number",
+            "expiration":1737072000,
+            "lastPrice":4.0
+          },
+          {
+            "contractSymbol":"AAPL250117C00180000",
+            "strike":180.0,
+            "expiration":1737072000,
+            "lastPrice":"not-a-number",
+            "bid":1.25,
+            "ask":"not-a-number",
+            "impliedVolatility":"not-a-number"
+          }
+        ],
+        "puts": [{
+          "contractSymbol":"AAPL250117P00175000",
+          "strike":175.0,
+          "expiration":1737072000,
+          "lastPrice":2.0
+        }]
+      }]
+    }],
+    "error": null
+  }
+}"#;
+
 #[tokio::test]
 async fn options_expirations_happy() {
     let server = crate::common::setup_server();
@@ -486,55 +528,13 @@ async fn option_chain_skips_bad_strikes_and_keeps_valid_contracts() {
     let server = crate::common::setup_server();
     let date = 1_737_072_000_i64;
 
-    let body = r#"{
-      "optionChain": {
-        "result": [{
-          "underlyingSymbol": "AAPL",
-          "quote": { "symbol": "AAPL", "quoteType": "EQUITY", "currency": "USD" },
-          "options": [{
-            "expirationDate": 1737072000,
-            "calls": [
-              {
-                "contractSymbol":"AAPL250117C00170000",
-                "strike":1e30,
-                "expiration":1737072000,
-                "lastPrice":5.0
-              },
-              {
-                "contractSymbol":"AAPL250117C00175000",
-                "strike":"not-a-number",
-                "expiration":1737072000,
-                "lastPrice":4.0
-              },
-              {
-                "contractSymbol":"AAPL250117C00180000",
-                "strike":180.0,
-                "expiration":1737072000,
-                "lastPrice":1e30,
-                "bid":1.25,
-                "ask":1e30,
-                "impliedVolatility":1e30
-              }
-            ],
-            "puts": [{
-              "contractSymbol":"AAPL250117P00175000",
-              "strike":175.0,
-              "expiration":1737072000,
-              "lastPrice":2.0
-            }]
-          }]
-        }],
-        "error": null
-      }
-    }"#;
-
     let mock = server.mock(|when, then| {
         when.method(httpmock::Method::GET)
             .path("/v7/finance/options/AAPL")
             .query_param("date", date.to_string());
         then.status(200)
             .header("content-type", "application/json")
-            .body(body);
+            .body(OPTIONS_WITH_BAD_STRIKES_AND_OPTIONAL_FIELDS);
     });
 
     let client = YfClient::builder()
@@ -565,11 +565,31 @@ async fn option_chain_skips_bad_strikes_and_keeps_valid_contracts() {
             item: "option_contract",
             key: Some(key),
             reason: ProjectionIssue::InvalidField {
-                field: "contract",
+                field: "strike",
                 ..
             },
         } if key == "AAPL250117C00175000"
     )));
+    for (path, field) in [
+        ("lastPrice", "lastPrice"),
+        ("ask", "ask"),
+        ("impliedVolatility", "impliedVolatility"),
+    ] {
+        assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+            warning,
+            YfWarning::OmittedPresentField {
+                endpoint: "options",
+                path: warning_path,
+                key: Some(key),
+                reason: ProjectionIssue::InvalidField {
+                    field: warning_field,
+                    ..
+                },
+            } if *warning_path == path
+                && *warning_field == field
+                && key == "AAPL250117C00180000"
+        )));
+    }
 
     let call = calls[0];
     assert!((money_to_f64(&call.key.strike) - 180.0).abs() < 1e-9);

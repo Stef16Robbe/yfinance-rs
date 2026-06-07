@@ -161,7 +161,7 @@ async fn quote_with_diagnostics_reports_invalid_optional_provider_fields() {
 }
 
 #[tokio::test]
-async fn quote_with_diagnostics_drops_malformed_v7_node_before_valid_sibling() {
+async fn quote_with_diagnostics_omits_malformed_optional_price() {
     let server = MockServer::start();
 
     let body = r#"{
@@ -170,12 +170,8 @@ async fn quote_with_diagnostics_drops_malformed_v7_node_before_valid_sibling() {
           {
             "symbol":"AAPL",
             "quoteType": "EQUITY",
-            "regularMarketPrice": "not-a-number"
-          },
-          {
-            "symbol":"AAPL",
-            "quoteType": "EQUITY",
-            "regularMarketPrice": 190.25,
+            "regularMarketPrice": "not-a-number",
+            "regularMarketPreviousClose": 189.50,
             "currency": "USD"
           }
         ],
@@ -202,15 +198,16 @@ async fn quote_with_diagnostics_drops_malformed_v7_node_before_valid_sibling() {
     mock.assert();
 
     assert_eq!(response.data.instrument.symbol.as_str(), "AAPL");
-    assert!(response.data.price.is_some());
+    assert!(response.data.price.is_none());
+    assert!(response.data.previous_close.is_some());
     assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
         warning,
-        YfWarning::DroppedItem {
+        YfWarning::OmittedPresentField {
             endpoint: "quote",
-            item: "quote",
+            path: "regularMarketPrice",
             key: Some(key),
             reason: ProjectionIssue::InvalidField {
-                field: "quote",
+                field: "regularMarketPrice",
                 ..
             },
         } if key == "AAPL"

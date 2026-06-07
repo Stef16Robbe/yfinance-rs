@@ -284,7 +284,7 @@ async fn screener_yahoo_exchange_codes_normalize_without_diagnostics() {
 }
 
 #[tokio::test]
-async fn malformed_screener_quote_is_dropped_without_losing_valid_siblings() {
+async fn malformed_screener_optional_field_is_omitted_without_losing_result() {
     let server = MockServer::start();
     let body = r#"{
       "finance": {
@@ -333,16 +333,18 @@ async fn malformed_screener_quote_is_dropped_without_losing_valid_siblings() {
         .await
         .unwrap();
 
-    assert_eq!(response.data.results.len(), 1);
-    assert_eq!(response.data.results[0].symbol.as_deref(), Some("AAPL"));
+    assert_eq!(response.data.results.len(), 2);
+    assert_eq!(response.data.results[0].symbol.as_deref(), Some("BADQUOTE"));
+    assert!(response.data.results[0].price.is_none());
+    assert_eq!(response.data.results[1].symbol.as_deref(), Some("AAPL"));
     assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
         warning,
-        YfWarning::DroppedItem {
+        YfWarning::OmittedPresentField {
             endpoint: "screener",
-            item: "screener_result",
+            path: "regularMarketPrice",
             key: Some(key),
             reason: ProjectionIssue::InvalidField {
-                field: "quote",
+                field: "regularMarketPrice",
                 ..
             },
         } if key == "BADQUOTE"

@@ -5,9 +5,20 @@ use serde_json::Value;
 use url::Url;
 
 use crate::core::client::CacheEndpoint;
+use crate::core::diagnostics::{optional_wire_cloned, required_wire_value};
+use crate::core::wire::WireValue;
 use crate::core::yahoo_vocab::{parse_yahoo_exchange, parse_yahoo_quote_type};
 use crate::core::{CallOptions, ProjectionContext};
 use crate::{ProjectionIssue, YfClient, YfError, YfResponse};
+
+fn optional_search_string(
+    ctx: &mut ProjectionContext,
+    path: &'static str,
+    key: Option<String>,
+    value: &WireValue<String>,
+) -> Result<Option<String>, YfError> {
+    optional_wire_cloned(ctx, path, key, path, value)
+}
 
 #[allow(clippy::too_many_lines)]
 fn parse_search_body(body: &str, ctx: &mut ProjectionContext) -> Result<SearchResponse, YfError> {
@@ -18,13 +29,13 @@ fn parse_search_body(body: &str, ctx: &mut ProjectionContext) -> Result<SearchRe
         .ok_or_else(|| YfError::MissingData("search quotes missing".into()))?;
     let mut results = Vec::new();
     for (idx, q) in quotes.into_iter().enumerate() {
-        let key = Some(search_quote_diag_key(&q, idx));
+        let raw_key = Some(search_quote_diag_key(&q, idx));
         let q = match serde_json::from_value::<V1SearchQuote>(q) {
             Ok(q) => q,
             Err(err) => {
                 ctx.dropped_item(
                     "search_result",
-                    key,
+                    raw_key,
                     ProjectionIssue::InvalidField {
                         field: "quote",
                         details: err.to_string(),
@@ -33,13 +44,15 @@ fn parse_search_body(body: &str, ctx: &mut ProjectionContext) -> Result<SearchRe
                 continue;
             }
         };
-        let key = q.symbol.clone();
-        let Some(sym) = q.symbol.map(|sym| sym.trim().to_string()) else {
-            ctx.dropped_item(
-                "search_result",
-                key,
-                ProjectionIssue::MissingRequiredField { field: "symbol" },
-            )?;
+        let key = q
+            .symbol
+            .as_ref()
+            .map(|symbol| symbol.trim().to_string())
+            .or(raw_key);
+        let Some(sym) =
+            required_wire_value(ctx, "search_result", key.clone(), "symbol", &q.symbol)?
+                .map(|sym| sym.trim().to_string())
+        else {
             continue;
         };
         if sym.is_empty() {
@@ -50,8 +63,15 @@ fn parse_search_body(body: &str, ctx: &mut ProjectionContext) -> Result<SearchRe
             )?;
             continue;
         }
-        let exchange_opt = match q
-            .exchange
+        let shortname =
+            optional_search_string(ctx, "quotes[].shortname", Some(sym.clone()), &q.shortname)?;
+        let longname =
+            optional_search_string(ctx, "quotes[].longname", Some(sym.clone()), &q.longname)?;
+        let quote_type =
+            optional_search_string(ctx, "quotes[].quoteType", Some(sym.clone()), &q.quote_type)?;
+        let exchange =
+            optional_search_string(ctx, "quotes[].exchange", Some(sym.clone()), &q.exchange)?;
+        let exchange_opt = match exchange
             .as_deref()
             .map(str::trim)
             .filter(|exchange| !exchange.is_empty())
@@ -72,8 +92,7 @@ fn parse_search_body(body: &str, ctx: &mut ProjectionContext) -> Result<SearchRe
             },
             None => None,
         };
-        let kind = match q
-            .quote_type
+        let kind = match quote_type
             .as_deref()
             .map(parse_yahoo_quote_type)
             .transpose()
@@ -118,7 +137,7 @@ fn parse_search_body(body: &str, ctx: &mut ProjectionContext) -> Result<SearchRe
 
         results.push(SearchResult {
             instrument,
-            name: q.longname.or(q.shortname),
+            name: longname.or(shortname),
             provider: (),
         });
     }
@@ -372,22 +391,22 @@ struct V1SearchEnvelope {
 #[derive(Deserialize)]
 struct V1SearchQuote {
     #[serde(default)]
-    symbol: Option<String>,
+    symbol: WireValue<String>,
     #[serde(default)]
-    shortname: Option<String>,
+    shortname: WireValue<String>,
     #[serde(default)]
-    longname: Option<String>,
+    longname: WireValue<String>,
     #[serde(rename = "quoteType")]
     #[serde(default)]
-    quote_type: Option<String>,
+    quote_type: WireValue<String>,
     #[serde(default)]
-    exchange: Option<String>,
+    exchange: WireValue<String>,
     #[allow(dead_code)]
     #[serde(rename = "exchDisp")]
     #[serde(default)]
-    exch_disp: Option<String>,
+    exch_disp: WireValue<String>,
     #[allow(dead_code)]
     #[serde(rename = "typeDisp")]
     #[serde(default)]
-    type_disp: Option<String>,
+    type_disp: WireValue<String>,
 }

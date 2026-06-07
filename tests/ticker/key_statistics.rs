@@ -576,7 +576,7 @@ async fn key_statistics_with_diagnostics_reports_invalid_financial_currency() {
 }
 
 #[tokio::test]
-async fn key_statistics_with_diagnostics_drops_malformed_v7_node_before_valid_sibling() {
+async fn key_statistics_with_diagnostics_omits_malformed_v7_market_cap() {
     let server = MockServer::start();
     let sym = "AAPL";
     let crumb = "test-crumb";
@@ -586,13 +586,9 @@ async fn key_statistics_with_diagnostics_drops_malformed_v7_node_before_valid_si
           {
             "symbol": "AAPL",
             "quoteType": "EQUITY",
-            "marketCap": "not-a-number"
-          },
-          {
-            "symbol": "AAPL",
-            "quoteType": "EQUITY",
             "currency": "USD",
-            "marketCap": 3000000000000
+            "marketCap": "not-a-number",
+            "trailingPE": 30.5
           }
         ],
         "error": null
@@ -633,15 +629,19 @@ async fn key_statistics_with_diagnostics_drops_malformed_v7_node_before_valid_si
 
     quote_mock.assert();
     key_statistics_mock.assert();
-    assert!(response.data.market_cap.is_some());
+    assert!(response.data.market_cap.is_none());
+    assert_eq!(
+        response.data.pe_trailing_twelve_months,
+        Some(paft::Decimal::new(305, 1))
+    );
     assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
         warning,
-        YfWarning::DroppedItem {
+        YfWarning::OmittedPresentField {
             endpoint: "key_statistics",
-            item: "quote",
+            path: "marketCap",
             key: Some(key),
             reason: ProjectionIssue::InvalidField {
-                field: "quote",
+                field: "marketCap",
                 ..
             },
         } if key == sym

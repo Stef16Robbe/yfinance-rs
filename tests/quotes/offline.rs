@@ -156,7 +156,7 @@ async fn malformed_quote_node_missing_symbol_is_dropped_from_batch() {
 }
 
 #[tokio::test]
-async fn structurally_malformed_quote_node_is_dropped_from_batch() {
+async fn malformed_optional_quote_field_is_omitted_from_batch_item() {
     let server = setup_server();
     let mock = server.mock(|when, then| {
         when.method(GET)
@@ -171,7 +171,8 @@ async fn structurally_malformed_quote_node_is_dropped_from_batch() {
                       {
                         "symbol": "AAPL",
                         "quoteType": "EQUITY",
-                        "regularMarketPrice": "not-a-number"
+                        "regularMarketPrice": "not-a-number",
+                        "currency": "USD"
                       },
                       {
                         "symbol": "MSFT",
@@ -197,16 +198,18 @@ async fn structurally_malformed_quote_node_is_dropped_from_batch() {
         .await
         .unwrap();
 
-    assert_eq!(response.data.len(), 1);
-    assert_eq!(response.data[0].instrument.symbol.as_str(), "MSFT");
+    assert_eq!(response.data.len(), 2);
+    assert_eq!(response.data[0].instrument.symbol.as_str(), "AAPL");
+    assert!(response.data[0].price.is_none());
+    assert_eq!(response.data[1].instrument.symbol.as_str(), "MSFT");
     assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
         warning,
-        YfWarning::DroppedItem {
+        YfWarning::OmittedPresentField {
             endpoint: "quotes",
-            item: "quote",
+            path: "regularMarketPrice",
             key: Some(key),
             reason: ProjectionIssue::InvalidField {
-                field: "quote",
+                field: "regularMarketPrice",
                 ..
             },
         } if key == "AAPL"

@@ -253,6 +253,69 @@ async fn yahoo_search_exchange_codes_normalize_without_diagnostics() {
 }
 
 #[tokio::test]
+async fn malformed_optional_search_name_is_omitted_without_losing_result() {
+    let query = "malformed optional";
+    let server = MockServer::start();
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v1/finance/search")
+            .query_param("q", query)
+            .query_param("quotesCount", "10")
+            .query_param("newsCount", "0")
+            .query_param("listsCount", "0");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "quotes": [{
+                    "symbol": "AAPL",
+                    "quoteType": "EQUITY",
+                    "exchange": "NasdaqGS",
+                    "longname": 42,
+                    "shortname": "Apple Inc."
+                  }]
+                }"#,
+            );
+    });
+
+    let client = YfClient::builder().build().unwrap();
+    let base = Url::parse(&format!("{}/v1/finance/search", server.base_url())).unwrap();
+
+    let response = SearchBuilder::new(&client, query)
+        .search_base(base.clone())
+        .fetch_with_diagnostics()
+        .await
+        .unwrap();
+
+    assert_eq!(response.data.results.len(), 1);
+    assert_eq!(response.data.results[0].instrument.symbol.as_str(), "AAPL");
+    assert_eq!(response.data.results[0].name.as_deref(), Some("Apple Inc."));
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::OmittedPresentField {
+            endpoint: "search",
+            path: "quotes[].longname",
+            key: Some(key),
+            reason: ProjectionIssue::InvalidField {
+                field: "quotes[].longname",
+                ..
+            },
+        } if key == "AAPL"
+    )));
+
+    let err = SearchBuilder::new(&client, query)
+        .search_base(base)
+        .strict()
+        .fetch()
+        .await
+        .unwrap_err();
+
+    mock.assert_calls(2);
+    assert!(matches!(err, YfError::DataQuality(_)));
+}
+
+#[tokio::test]
 async fn malformed_search_quote_is_dropped_without_losing_valid_siblings() {
     let query = "malformed row";
     let server = MockServer::start();
@@ -294,7 +357,7 @@ async fn malformed_search_quote_is_dropped_without_losing_valid_siblings() {
             item: "search_result",
             key: Some(key),
             reason: ProjectionIssue::InvalidField {
-                field: "quote",
+                field: "symbol",
                 ..
             },
         } if key == "quotes[0]"
