@@ -1,189 +1,81 @@
-use paft::Decimal;
-use rust_decimal::prelude::ToPrimitive;
-use serde::{Deserialize, Deserializer, de::DeserializeOwned};
-use serde_json::{Number, Value};
-use std::str::FromStr;
+mod number;
+mod raw;
+mod scalar;
+mod value;
 
-#[derive(Deserialize, Clone, Copy)]
-pub struct RawNum<T> {
-    pub(crate) raw: Option<T>,
-}
+pub use number::{JsonDecimal, JsonU64, decimal_from_json_value};
+pub use raw::{RawDate, RawDecimal, RawNum, RawNumU64, from_raw, from_raw_date};
+pub use value::{BufferedWireValue, WireField, WireValue};
 
-pub fn from_raw<T>(raw: Option<RawNum<T>>) -> Option<T> {
-    raw.and_then(|n| n.raw)
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde::Deserialize;
 
-#[derive(Clone, Debug, Default)]
-pub enum WireValue<T> {
-    #[default]
-    Missing,
-    Valid(T),
-    Invalid(String),
-}
-
-impl<T> WireValue<T> {
-    pub(crate) const fn as_ref(&self) -> Option<&T> {
-        match self {
-            Self::Valid(value) => Some(value),
-            Self::Missing | Self::Invalid(_) => None,
-        }
-    }
-
-    pub(crate) fn into_option(self) -> Option<T> {
-        match self {
-            Self::Valid(value) => Some(value),
-            Self::Missing | Self::Invalid(_) => None,
-        }
-    }
-
-    pub(crate) fn invalid_details(&self) -> Option<&str> {
-        match self {
-            Self::Invalid(details) => Some(details),
-            Self::Missing | Self::Valid(_) => None,
-        }
-    }
-}
-
-impl<'de, T> Deserialize<'de> for WireValue<T>
-where
-    T: DeserializeOwned,
-{
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let value = Value::deserialize(deserializer)?;
-        if value.is_null() {
-            return Ok(Self::Missing);
+    #[test]
+    fn invalid_scalar_is_recorded_without_losing_following_fields() {
+        #[derive(Deserialize)]
+        struct Row {
+            #[serde(default)]
+            bad: WireValue<f64>,
+            #[serde(default)]
+            after: WireValue<i64>,
         }
 
-        match T::deserialize(value) {
-            Ok(value) => Ok(Self::Valid(value)),
-            Err(err) => Ok(Self::Invalid(err.to_string())),
+        let row: Row = serde_json::from_str(r#"{"bad":{"nested":[1,2,3]},"after":7}"#).unwrap();
+
+        assert!(matches!(row.bad, WireValue::Invalid(_)));
+        assert!(matches!(row.after, WireValue::Valid(7)));
+    }
+
+    #[test]
+    fn invalid_raw_value_is_recorded_without_losing_following_fields() {
+        #[derive(Deserialize)]
+        struct Row {
+            #[serde(default)]
+            quote: WireValue<RawNum<f64>>,
+            #[serde(default)]
+            after: WireValue<String>,
         }
+
+        let row: Row =
+            serde_json::from_str(r#"{"quote":{"raw":[1,2],"fmt":"bad"},"after":"ok"}"#).unwrap();
+
+        assert!(matches!(row.quote, WireValue::Invalid(_)));
+        assert_eq!(row.after.as_str(), Some("ok"));
     }
-}
 
-#[derive(Deserialize, Clone, Copy, Debug)]
-pub struct RawDecimal {
-    #[serde(default, deserialize_with = "de_decimal_from_json")]
-    pub(crate) raw: Option<Decimal>,
-}
+    #[test]
+    fn json_u64_accepts_integral_strings_and_rejects_fractional_strings() {
+        let valid: WireValue<JsonU64> = serde_json::from_str(r#""42""#).unwrap();
+        assert_eq!(valid.as_ref().copied().map(JsonU64::into_u64), Some(42));
 
-#[derive(Clone, Copy, Debug)]
-pub struct JsonDecimal {
-    value: Decimal,
-}
-
-impl JsonDecimal {
-    pub(crate) const fn into_decimal(self) -> Decimal {
-        self.value
+        let invalid: WireValue<JsonU64> = serde_json::from_str(r#""42.5""#).unwrap();
+        assert!(matches!(
+            invalid.invalid_details(),
+            Some(details) if details.contains("cannot convert decimal")
+        ));
     }
-}
 
-impl<'de> Deserialize<'de> for JsonDecimal {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        decimal_from_json_value(Value::deserialize(deserializer)?)
-            .map(|value| Self { value })
-            .map_err(serde::de::Error::custom)
+    #[test]
+    fn buffered_wire_value_keeps_composite_recovery_explicit() {
+        #[allow(dead_code)]
+        #[derive(Deserialize)]
+        struct Nested {
+            value: String,
+        }
+
+        #[derive(Deserialize)]
+        struct Row {
+            #[serde(default)]
+            nested: BufferedWireValue<Nested>,
+            #[serde(default)]
+            after: WireValue<i64>,
+        }
+
+        let row: Row = serde_json::from_str(r#"{"nested":{"value":[]},"after":9}"#).unwrap();
+
+        assert!(matches!(row.nested.0, WireValue::Invalid(_)));
+        assert!(matches!(row.after, WireValue::Valid(9)));
     }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct JsonU64 {
-    value: u64,
-}
-
-impl JsonU64 {
-    pub(crate) const fn into_u64(self) -> u64 {
-        self.value
-    }
-}
-
-impl<'de> Deserialize<'de> for JsonU64 {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        u64_from_json_value(Value::deserialize(deserializer)?)
-            .map(|value| Self { value })
-            .map_err(serde::de::Error::custom)
-    }
-}
-
-#[derive(Deserialize, Clone, Copy)]
-pub struct RawDate {
-    pub(crate) raw: Option<i64>,
-}
-
-pub fn from_raw_date(r: Option<RawDate>) -> Option<i64> {
-    r.and_then(|d| d.raw)
-}
-
-fn de_decimal_from_json<'de, D>(deserializer: D) -> Result<Option<Decimal>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    Option::<Value>::deserialize(deserializer)?
-        .map(decimal_from_json_value)
-        .transpose()
-        .map_err(serde::de::Error::custom)
-}
-
-pub fn de_u64_from_json<'de, D>(deserializer: D) -> Result<Option<u64>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    Option::<Value>::deserialize(deserializer)?
-        .map(u64_from_json_value)
-        .transpose()
-        .map_err(serde::de::Error::custom)
-}
-
-pub fn decimal_from_json_value(value: Value) -> Result<Decimal, String> {
-    match value {
-        Value::Number(number) => decimal_from_json_number(&number),
-        Value::String(value) => decimal_from_str(value.trim()),
-        other => Err(format!(
-            "expected JSON number or numeric string, got {other}"
-        )),
-    }
-}
-
-fn decimal_from_json_number(number: &Number) -> Result<Decimal, String> {
-    if let Some(value) = number.as_i64() {
-        return Ok(Decimal::from(value));
-    }
-    if let Some(value) = number.as_u64() {
-        return Ok(Decimal::from(value));
-    }
-    decimal_from_str(&number.to_string())
-}
-
-fn decimal_from_str(value: &str) -> Result<Decimal, String> {
-    if value.is_empty() {
-        return Err("empty numeric value".into());
-    }
-    Decimal::from_str(value)
-        .or_else(|_| Decimal::from_scientific(value))
-        .map_err(|err| format!("cannot parse decimal {value:?}: {err}"))
-}
-
-fn u64_from_json_value(value: Value) -> Result<u64, String> {
-    let decimal = decimal_from_json_value(value)?;
-    if decimal.is_sign_negative() || !decimal.fract().is_zero() {
-        return Err(format!("cannot convert decimal {decimal} to u64"));
-    }
-    decimal
-        .to_u64()
-        .ok_or_else(|| format!("cannot convert decimal {decimal} to u64"))
-}
-
-#[derive(Deserialize, Clone, Copy)]
-pub struct RawNumU64 {
-    #[serde(default, deserialize_with = "de_u64_from_json")]
-    pub(crate) raw: Option<u64>,
 }

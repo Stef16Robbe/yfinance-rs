@@ -1,4 +1,4 @@
-use crate::core::wire::{RawDate, RawDecimal, RawNum, RawNumU64, WireValue};
+use crate::core::wire::{BufferedWireValue, RawDate, RawDecimal, RawNum, RawNumU64, WireValue};
 use serde::Deserialize;
 
 /* ---------------- Serde mapping (only what we need) ---------------- */
@@ -15,10 +15,10 @@ pub struct V10Result {
 
     /* earnings + calendar */
     #[serde(default)]
-    pub(crate) earnings: WireValue<EarningsNode>,
+    pub(crate) earnings: BufferedWireValue<EarningsNode>,
     #[serde(rename = "calendarEvents")]
     #[serde(default)]
-    pub(crate) calendar_events: WireValue<CalendarEventsNode>,
+    pub(crate) calendar_events: BufferedWireValue<CalendarEventsNode>,
 }
 
 /* --- income --- */
@@ -56,18 +56,18 @@ pub struct EarningsNode {
     pub(crate) financial_currency: WireValue<String>,
     #[serde(rename = "financialsChart")]
     #[serde(default)]
-    pub(crate) financials_chart: WireValue<FinancialsChartNode>,
+    pub(crate) financials_chart: BufferedWireValue<FinancialsChartNode>,
     #[serde(rename = "earningsChart")]
     #[serde(default)]
-    pub(crate) earnings_chart: WireValue<EarningsChartNode>,
+    pub(crate) earnings_chart: BufferedWireValue<EarningsChartNode>,
 }
 
 #[derive(Deserialize)]
 pub struct FinancialsChartNode {
     #[serde(default)]
-    pub(crate) yearly: WireValue<Vec<FinancialYearNode>>,
+    pub(crate) yearly: BufferedWireValue<Vec<FinancialYearNode>>,
     #[serde(default)]
-    pub(crate) quarterly: WireValue<Vec<FinancialQuarterNode>>,
+    pub(crate) quarterly: BufferedWireValue<Vec<FinancialQuarterNode>>,
 }
 
 #[derive(Deserialize)]
@@ -93,7 +93,7 @@ pub struct FinancialQuarterNode {
 #[derive(Deserialize)]
 pub struct EarningsChartNode {
     #[serde(default)]
-    pub(crate) quarterly: WireValue<Vec<EpsQuarterNode>>,
+    pub(crate) quarterly: BufferedWireValue<Vec<EpsQuarterNode>>,
 }
 
 #[derive(Deserialize)]
@@ -110,7 +110,7 @@ pub struct EpsQuarterNode {
 #[derive(Deserialize)]
 pub struct CalendarEventsNode {
     #[serde(default)]
-    pub(crate) earnings: WireValue<CalendarEarningsNode>,
+    pub(crate) earnings: BufferedWireValue<CalendarEarningsNode>,
     #[serde(rename = "exDividendDate")]
     #[serde(default)]
     pub(crate) ex_dividend_date: WireValue<RawDate>,
@@ -124,7 +124,7 @@ pub struct CalendarEventsNode {
 pub struct CalendarEarningsNode {
     #[serde(rename = "earningsDate")]
     #[serde(default)]
-    pub(crate) earnings_date: WireValue<Vec<RawDate>>,
+    pub(crate) earnings_date: BufferedWireValue<Vec<RawDate>>,
 }
 
 #[derive(Deserialize)]

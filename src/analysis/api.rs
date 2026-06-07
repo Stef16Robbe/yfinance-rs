@@ -12,11 +12,12 @@ use crate::{
             project_currency_resolution,
         },
         diagnostics::{
-            diagnostic_key, nonempty, optional_decimal_f64, optional_money_i64_with_currency_issue,
-            optional_parsed, optional_price_f64_with_currency_issue, optional_u32_from_i64,
-            optional_u32_from_raw_f64, optional_wire_value, parse_optional, required_period,
+            WireProjection, diagnostic_key, nonempty, optional_decimal_f64,
+            optional_money_i64_with_currency_issue, optional_parsed,
+            optional_price_f64_with_currency_issue, optional_u32_from_i64,
+            optional_u32_from_raw_f64, parse_optional, required_period,
         },
-        wire::{RawNum, WireValue},
+        wire::{BufferedWireValue, RawNum, WireField, WireValue},
     },
 };
 
@@ -71,7 +72,7 @@ fn module_ref<'a, T>(
     ctx: &mut ProjectionContext,
     feature: &'static str,
     field: &'static str,
-    value: &'a WireValue<T>,
+    value: &'a impl WireField<T>,
 ) -> Result<Option<&'a T>, YfError> {
     if let Some(details) = value.invalid_details() {
         ctx.provider_feature_unavailable(
@@ -87,48 +88,8 @@ fn module_ref<'a, T>(
     Ok(value.as_ref())
 }
 
-fn optional_string_from_wire(
-    ctx: &mut ProjectionContext,
-    path: &'static str,
-    key: Option<&str>,
-    field: &'static str,
-    value: &WireValue<String>,
-) -> Result<Option<String>, YfError> {
-    Ok(optional_wire_value(ctx, path, key, field, value)?.cloned())
-}
-
-fn optional_i64_from_wire(
-    ctx: &mut ProjectionContext,
-    path: &'static str,
-    key: Option<&str>,
-    field: &'static str,
-    value: &WireValue<i64>,
-) -> Result<Option<i64>, YfError> {
-    Ok(optional_wire_value(ctx, path, key, field, value)?.copied())
-}
-
-fn optional_raw_num_from_wire<T: Copy>(
-    ctx: &mut ProjectionContext,
-    path: &'static str,
-    key: Option<&str>,
-    field: &'static str,
-    value: &WireValue<RawNum<T>>,
-) -> Result<Option<RawNum<T>>, YfError> {
-    Ok(optional_wire_value(ctx, path, key, field, value)?.copied())
-}
-
-fn optional_raw_value_from_wire<T: Copy>(
-    ctx: &mut ProjectionContext,
-    path: &'static str,
-    key: Option<&str>,
-    field: &'static str,
-    value: &WireValue<RawNum<T>>,
-) -> Result<Option<T>, YfError> {
-    Ok(optional_raw_num_from_wire(ctx, path, key, field, value)?.and_then(|raw| raw.raw))
-}
-
 fn key_from_wire(value: &WireValue<String>) -> Option<String> {
-    value.as_ref().cloned()
+    value.cloned_string()
 }
 
 fn required_period_from_wire(
@@ -187,12 +148,18 @@ fn recommendation_counts(
     node: &RecommendationNode,
 ) -> Result<RecommendationCounts, YfError> {
     let strong_buy_raw =
-        optional_i64_from_wire(ctx, paths.strong_buy, key, "strongBuy", &node.strong_buy)?;
-    let buy_raw = optional_i64_from_wire(ctx, paths.buy, key, "buy", &node.buy)?;
-    let hold_raw = optional_i64_from_wire(ctx, paths.hold, key, "hold", &node.hold)?;
-    let sell_raw = optional_i64_from_wire(ctx, paths.sell, key, "sell", &node.sell)?;
+        node.strong_buy
+            .optional_copied_field(ctx, paths.strong_buy, key, "strongBuy")?;
+    let buy_raw = node.buy.optional_copied_field(ctx, paths.buy, key, "buy")?;
+    let hold_raw = node
+        .hold
+        .optional_copied_field(ctx, paths.hold, key, "hold")?;
+    let sell_raw = node
+        .sell
+        .optional_copied_field(ctx, paths.sell, key, "sell")?;
     let strong_sell_raw =
-        optional_i64_from_wire(ctx, paths.strong_sell, key, "strongSell", &node.strong_sell)?;
+        node.strong_sell
+            .optional_copied_field(ctx, paths.strong_sell, key, "strongSell")?;
 
     Ok((
         optional_u32_from_i64(ctx, paths.strong_buy, key, "strongBuy", strong_buy_raw)?,
@@ -282,8 +249,8 @@ pub(super) async fn recommendation_summary(
 #[allow(clippy::too_many_lines)]
 fn map_recommendation_summary(
     symbol: &str,
-    recommendation_trend: &WireValue<RecommendationTrendNode>,
-    financial_data: &WireValue<FinancialDataNode>,
+    recommendation_trend: &BufferedWireValue<RecommendationTrendNode>,
+    financial_data: &BufferedWireValue<FinancialDataNode>,
     data_quality: DataQuality,
 ) -> Result<YfResponse<RecommendationSummary>, YfError> {
     let mut ctx = ProjectionContext::new("analysis", data_quality);
@@ -357,19 +324,19 @@ fn map_recommendation_summary(
     let fd = module_ref(&mut ctx, "financialData", "financialData", financial_data)?;
     let (mean, mean_rating_text) = if let Some(fd) = fd {
         (
-            optional_raw_value_from_wire(
-                &mut ctx,
-                "financialData.recommendationMean",
-                Some(symbol),
-                "recommendationMean",
-                &fd.recommendation_mean,
-            )?,
-            optional_string_from_wire(
+            fd.recommendation_mean
+                .optional_copied_field(
+                    &mut ctx,
+                    "financialData.recommendationMean",
+                    Some(symbol),
+                    "recommendationMean",
+                )?
+                .and_then(|raw| raw.raw),
+            fd.recommendation_key.optional_cloned_field(
                 &mut ctx,
                 "financialData.recommendationKey",
                 Some(symbol),
                 "recommendationKey",
-                &fd.recommendation_key,
             )?,
         )
     } else {
@@ -452,14 +419,15 @@ pub(super) async fn upgrades_downgrades(
                 continue;
             }
         };
-        let from_grade_value = optional_wire_value(
-            &mut ctx,
-            "upgradeDowngradeHistory.history[].fromGrade",
-            key.as_deref(),
-            "fromGrade",
-            &h.from_grade,
-        )?
-        .map(String::as_str);
+        let from_grade_value = h
+            .from_grade
+            .optional_ref_field(
+                &mut ctx,
+                "upgradeDowngradeHistory.history[].fromGrade",
+                key.as_deref(),
+                "fromGrade",
+            )?
+            .map(String::as_str);
         let from_grade = optional_parsed::<RecommendationGrade>(
             &mut ctx,
             "upgradeDowngradeHistory.history[].fromGrade",
@@ -468,14 +436,15 @@ pub(super) async fn upgrades_downgrades(
             from_grade_value,
             string_to_recommendation_grade,
         )?;
-        let to_grade_value = optional_wire_value(
-            &mut ctx,
-            "upgradeDowngradeHistory.history[].toGrade",
-            key.as_deref(),
-            "toGrade",
-            &h.to_grade,
-        )?
-        .map(String::as_str);
+        let to_grade_value = h
+            .to_grade
+            .optional_ref_field(
+                &mut ctx,
+                "upgradeDowngradeHistory.history[].toGrade",
+                key.as_deref(),
+                "toGrade",
+            )?
+            .map(String::as_str);
         let to_grade = optional_parsed::<RecommendationGrade>(
             &mut ctx,
             "upgradeDowngradeHistory.history[].toGrade",
@@ -484,22 +453,24 @@ pub(super) async fn upgrades_downgrades(
             to_grade_value,
             string_to_recommendation_grade,
         )?;
-        let action = optional_wire_value(
-            &mut ctx,
-            "upgradeDowngradeHistory.history[].action",
-            key.as_deref(),
-            "action",
-            &h.action,
-        )?
-        .map(String::as_str);
-        let grade_change = optional_wire_value(
-            &mut ctx,
-            "upgradeDowngradeHistory.history[].gradeChange",
-            key.as_deref(),
-            "gradeChange",
-            &h.grade_change,
-        )?
-        .map(String::as_str);
+        let action = h
+            .action
+            .optional_ref_field(
+                &mut ctx,
+                "upgradeDowngradeHistory.history[].action",
+                key.as_deref(),
+                "action",
+            )?
+            .map(String::as_str);
+        let grade_change = h
+            .grade_change
+            .optional_ref_field(
+                &mut ctx,
+                "upgradeDowngradeHistory.history[].gradeChange",
+                key.as_deref(),
+                "gradeChange",
+            )?
+            .map(String::as_str);
         let (action_value, action_path, action_field) = nonempty(action).map_or_else(
             || {
                 (
@@ -560,7 +531,7 @@ async fn map_analyst_price_target(
     client: &YfClient,
     symbol: &str,
     override_currency: Option<Currency>,
-    financial_data: &WireValue<FinancialDataNode>,
+    financial_data: &BufferedWireValue<FinancialDataNode>,
     options: &CallOptions,
 ) -> Result<YfResponse<PriceTarget>, YfError> {
     let mut ctx = ProjectionContext::new("analysis", options.data_quality());
@@ -569,39 +540,44 @@ async fn map_analyst_price_target(
         return Ok(ctx.finish(PriceTarget::default()));
     };
 
-    let financial_currency = optional_string_from_wire(
+    let financial_currency = fd.financial_currency.optional_cloned_field(
         &mut ctx,
         "financialData.financialCurrency",
         Some(symbol),
         "financialCurrency",
-        &fd.financial_currency,
     )?;
     client.store_currency_hints(
         symbol,
         CurrencyHints::from_quote_summary_financial(financial_currency.as_deref()),
     );
 
-    let mean = optional_raw_value_from_wire(
-        &mut ctx,
-        "financialData.targetMeanPrice",
-        Some(symbol),
-        "targetMeanPrice",
-        &fd.target_mean_price,
-    )?;
-    let high = optional_raw_value_from_wire(
-        &mut ctx,
-        "financialData.targetHighPrice",
-        Some(symbol),
-        "targetHighPrice",
-        &fd.target_high_price,
-    )?;
-    let low = optional_raw_value_from_wire(
-        &mut ctx,
-        "financialData.targetLowPrice",
-        Some(symbol),
-        "targetLowPrice",
-        &fd.target_low_price,
-    )?;
+    let mean = fd
+        .target_mean_price
+        .optional_copied_field(
+            &mut ctx,
+            "financialData.targetMeanPrice",
+            Some(symbol),
+            "targetMeanPrice",
+        )?
+        .and_then(|raw| raw.raw);
+    let high = fd
+        .target_high_price
+        .optional_copied_field(
+            &mut ctx,
+            "financialData.targetHighPrice",
+            Some(symbol),
+            "targetHighPrice",
+        )?
+        .and_then(|raw| raw.raw);
+    let low = fd
+        .target_low_price
+        .optional_copied_field(
+            &mut ctx,
+            "financialData.targetLowPrice",
+            Some(symbol),
+            "targetLowPrice",
+        )?
+        .and_then(|raw| raw.raw);
     let (unit, currency_issue) = if [mean, high, low].iter().any(Option::is_some) {
         let projected_currency = project_currency_resolution(
             &mut ctx,
@@ -646,12 +622,11 @@ async fn map_analyst_price_target(
         "analyst price value",
     )?;
 
-    let number_of_analysts_raw = optional_raw_num_from_wire(
+    let number_of_analysts_raw = fd.number_of_analyst_opinions.optional_copied_field(
         &mut ctx,
         "financialData.numberOfAnalystOpinions",
         Some(symbol),
         "numberOfAnalystOpinions",
-        &fd.number_of_analyst_opinions,
     )?;
     let number_of_analysts = optional_u32_from_raw_f64(
         &mut ctx,
@@ -879,69 +854,61 @@ impl RawEarningsEstimate {
     fn from_wire(
         ctx: &mut ProjectionContext,
         key: Option<&str>,
-        node: &WireValue<EarningsEstimateNode>,
+        node: &BufferedWireValue<EarningsEstimateNode>,
     ) -> Result<Self, YfError> {
-        let Some(node) = optional_wire_value(
+        let Some(node) = node.optional_ref_field(
             ctx,
             "earningsTrend[].earningsEstimate",
             key,
             "earningsEstimate",
-            node,
         )?
         else {
             return Ok(Self::default());
         };
 
         Ok(Self {
-            currency: optional_string_from_wire(
+            currency: node.earnings_currency.optional_cloned_field(
                 ctx,
                 "earningsTrend[].earningsEstimate.earningsCurrency",
                 key,
                 "earningsCurrency",
-                &node.earnings_currency,
             )?,
-            avg: optional_raw_value_from_wire(
-                ctx,
-                "earningsTrend[].earningsEstimate.avg",
-                key,
-                "avg",
-                &node.avg,
-            )?,
-            low: optional_raw_value_from_wire(
-                ctx,
-                "earningsTrend[].earningsEstimate.low",
-                key,
-                "low",
-                &node.low,
-            )?,
-            high: optional_raw_value_from_wire(
-                ctx,
-                "earningsTrend[].earningsEstimate.high",
-                key,
-                "high",
-                &node.high,
-            )?,
-            year_ago_eps: optional_raw_value_from_wire(
-                ctx,
-                "earningsTrend[].earningsEstimate.yearAgoEps",
-                key,
-                "yearAgoEps",
-                &node.year_ago_eps,
-            )?,
-            num_analysts: optional_raw_num_from_wire(
+            avg: node
+                .avg
+                .optional_copied_field(ctx, "earningsTrend[].earningsEstimate.avg", key, "avg")?
+                .and_then(|raw| raw.raw),
+            low: node
+                .low
+                .optional_copied_field(ctx, "earningsTrend[].earningsEstimate.low", key, "low")?
+                .and_then(|raw| raw.raw),
+            high: node
+                .high
+                .optional_copied_field(ctx, "earningsTrend[].earningsEstimate.high", key, "high")?
+                .and_then(|raw| raw.raw),
+            year_ago_eps: node
+                .year_ago_eps
+                .optional_copied_field(
+                    ctx,
+                    "earningsTrend[].earningsEstimate.yearAgoEps",
+                    key,
+                    "yearAgoEps",
+                )?
+                .and_then(|raw| raw.raw),
+            num_analysts: node.num_analysts.optional_copied_field(
                 ctx,
                 "earningsTrend[].earningsEstimate.numberOfAnalysts",
                 key,
                 "numberOfAnalysts",
-                &node.num_analysts,
             )?,
-            growth: optional_raw_value_from_wire(
-                ctx,
-                "earningsTrend[].earningsEstimate.growth",
-                key,
-                "growth",
-                &node.growth,
-            )?,
+            growth: node
+                .growth
+                .optional_copied_field(
+                    ctx,
+                    "earningsTrend[].earningsEstimate.growth",
+                    key,
+                    "growth",
+                )?
+                .and_then(|raw| raw.raw),
         })
     }
 }
@@ -965,69 +932,61 @@ impl RawRevenueEstimate {
     fn from_wire(
         ctx: &mut ProjectionContext,
         key: Option<&str>,
-        node: &WireValue<RevenueEstimateNode>,
+        node: &BufferedWireValue<RevenueEstimateNode>,
     ) -> Result<Self, YfError> {
-        let Some(node) = optional_wire_value(
+        let Some(node) = node.optional_ref_field(
             ctx,
             "earningsTrend[].revenueEstimate",
             key,
             "revenueEstimate",
-            node,
         )?
         else {
             return Ok(Self::default());
         };
 
         Ok(Self {
-            currency: optional_string_from_wire(
+            currency: node.revenue_currency.optional_cloned_field(
                 ctx,
                 "earningsTrend[].revenueEstimate.revenueCurrency",
                 key,
                 "revenueCurrency",
-                &node.revenue_currency,
             )?,
-            avg: optional_raw_value_from_wire(
-                ctx,
-                "earningsTrend[].revenueEstimate.avg",
-                key,
-                "avg",
-                &node.avg,
-            )?,
-            low: optional_raw_value_from_wire(
-                ctx,
-                "earningsTrend[].revenueEstimate.low",
-                key,
-                "low",
-                &node.low,
-            )?,
-            high: optional_raw_value_from_wire(
-                ctx,
-                "earningsTrend[].revenueEstimate.high",
-                key,
-                "high",
-                &node.high,
-            )?,
-            year_ago_revenue: optional_raw_value_from_wire(
-                ctx,
-                "earningsTrend[].revenueEstimate.yearAgoRevenue",
-                key,
-                "yearAgoRevenue",
-                &node.year_ago_revenue,
-            )?,
-            num_analysts: optional_raw_num_from_wire(
+            avg: node
+                .avg
+                .optional_copied_field(ctx, "earningsTrend[].revenueEstimate.avg", key, "avg")?
+                .and_then(|raw| raw.raw),
+            low: node
+                .low
+                .optional_copied_field(ctx, "earningsTrend[].revenueEstimate.low", key, "low")?
+                .and_then(|raw| raw.raw),
+            high: node
+                .high
+                .optional_copied_field(ctx, "earningsTrend[].revenueEstimate.high", key, "high")?
+                .and_then(|raw| raw.raw),
+            year_ago_revenue: node
+                .year_ago_revenue
+                .optional_copied_field(
+                    ctx,
+                    "earningsTrend[].revenueEstimate.yearAgoRevenue",
+                    key,
+                    "yearAgoRevenue",
+                )?
+                .and_then(|raw| raw.raw),
+            num_analysts: node.num_analysts.optional_copied_field(
                 ctx,
                 "earningsTrend[].revenueEstimate.numberOfAnalysts",
                 key,
                 "numberOfAnalysts",
-                &node.num_analysts,
             )?,
-            growth: optional_raw_value_from_wire(
-                ctx,
-                "earningsTrend[].revenueEstimate.growth",
-                key,
-                "growth",
-                &node.growth,
-            )?,
+            growth: node
+                .growth
+                .optional_copied_field(
+                    ctx,
+                    "earningsTrend[].revenueEstimate.growth",
+                    key,
+                    "growth",
+                )?
+                .and_then(|raw| raw.raw),
         })
     }
 }
@@ -1056,57 +1015,41 @@ impl RawEpsTrend {
     fn from_wire(
         ctx: &mut ProjectionContext,
         key: Option<&str>,
-        node: &WireValue<EpsTrendNode>,
+        node: &BufferedWireValue<EpsTrendNode>,
     ) -> Result<Self, YfError> {
         let Some(node) =
-            optional_wire_value(ctx, "earningsTrend[].epsTrend", key, "epsTrend", node)?
+            node.optional_ref_field(ctx, "earningsTrend[].epsTrend", key, "epsTrend")?
         else {
             return Ok(Self::default());
         };
 
         Ok(Self {
-            currency: optional_string_from_wire(
+            currency: node.eps_trend_currency.optional_cloned_field(
                 ctx,
                 "earningsTrend[].epsTrend.epsTrendCurrency",
                 key,
                 "epsTrendCurrency",
-                &node.eps_trend_currency,
             )?,
-            current: optional_raw_value_from_wire(
-                ctx,
-                "earningsTrend[].epsTrend.current",
-                key,
-                "current",
-                &node.current,
-            )?,
-            seven_days_ago: optional_raw_value_from_wire(
-                ctx,
-                "earningsTrend[].epsTrend.7daysAgo",
-                key,
-                "7daysAgo",
-                &node.seven_days_ago,
-            )?,
-            thirty_days_ago: optional_raw_value_from_wire(
-                ctx,
-                "earningsTrend[].epsTrend.30daysAgo",
-                key,
-                "30daysAgo",
-                &node.thirty_days_ago,
-            )?,
-            sixty_days_ago: optional_raw_value_from_wire(
-                ctx,
-                "earningsTrend[].epsTrend.60daysAgo",
-                key,
-                "60daysAgo",
-                &node.sixty_days_ago,
-            )?,
-            ninety_days_ago: optional_raw_value_from_wire(
-                ctx,
-                "earningsTrend[].epsTrend.90daysAgo",
-                key,
-                "90daysAgo",
-                &node.ninety_days_ago,
-            )?,
+            current: node
+                .current
+                .optional_copied_field(ctx, "earningsTrend[].epsTrend.current", key, "current")?
+                .and_then(|raw| raw.raw),
+            seven_days_ago: node
+                .seven_days_ago
+                .optional_copied_field(ctx, "earningsTrend[].epsTrend.7daysAgo", key, "7daysAgo")?
+                .and_then(|raw| raw.raw),
+            thirty_days_ago: node
+                .thirty_days_ago
+                .optional_copied_field(ctx, "earningsTrend[].epsTrend.30daysAgo", key, "30daysAgo")?
+                .and_then(|raw| raw.raw),
+            sixty_days_ago: node
+                .sixty_days_ago
+                .optional_copied_field(ctx, "earningsTrend[].epsTrend.60daysAgo", key, "60daysAgo")?
+                .and_then(|raw| raw.raw),
+            ninety_days_ago: node
+                .ninety_days_ago
+                .optional_copied_field(ctx, "earningsTrend[].epsTrend.90daysAgo", key, "90daysAgo")?
+                .and_then(|raw| raw.raw),
         })
     }
 }
@@ -1123,47 +1066,38 @@ impl RawEpsRevisions {
     fn from_wire(
         ctx: &mut ProjectionContext,
         key: Option<&str>,
-        node: &WireValue<EpsRevisionsNode>,
+        node: &BufferedWireValue<EpsRevisionsNode>,
     ) -> Result<Self, YfError> {
-        let Some(node) = optional_wire_value(
-            ctx,
-            "earningsTrend[].epsRevisions",
-            key,
-            "epsRevisions",
-            node,
-        )?
+        let Some(node) =
+            node.optional_ref_field(ctx, "earningsTrend[].epsRevisions", key, "epsRevisions")?
         else {
             return Ok(Self::default());
         };
 
         Ok(Self {
-            up_7d: optional_raw_num_from_wire(
+            up_7d: node.up_last_7_days.optional_copied_field(
                 ctx,
                 "earningsTrend[].epsRevisions.upLast7days",
                 key,
                 "upLast7days",
-                &node.up_last_7_days,
             )?,
-            up_30d: optional_raw_num_from_wire(
+            up_30d: node.up_last_30_days.optional_copied_field(
                 ctx,
                 "earningsTrend[].epsRevisions.upLast30days",
                 key,
                 "upLast30days",
-                &node.up_last_30_days,
             )?,
-            down_7d: optional_raw_num_from_wire(
+            down_7d: node.down_last_7_days.optional_copied_field(
                 ctx,
                 "earningsTrend[].epsRevisions.downLast7days",
                 key,
                 "downLast7days",
-                &node.down_last_7_days,
             )?,
-            down_30d: optional_raw_num_from_wire(
+            down_30d: node.down_last_30_days.optional_copied_field(
                 ctx,
                 "earningsTrend[].epsRevisions.downLast30days",
                 key,
                 "downLast30days",
-                &node.down_last_30_days,
             )?,
         })
     }
@@ -1187,13 +1121,10 @@ impl RawEarningsTrendItem {
 
         Ok(Self {
             period_key: key.clone(),
-            growth: optional_raw_value_from_wire(
-                ctx,
-                "earningsTrend[].growth",
-                key.as_deref(),
-                "growth",
-                &node.growth,
-            )?,
+            growth: node
+                .growth
+                .optional_copied_field(ctx, "earningsTrend[].growth", key.as_deref(), "growth")?
+                .and_then(|raw| raw.raw),
             earnings: RawEarningsEstimate::from_wire(ctx, key.as_deref(), &node.earnings_estimate)?,
             revenue: RawRevenueEstimate::from_wire(ctx, key.as_deref(), &node.revenue_estimate)?,
             eps_trend: RawEpsTrend::from_wire(ctx, key.as_deref(), &node.eps_trend)?,

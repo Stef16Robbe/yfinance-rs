@@ -1,7 +1,7 @@
 use crate::core::{
     ProjectionContext, ProjectionIssue, YfError,
     conversions::{i64_to_date, i64_to_datetime, string_to_period},
-    wire::{RawDate, WireValue, from_raw_date},
+    wire::{RawDate, WireField, from_raw_date},
 };
 use chrono::{DateTime, NaiveDate, Utc};
 use paft::domain::ReportingPeriod;
@@ -38,13 +38,122 @@ pub fn optional_projected<T, U>(
     }
 }
 
-pub fn optional_wire_value<'a, T>(
+pub trait WireProjection<T>: WireField<T> {
+    fn optional_ref_field<'a>(
+        &'a self,
+        ctx: &mut ProjectionContext,
+        path: &'static str,
+        key: Option<&str>,
+        field: &'static str,
+    ) -> Result<Option<&'a T>, YfError> {
+        optional_wire_value(ctx, path, key, field, self)
+    }
+
+    fn optional_copied(
+        &self,
+        ctx: &mut ProjectionContext,
+        path: &'static str,
+        key: Option<&str>,
+    ) -> Result<Option<T>, YfError>
+    where
+        T: Copy,
+    {
+        self.optional_copied_field(ctx, path, key, path)
+    }
+
+    fn optional_copied_field(
+        &self,
+        ctx: &mut ProjectionContext,
+        path: &'static str,
+        key: Option<&str>,
+        field: &'static str,
+    ) -> Result<Option<T>, YfError>
+    where
+        T: Copy,
+    {
+        optional_wire_copied(ctx, path, key, field, self)
+    }
+
+    fn optional_cloned(
+        &self,
+        ctx: &mut ProjectionContext,
+        path: &'static str,
+        key: Option<&str>,
+    ) -> Result<Option<T>, YfError>
+    where
+        T: Clone,
+    {
+        self.optional_cloned_field(ctx, path, key, path)
+    }
+
+    fn optional_cloned_field(
+        &self,
+        ctx: &mut ProjectionContext,
+        path: &'static str,
+        key: Option<&str>,
+        field: &'static str,
+    ) -> Result<Option<T>, YfError>
+    where
+        T: Clone,
+    {
+        optional_wire_cloned(ctx, path, key, field, self)
+    }
+
+    fn optional_copied_map<U>(
+        &self,
+        ctx: &mut ProjectionContext,
+        path: &'static str,
+        key: Option<&str>,
+        map: impl FnOnce(T) -> U,
+    ) -> Result<Option<U>, YfError>
+    where
+        T: Copy,
+    {
+        Ok(self.optional_copied(ctx, path, key)?.map(map))
+    }
+
+    fn optional_copied_and_then<U>(
+        &self,
+        ctx: &mut ProjectionContext,
+        path: &'static str,
+        key: Option<&str>,
+        map: impl FnOnce(T) -> Option<U>,
+    ) -> Result<Option<U>, YfError>
+    where
+        T: Copy,
+    {
+        self.optional_copied_and_then_field(ctx, path, key, path, map)
+    }
+
+    fn optional_copied_and_then_field<U>(
+        &self,
+        ctx: &mut ProjectionContext,
+        path: &'static str,
+        key: Option<&str>,
+        field: &'static str,
+        map: impl FnOnce(T) -> Option<U>,
+    ) -> Result<Option<U>, YfError>
+    where
+        T: Copy,
+    {
+        Ok(self
+            .optional_copied_field(ctx, path, key, field)?
+            .and_then(map))
+    }
+}
+
+impl<T, W> WireProjection<T> for W where W: WireField<T> + ?Sized {}
+
+pub fn optional_wire_value<'a, T, W>(
     ctx: &mut ProjectionContext,
     path: &'static str,
     key: Option<&str>,
     field: &'static str,
-    value: &'a WireValue<T>,
-) -> Result<Option<&'a T>, YfError> {
+    value: &'a W,
+) -> Result<Option<&'a T>, YfError>
+where
+    W: WireField<T> + ?Sized,
+{
     if let Some(details) = value.invalid_details() {
         ctx.omitted_present_field(
             path,
@@ -59,51 +168,60 @@ pub fn optional_wire_value<'a, T>(
     Ok(value.as_ref())
 }
 
-pub fn optional_wire_copied<T: Copy>(
+pub fn optional_wire_copied<T: Copy, W>(
     ctx: &mut ProjectionContext,
     path: &'static str,
     key: Option<&str>,
     field: &'static str,
-    value: &WireValue<T>,
-) -> Result<Option<T>, YfError> {
+    value: &W,
+) -> Result<Option<T>, YfError>
+where
+    W: WireField<T> + ?Sized,
+{
     Ok(optional_wire_value(ctx, path, key, field, value)?.copied())
 }
 
-pub fn optional_wire_cloned<T: Clone>(
+pub fn optional_wire_cloned<T: Clone, W>(
     ctx: &mut ProjectionContext,
     path: &'static str,
     key: Option<&str>,
     field: &'static str,
-    value: &WireValue<T>,
-) -> Result<Option<T>, YfError> {
+    value: &W,
+) -> Result<Option<T>, YfError>
+where
+    W: WireField<T> + ?Sized,
+{
     Ok(optional_wire_value(ctx, path, key, field, value)?.cloned())
 }
 
-pub fn required_wire_value<'a, T>(
+pub fn required_wire_value<'a, T, W>(
     ctx: &mut ProjectionContext,
     item: &'static str,
     key: Option<&str>,
     field: &'static str,
-    value: &'a WireValue<T>,
-) -> Result<Option<&'a T>, YfError> {
-    match value {
-        WireValue::Valid(value) => Ok(Some(value)),
-        WireValue::Missing => {
-            ctx.dropped_item(item, key, ProjectionIssue::MissingRequiredField { field })?;
-            Ok(None)
-        }
-        WireValue::Invalid(details) => {
-            ctx.dropped_item(
-                item,
-                key,
-                ProjectionIssue::InvalidField {
-                    field,
-                    details: details.clone(),
-                },
-            )?;
-            Ok(None)
-        }
+    value: &'a W,
+) -> Result<Option<&'a T>, YfError>
+where
+    W: WireField<T> + ?Sized,
+{
+    if let Some(value) = value.as_ref() {
+        return Ok(Some(value));
     }
+
+    if let Some(details) = value.invalid_details() {
+        ctx.dropped_item(
+            item,
+            key,
+            ProjectionIssue::InvalidField {
+                field,
+                details: details.to_string(),
+            },
+        )?;
+    } else {
+        ctx.dropped_item(item, key, ProjectionIssue::MissingRequiredField { field })?;
+    }
+
+    Ok(None)
 }
 
 pub fn parse_optional<T>(

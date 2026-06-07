@@ -11,7 +11,7 @@ use crate::{
     core::{
         ProjectionContext,
         currency_resolver::ResolvedCurrencyUnit,
-        diagnostics::{optional_u32_from_i64, optional_wire_cloned, optional_wire_copied},
+        diagnostics::{WireProjection, optional_u32_from_i64},
         wire::{JsonDecimal, JsonU64, WireValue},
         yahoo_vocab::{parse_yahoo_exchange, parse_yahoo_quote_type},
     },
@@ -132,50 +132,6 @@ struct WireResult {
     quotes: Option<Vec<Value>>,
 }
 
-fn wire_str(value: &WireValue<String>) -> Option<&str> {
-    value.as_ref().map(String::as_str)
-}
-
-fn wire_string(value: &WireValue<String>) -> Option<String> {
-    wire_str(value).map(str::to_owned)
-}
-
-fn optional_screener_string(
-    ctx: &mut ProjectionContext,
-    path: &'static str,
-    key: Option<&str>,
-    value: &WireValue<String>,
-) -> Result<Option<String>, YfError> {
-    optional_wire_cloned(ctx, path, key, path, value)
-}
-
-fn optional_screener_f64(
-    ctx: &mut ProjectionContext,
-    path: &'static str,
-    key: Option<&str>,
-    value: &WireValue<f64>,
-) -> Result<Option<f64>, YfError> {
-    optional_wire_copied(ctx, path, key, path, value)
-}
-
-fn optional_screener_u64(
-    ctx: &mut ProjectionContext,
-    path: &'static str,
-    key: Option<&str>,
-    value: &WireValue<JsonU64>,
-) -> Result<Option<u64>, YfError> {
-    Ok(optional_wire_copied(ctx, path, key, path, value)?.map(JsonU64::into_u64))
-}
-
-fn optional_screener_decimal(
-    ctx: &mut ProjectionContext,
-    path: &'static str,
-    key: Option<&str>,
-    value: &WireValue<JsonDecimal>,
-) -> Result<Option<paft::Decimal>, YfError> {
-    Ok(optional_wire_copied(ctx, path, key, path, value)?.map(JsonDecimal::into_decimal))
-}
-
 #[derive(Debug, Deserialize)]
 struct WireQuote {
     #[serde(default)]
@@ -237,44 +193,44 @@ impl WireQuote {
         key: Option<&str>,
     ) -> Result<ScreenerWireFields, YfError> {
         Ok(ScreenerWireFields {
-            symbol: optional_screener_string(ctx, "symbol", key, &self.symbol)?,
-            short_name: optional_screener_string(ctx, "shortName", key, &self.short_name)?,
-            long_name: optional_screener_string(ctx, "longName", key, &self.long_name)?,
-            quote_type_raw: optional_screener_string(ctx, "quoteType", key, &self.quote_type)?,
-            exchange_raw: optional_screener_string(ctx, "exchange", key, &self.exchange)?,
-            exchange_display: optional_screener_string(
-                ctx,
-                "exchDisp",
-                key,
-                &self.exchange_display,
-            )?,
-            type_display: optional_screener_string(ctx, "typeDisp", key, &self.type_display)?,
-            regular_market_price: optional_screener_f64(
+            symbol: self.symbol.optional_cloned(ctx, "symbol", key)?,
+            short_name: self.short_name.optional_cloned(ctx, "shortName", key)?,
+            long_name: self.long_name.optional_cloned(ctx, "longName", key)?,
+            quote_type_raw: self.quote_type.optional_cloned(ctx, "quoteType", key)?,
+            exchange_raw: self.exchange.optional_cloned(ctx, "exchange", key)?,
+            exchange_display: self
+                .exchange_display
+                .optional_cloned(ctx, "exchDisp", key)?,
+            type_display: self.type_display.optional_cloned(ctx, "typeDisp", key)?,
+            regular_market_price: self.regular_market_price.optional_copied(
                 ctx,
                 "regularMarketPrice",
                 key,
-                &self.regular_market_price,
             )?,
-            regular_market_change_percent: optional_screener_f64(
+            regular_market_change_percent: self.regular_market_change_percent.optional_copied(
                 ctx,
                 "regularMarketChangePercent",
                 key,
-                &self.regular_market_change_percent,
             )?,
-            regular_market_volume: optional_screener_u64(
+            regular_market_volume: self.regular_market_volume.optional_copied_map(
                 ctx,
                 "regularMarketVolume",
                 key,
-                &self.regular_market_volume,
+                JsonU64::into_u64,
             )?,
-            market_cap: optional_screener_decimal(ctx, "marketCap", key, &self.market_cap)?,
-            currency_raw: optional_screener_string(ctx, "currency", key, &self.currency)?,
+            market_cap: self.market_cap.optional_copied_map(
+                ctx,
+                "marketCap",
+                key,
+                JsonDecimal::into_decimal,
+            )?,
+            currency_raw: self.currency.optional_cloned(ctx, "currency", key)?,
         })
     }
 
     fn project(self, ctx: &mut ProjectionContext) -> Result<ScreenerResult, YfError> {
         let wire = self;
-        let key = wire_string(&wire.symbol);
+        let key = wire.symbol.cloned_string();
         let fields = wire.fields(ctx, key.as_deref())?;
 
         let quote_type = fields

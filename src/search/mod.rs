@@ -5,20 +5,11 @@ use serde_json::Value;
 use url::Url;
 
 use crate::core::client::CacheEndpoint;
-use crate::core::diagnostics::{optional_wire_cloned, required_wire_value};
+use crate::core::diagnostics::{WireProjection, required_wire_value};
 use crate::core::wire::WireValue;
 use crate::core::yahoo_vocab::{parse_yahoo_exchange, parse_yahoo_quote_type};
 use crate::core::{CallOptions, ProjectionContext};
 use crate::{ProjectionIssue, YfClient, YfError, YfResponse};
-
-fn optional_search_string(
-    ctx: &mut ProjectionContext,
-    path: &'static str,
-    key: Option<&str>,
-    value: &WireValue<String>,
-) -> Result<Option<String>, YfError> {
-    optional_wire_cloned(ctx, path, key, path, value)
-}
 
 #[allow(clippy::too_many_lines)]
 fn parse_search_body(body: &str, ctx: &mut ProjectionContext) -> Result<SearchResponse, YfError> {
@@ -64,13 +55,17 @@ fn parse_search_body(body: &str, ctx: &mut ProjectionContext) -> Result<SearchRe
             continue;
         }
         let shortname =
-            optional_search_string(ctx, "quotes[].shortname", Some(sym.as_str()), &q.shortname)?;
-        let longname =
-            optional_search_string(ctx, "quotes[].longname", Some(sym.as_str()), &q.longname)?;
+            q.shortname
+                .optional_cloned(ctx, "quotes[].shortname", Some(sym.as_str()))?;
+        let longname = q
+            .longname
+            .optional_cloned(ctx, "quotes[].longname", Some(sym.as_str()))?;
         let quote_type =
-            optional_search_string(ctx, "quotes[].quoteType", Some(sym.as_str()), &q.quote_type)?;
-        let exchange =
-            optional_search_string(ctx, "quotes[].exchange", Some(sym.as_str()), &q.exchange)?;
+            q.quote_type
+                .optional_cloned(ctx, "quotes[].quoteType", Some(sym.as_str()))?;
+        let exchange = q
+            .exchange
+            .optional_cloned(ctx, "quotes[].exchange", Some(sym.as_str()))?;
         let exchange_opt = match exchange
             .as_deref()
             .map(str::trim)

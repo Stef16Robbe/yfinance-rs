@@ -122,6 +122,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Best-effort projection for quote, fast info, key statistics, option chains,
   screeners, search, and news now omits malformed optional wire fields with
   diagnostics instead of dropping otherwise usable top-level results.
+- Recoverable Yahoo scalar and raw-wrapper wire fields now deserialize through
+  direct Serde visitors instead of buffering each field as `serde_json::Value`,
+  composite fallback fields buffer as `serde_json::RawValue`, and shared
+  projection methods replace per-module optional wire-field wrappers.
 - `Ticker::info()` now returns `None` for optional quoteSummary-backed fields
   when Yahoo omits their backing modules, instead of returning empty/default
   values inside `Some(...)`. Missing `calendarEvents` now allows the v7 quote

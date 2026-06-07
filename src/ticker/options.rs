@@ -13,9 +13,7 @@ use crate::{
             CurrencyHints, CurrencyPurpose, ResolvedCurrencyUnit, TradingCurrencyEvidence,
             project_currency_resolution,
         },
-        diagnostics::{
-            optional_decimal_f64, optional_wire_cloned, optional_wire_copied, required_wire_value,
-        },
+        diagnostics::{WireProjection, optional_decimal_f64, required_wire_value},
         net,
         wire::{JsonU64, WireValue},
         yahoo_vocab::{first_parsed_yahoo_exchange, parse_yahoo_quote_type},
@@ -28,59 +26,6 @@ use paft::NonNegativeDecimal;
 use paft::domain::{AssetKind, Instrument};
 use paft::market::options::{OptionContractKey, OptionSide};
 use paft::money::PriceAmount;
-
-fn wire_str(value: &WireValue<String>) -> Option<&str> {
-    value.as_ref().map(String::as_str)
-}
-
-fn wire_string(value: &WireValue<String>) -> Option<String> {
-    wire_str(value).map(str::to_owned)
-}
-
-fn optional_option_string(
-    ctx: &mut ProjectionContext,
-    path: &'static str,
-    key: Option<&str>,
-    value: &WireValue<String>,
-) -> Result<Option<String>, YfError> {
-    optional_wire_cloned(ctx, path, key, path, value)
-}
-
-fn optional_option_i64(
-    ctx: &mut ProjectionContext,
-    path: &'static str,
-    key: Option<&str>,
-    value: &WireValue<i64>,
-) -> Result<Option<i64>, YfError> {
-    optional_wire_copied(ctx, path, key, path, value)
-}
-
-fn optional_option_f64(
-    ctx: &mut ProjectionContext,
-    path: &'static str,
-    key: Option<&str>,
-    value: &WireValue<f64>,
-) -> Result<Option<f64>, YfError> {
-    optional_wire_copied(ctx, path, key, path, value)
-}
-
-fn optional_option_bool(
-    ctx: &mut ProjectionContext,
-    path: &'static str,
-    key: Option<&str>,
-    value: &WireValue<bool>,
-) -> Result<Option<bool>, YfError> {
-    optional_wire_copied(ctx, path, key, path, value)
-}
-
-fn optional_option_u64(
-    ctx: &mut ProjectionContext,
-    path: &'static str,
-    key: Option<&str>,
-    value: &WireValue<JsonU64>,
-) -> Result<Option<u64>, YfError> {
-    Ok(optional_wire_copied(ctx, path, key, path, value)?.map(JsonU64::into_u64))
-}
 
 /* ---------------- Public: expirations + chain ---------------- */
 
@@ -128,10 +73,10 @@ pub async fn option_chain_with_diagnostics(
         client.store_currency_hints(
             &symbol,
             CurrencyHints::from_options_quote(
-                wire_str(&quote.currency),
-                wire_str(&quote.exchange),
-                wire_str(&quote.full_exchange_name),
-                wire_str(&quote.quote_type),
+                quote.currency.as_str(),
+                quote.exchange.as_str(),
+                quote.full_exchange_name.as_str(),
+                quote.quote_type.as_str(),
             ),
         );
     }
@@ -147,18 +92,15 @@ pub async fn option_chain_with_diagnostics(
         }));
     };
 
-    let expiration = optional_option_i64(
-        &mut ctx,
-        "expirationDate",
-        Some(symbol.as_str()),
-        &od.expiration_date,
-    )?
-    .or_else(|| {
-        used_url.query().and_then(|q| {
-            q.split('&')
-                .find_map(|kv| kv.strip_prefix("date=").and_then(|v| v.parse::<i64>().ok()))
-        })
-    });
+    let expiration = od
+        .expiration_date
+        .optional_copied(&mut ctx, "expirationDate", Some(symbol.as_str()))?
+        .or_else(|| {
+            used_url.query().and_then(|q| {
+                q.split('&')
+                    .find_map(|kv| kv.strip_prefix("date=").and_then(|v| v.parse::<i64>().ok()))
+            })
+        });
 
     if !option_date_has_contracts(&od) {
         return Ok(ctx.finish(OptionChain {
@@ -295,12 +237,10 @@ fn project_option_contract(
     underlying: &Instrument,
 ) -> Result<Option<OptionContract>, YfError> {
     let key_for_diag = option_contract_diag_key(contract, option_side, expiration);
-    let contract_expiration = optional_option_i64(
-        ctx,
-        "expiration",
-        key_for_diag.as_deref(),
-        &contract.expiration,
-    )?;
+    let contract_expiration =
+        contract
+            .expiration
+            .optional_copied(ctx, "expiration", key_for_diag.as_deref())?;
     let Some(exp_ts) = contract_expiration.or(expiration) else {
         ctx.dropped_item(
             "option_contract",
@@ -361,39 +301,41 @@ fn project_option_contract(
     {
         key = key.with_contract_instrument(contract_instrument);
     }
-    let last_price = optional_option_f64(
+    let last_price =
+        contract
+            .last_price
+            .optional_copied(ctx, "lastPrice", key_for_diag.as_deref())?;
+    let bid = contract
+        .bid
+        .optional_copied(ctx, "bid", key_for_diag.as_deref())?;
+    let ask = contract
+        .ask
+        .optional_copied(ctx, "ask", key_for_diag.as_deref())?;
+    let volume = contract.volume.optional_copied_map(
         ctx,
-        "lastPrice",
+        "volume",
         key_for_diag.as_deref(),
-        &contract.last_price,
+        JsonU64::into_u64,
     )?;
-    let bid = optional_option_f64(ctx, "bid", key_for_diag.as_deref(), &contract.bid)?;
-    let ask = optional_option_f64(ctx, "ask", key_for_diag.as_deref(), &contract.ask)?;
-    let volume = optional_option_u64(ctx, "volume", key_for_diag.as_deref(), &contract.volume)?;
-    let open_interest = optional_option_u64(
+    let open_interest = contract.open_interest.optional_copied_map(
         ctx,
         "openInterest",
         key_for_diag.as_deref(),
-        &contract.open_interest,
+        JsonU64::into_u64,
     )?;
-    let implied_volatility = optional_option_f64(
+    let implied_volatility = contract.implied_volatility.optional_copied(
         ctx,
         "impliedVolatility",
         key_for_diag.as_deref(),
-        &contract.implied_volatility,
     )?;
-    let in_the_money = optional_option_bool(
-        ctx,
-        "inTheMoney",
-        key_for_diag.as_deref(),
-        &contract.in_the_money,
-    )?;
-    let last_trade_date = optional_option_i64(
-        ctx,
-        "lastTradeDate",
-        key_for_diag.as_deref(),
-        &contract.last_trade_date,
-    )?;
+    let in_the_money =
+        contract
+            .in_the_money
+            .optional_copied(ctx, "inTheMoney", key_for_diag.as_deref())?;
+    let last_trade_date =
+        contract
+            .last_trade_date
+            .optional_copied(ctx, "lastTradeDate", key_for_diag.as_deref())?;
 
     Ok(Some(OptionContract {
         key,
@@ -449,8 +391,9 @@ fn optional_contract_instrument(
     key: Option<&str>,
     contract: &OptContractNode,
 ) -> Result<Option<Instrument>, YfError> {
-    let Some(symbol) =
-        optional_option_string(ctx, "contractSymbol", key, &contract.contract_symbol)?
+    let Some(symbol) = contract
+        .contract_symbol
+        .optional_cloned(ctx, "contractSymbol", key)?
     else {
         return Ok(None);
     };
@@ -534,7 +477,9 @@ fn option_contract_diag_key(
     option_side: OptionSide,
     expiration: Option<i64>,
 ) -> Option<Cow<'_, str>> {
-    wire_str(&contract.contract_symbol)
+    contract
+        .contract_symbol
+        .as_str()
         .map(Cow::Borrowed)
         .or_else(|| {
             let side = match option_side {
@@ -587,9 +532,9 @@ fn underlying_instrument_from_result(node: &OptResultNode) -> Option<Instrument>
         .underlying_symbol
         .as_ref()
         .map(String::as_str)
-        .or_else(|| quote.and_then(|quote| wire_str(&quote.symbol)))?;
+        .or_else(|| quote.and_then(|quote| quote.symbol.as_str()))?;
     let kind = quote
-        .and_then(|quote| wire_str(&quote.quote_type))
+        .and_then(|quote| quote.quote_type.as_str())
         .and_then(|value| quote_type_to_asset_kind(value).ok())?;
     let exchange = quote.and_then(OptQuoteNode::exchange);
 
@@ -607,7 +552,7 @@ fn quote_type_to_asset_kind(value: &str) -> Result<AssetKind, YfError> {
 fn quote_type_from_result(node: &OptResultNode) -> Option<String> {
     node.quote
         .as_ref()
-        .and_then(|quote| wire_str(&quote.quote_type))
+        .and_then(|quote| quote.quote_type.as_str())
         .map(str::trim)
         .filter(|quote_type| !quote_type.is_empty())
         .map(str::to_string)
@@ -737,10 +682,10 @@ struct OptQuoteNode {
 impl OptQuoteNode {
     fn exchange(&self) -> Option<paft::domain::Exchange> {
         first_parsed_yahoo_exchange([
-            wire_str(&self.full_exchange_name),
-            wire_str(&self.exchange),
-            wire_str(&self.market),
-            wire_str(&self.market_cap_figure_exchange),
+            self.full_exchange_name.as_str(),
+            self.exchange.as_str(),
+            self.market.as_str(),
+            self.market_cap_figure_exchange.as_str(),
         ])
     }
 }
@@ -788,5 +733,5 @@ struct OptContractNode {
 }
 
 fn currency_from_result(node: &OptResultNode) -> Option<String> {
-    node.quote.as_ref().and_then(|q| wire_string(&q.currency))
+    node.quote.as_ref().and_then(|q| q.currency.cloned_string())
 }

@@ -2,7 +2,12 @@
 
 use crate::{
     YfClient, YfError,
-    core::{CallOptions, currency_resolver::CurrencyHints, quotesummary, wire::WireValue},
+    core::{
+        CallOptions,
+        currency_resolver::CurrencyHints,
+        quotesummary,
+        wire::{BufferedWireValue, WireValue},
+    },
 };
 use paft::domain::Isin;
 use serde::Deserialize;
@@ -127,13 +132,13 @@ pub(super) fn load_from_quote_summary_result(
 pub(super) struct V10Result {
     #[serde(rename = "assetProfile")]
     #[serde(default)]
-    asset_profile: WireValue<V10AssetProfile>,
+    asset_profile: BufferedWireValue<V10AssetProfile>,
     #[serde(rename = "fundProfile")]
     #[serde(default)]
-    fund_profile: WireValue<V10FundProfile>,
+    fund_profile: BufferedWireValue<V10FundProfile>,
     #[serde(rename = "quoteType")]
     #[serde(default)]
-    quote_type: WireValue<V10QuoteType>,
+    quote_type: BufferedWireValue<V10QuoteType>,
 }
 
 #[derive(Deserialize)]

@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::core::wire::{RawNum, WireValue};
+use crate::core::wire::{BufferedWireValue, RawNum, WireValue};
 
 /* ---------------- Serde mapping (only what we need) ---------------- */
 
@@ -8,19 +8,19 @@ use crate::core::wire::{RawNum, WireValue};
 pub struct V10Result {
     #[serde(rename = "recommendationTrend")]
     #[serde(default)]
-    pub(crate) recommendation_trend: WireValue<RecommendationTrendNode>,
+    pub(crate) recommendation_trend: BufferedWireValue<RecommendationTrendNode>,
 
     #[serde(rename = "upgradeDowngradeHistory")]
     #[serde(default)]
-    pub(crate) upgrade_downgrade_history: WireValue<UpgradeDowngradeHistoryNode>,
+    pub(crate) upgrade_downgrade_history: BufferedWireValue<UpgradeDowngradeHistoryNode>,
 
     #[serde(rename = "financialData")]
     #[serde(default)]
-    pub(crate) financial_data: WireValue<FinancialDataNode>,
+    pub(crate) financial_data: BufferedWireValue<FinancialDataNode>,
 
     #[serde(rename = "earningsTrend")]
     #[serde(default)]
-    pub(crate) earnings_trend: WireValue<EarningsTrendNode>,
+    pub(crate) earnings_trend: BufferedWireValue<EarningsTrendNode>,
 }
 
 /* --- recommendation trend --- */
@@ -28,7 +28,7 @@ pub struct V10Result {
 #[derive(Deserialize)]
 pub struct RecommendationTrendNode {
     #[serde(default)]
-    pub(crate) trend: WireValue<Vec<RecommendationNode>>,
+    pub(crate) trend: BufferedWireValue<Vec<RecommendationNode>>,
 }
 
 #[derive(Deserialize)]
@@ -56,7 +56,7 @@ pub struct RecommendationNode {
 #[derive(Deserialize)]
 pub struct UpgradeDowngradeHistoryNode {
     #[serde(default)]
-    pub(crate) history: WireValue<Vec<UpgradeNode>>,
+    pub(crate) history: BufferedWireValue<Vec<UpgradeNode>>,
 }
 
 #[derive(Deserialize)]
@@ -113,7 +113,7 @@ pub struct FinancialDataNode {
 #[derive(Deserialize)]
 pub struct EarningsTrendNode {
     #[serde(default)]
-    pub(crate) trend: WireValue<Vec<EarningsTrendItemNode>>,
+    pub(crate) trend: BufferedWireValue<Vec<EarningsTrendItemNode>>,
 }
 
 #[derive(Deserialize)]
@@ -124,16 +124,16 @@ pub struct EarningsTrendItemNode {
     pub(crate) growth: WireValue<RawNum<f64>>,
     #[serde(rename = "earningsEstimate")]
     #[serde(default)]
-    pub(crate) earnings_estimate: WireValue<EarningsEstimateNode>,
+    pub(crate) earnings_estimate: BufferedWireValue<EarningsEstimateNode>,
     #[serde(rename = "revenueEstimate")]
     #[serde(default)]
-    pub(crate) revenue_estimate: WireValue<RevenueEstimateNode>,
+    pub(crate) revenue_estimate: BufferedWireValue<RevenueEstimateNode>,
     #[serde(rename = "epsTrend")]
     #[serde(default)]
-    pub(crate) eps_trend: WireValue<EpsTrendNode>,
+    pub(crate) eps_trend: BufferedWireValue<EpsTrendNode>,
     #[serde(rename = "epsRevisions")]
     #[serde(default)]
-    pub(crate) eps_revisions: WireValue<EpsRevisionsNode>,
+    pub(crate) eps_revisions: BufferedWireValue<EpsRevisionsNode>,
 }
 
 #[derive(Deserialize)]

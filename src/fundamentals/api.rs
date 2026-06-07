@@ -12,10 +12,10 @@ use crate::{
             project_currency_resolution,
         },
         diagnostics::{
-            optional_money_decimal_with_currency_issue, optional_price_f64_with_currency_issue,
-            optional_wire_value, required_period, required_timestamp,
+            WireProjection, optional_money_decimal_with_currency_issue,
+            optional_price_f64_with_currency_issue, required_period, required_timestamp,
         },
-        wire::{RawDate, RawDecimal, RawNum, RawNumU64, WireValue},
+        wire::{BufferedWireValue, RawDate, RawDecimal, RawNumU64, WireField, WireValue},
     },
     fundamentals::wire::{TimeseriesData, TimeseriesEnvelope},
 };
@@ -39,7 +39,7 @@ fn module_ref<'a, T>(
     ctx: &mut ProjectionContext,
     feature: &'static str,
     field: &'static str,
-    value: &'a WireValue<T>,
+    value: &'a impl WireField<T>,
 ) -> Result<Option<&'a T>, YfError> {
     if let Some(details) = value.invalid_details() {
         ctx.provider_feature_unavailable(
@@ -53,36 +53,6 @@ fn module_ref<'a, T>(
     }
 
     Ok(value.as_ref())
-}
-
-fn optional_string_from_wire(
-    ctx: &mut ProjectionContext,
-    path: &'static str,
-    key: Option<&str>,
-    field: &'static str,
-    value: &WireValue<String>,
-) -> Result<Option<String>, YfError> {
-    Ok(optional_wire_value(ctx, path, key, field, value)?.cloned())
-}
-
-fn optional_raw_decimal_from_wire(
-    ctx: &mut ProjectionContext,
-    path: &'static str,
-    key: Option<&str>,
-    field: &'static str,
-    value: &WireValue<RawDecimal>,
-) -> Result<Option<paft::Decimal>, YfError> {
-    Ok(optional_wire_value(ctx, path, key, field, value)?.and_then(|value| value.raw))
-}
-
-fn optional_raw_num_from_wire<T: Copy>(
-    ctx: &mut ProjectionContext,
-    path: &'static str,
-    key: Option<&str>,
-    field: &'static str,
-    value: &WireValue<RawNum<T>>,
-) -> Result<Option<T>, YfError> {
-    Ok(optional_wire_value(ctx, path, key, field, value)?.and_then(|value| value.raw))
 }
 
 fn required_i64_from_wire(
@@ -1017,12 +987,11 @@ pub(super) async fn earnings(
         ctx.unavailable_feature("earnings")?;
         return Ok(ctx.finish(Earnings::default()));
     };
-    let financial_currency = optional_string_from_wire(
+    let financial_currency = e.financial_currency.optional_cloned_field(
         &mut ctx,
         "earnings.financialCurrency",
         Some(symbol),
         "financialCurrency",
-        &e.financial_currency,
     )?;
     client.store_currency_hints(
         symbol,
@@ -1049,29 +1018,26 @@ pub(super) async fn earnings(
         (None, None)
     };
 
-    let financials_chart = optional_wire_value(
+    let financials_chart = e.financials_chart.optional_ref_field(
         &mut ctx,
         "earnings.financialsChart",
         None,
         "financialsChart",
-        &e.financials_chart,
     )?;
-    let earnings_chart = optional_wire_value(
+    let earnings_chart = e.earnings_chart.optional_ref_field(
         &mut ctx,
         "earnings.earningsChart",
         None,
         "earningsChart",
-        &e.earnings_chart,
     )?;
 
     let mut yearly = Vec::new();
     if let Some(financials_chart) = financials_chart
-        && let Some(rows) = optional_wire_value(
+        && let Some(rows) = financials_chart.yearly.optional_ref_field(
             &mut ctx,
             "earnings.financialsChart.yearly",
             None,
             "yearly",
-            &financials_chart.yearly,
         )?
     {
         for y in rows {
@@ -1108,20 +1074,24 @@ pub(super) async fn earnings(
                 }
             };
             let year_key = Some(year.to_string());
-            let revenue = optional_raw_decimal_from_wire(
-                &mut ctx,
-                "financialsChart.yearly[].revenue",
-                year_key.as_deref(),
-                "revenue",
-                &y.revenue,
-            )?;
-            let earnings = optional_raw_decimal_from_wire(
-                &mut ctx,
-                "financialsChart.yearly[].earnings",
-                year_key.as_deref(),
-                "earnings",
-                &y.earnings,
-            )?;
+            let revenue = y
+                .revenue
+                .optional_copied_field(
+                    &mut ctx,
+                    "financialsChart.yearly[].revenue",
+                    year_key.as_deref(),
+                    "revenue",
+                )?
+                .and_then(|raw| raw.raw);
+            let earnings = y
+                .earnings
+                .optional_copied_field(
+                    &mut ctx,
+                    "financialsChart.yearly[].earnings",
+                    year_key.as_deref(),
+                    "earnings",
+                )?
+                .and_then(|raw| raw.raw);
             row.revenue = optional_money_decimal_with_currency_issue(
                 &mut ctx,
                 "financialsChart.yearly[].revenue",
@@ -1146,12 +1116,11 @@ pub(super) async fn earnings(
 
     let mut quarterly = Vec::new();
     if let Some(financials_chart) = financials_chart
-        && let Some(rows) = optional_wire_value(
+        && let Some(rows) = financials_chart.quarterly.optional_ref_field(
             &mut ctx,
             "earnings.financialsChart.quarterly",
             None,
             "quarterly",
-            &financials_chart.quarterly,
         )?
     {
         for q in rows {
@@ -1166,20 +1135,24 @@ pub(super) async fn earnings(
                 continue;
             };
             let period_key = q.date.as_ref().cloned();
-            let revenue = optional_raw_decimal_from_wire(
-                &mut ctx,
-                "financialsChart.quarterly[].revenue",
-                period_key.as_deref(),
-                "revenue",
-                &q.revenue,
-            )?;
-            let earnings = optional_raw_decimal_from_wire(
-                &mut ctx,
-                "financialsChart.quarterly[].earnings",
-                period_key.as_deref(),
-                "earnings",
-                &q.earnings,
-            )?;
+            let revenue = q
+                .revenue
+                .optional_copied_field(
+                    &mut ctx,
+                    "financialsChart.quarterly[].revenue",
+                    period_key.as_deref(),
+                    "revenue",
+                )?
+                .and_then(|raw| raw.raw);
+            let earnings = q
+                .earnings
+                .optional_copied_field(
+                    &mut ctx,
+                    "financialsChart.quarterly[].earnings",
+                    period_key.as_deref(),
+                    "earnings",
+                )?
+                .and_then(|raw| raw.raw);
             quarterly.push(EarningsQuarter {
                 period,
                 revenue: optional_money_decimal_with_currency_issue(
@@ -1206,12 +1179,11 @@ pub(super) async fn earnings(
 
     let mut quarterly_eps = Vec::new();
     if let Some(earnings_chart) = earnings_chart
-        && let Some(rows) = optional_wire_value(
+        && let Some(rows) = earnings_chart.quarterly.optional_ref_field(
             &mut ctx,
             "earnings.earningsChart.quarterly",
             None,
             "quarterly",
-            &earnings_chart.quarterly,
         )?
     {
         for q in rows {
@@ -1226,20 +1198,24 @@ pub(super) async fn earnings(
                 continue;
             };
             let period_key = q.date.as_ref().cloned();
-            let actual = optional_raw_num_from_wire(
-                &mut ctx,
-                "earningsChart.quarterly[].actual",
-                period_key.as_deref(),
-                "actual",
-                &q.actual,
-            )?;
-            let estimate = optional_raw_num_from_wire(
-                &mut ctx,
-                "earningsChart.quarterly[].estimate",
-                period_key.as_deref(),
-                "estimate",
-                &q.estimate,
-            )?;
+            let actual = q
+                .actual
+                .optional_copied_field(
+                    &mut ctx,
+                    "earningsChart.quarterly[].actual",
+                    period_key.as_deref(),
+                    "actual",
+                )?
+                .and_then(|raw| raw.raw);
+            let estimate = q
+                .estimate
+                .optional_copied_field(
+                    &mut ctx,
+                    "earningsChart.quarterly[].estimate",
+                    period_key.as_deref(),
+                    "estimate",
+                )?
+                .and_then(|raw| raw.raw);
             quarterly_eps.push(EarningsQuarterEps {
                 period,
                 actual: optional_price_f64_with_currency_issue(
@@ -1331,20 +1307,19 @@ fn map_calendar(
 
 fn calendar_earnings_dates(
     ctx: &mut ProjectionContext,
-    earnings: &WireValue<super::wire::CalendarEarningsNode>,
+    earnings: &BufferedWireValue<super::wire::CalendarEarningsNode>,
 ) -> Result<Vec<DateTime<Utc>>, YfError> {
     let mut out = Vec::new();
     let Some(earnings) =
-        optional_wire_value(ctx, "calendarEvents.earnings", None, "earnings", earnings)?
+        earnings.optional_ref_field(ctx, "calendarEvents.earnings", None, "earnings")?
     else {
         return Ok(out);
     };
-    let Some(dates) = optional_wire_value(
+    let Some(dates) = earnings.earnings_date.optional_ref_field(
         ctx,
         "calendarEvents.earnings.earningsDate",
         None,
         "earningsDate",
-        &earnings.earnings_date,
     )?
     else {
         return Ok(out);
@@ -1371,7 +1346,7 @@ fn optional_calendar_date(
     field: &'static str,
     value: &WireValue<RawDate>,
 ) -> Result<Option<NaiveDate>, YfError> {
-    let Some(value) = optional_wire_value(ctx, path, None, field, value)? else {
+    let Some(value) = value.optional_ref_field(ctx, path, None, field)? else {
         return Ok(None);
     };
     let Some(raw) = value.raw else {

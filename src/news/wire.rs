@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use serde_json::Value;
 
-use crate::core::wire::WireValue;
+use crate::core::wire::{BufferedWireValue, WireValue};
 
 #[derive(Deserialize)]
 pub struct NewsEnvelope {
@@ -24,7 +24,7 @@ pub struct StreamItem {
     #[serde(default)]
     pub(crate) id: WireValue<String>,
     #[serde(default)]
-    pub(crate) content: WireValue<Content>,
+    pub(crate) content: BufferedWireValue<Content>,
     // The python 'ad' check might be for a field at this level.
     pub(crate) ad: Option<Value>,
 }
@@ -37,10 +37,10 @@ pub struct Content {
     #[serde(default)]
     pub(crate) pub_date: WireValue<String>,
     #[serde(default)]
-    pub(crate) provider: WireValue<Provider>,
+    pub(crate) provider: BufferedWireValue<Provider>,
     #[serde(rename = "canonicalUrl")]
     #[serde(default)]
-    pub(crate) canonical_url: WireValue<CanonicalUrl>,
+    pub(crate) canonical_url: BufferedWireValue<CanonicalUrl>,
 }
 
 #[derive(Deserialize)]
