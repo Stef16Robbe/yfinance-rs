@@ -98,6 +98,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Invalid-crumb body detection no longer allocates a lowercased copy of large
+  successful response bodies on authenticated fetches.
 - Successful HTTP responses are now validated against endpoint provider-error
   envelopes before being written to the response cache, and stale cached bodies
   that fail the same validation are evicted instead of replayed.

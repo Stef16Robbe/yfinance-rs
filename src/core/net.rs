@@ -492,7 +492,18 @@ fn should_retry_invalid_crumb_body(
 ) -> bool {
     config.retry_on_invalid_crumb_body
         && detect_invalid_crumb_body
-        && body.to_ascii_lowercase().contains("invalid crumb")
+        && has_invalid_crumb_marker(body)
+}
+
+fn has_invalid_crumb_marker(body: &str) -> bool {
+    const INVALID_CRUMB_BODY_MAX_LEN: usize = 200;
+    const INVALID_CRUMB_MARKER: &[u8] = b"invalid crumb";
+
+    body.len() <= INVALID_CRUMB_BODY_MAX_LEN
+        && body
+            .as_bytes()
+            .windows(INVALID_CRUMB_MARKER.len())
+            .any(|window| window.eq_ignore_ascii_case(INVALID_CRUMB_MARKER))
 }
 
 const fn is_auth_status(status: u16) -> bool {
@@ -568,6 +579,37 @@ mod tests {
             then.status(200).body("fresh-crumb");
         });
         (cookie, crumb)
+    }
+
+    #[test]
+    fn invalid_crumb_body_detection_is_case_insensitive_and_size_bounded() {
+        assert!(should_retry_invalid_crumb_body(
+            quote_auth_config(),
+            true,
+            INVALID_CRUMB_BODY
+        ));
+        assert!(should_retry_invalid_crumb_body(
+            quote_auth_config(),
+            true,
+            "Invalid Crumb"
+        ));
+        assert!(should_retry_invalid_crumb_body(
+            quote_auth_config(),
+            true,
+            "invalid crumb"
+        ));
+        assert!(!should_retry_invalid_crumb_body(
+            quote_auth_config(),
+            false,
+            INVALID_CRUMB_BODY
+        ));
+
+        let large_success_body = format!("{}Invalid Crumb", "x".repeat(201));
+        assert!(!should_retry_invalid_crumb_body(
+            quote_auth_config(),
+            true,
+            &large_success_body
+        ));
     }
 
     #[tokio::test]
