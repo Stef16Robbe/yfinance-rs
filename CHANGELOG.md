@@ -238,6 +238,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   a usable instrument kind and report a diagnostic, instead of failing the whole batch.
 - Clarify response-cache TTL documentation so endpoint-specific TTLs are not
   mistaken for opt-ins that override `CacheMode::Default` on volatile endpoints.
+- Holders projection now avoids allocating diagnostic keys on successful
+  required-name field validation.
 - `ScreenerNumber` no longer exposes public enum variants that can bypass
   finite-float validation and panic during screener query serialization.
 - Text redaction now masks crumb and auth-like query parameters after comma-separated

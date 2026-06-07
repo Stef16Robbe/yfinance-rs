@@ -18,6 +18,29 @@ pub fn nonempty_string(value: Option<String>) -> Option<String> {
     value.filter(|value| !value.trim().is_empty())
 }
 
+pub fn required_nonempty_string(
+    ctx: &mut ProjectionContext,
+    item: &'static str,
+    field: &'static str,
+    value: Option<String>,
+) -> Result<Option<String>, YfError> {
+    let Some(value) = value else {
+        ctx.dropped_item(item, None, ProjectionIssue::MissingRequiredField { field })?;
+        return Ok(None);
+    };
+
+    if value.trim().is_empty() {
+        ctx.dropped_item(
+            item,
+            Some(value.as_str()),
+            ProjectionIssue::MissingRequiredField { field },
+        )?;
+        return Ok(None);
+    }
+
+    Ok(Some(value))
+}
+
 pub fn optional_projected<T, U>(
     ctx: &mut ProjectionContext,
     path: &'static str,

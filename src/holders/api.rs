@@ -14,8 +14,8 @@ use crate::core::{
     },
     diagnostics::{
         WireProjection, nonempty_string, optional_decimal_f64,
-        optional_money_u64_with_currency_issue, optional_ratio_f64, required_parsed,
-        required_wire_date,
+        optional_money_u64_with_currency_issue, optional_ratio_f64, required_nonempty_string,
+        required_parsed, required_wire_date,
     },
     quotesummary,
 };
@@ -181,15 +181,9 @@ async fn map_ownership_list(
                 continue;
             }
         };
-        let key = h.organization.as_deref().map(str::to_string);
-        let Some(holder) = nonempty_string(h.organization) else {
-            ctx.dropped_item(
-                "institutional_holder",
-                key.as_deref(),
-                ProjectionIssue::MissingRequiredField {
-                    field: "organization",
-                },
-            )?;
+        let Some(holder) =
+            required_nonempty_string(ctx, "institutional_holder", "organization", h.organization)?
+        else {
             continue;
         };
         let Some(date_reported) = required_wire_date(
@@ -389,13 +383,9 @@ pub(super) async fn insider_transactions(
             }
         };
         let inferred_transaction_type = infer_blank_insider_transaction_type(&t);
-        let key = t.insider.as_deref().map(str::to_string);
-        let Some(insider) = nonempty_string(t.insider) else {
-            ctx.dropped_item(
-                "insider_transaction",
-                key.as_deref(),
-                ProjectionIssue::MissingRequiredField { field: "insider" },
-            )?;
+        let Some(insider) =
+            required_nonempty_string(&mut ctx, "insider_transaction", "insider", t.insider)?
+        else {
             continue;
         };
         let Some(position) = required_parsed::<InsiderPosition>(
@@ -523,13 +513,9 @@ pub(super) async fn insider_roster_holders(
                 continue;
             }
         };
-        let key = h.name.as_deref().map(str::to_string);
-        let Some(name) = nonempty_string(h.name) else {
-            ctx.dropped_item(
-                "insider_roster_holder",
-                key.as_deref(),
-                ProjectionIssue::MissingRequiredField { field: "name" },
-            )?;
+        let Some(name) =
+            required_nonempty_string(&mut ctx, "insider_roster_holder", "name", h.name)?
+        else {
             continue;
         };
         let Some(position) = required_parsed::<InsiderPosition>(
