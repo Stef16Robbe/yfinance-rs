@@ -98,6 +98,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Embedded `ws://` and `wss://` URLs now have sensitive query parameters
+  redacted in error text, including WebSocket startup status errors.
 - Invalid-crumb body detection no longer allocates a lowercased copy of large
   successful response bodies on authenticated fetches.
 - Successful HTTP responses are now validated against endpoint provider-error

@@ -32,8 +32,8 @@ use crate::{
     core::client::{CacheMode, RetryConfig, normalize_symbols},
     core::conversions::{decimal_from_f32, quantity_from_i64, quantity_from_u64},
     core::currency_resolver::ResolvedCurrencyUnit,
-    core::error::RedactedHttpError,
     core::yahoo_vocab::{parse_yahoo_quote_type, yahoo_exchange_to_listing_currency},
+    core::{error::RedactedHttpError, redaction::RedactedUrl},
 };
 use paft::domain::{AssetKind, Instrument};
 use paft::market::quote::QuoteUpdate;
@@ -445,7 +445,7 @@ async fn connect_websocket_stream(
     if status != StatusCode::SWITCHING_PROTOCOLS {
         return Err(YfError::Status {
             status: status.as_u16(),
-            url: base.to_string(),
+            url: RedactedUrl::new(base).to_string(),
         });
     }
 

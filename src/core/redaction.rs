@@ -104,16 +104,14 @@ pub fn redact_auth_query_params_in_text(text: &str) -> String {
 }
 
 fn next_url_start(text: &str, from: usize) -> Option<usize> {
-    let haystack = &text[from..];
-    let http = haystack.find("http://");
-    let https = haystack.find("https://");
+    const URL_PREFIXES: [&str; 4] = ["http://", "https://", "ws://", "wss://"];
 
-    match (http, https) {
-        (Some(http), Some(https)) => Some(from + http.min(https)),
-        (Some(http), None) => Some(from + http),
-        (None, Some(https)) => Some(from + https),
-        (None, None) => None,
-    }
+    let haystack = &text[from..];
+    URL_PREFIXES
+        .iter()
+        .filter_map(|prefix| haystack.find(prefix))
+        .min()
+        .map(|offset| from + offset)
 }
 
 fn url_end(text: &str, start: usize) -> usize {
@@ -206,6 +204,26 @@ mod tests {
 
         assert!(!redacted.contains("s3cr3t"));
         assert!(redacted.contains("crumb=REDACTED"));
+    }
+
+    #[test]
+    fn redacted_text_masks_websocket_urls() {
+        let text = concat!(
+            "websocket failed for ",
+            "wss://streamer.finance.yahoo.com/?version=2&crumb=s3cr3t&token=t ",
+            "while proxying ws://localhost/stream?symbols=AAPL&cookie=session"
+        );
+
+        let redacted = redact_auth_query_params_in_text(text);
+
+        assert!(redacted.contains("wss://streamer.finance.yahoo.com/?version=2"));
+        assert!(redacted.contains("crumb=REDACTED"));
+        assert!(redacted.contains("token=REDACTED"));
+        assert!(redacted.contains("ws://localhost/stream?symbols=AAPL"));
+        assert!(redacted.contains("cookie=REDACTED"));
+        assert!(!redacted.contains("s3cr3t"));
+        assert!(!redacted.contains("token=t"));
+        assert!(!redacted.contains("cookie=session"));
     }
 
     #[test]

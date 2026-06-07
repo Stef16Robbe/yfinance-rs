@@ -20,7 +20,7 @@ pub(crate) mod logging;
 pub mod models;
 pub(crate) mod quotes;
 pub(crate) mod quotesummary;
-mod redaction;
+pub(crate) mod redaction;
 /// Service traits for abstracting functionality like history fetching.
 pub mod services;
 pub(crate) mod wire;

@@ -216,6 +216,41 @@ async fn stream_websocket_reports_initial_connection_failure() {
 }
 
 #[tokio::test]
+async fn stream_websocket_status_error_redacts_sensitive_query_params() {
+    let server = httpmock::MockServer::start();
+    let mock = server.mock(|when, then| {
+        when.method(httpmock::Method::GET).path("/stream");
+        then.status(200).body("");
+    });
+
+    let base_url = format!(
+        "{}{}",
+        websocket_url_for_mock_server(&server, "/stream"),
+        "?version=2&crumb=s3cr3t&token=t"
+    );
+    let client = yfinance_rs::YfClient::builder()
+        .base_stream(Url::parse(&base_url).unwrap())
+        .build()
+        .unwrap();
+
+    let builder = yfinance_rs::StreamBuilder::new(&client)
+        .symbols(["AAPL"])
+        .method(StreamMethod::Websocket);
+
+    let Err(err) = builder.start().await else {
+        panic!("websocket startup should fail on non-upgrade status");
+    };
+
+    let message = err.to_string();
+    assert!(matches!(err, yfinance_rs::YfError::Status { .. }));
+    assert!(message.contains("crumb=REDACTED"));
+    assert!(message.contains("token=REDACTED"));
+    assert!(!message.contains("s3cr3t"));
+    assert!(!message.contains("token=t"));
+    mock.assert();
+}
+
+#[tokio::test]
 async fn stream_websocket_startup_respects_connect_timeout() {
     let server = httpmock::MockServer::start();
     let mock = server.mock(|when, then| {
