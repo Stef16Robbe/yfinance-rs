@@ -5,9 +5,14 @@ use crate::{
         net,
     },
 };
+use boa_ast::{
+    Expression, Statement, StatementListItem, expression::literal::LiteralKind, scope::Scope,
+};
+use boa_interner::{Interner, Sym};
+use boa_parser::{Parser, Source};
 use paft::domain::Isin;
 use serde::Deserialize;
-use serde_json::Value;
+use serde_json::{Number, Value};
 
 type InsiderSuggestArgs = (Value, Vec<String>, Vec<Vec<String>>, Value, Value);
 
@@ -93,87 +98,75 @@ fn parse_business_insider_suggest(body: &str, input_norm: &str) -> Option<String
 
 fn parse_business_insider_suggest_response(body: &str) -> Option<InsiderSuggestResponse> {
     let args = business_insider_callback_args(body)?;
-    let json_args = business_insider_args_to_json(args)?;
     let (_, columns, rows, _, _): InsiderSuggestArgs =
-        serde_json::from_str(&format!("[{json_args}]")).ok()?;
+        serde_json::from_value(Value::Array(args)).ok()?;
     Some(InsiderSuggestResponse::from_parts(&columns, rows))
 }
 
-fn business_insider_callback_args(body: &str) -> Option<&str> {
-    let body = body.trim();
-    let body = body.strip_prefix("mmSuggestDeliver")?.trim_start();
-    let body = body.strip_prefix('(')?.trim();
-    let body = body.strip_suffix(';').unwrap_or(body).trim_end();
-    body.strip_suffix(')').map(str::trim)
-}
+fn business_insider_callback_args(body: &str) -> Option<Vec<Value>> {
+    let mut interner = Interner::default();
+    let mut parser = Parser::new(Source::from_bytes(body.trim()));
+    let script = parser
+        .parse_script(&Scope::new_global(), &mut interner)
+        .ok()?;
 
-fn business_insider_args_to_json(args: &str) -> Option<String> {
-    let mut out = String::with_capacity(args.len());
-    let mut cursor = 0;
-    let mut in_string = false;
-    let mut escaped = false;
-
-    while cursor < args.len() {
-        if in_string {
-            let ch = args[cursor..].chars().next()?;
-            out.push(ch);
-            cursor += ch.len_utf8();
-
-            if escaped {
-                escaped = false;
-            } else if ch == '\\' {
-                escaped = true;
-            } else if ch == '"' {
-                in_string = false;
-            }
-            continue;
-        }
-
-        if let Some(len) = array_constructor_len(&args[cursor..]) {
-            out.push('[');
-            cursor += len;
-            continue;
-        }
-
-        let ch = args[cursor..].chars().next()?;
-        cursor += ch.len_utf8();
-        match ch {
-            '"' => {
-                in_string = true;
-                out.push(ch);
-            }
-            ')' => out.push(']'),
-            '(' => return None,
-            _ => out.push(ch),
-        }
-    }
-
-    (!in_string).then_some(out)
-}
-
-fn array_constructor_len(input: &str) -> Option<usize> {
-    let rest = input.strip_prefix("new")?;
-    let new_len = input.len() - rest.len();
-    let ws_after_new = leading_whitespace_len(rest);
-    if ws_after_new == 0 {
+    let [StatementListItem::Statement(statement)] = script.statements().statements() else {
+        return None;
+    };
+    let Statement::Expression(Expression::Call(call)) = statement.as_ref() else {
+        return None;
+    };
+    if !identifier_is(call.function(), "mmSuggestDeliver", &interner) {
         return None;
     }
 
-    let rest = &rest[ws_after_new..];
-    let rest = rest.strip_prefix("Array")?;
-    let array_len = "Array".len();
-    let ws_after_array = leading_whitespace_len(rest);
-    let rest = &rest[ws_after_array..];
-    rest.starts_with('(')
-        .then_some(new_len + ws_after_new + array_len + ws_after_array + '('.len_utf8())
+    call.args()
+        .iter()
+        .map(|arg| js_data_expression_to_json(arg, &interner))
+        .collect()
 }
 
-fn leading_whitespace_len(input: &str) -> usize {
-    input
-        .chars()
-        .take_while(|ch| ch.is_whitespace())
-        .map(char::len_utf8)
-        .sum()
+fn js_data_expression_to_json(expr: &Expression, interner: &Interner) -> Option<Value> {
+    match expr {
+        Expression::Literal(literal) => match literal.kind() {
+            LiteralKind::String(sym) => Some(Value::String(js_string(*sym, interner)?)),
+            LiteralKind::Num(value) => Number::from_f64(*value).map(Value::Number),
+            LiteralKind::Int(value) => Some(Value::Number(Number::from(i64::from(*value)))),
+            LiteralKind::Bool(value) => Some(Value::Bool(*value)),
+            LiteralKind::Null => Some(Value::Null),
+            LiteralKind::BigInt(_) | LiteralKind::Undefined => None,
+        },
+        Expression::ArrayLiteral(array) => array
+            .as_ref()
+            .iter()
+            .map(|element| js_data_expression_to_json(element.as_ref()?, interner))
+            .collect::<Option<Vec<_>>>()
+            .map(Value::Array),
+        Expression::New(new) if identifier_is(new.constructor(), "Array", interner) => new
+            .arguments()
+            .iter()
+            .map(|arg| js_data_expression_to_json(arg, interner))
+            .collect::<Option<Vec<_>>>()
+            .map(Value::Array),
+        Expression::Parenthesized(parenthesized) => {
+            js_data_expression_to_json(parenthesized.expression(), interner)
+        }
+        _ => None,
+    }
+}
+
+fn identifier_is(expr: &Expression, expected: &str, interner: &Interner) -> bool {
+    let Expression::Identifier(identifier) = expr else {
+        return false;
+    };
+    interner
+        .resolve(identifier.sym())
+        .and_then(|ident| ident.utf8())
+        .is_some_and(|ident| ident == expected)
+}
+
+fn js_string(sym: Sym, interner: &Interner) -> Option<String> {
+    interner.resolve(sym)?.utf8().map(str::to_owned)
 }
 
 fn parse_json_suggest_rows(body: &str, input_norm: &str) -> Option<String> {

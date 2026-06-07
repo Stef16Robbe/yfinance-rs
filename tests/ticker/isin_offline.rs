@@ -49,6 +49,49 @@ async fn offline_isin_business_insider_jsonp_uses_json_string_decoding() {
 }
 
 #[tokio::test]
+async fn offline_isin_business_insider_jsonp_accepts_js_syntax_noise() {
+    let isin = lookup_isin(
+        "AAPL",
+        r#"
+        mmSuggestDeliver(
+            0,
+            new   Array("Name", "Category", "Keywords",),
+            new Array(
+                new Array('Apple, Inc. (Test)', "Stocks", "AAPL|US0378331005|AAPL||AAPL",),
+            ),
+            1,
+            0,
+        );
+        "#,
+    )
+    .await;
+
+    assert_eq!(isin, Some("US0378331005".to_string()));
+}
+
+#[tokio::test]
+async fn offline_isin_business_insider_jsonp_rejects_executable_expressions() {
+    let isin = lookup_isin(
+        "AAPL",
+        r#"mmSuggestDeliver(0, new Array("Name", "Category", "Keywords"), makeRows(), 1, 0);"#,
+    )
+    .await;
+
+    assert_eq!(isin, None);
+}
+
+#[tokio::test]
+async fn offline_isin_business_insider_jsonp_requires_expected_callback() {
+    let isin = lookup_isin(
+        "AAPL",
+        r#"otherCallback(0, new Array("Name", "Category", "Keywords"), new Array(new Array("Apple Inc.", "Stocks", "AAPL|US0378331005|AAPL||AAPL")), 1, 0);"#,
+    )
+    .await;
+
+    assert_eq!(isin, None);
+}
+
+#[tokio::test]
 async fn offline_isin_json_array_requires_symbol_match() {
     let isin = lookup_isin("AAPL", r#"[{"symbol":"MSFT","isin":"US5949181045"}]"#).await;
 

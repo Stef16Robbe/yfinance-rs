@@ -103,8 +103,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
-- Business Insider ISIN JSONP responses are now normalized into JSON and parsed
-  with `serde_json` instead of a custom string/escape parser.
+- Business Insider ISIN JSONP responses are now parsed with Boa's JavaScript
+  parser and converted from a narrow data-expression AST subset instead of
+  manually rewriting callback arguments into JSON.
 - Stock split action ratios now normalize Yahoo split components with exact
   decimal arithmetic instead of f64 scaling and rounding.
 - ISIN lookup now parses Business Insider's `mmSuggestDeliver` wire shape into
