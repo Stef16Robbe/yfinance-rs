@@ -247,7 +247,7 @@ Works for quotes, historical candles, fundamentals, analyst data, holders, optio
 ### Multi-Symbol Data Download
 
 ```rust
-use yfinance_rs::{DownloadBuilder, Interval, Range, YfClient};
+use yfinance_rs::{DownloadAdjustment, DownloadBuilder, Interval, Range, YfClient};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -258,7 +258,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .symbols(symbols)
         .range(Range::M6)
         .interval(Interval::D1)
-        .auto_adjust(true)
+        .adjustment(DownloadAdjustment::Auto)
         .actions(true)
         .rounding(true)
         .run()
@@ -275,8 +275,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-For back-adjusted downloads, use `.auto_adjust(false).back_adjust(true)`;
-`auto_adjust` and `back_adjust` are mutually exclusive modes.
+For back-adjusted downloads, use `.back_adjust()` or
+`.adjustment(DownloadAdjustment::Back)`.
 
 ### Real-time Streaming
 

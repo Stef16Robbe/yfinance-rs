@@ -53,8 +53,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .symbols(symbols)
         .between(thirty_days_ago, now)
         .interval(Interval::W1)
-        .auto_adjust(false) // back_adjust is mutually exclusive with auto_adjust
-        .back_adjust(true) // show back-adjustment
+        .back_adjust() // show back-adjustment
         .rounding(true) // show rounding
         .run()
         .await?;

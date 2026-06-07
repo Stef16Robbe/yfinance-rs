@@ -54,13 +54,34 @@ impl Default for DownloadConcurrency {
     }
 }
 
+/// Price adjustment mode for multi-symbol downloads.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum DownloadAdjustment {
+    /// Preserve Yahoo's raw OHLC prices.
+    None,
+    /// Adjust OHLC prices for splits and dividends. This matches the download default.
+    #[default]
+    Auto,
+    /// Adjust Open/High/Low for splits and dividends while preserving raw Close.
+    Back,
+}
+
+impl DownloadAdjustment {
+    const fn fetches_adjusted_history(self) -> bool {
+        matches!(self, Self::Auto | Self::Back)
+    }
+
+    const fn is_back_adjusted(self) -> bool {
+        matches!(self, Self::Back)
+    }
+}
+
 /// A builder for downloading historical data for multiple symbols concurrently.
 ///
 /// This provides a convenient way to fetch data for a list of tickers with the same
 /// parameters in parallel, similar to `yfinance.download` in Python.
 ///
 /// Many of the configuration methods mirror those on [`HistoryBuilder`].
-#[allow(clippy::struct_excessive_bools)]
 pub struct DownloadBuilder {
     client: YfClient,
     symbols: Vec<String>,
@@ -71,8 +92,7 @@ pub struct DownloadBuilder {
     interval: Interval,
 
     // behavior flags
-    auto_adjust: bool,
-    back_adjust: bool,
+    adjustment: DownloadAdjustment,
     include_prepost: bool,
     include_actions: bool,
     rounding: bool,
@@ -128,7 +148,7 @@ impl DownloadBuilder {
     }
 
     fn apply_back_adjust(&self, rows: &mut [Candle]) {
-        if !self.back_adjust {
+        if !self.adjustment.is_back_adjusted() {
             return;
         }
         for c in rows.iter_mut() {
@@ -141,22 +161,12 @@ impl DownloadBuilder {
     }
 
     const fn back_adjust_price_basis(&self, fetched_basis: OhlcPriceBasis) -> OhlcPriceBasis {
-        if !self.back_adjust {
+        if !self.adjustment.is_back_adjusted() {
             return fetched_basis;
         }
 
         let (open, high, low, _) = fetched_basis.fields();
         OhlcPriceBasis::per_field(*open, *high, *low, PriceBasis::raw())
-    }
-
-    fn validate_adjustment_flags(&self) -> Result<(), YfError> {
-        if self.auto_adjust && self.back_adjust {
-            return Err(YfError::InvalidParams(
-                "auto_adjust and back_adjust are mutually exclusive; use auto_adjust(false) with back_adjust(true)"
-                    .into(),
-            ));
-        }
-        Ok(())
     }
 
     fn apply_rounding_if_enabled(&self, rows: &mut [Candle]) {
@@ -225,8 +235,7 @@ impl DownloadBuilder {
             range: Some(Range::M6),
             period: None,
             interval: Interval::D1,
-            auto_adjust: true,
-            back_adjust: false,
+            adjustment: DownloadAdjustment::default(),
             include_prepost: false,
             include_actions: true,
             rounding: false,
@@ -289,26 +298,34 @@ impl DownloadBuilder {
         self
     }
 
-    /// Sets whether to automatically adjust prices for splits and dividends. (Default: `true`)
-    ///
-    /// This is mutually exclusive with [`Self::back_adjust`]. If both are enabled, execution
-    /// returns [`YfError::InvalidParams`].
+    /// Sets the price adjustment mode. (Default: [`DownloadAdjustment::Auto`])
     #[must_use]
-    pub const fn auto_adjust(mut self, yes: bool) -> Self {
-        self.auto_adjust = yes;
+    pub const fn adjustment(mut self, adjustment: DownloadAdjustment) -> Self {
+        self.adjustment = adjustment;
         self
     }
 
-    /// Sets whether to back-adjust prices.
-    ///
-    /// Back-adjustment adjusts the Open, High, and Low prices, but keeps the Close price as the
-    /// raw, unadjusted close. Call `.auto_adjust(false).back_adjust(true)` to request this mode.
-    ///
-    /// This is mutually exclusive with [`Self::auto_adjust`]. If both are enabled, execution
-    /// returns [`YfError::InvalidParams`].
+    /// Preserves Yahoo's raw OHLC prices.
     #[must_use]
-    pub const fn back_adjust(mut self, yes: bool) -> Self {
-        self.back_adjust = yes;
+    pub const fn unadjusted(mut self) -> Self {
+        self.adjustment = DownloadAdjustment::None;
+        self
+    }
+
+    /// Adjusts OHLC prices for splits and dividends. This is the default mode.
+    #[must_use]
+    pub const fn auto_adjust(mut self) -> Self {
+        self.adjustment = DownloadAdjustment::Auto;
+        self
+    }
+
+    /// Back-adjusts prices.
+    ///
+    /// Back-adjustment adjusts the Open, High, and Low prices, but keeps the Close price as raw
+    /// Yahoo close.
+    #[must_use]
+    pub const fn back_adjust(mut self) -> Self {
+        self.adjustment = DownloadAdjustment::Back;
         self
     }
 
@@ -352,15 +369,13 @@ impl DownloadBuilder {
     /// diagnostic. In best-effort mode, individual symbol fetch failures are returned as
     /// diagnostics while successful symbols are still included in the response.
     pub async fn run_with_diagnostics(&self) -> Result<YfResponse<DownloadResponse>, YfError> {
-        self.validate_adjustment_flags()?;
-
         if self.symbols.is_empty() {
             return Err(YfError::InvalidParams("no symbols specified".into()));
         }
         let symbols = normalize_symbols(self.symbols.iter().map(String::as_str))?;
         let mut ctx = ProjectionContext::new("download", self.options.data_quality());
 
-        let need_adjust_in_fetch = self.auto_adjust || self.back_adjust;
+        let need_adjust_in_fetch = self.adjustment.fetches_adjusted_history();
         let period_dt = self.precompute_period_dt()?;
 
         let results: Vec<DownloadFetchResult> = stream::iter(symbols.into_iter().enumerate())

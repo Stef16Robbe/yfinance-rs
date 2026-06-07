@@ -98,7 +98,7 @@ async fn download_multi_symbols_happy_path() {
         .symbols(["AAPL", "MSFT"])
         .range(Range::M6)
         .interval(Interval::D1)
-        .auto_adjust(true)
+        .auto_adjust()
         .prepost(false)
         .actions(true)
         .run()
@@ -407,7 +407,7 @@ async fn download_between_params_applied_to_all_symbols() {
         .symbols(["AAPL", "MSFT"])
         .between(start, end)
         .interval(Interval::D1)
-        .auto_adjust(true)
+        .auto_adjust()
         .prepost(false)
         .actions(true)
         .run()
@@ -494,16 +494,14 @@ async fn download_back_adjust_offline() {
 
     let adj = DownloadBuilder::new(&client1)
         .symbols(["AAPL"])
-        .auto_adjust(true)
-        .back_adjust(false)
+        .auto_adjust()
         .run()
         .await
         .unwrap();
 
     let back = DownloadBuilder::new(&client2)
         .symbols(["AAPL"])
-        .auto_adjust(false) // back_adjust uses an internal adjusted fetch for OHL
-        .back_adjust(true)
+        .back_adjust() // uses an internal adjusted fetch for OHL
         .run()
         .await
         .unwrap();

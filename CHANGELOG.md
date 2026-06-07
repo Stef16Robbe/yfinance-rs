@@ -28,7 +28,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   initial WebSocket handshake and subscription write, returning startup failures directly.
 - `YfError` has new variants for provider-data and retry failures: `InvalidData`, `RequestNotCloneable`, `Money`, and `OptionUnderlyingTypeUnavailable`.
 - Removed `HistoryBuilder::keepna` and `DownloadBuilder::keepna`. `paft::Candle` requires valid OHLC prices, so malformed history rows are always dropped instead of fabricating placeholder prices.
-- `DownloadBuilder` now rejects simultaneous `auto_adjust(true)` and `back_adjust(true)` with `YfError::InvalidParams`; call `.auto_adjust(false).back_adjust(true)` for back-adjusted downloads.
+- `DownloadBuilder` now models price adjustment with `DownloadAdjustment`.
+  The old `auto_adjust(bool)` and `back_adjust(bool)` setters are replaced by
+  `.adjustment(...)`, `.auto_adjust()`, `.back_adjust()`, and `.unadjusted()`.
 - History responses now use `paft`'s `price_basis` metadata instead of the old
   `adjusted` boolean. Back-adjusted downloads report adjusted open/high/low and
   raw close as per-field OHLC bases instead of ambiguous adjusted metadata.

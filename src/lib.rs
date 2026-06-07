@@ -164,7 +164,7 @@ pub mod dataframe {
 pub use dataframe::{Columnar, Decimal128Encode, ToDataFrame, ToDataFrameVec};
 
 // Provider-specific builders and utilities
-pub use download::{DownloadBuilder, DownloadConcurrency};
+pub use download::{DownloadAdjustment, DownloadBuilder, DownloadConcurrency};
 pub use esg::EsgBuilder;
 pub use fundamentals::FundamentalsBuilder;
 pub use history::HistoryBuilder;
