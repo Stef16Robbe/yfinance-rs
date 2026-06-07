@@ -49,6 +49,64 @@ async fn profile_api_company_happy() {
 }
 
 #[tokio::test]
+async fn profile_api_wrong_type_optional_field_does_not_fail_profile() {
+    let server = setup_server();
+    let sym = "AAPL";
+    let crumb = "test-crumb";
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "assetProfile,quoteType,fundProfile")
+            .query_param("crumb", crumb);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                serde_json::json!({
+                    "quoteSummary": {
+                        "error": null,
+                        "result": [{
+                            "quoteType": {
+                                "quoteType": "EQUITY",
+                                "longName": "Apple Inc.",
+                                "symbol": sym
+                            },
+                            "assetProfile": {
+                                "sector": 42,
+                                "industry": "Consumer Electronics",
+                                "country": "United States"
+                            }
+                        }]
+                    }
+                })
+                .to_string(),
+            );
+    });
+
+    let client = YfClient::builder()
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._preauth("cookie", crumb)
+        .build()
+        .unwrap();
+
+    let prof = yfinance_rs::profile::load_profile(&client, sym)
+        .await
+        .unwrap();
+    mock.assert();
+
+    match prof {
+        Profile::Company(c) => {
+            assert_eq!(c.name, "Apple Inc.");
+            assert_eq!(c.sector, None);
+            assert_eq!(c.industry.as_deref(), Some("Consumer Electronics"));
+        }
+        _ => panic!("expected Company"),
+    }
+}
+
+#[tokio::test]
 async fn profile_api_fund_happy() {
     let server = setup_server();
     let sym = "QQQ";

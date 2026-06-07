@@ -96,6 +96,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- QuoteSummary-backed analysis, earnings, calendar, and profile projection now
+  tolerate wrong-type optional fields without failing the whole endpoint with
+  `YfError::Json`; diagnostics-backed paths report the affected field instead.
+- WebSocket stream prices now apply Yahoo's `price_hint` before projection,
+  trimming protobuf `float` noise such as `1.0930001` while preserving
+  listing-currency scaling.
 - Search requests now reject empty or whitespace-only queries with
   `YfError::InvalidParams` before contacting Yahoo.
 - Currency and instrument side caches are now bounded LRU caches instead of

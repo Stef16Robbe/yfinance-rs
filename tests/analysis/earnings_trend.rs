@@ -107,6 +107,23 @@ const EARNINGS_TREND_WITH_YAHOO_REVISION_CASING: &str = r#"{
   }
 }"#;
 
+const EARNINGS_TREND_WITH_WRONG_TYPE_OPTIONAL_PRICE: &str = r#"{
+  "quoteSummary": {
+    "result": [{
+      "earningsTrend": {
+        "trend": [{
+          "period": "0q",
+          "earningsEstimate": {
+            "avg": { "raw": "not-a-number" },
+            "low": { "raw": 1.0, "earningsCurrency": "USD" }
+          }
+        }]
+      }
+    }],
+    "error": null
+  }
+}"#;
+
 #[tokio::test]
 async fn earnings_trend_uses_quote_enrichment_without_currency_diagnostic() {
     let sym = "AAPL";
@@ -185,6 +202,79 @@ async fn earnings_trend_uses_quote_enrichment_without_currency_diagnostic() {
     assert!(strict_rows[0].earnings_estimate.avg.is_some());
     trend_mock.assert_calls(2);
     quote_mock.assert_calls(1);
+}
+
+#[tokio::test]
+async fn earnings_trend_wrong_type_optional_price_is_diagnostic_not_json() {
+    let sym = "BADTYPE";
+    let server = MockServer::start();
+
+    let trend_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "earningsTrend")
+            .query_param("crumb", "crumb");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(EARNINGS_TREND_WITH_WRONG_TYPE_OPTIONAL_PRICE);
+    });
+    let quote_mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", sym);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                  "quoteResponse": {
+                    "result": [{
+                      "symbol": "BADTYPE",
+                      "quoteType": "EQUITY",
+                      "financialCurrency": "USD"
+                    }],
+                    "error": null
+                  }
+                }"#,
+            );
+    });
+
+    let client = YfClient::builder()
+        .base_quote_v7(Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap())
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._preauth("cookie", "crumb")
+        .build()
+        .unwrap();
+
+    let response = AnalysisBuilder::new(&client, sym)
+        .earnings_trend_with_diagnostics(None)
+        .await
+        .unwrap();
+
+    trend_mock.assert();
+    quote_mock.assert();
+    assert_eq!(response.data.len(), 1);
+    assert!(response.data[0].earnings_estimate.avg.is_none());
+    assert!(response.data[0].earnings_estimate.low.is_some());
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::OmittedPresentField {
+            path: "earningsTrend[].earningsEstimate.avg",
+            reason: ProjectionIssue::InvalidField { field: "avg", .. },
+            ..
+        }
+    )));
+
+    let err = AnalysisBuilder::new(&client, sym)
+        .strict()
+        .earnings_trend(None)
+        .await
+        .unwrap_err();
+
+    trend_mock.assert_calls(2);
+    quote_mock.assert_calls(1);
+    assert!(matches!(err, YfError::DataQuality(_)));
 }
 
 #[tokio::test]

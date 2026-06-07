@@ -1,7 +1,4 @@
-use crate::core::{
-    YfError,
-    conversions::{decimal_from_f32, decimal_from_f64},
-};
+use crate::core::{YfError, conversions::decimal_from_f64};
 use paft::money::{Currency, Money, Price, PriceAmount};
 use rust_decimal::Decimal;
 use std::str::FromStr;
@@ -54,8 +51,8 @@ impl ResolvedCurrencyUnit {
         self.scaled_decimal_from_f64(value).map(PriceAmount::new)
     }
 
-    pub fn price_amount_from_f32(&self, value: f32) -> Option<PriceAmount> {
-        self.scaled_decimal_from_f32(value).map(PriceAmount::new)
+    pub fn price_amount_from_decimal(&self, value: Decimal) -> Option<PriceAmount> {
+        value.checked_mul(self.scale).map(PriceAmount::new)
     }
 
     pub fn price_from_f64(&self, value: f64) -> Option<Price> {
@@ -83,9 +80,5 @@ impl ResolvedCurrencyUnit {
 
     fn scaled_decimal_from_f64(&self, value: f64) -> Option<Decimal> {
         decimal_from_f64(value).and_then(|decimal| decimal.checked_mul(self.scale))
-    }
-
-    fn scaled_decimal_from_f32(&self, value: f32) -> Option<Decimal> {
-        decimal_from_f32(value).and_then(|decimal| decimal.checked_mul(self.scale))
     }
 }

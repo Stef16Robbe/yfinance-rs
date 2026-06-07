@@ -1,7 +1,7 @@
 use crate::core::{
     ProjectionContext, ProjectionIssue, YfError,
     conversions::{i64_to_date, i64_to_datetime, string_to_period},
-    wire::{RawDate, from_raw_date},
+    wire::{RawDate, WireValue, from_raw_date},
 };
 use chrono::{DateTime, NaiveDate, Utc};
 use paft::domain::ReportingPeriod;
@@ -36,6 +36,27 @@ pub fn optional_projected<T, U>(
             Ok(None)
         }
     }
+}
+
+pub fn optional_wire_value<'a, T>(
+    ctx: &mut ProjectionContext,
+    path: &'static str,
+    key: Option<String>,
+    field: &'static str,
+    value: &'a WireValue<T>,
+) -> Result<Option<&'a T>, YfError> {
+    if let Some(details) = value.invalid_details() {
+        ctx.omitted_present_field(
+            path,
+            key,
+            ProjectionIssue::InvalidField {
+                field,
+                details: details.to_string(),
+            },
+        )?;
+    }
+
+    Ok(value.as_ref())
 }
 
 pub fn parse_optional<T>(

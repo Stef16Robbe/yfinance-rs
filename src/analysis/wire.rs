@@ -1,68 +1,86 @@
 use serde::Deserialize;
 
-use crate::core::wire::RawNum;
+use crate::core::wire::{RawNum, WireValue};
 
 /* ---------------- Serde mapping (only what we need) ---------------- */
 
 #[derive(Deserialize)]
 pub struct V10Result {
     #[serde(rename = "recommendationTrend")]
-    pub(crate) recommendation_trend: Option<RecommendationTrendNode>,
+    #[serde(default)]
+    pub(crate) recommendation_trend: WireValue<RecommendationTrendNode>,
 
     #[serde(rename = "upgradeDowngradeHistory")]
-    pub(crate) upgrade_downgrade_history: Option<UpgradeDowngradeHistoryNode>,
+    #[serde(default)]
+    pub(crate) upgrade_downgrade_history: WireValue<UpgradeDowngradeHistoryNode>,
 
     #[serde(rename = "financialData")]
-    pub(crate) financial_data: Option<FinancialDataNode>,
+    #[serde(default)]
+    pub(crate) financial_data: WireValue<FinancialDataNode>,
 
     #[serde(rename = "earningsTrend")]
-    pub(crate) earnings_trend: Option<EarningsTrendNode>,
+    #[serde(default)]
+    pub(crate) earnings_trend: WireValue<EarningsTrendNode>,
 }
 
 /* --- recommendation trend --- */
 
 #[derive(Deserialize)]
 pub struct RecommendationTrendNode {
-    pub(crate) trend: Option<Vec<RecommendationNode>>,
+    #[serde(default)]
+    pub(crate) trend: WireValue<Vec<RecommendationNode>>,
 }
 
 #[derive(Deserialize)]
 pub struct RecommendationNode {
-    pub(crate) period: Option<String>,
+    #[serde(default)]
+    pub(crate) period: WireValue<String>,
 
     #[serde(rename = "strongBuy")]
-    pub(crate) strong_buy: Option<i64>,
-    pub(crate) buy: Option<i64>,
-    pub(crate) hold: Option<i64>,
-    pub(crate) sell: Option<i64>,
+    #[serde(default)]
+    pub(crate) strong_buy: WireValue<i64>,
+    #[serde(default)]
+    pub(crate) buy: WireValue<i64>,
+    #[serde(default)]
+    pub(crate) hold: WireValue<i64>,
+    #[serde(default)]
+    pub(crate) sell: WireValue<i64>,
 
     #[serde(rename = "strongSell")]
-    pub(crate) strong_sell: Option<i64>,
+    #[serde(default)]
+    pub(crate) strong_sell: WireValue<i64>,
 }
 
 /* --- upgrades / downgrades --- */
 
 #[derive(Deserialize)]
 pub struct UpgradeDowngradeHistoryNode {
-    pub(crate) history: Option<Vec<UpgradeNode>>,
+    #[serde(default)]
+    pub(crate) history: WireValue<Vec<UpgradeNode>>,
 }
 
 #[derive(Deserialize)]
 pub struct UpgradeNode {
     #[serde(rename = "epochGradeDate")]
-    pub(crate) epoch_grade_date: Option<i64>,
+    #[serde(default)]
+    pub(crate) epoch_grade_date: WireValue<i64>,
 
-    pub(crate) firm: Option<String>,
+    #[serde(default)]
+    pub(crate) firm: WireValue<String>,
 
     #[serde(rename = "toGrade")]
-    pub(crate) to_grade: Option<String>,
+    #[serde(default)]
+    pub(crate) to_grade: WireValue<String>,
 
     #[serde(rename = "fromGrade")]
-    pub(crate) from_grade: Option<String>,
+    #[serde(default)]
+    pub(crate) from_grade: WireValue<String>,
 
-    pub(crate) action: Option<String>,
+    #[serde(default)]
+    pub(crate) action: WireValue<String>,
     #[serde(rename = "gradeChange")]
-    pub(crate) grade_change: Option<String>,
+    #[serde(default)]
+    pub(crate) grade_change: WireValue<String>,
 }
 
 /* --- financial data (price targets) --- */
@@ -70,92 +88,130 @@ pub struct UpgradeNode {
 #[derive(Deserialize)]
 pub struct FinancialDataNode {
     #[serde(rename = "financialCurrency")]
-    pub(crate) financial_currency: Option<String>,
+    #[serde(default)]
+    pub(crate) financial_currency: WireValue<String>,
     #[serde(rename = "targetMeanPrice")]
-    pub(crate) target_mean_price: Option<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) target_mean_price: WireValue<RawNum<f64>>,
     #[serde(rename = "targetHighPrice")]
-    pub(crate) target_high_price: Option<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) target_high_price: WireValue<RawNum<f64>>,
     #[serde(rename = "targetLowPrice")]
-    pub(crate) target_low_price: Option<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) target_low_price: WireValue<RawNum<f64>>,
     #[serde(rename = "numberOfAnalystOpinions")]
-    pub(crate) number_of_analyst_opinions: Option<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) number_of_analyst_opinions: WireValue<RawNum<f64>>,
     #[serde(rename = "recommendationMean")]
-    pub(crate) recommendation_mean: Option<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) recommendation_mean: WireValue<RawNum<f64>>,
     #[serde(rename = "recommendationKey")]
-    pub(crate) recommendation_key: Option<String>,
+    #[serde(default)]
+    pub(crate) recommendation_key: WireValue<String>,
 }
 
 #[derive(Deserialize)]
 pub struct EarningsTrendNode {
-    pub(crate) trend: Option<Vec<EarningsTrendItemNode>>,
+    #[serde(default)]
+    pub(crate) trend: WireValue<Vec<EarningsTrendItemNode>>,
 }
 
 #[derive(Deserialize)]
 pub struct EarningsTrendItemNode {
-    pub(crate) period: Option<String>,
-    pub(crate) growth: Option<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) period: WireValue<String>,
+    #[serde(default)]
+    pub(crate) growth: WireValue<RawNum<f64>>,
     #[serde(rename = "earningsEstimate")]
-    pub(crate) earnings_estimate: Option<EarningsEstimateNode>,
+    #[serde(default)]
+    pub(crate) earnings_estimate: WireValue<EarningsEstimateNode>,
     #[serde(rename = "revenueEstimate")]
-    pub(crate) revenue_estimate: Option<RevenueEstimateNode>,
+    #[serde(default)]
+    pub(crate) revenue_estimate: WireValue<RevenueEstimateNode>,
     #[serde(rename = "epsTrend")]
-    pub(crate) eps_trend: Option<EpsTrendNode>,
+    #[serde(default)]
+    pub(crate) eps_trend: WireValue<EpsTrendNode>,
     #[serde(rename = "epsRevisions")]
-    pub(crate) eps_revisions: Option<EpsRevisionsNode>,
+    #[serde(default)]
+    pub(crate) eps_revisions: WireValue<EpsRevisionsNode>,
 }
 
 #[derive(Deserialize)]
 pub struct EarningsEstimateNode {
     #[serde(rename = "earningsCurrency")]
-    pub(crate) earnings_currency: Option<String>,
-    pub(crate) avg: Option<RawNum<f64>>,
-    pub(crate) low: Option<RawNum<f64>>,
-    pub(crate) high: Option<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) earnings_currency: WireValue<String>,
+    #[serde(default)]
+    pub(crate) avg: WireValue<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) low: WireValue<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) high: WireValue<RawNum<f64>>,
     #[serde(rename = "yearAgoEps")]
-    pub(crate) year_ago_eps: Option<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) year_ago_eps: WireValue<RawNum<f64>>,
     #[serde(rename = "numberOfAnalysts")]
-    pub(crate) num_analysts: Option<RawNum<f64>>,
-    pub(crate) growth: Option<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) num_analysts: WireValue<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) growth: WireValue<RawNum<f64>>,
 }
 
 #[derive(Deserialize)]
 pub struct RevenueEstimateNode {
     #[serde(rename = "revenueCurrency")]
-    pub(crate) revenue_currency: Option<String>,
-    pub(crate) avg: Option<RawNum<i64>>,
-    pub(crate) low: Option<RawNum<i64>>,
-    pub(crate) high: Option<RawNum<i64>>,
+    #[serde(default)]
+    pub(crate) revenue_currency: WireValue<String>,
+    #[serde(default)]
+    pub(crate) avg: WireValue<RawNum<i64>>,
+    #[serde(default)]
+    pub(crate) low: WireValue<RawNum<i64>>,
+    #[serde(default)]
+    pub(crate) high: WireValue<RawNum<i64>>,
     #[serde(rename = "yearAgoRevenue")]
-    pub(crate) year_ago_revenue: Option<RawNum<i64>>,
+    #[serde(default)]
+    pub(crate) year_ago_revenue: WireValue<RawNum<i64>>,
     #[serde(rename = "numberOfAnalysts")]
-    pub(crate) num_analysts: Option<RawNum<f64>>,
-    pub(crate) growth: Option<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) num_analysts: WireValue<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) growth: WireValue<RawNum<f64>>,
 }
 
 #[derive(Deserialize)]
 pub struct EpsTrendNode {
     #[serde(rename = "epsTrendCurrency")]
-    pub(crate) eps_trend_currency: Option<String>,
-    pub(crate) current: Option<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) eps_trend_currency: WireValue<String>,
+    #[serde(default)]
+    pub(crate) current: WireValue<RawNum<f64>>,
     #[serde(rename = "7daysAgo")]
-    pub(crate) seven_days_ago: Option<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) seven_days_ago: WireValue<RawNum<f64>>,
     #[serde(rename = "30daysAgo")]
-    pub(crate) thirty_days_ago: Option<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) thirty_days_ago: WireValue<RawNum<f64>>,
     #[serde(rename = "60daysAgo")]
-    pub(crate) sixty_days_ago: Option<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) sixty_days_ago: WireValue<RawNum<f64>>,
     #[serde(rename = "90daysAgo")]
-    pub(crate) ninety_days_ago: Option<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) ninety_days_ago: WireValue<RawNum<f64>>,
 }
 
 #[derive(Deserialize)]
 #[allow(clippy::struct_field_names)]
 pub struct EpsRevisionsNode {
     #[serde(rename = "upLast7days")]
-    pub(crate) up_last_7_days: Option<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) up_last_7_days: WireValue<RawNum<f64>>,
     #[serde(rename = "upLast30days")]
-    pub(crate) up_last_30_days: Option<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) up_last_30_days: WireValue<RawNum<f64>>,
     #[serde(rename = "downLast7days", alias = "downLast7Days")]
-    pub(crate) down_last_7_days: Option<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) down_last_7_days: WireValue<RawNum<f64>>,
     #[serde(rename = "downLast30days", alias = "downLast30Days")]
-    pub(crate) down_last_30_days: Option<RawNum<f64>>,
+    #[serde(default)]
+    pub(crate) down_last_30_days: WireValue<RawNum<f64>>,
 }

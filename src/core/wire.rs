@@ -1,6 +1,6 @@
 use paft::Decimal;
 use rust_decimal::prelude::ToPrimitive;
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, de::DeserializeOwned};
 use serde_json::{Number, Value};
 use std::str::FromStr;
 
@@ -11,6 +11,57 @@ pub struct RawNum<T> {
 
 pub fn from_raw<T>(raw: Option<RawNum<T>>) -> Option<T> {
     raw.and_then(|n| n.raw)
+}
+
+#[derive(Clone, Debug, Default)]
+pub enum WireValue<T> {
+    #[default]
+    Missing,
+    Valid(T),
+    Invalid(String),
+}
+
+impl<T> WireValue<T> {
+    pub(crate) const fn as_ref(&self) -> Option<&T> {
+        match self {
+            Self::Valid(value) => Some(value),
+            Self::Missing | Self::Invalid(_) => None,
+        }
+    }
+
+    pub(crate) fn into_option(self) -> Option<T> {
+        match self {
+            Self::Valid(value) => Some(value),
+            Self::Missing | Self::Invalid(_) => None,
+        }
+    }
+
+    pub(crate) fn invalid_details(&self) -> Option<&str> {
+        match self {
+            Self::Invalid(details) => Some(details),
+            Self::Missing | Self::Valid(_) => None,
+        }
+    }
+}
+
+impl<'de, T> Deserialize<'de> for WireValue<T>
+where
+    T: DeserializeOwned,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = Value::deserialize(deserializer)?;
+        if value.is_null() {
+            return Ok(Self::Missing);
+        }
+
+        match T::deserialize(value) {
+            Ok(value) => Ok(Self::Valid(value)),
+            Err(err) => Ok(Self::Invalid(err.to_string())),
+        }
+    }
 }
 
 #[derive(Deserialize, Clone, Copy, Debug)]

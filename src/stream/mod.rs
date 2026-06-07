@@ -30,7 +30,7 @@ use crate::{
     YfClient, YfError,
     core::CallOptions,
     core::client::{CacheMode, RetryConfig, normalize_symbols},
-    core::conversions::{quantity_from_i64, quantity_from_u64},
+    core::conversions::{decimal_from_f32, quantity_from_i64, quantity_from_u64},
     core::currency_resolver::ResolvedCurrencyUnit,
     core::error::RedactedHttpError,
     core::yahoo_vocab::{parse_yahoo_quote_type, yahoo_exchange_to_listing_currency},
@@ -771,8 +771,8 @@ fn ws_pricing_to_update(
     QuoteUpdate {
         instrument,
         currency: currency_unit.currency().clone(),
-        price: ws_price_from_f32(ticker.price, currency_unit),
-        previous_close: ws_price_from_f32(ticker.previous_close, currency_unit),
+        price: ws_price_from_f32(ticker.price, ticker.price_hint, currency_unit),
+        previous_close: ws_price_from_f32(ticker.previous_close, ticker.price_hint, currency_unit),
         volume,
         ts: timestamp,
         provider: (),
@@ -806,11 +806,19 @@ const fn stream_quote_type_to_asset_kind(quote_type: i32) -> Option<AssetKind> {
     }
 }
 
-fn ws_price_from_f32(value: f32, currency_unit: &ResolvedCurrencyUnit) -> Option<PriceAmount> {
+fn ws_price_from_f32(
+    value: f32,
+    price_hint: i64,
+    currency_unit: &ResolvedCurrencyUnit,
+) -> Option<PriceAmount> {
     if !value.is_finite() || value <= 0.0 {
         return None;
     }
-    currency_unit.price_amount_from_f32(value)
+    let mut value = decimal_from_f32(value)?;
+    if let Ok(scale) = u32::try_from(price_hint) {
+        value = value.round_dp(scale.min(28));
+    }
+    currency_unit.price_amount_from_decimal(value)
 }
 
 async fn map_ws_pricing_to_update(
@@ -1042,6 +1050,8 @@ async fn handle_polling_quotes(
 #[cfg(test)]
 mod tests {
     use super::{MAX_WEBSOCKET_RECONNECT_BACKOFF, stream_quote_type_to_asset_kind};
+    use crate::core::currency_resolver::ResolvedCurrencyUnit;
+    use paft::Decimal;
     use paft::domain::AssetKind;
     use std::time::Duration;
 
@@ -1086,5 +1096,25 @@ mod tests {
             super::websocket_reconnect_backoff(base, u32::MAX),
             MAX_WEBSOCKET_RECONNECT_BACKOFF
         );
+    }
+
+    #[test]
+    fn websocket_price_uses_price_hint_to_trim_f32_noise() {
+        let unit = ResolvedCurrencyUnit::from_code("USD").expect("valid currency");
+        let noisy_xrp_price = f32::from_bits(0x3f8b_e76d);
+
+        let price =
+            super::ws_price_from_f32(noisy_xrp_price, 4, &unit).expect("positive finite price");
+
+        assert_eq!(price.as_decimal(), &Decimal::new(10_930, 4));
+    }
+
+    #[test]
+    fn websocket_price_hint_rounds_before_minor_unit_scaling() {
+        let unit = ResolvedCurrencyUnit::from_code("GBp").expect("valid minor-unit currency");
+
+        let price = super::ws_price_from_f32(123.45, 2, &unit).expect("positive finite price");
+
+        assert_eq!(price.as_decimal(), &Decimal::new(12_345, 4));
     }
 }
