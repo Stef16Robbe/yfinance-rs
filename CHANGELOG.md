@@ -100,12 +100,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Use the published `paft` 0.9.0 crate instead of tracking the Git `develop`
   branch.
+- Remove the Boa JavaScript parser dependencies from ISIN lookup.
 
 ### Fixed
 
-- Business Insider ISIN JSONP responses are now parsed with Boa's JavaScript
-  parser and converted from a narrow data-expression AST subset instead of
-  manually rewriting callback arguments into JSON.
+- Business Insider ISIN JSONP responses are now parsed with a small local
+  data-expression parser instead of manually rewriting callback arguments into
+  JSON.
 - Stock split action ratios now normalize Yahoo split components with exact
   decimal arithmetic instead of f64 scaling and rounding.
 - ISIN lookup now parses Business Insider's `mmSuggestDeliver` wire shape into

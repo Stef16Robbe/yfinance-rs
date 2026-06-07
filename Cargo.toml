@@ -19,9 +19,6 @@ exclude = [
 
 [dependencies]
 base64 = "0.22"
-boa_ast = "0.21.1"
-boa_interner = "0.21.1"
-boa_parser = "0.21.1"
 chrono = { version = "0.4.41", features = ["serde"] }
 chrono-tz = { version = "0.10", features = ["serde"] }
 reqwest = { version = "0.12.24", default-features = false, features = ["json", "rustls-tls-native-roots", "gzip", "brotli", "deflate", "cookies"] }

@@ -5,11 +5,6 @@ use crate::{
         net,
     },
 };
-use boa_ast::{
-    Expression, Statement, StatementListItem, expression::literal::LiteralKind, scope::Scope,
-};
-use boa_interner::{Interner, Sym};
-use boa_parser::{Parser, Source};
 use paft::domain::Isin;
 use serde::Deserialize;
 use serde_json::{Number, Value};
@@ -104,69 +99,7 @@ fn parse_business_insider_suggest_response(body: &str) -> Option<InsiderSuggestR
 }
 
 fn business_insider_callback_args(body: &str) -> Option<Vec<Value>> {
-    let mut interner = Interner::default();
-    let mut parser = Parser::new(Source::from_bytes(body.trim()));
-    let script = parser
-        .parse_script(&Scope::new_global(), &mut interner)
-        .ok()?;
-
-    let [StatementListItem::Statement(statement)] = script.statements().statements() else {
-        return None;
-    };
-    let Statement::Expression(Expression::Call(call)) = statement.as_ref() else {
-        return None;
-    };
-    if !identifier_is(call.function(), "mmSuggestDeliver", &interner) {
-        return None;
-    }
-
-    call.args()
-        .iter()
-        .map(|arg| js_data_expression_to_json(arg, &interner))
-        .collect()
-}
-
-fn js_data_expression_to_json(expr: &Expression, interner: &Interner) -> Option<Value> {
-    match expr {
-        Expression::Literal(literal) => match literal.kind() {
-            LiteralKind::String(sym) => Some(Value::String(js_string(*sym, interner)?)),
-            LiteralKind::Num(value) => Number::from_f64(*value).map(Value::Number),
-            LiteralKind::Int(value) => Some(Value::Number(Number::from(i64::from(*value)))),
-            LiteralKind::Bool(value) => Some(Value::Bool(*value)),
-            LiteralKind::Null => Some(Value::Null),
-            LiteralKind::BigInt(_) | LiteralKind::Undefined => None,
-        },
-        Expression::ArrayLiteral(array) => array
-            .as_ref()
-            .iter()
-            .map(|element| js_data_expression_to_json(element.as_ref()?, interner))
-            .collect::<Option<Vec<_>>>()
-            .map(Value::Array),
-        Expression::New(new) if identifier_is(new.constructor(), "Array", interner) => new
-            .arguments()
-            .iter()
-            .map(|arg| js_data_expression_to_json(arg, interner))
-            .collect::<Option<Vec<_>>>()
-            .map(Value::Array),
-        Expression::Parenthesized(parenthesized) => {
-            js_data_expression_to_json(parenthesized.expression(), interner)
-        }
-        _ => None,
-    }
-}
-
-fn identifier_is(expr: &Expression, expected: &str, interner: &Interner) -> bool {
-    let Expression::Identifier(identifier) = expr else {
-        return false;
-    };
-    interner
-        .resolve(identifier.sym())
-        .and_then(|ident| ident.utf8())
-        .is_some_and(|ident| ident == expected)
-}
-
-fn js_string(sym: Sym, interner: &Interner) -> Option<String> {
-    interner.resolve(sym)?.utf8().map(str::to_owned)
+    JsDataParser::new(body).parse_mm_suggest_deliver_args()
 }
 
 fn parse_json_suggest_rows(body: &str, input_norm: &str) -> Option<String> {
@@ -277,4 +210,332 @@ fn pick_from_pipe_value(value: &str, target_norm: &str) -> Option<String> {
     }
 
     parts.find_map(validated_isin)
+}
+
+struct JsDataParser<'a> {
+    source: &'a str,
+    pos: usize,
+}
+
+impl<'a> JsDataParser<'a> {
+    const fn new(source: &'a str) -> Self {
+        Self { source, pos: 0 }
+    }
+
+    fn parse_mm_suggest_deliver_args(mut self) -> Option<Vec<Value>> {
+        self.skip_trivia();
+        if self.parse_identifier()? != "mmSuggestDeliver" {
+            return None;
+        }
+        self.skip_trivia();
+        self.expect_byte(b'(')?;
+        let args = self.parse_values_until(b')')?;
+        self.skip_trivia();
+        self.consume_byte(b';');
+        self.skip_trivia();
+
+        self.is_eof().then_some(args)
+    }
+
+    fn parse_value(&mut self) -> Option<Value> {
+        self.skip_trivia();
+        match self.peek_byte()? {
+            b'"' | b'\'' => self.parse_string().map(Value::String),
+            b'[' => self.parse_array_literal(),
+            b'(' => self.parse_parenthesized(),
+            b'0'..=b'9' => self.parse_number(),
+            byte if is_identifier_start(byte) => self.parse_keyword_or_constructor(),
+            _ => None,
+        }
+    }
+
+    fn parse_keyword_or_constructor(&mut self) -> Option<Value> {
+        match self.parse_identifier()? {
+            "true" => Some(Value::Bool(true)),
+            "false" => Some(Value::Bool(false)),
+            "null" => Some(Value::Null),
+            "new" => self.parse_array_constructor(),
+            _ => None,
+        }
+    }
+
+    fn parse_array_constructor(&mut self) -> Option<Value> {
+        self.skip_trivia();
+        if self.parse_identifier()? != "Array" {
+            return None;
+        }
+        self.skip_trivia();
+        self.expect_byte(b'(')?;
+        self.parse_values_until(b')').map(Value::Array)
+    }
+
+    fn parse_array_literal(&mut self) -> Option<Value> {
+        self.expect_byte(b'[')?;
+        self.parse_values_until(b']').map(Value::Array)
+    }
+
+    fn parse_parenthesized(&mut self) -> Option<Value> {
+        self.expect_byte(b'(')?;
+        let value = self.parse_value()?;
+        self.skip_trivia();
+        self.expect_byte(b')')?;
+        Some(value)
+    }
+
+    fn parse_values_until(&mut self, terminator: u8) -> Option<Vec<Value>> {
+        let mut values = Vec::new();
+        loop {
+            self.skip_trivia();
+            if self.consume_byte(terminator) {
+                return Some(values);
+            }
+
+            values.push(self.parse_value()?);
+            self.skip_trivia();
+
+            if self.consume_byte(b',') {
+                continue;
+            }
+            self.expect_byte(terminator)?;
+            return Some(values);
+        }
+    }
+
+    fn parse_number(&mut self) -> Option<Value> {
+        let start = self.pos;
+        self.consume_digits();
+
+        let mut is_float = false;
+        if self.consume_byte(b'.') {
+            is_float = true;
+            self.consume_digits();
+        }
+        if matches!(self.peek_byte(), Some(b'e' | b'E')) {
+            is_float = true;
+            self.pos += 1;
+            if matches!(self.peek_byte(), Some(b'+' | b'-')) {
+                self.pos += 1;
+            }
+            self.consume_digits();
+        }
+
+        let raw = &self.source[start..self.pos];
+        if is_float {
+            Number::from_f64(raw.parse().ok()?).map(Value::Number)
+        } else {
+            Some(Value::Number(Number::from(raw.parse::<i64>().ok()?)))
+        }
+    }
+
+    fn parse_string(&mut self) -> Option<String> {
+        let quote = self.next_byte()?;
+        let mut decoded = String::new();
+
+        while !self.is_eof() {
+            let byte = self.peek_byte()?;
+            if byte == quote {
+                self.pos += 1;
+                return Some(decoded);
+            }
+            if byte == b'\\' {
+                self.pos += 1;
+                self.parse_escape(&mut decoded)?;
+                continue;
+            }
+            if matches!(byte, b'\n' | b'\r') {
+                return None;
+            }
+            decoded.push(self.next_char()?);
+        }
+
+        None
+    }
+
+    fn parse_escape(&mut self, decoded: &mut String) -> Option<()> {
+        match self.next_char()? {
+            'b' => decoded.push('\u{0008}'),
+            'f' => decoded.push('\u{000c}'),
+            'n' => decoded.push('\n'),
+            'r' => decoded.push('\r'),
+            't' => decoded.push('\t'),
+            'v' => decoded.push('\u{000b}'),
+            '0' if self.peek_byte().is_some_and(|byte| byte.is_ascii_digit()) => return None,
+            '0' => decoded.push('\0'),
+            '\n' | '\u{2028}' | '\u{2029}' => {}
+            '\r' => {
+                self.consume_byte(b'\n');
+            }
+            'x' => decoded.push(self.parse_hex_char(2)?),
+            'u' => decoded.push(self.parse_unicode_escape()?),
+            escaped => decoded.push(escaped),
+        }
+
+        Some(())
+    }
+
+    fn parse_hex_char(&mut self, digits: usize) -> Option<char> {
+        char::from_u32(self.parse_hex_digits(digits)?)
+    }
+
+    fn parse_unicode_escape(&mut self) -> Option<char> {
+        if self.consume_byte(b'{') {
+            return self.parse_braced_unicode_escape();
+        }
+
+        let lead = self.parse_hex_digits(4)?;
+        if is_high_surrogate(lead) {
+            if !self.consume_str("\\u") {
+                return None;
+            }
+            let trail = self.parse_hex_digits(4)?;
+            if !is_low_surrogate(trail) {
+                return None;
+            }
+            let scalar = 0x1_0000 + ((lead - 0xd800) << 10) + (trail - 0xdc00);
+            return char::from_u32(scalar);
+        }
+        if is_low_surrogate(lead) {
+            return None;
+        }
+
+        char::from_u32(lead)
+    }
+
+    fn parse_braced_unicode_escape(&mut self) -> Option<char> {
+        let start = self.pos;
+        let mut scalar = 0;
+
+        while !self.consume_byte(b'}') {
+            if self.pos == start + 6 {
+                return None;
+            }
+            scalar = (scalar << 4) + hex_value(self.next_byte()?)?;
+        }
+
+        (self.pos > start + 1)
+            .then_some(scalar)
+            .and_then(char::from_u32)
+    }
+
+    fn parse_hex_digits(&mut self, digits: usize) -> Option<u32> {
+        let mut value = 0;
+        for _ in 0..digits {
+            value = (value << 4) + hex_value(self.next_byte()?)?;
+        }
+        Some(value)
+    }
+
+    fn parse_identifier(&mut self) -> Option<&'a str> {
+        let start = self.pos;
+        if !is_identifier_start(self.peek_byte()?) {
+            return None;
+        }
+        self.pos += 1;
+        while self.peek_byte().is_some_and(is_identifier_continue) {
+            self.pos += 1;
+        }
+        Some(&self.source[start..self.pos])
+    }
+
+    fn skip_trivia(&mut self) {
+        loop {
+            let start = self.pos;
+            while self
+                .peek_byte()
+                .is_some_and(|byte| byte.is_ascii_whitespace())
+            {
+                self.pos += 1;
+            }
+
+            if self.consume_str("//") {
+                while self
+                    .peek_byte()
+                    .is_some_and(|byte| !matches!(byte, b'\n' | b'\r'))
+                {
+                    self.pos += 1;
+                }
+            } else if self.consume_str("/*") {
+                while !self.is_eof() && !self.consume_str("*/") {
+                    let _ = self.next_char();
+                }
+            }
+
+            if self.pos == start {
+                break;
+            }
+        }
+    }
+
+    fn consume_digits(&mut self) {
+        while self.peek_byte().is_some_and(|byte| byte.is_ascii_digit()) {
+            self.pos += 1;
+        }
+    }
+
+    fn expect_byte(&mut self, expected: u8) -> Option<()> {
+        self.consume_byte(expected).then_some(())
+    }
+
+    fn consume_byte(&mut self, expected: u8) -> bool {
+        if self.peek_byte() == Some(expected) {
+            self.pos += 1;
+            true
+        } else {
+            false
+        }
+    }
+
+    fn consume_str(&mut self, expected: &str) -> bool {
+        if self.source[self.pos..].starts_with(expected) {
+            self.pos += expected.len();
+            true
+        } else {
+            false
+        }
+    }
+
+    fn next_byte(&mut self) -> Option<u8> {
+        let byte = self.peek_byte()?;
+        self.pos += 1;
+        Some(byte)
+    }
+
+    fn next_char(&mut self) -> Option<char> {
+        let ch = self.source[self.pos..].chars().next()?;
+        self.pos += ch.len_utf8();
+        Some(ch)
+    }
+
+    fn peek_byte(&self) -> Option<u8> {
+        self.source.as_bytes().get(self.pos).copied()
+    }
+
+    const fn is_eof(&self) -> bool {
+        self.pos == self.source.len()
+    }
+}
+
+const fn is_identifier_start(byte: u8) -> bool {
+    byte.is_ascii_alphabetic() || matches!(byte, b'_' | b'$')
+}
+
+const fn is_identifier_continue(byte: u8) -> bool {
+    is_identifier_start(byte) || byte.is_ascii_digit()
+}
+
+fn hex_value(byte: u8) -> Option<u32> {
+    match byte {
+        b'0'..=b'9' => Some(u32::from(byte - b'0')),
+        b'a'..=b'f' => Some(u32::from(byte - b'a') + 10),
+        b'A'..=b'F' => Some(u32::from(byte - b'A') + 10),
+        _ => None,
+    }
+}
+
+fn is_high_surrogate(value: u32) -> bool {
+    (0xd800..=0xdbff).contains(&value)
+}
+
+fn is_low_surrogate(value: u32) -> bool {
+    (0xdc00..=0xdfff).contains(&value)
 }
