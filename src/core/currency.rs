@@ -6,6 +6,7 @@ use std::{
 };
 
 use paft::money::Currency;
+use unicode_normalization::{UnicodeNormalization, char::is_combining_mark};
 
 /// Normalized country/country-alias → currency code pairs.
 ///
@@ -295,27 +296,11 @@ fn normalize_country(country: &str) -> Option<String> {
     }
 
     let mut buf = String::with_capacity(trimmed.len());
-    for ch in trimmed.chars() {
-        match ch {
-            'A'..='Z' | '0'..='9' => buf.push(ch),
-            'a'..='z' => buf.push(ch.to_ascii_uppercase()),
-            ' ' | '\t' | '\n' | '\r' | '\'' | '`' | '"' => buf.push(' '),
-            '-' | '_' | '/' | ',' | '.' | ';' | ':' | '&' | '(' | ')' | '[' | ']' | '{' | '}' => {
-                buf.push(' ');
-            }
-            'á' | 'à' | 'â' | 'ä' | 'ã' | 'å' | 'Á' | 'À' | 'Â' | 'Ä' | 'Ã' | 'Å' => {
-                buf.push('A');
-            }
-            'ç' | 'Ç' => buf.push('C'),
-            'é' | 'è' | 'ê' | 'ë' | 'É' | 'È' | 'Ê' | 'Ë' => buf.push('E'),
-            'í' | 'ì' | 'î' | 'ï' | 'Í' | 'Ì' | 'Î' | 'Ï' => buf.push('I'),
-            'ñ' | 'Ñ' => buf.push('N'),
-            'ó' | 'ò' | 'ô' | 'ö' | 'õ' | 'Ó' | 'Ò' | 'Ô' | 'Ö' | 'Õ' => buf.push('O'),
-            'ú' | 'ù' | 'û' | 'ü' | 'Ú' | 'Ù' | 'Û' | 'Ü' => buf.push('U'),
-            'ý' | 'ÿ' | 'Ý' => buf.push('Y'),
-            _ => {
-                // Ignore other symbols to keep normalization simple.
-            }
+    for ch in trimmed.nfkd().filter(|ch| !is_combining_mark(*ch)) {
+        if ch.is_ascii_alphanumeric() {
+            buf.push(ch);
+        } else if is_country_word_separator(ch) || ch.is_alphanumeric() {
+            buf.push(' ');
         }
     }
 
@@ -323,13 +308,34 @@ fn normalize_country(country: &str) -> Option<String> {
         .split_whitespace()
         .filter(|part| !part.is_empty())
         .collect::<Vec<_>>()
-        .join(" ");
+        .join(" ")
+        .to_ascii_uppercase();
 
     if normalized.is_empty() {
         None
     } else {
         Some(normalized)
     }
+}
+
+const fn is_country_word_separator(ch: char) -> bool {
+    ch.is_whitespace()
+        || ch.is_ascii_punctuation()
+        || matches!(
+            ch,
+            '\u{00A0}'
+                | '\u{2010}'
+                | '\u{2011}'
+                | '\u{2012}'
+                | '\u{2013}'
+                | '\u{2014}'
+                | '\u{2015}'
+                | '\u{2018}'
+                | '\u{2019}'
+                | '\u{201C}'
+                | '\u{201D}'
+                | '\u{2212}'
+        )
 }
 
 /// Attempt to infer a currency from a country string.
@@ -452,6 +458,24 @@ mod tests {
         assert_eq!(currency_code("United States").as_deref(), Some("USD"));
         assert_eq!(currency_code("Cote d'Ivoire").as_deref(), Some("XOF"));
         assert_eq!(currency_code("Timor-Leste").as_deref(), Some("USD"));
+    }
+
+    #[test]
+    fn country_normalization_strips_unicode_diacritics() {
+        assert_eq!(
+            normalize_country("Côte d’Ivoire").as_deref(),
+            Some("COTE D IVOIRE")
+        );
+        assert_eq!(currency_code("Curaçao").as_deref(), Some("ANG"));
+        assert_eq!(
+            currency_code("São Tomé and Príncipe").as_deref(),
+            Some("STN")
+        );
+        assert_eq!(
+            normalize_country("Łódź, Poland").as_deref(),
+            Some("ODZ POLAND")
+        );
+        assert_eq!(currency_code("Łódź, Poland").as_deref(), Some("PLN"));
     }
 
     #[test]
