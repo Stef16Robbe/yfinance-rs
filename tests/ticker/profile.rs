@@ -1,7 +1,6 @@
 use httpmock::{Method::GET, MockServer};
-use paft::fundamentals::profile::Profile;
 use url::Url;
-use yfinance_rs::{Ticker, YfClient, YfError};
+use yfinance_rs::{Profile, ProjectionIssue, Ticker, YfClient, YfError, YfWarning};
 
 #[tokio::test]
 async fn offline_profile_uses_recorded_fixture() {
@@ -44,6 +43,71 @@ async fn offline_profile_uses_recorded_fixture() {
         }
         _ => panic!("expected company profile"),
     }
+}
+
+#[tokio::test]
+async fn strict_profile_rejects_malformed_optional_field() {
+    let server = MockServer::start();
+    let sym = "AAPL";
+    let crumb = "test-crumb";
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "assetProfile,quoteType,fundProfile")
+            .query_param("crumb", crumb);
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                serde_json::json!({
+                    "quoteSummary": {
+                        "error": null,
+                        "result": [{
+                            "quoteType": {
+                                "quoteType": "EQUITY",
+                                "longName": "Apple Inc.",
+                                "symbol": sym
+                            },
+                            "assetProfile": {
+                                "sector": 42,
+                                "industry": "Consumer Electronics",
+                                "country": "United States"
+                            }
+                        }]
+                    }
+                })
+                .to_string(),
+            );
+    });
+
+    let client = YfClient::builder()
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        ._preauth("cookie", crumb)
+        .build()
+        .unwrap();
+    let ticker = Ticker::new(&client, sym).strict();
+
+    let err = ticker.profile().await.unwrap_err();
+    mock.assert_calls(1);
+
+    assert!(
+        matches!(
+            err,
+            YfError::DataQuality(ref warning)
+                if matches!(
+                    warning.as_ref(),
+                    YfWarning::OmittedPresentField {
+                        endpoint: "profile",
+                        path: "assetProfile.sector",
+                        key: Some(key),
+                        reason: ProjectionIssue::InvalidField { field: "sector", details },
+                    } if key == sym && details.contains("expected string")
+                )
+        ),
+        "expected strict profile data-quality error for malformed sector, got {err:?}"
+    );
 }
 
 #[tokio::test]

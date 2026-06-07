@@ -68,7 +68,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
-- Add adapter-level projection diagnostics through `YfResponse<T>`, `YfDiagnostics`, `YfWarning`, `ProjectionIssue`, and `DataQuality`, plus `strict()` and `*_with_diagnostics()` entry points on history, download, holders, fundamentals, analysis, ESG, news, search, and `Ticker::info()`.
+- Add adapter-level projection diagnostics through `YfResponse<T>`, `YfDiagnostics`, `YfWarning`, `ProjectionIssue`, and `DataQuality`, plus `strict()` and `*_with_diagnostics()` entry points on history, download, holders, fundamentals, analysis, ESG, news, profile, search, and `Ticker::info()`.
 - Add fixture-backed coverage for Yahoo's v7 and quoteSummary dividend-yield
   wire conventions, locking both paths to `paft`'s fractional yield model.
 - History, holders, fundamentals, analysis, ESG, news, search, download, and aggregate info calls can now distinguish absent optional provider data from present Yahoo data that was dropped or omitted while projecting into strict `paft` values.
@@ -141,7 +141,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   dividend-date fallback to populate `Info::calendar`.
 - QuoteSummary-backed analysis, earnings, calendar, and profile projection now
   tolerate wrong-type optional fields without failing the whole endpoint with
-  `YfError::Json`; diagnostics-backed paths report the affected field instead.
+  `YfError::Json`; diagnostics-backed paths, including profile, report the
+  affected field instead.
 - WebSocket stream prices now apply Yahoo's `price_hint` before projection,
   trimming protobuf `float` noise such as `1.0930001` while preserving
   listing-currency scaling.

@@ -1,8 +1,7 @@
 use crate::common::setup_server;
 use httpmock::Method::GET;
-use paft::fundamentals::profile::Profile;
 use url::Url;
-use yfinance_rs::{YfClient, YfError};
+use yfinance_rs::{Profile, ProjectionIssue, YfClient, YfError, YfWarning};
 
 #[tokio::test]
 async fn profile_api_company_happy() {
@@ -91,12 +90,26 @@ async fn profile_api_wrong_type_optional_field_does_not_fail_profile() {
         .build()
         .unwrap();
 
-    let prof = yfinance_rs::profile::load_profile(&client, sym)
+    let response = yfinance_rs::profile::load_profile_with_diagnostics(&client, sym)
         .await
         .unwrap();
     mock.assert();
 
-    match prof {
+    assert!(
+        response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::OmittedPresentField {
+            endpoint: "profile",
+            path: "assetProfile.sector",
+            key: Some(key),
+            reason: ProjectionIssue::InvalidField { field: "sector", details },
+            } if key == sym && details.contains("expected string")
+        )),
+        "expected malformed assetProfile.sector diagnostic, got {:?}",
+        response.diagnostics
+    );
+
+    match response.data {
         Profile::Company(c) => {
             assert_eq!(c.name, "Apple Inc.");
             assert_eq!(c.sector, None);

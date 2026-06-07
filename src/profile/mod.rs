@@ -10,7 +10,7 @@ mod api;
 pub(crate) mod debug;
 
 use crate::{
-    YfClient, YfError,
+    YfClient, YfError, YfResponse,
     core::{CallOptions, client::CacheMode, conversions::string_to_fund_kind},
 };
 use paft::fundamentals::profile::FundKind;
@@ -73,22 +73,19 @@ fn resolve_fund_kind(
     Ok(string_to_fund_kind(legal_type)?.unwrap_or_else(|| quote_kind.fund_kind()))
 }
 
-fn load_from_quote_summary_value_api(
-    client: &YfClient,
-    symbol: &str,
-    value: serde_json::Value,
-) -> Result<Profile, YfError> {
-    let root: api::V10Result = serde_json::from_value(value).map_err(YfError::Json)?;
-    api::load_from_quote_summary_result(client, symbol, root)
-}
-
 pub(crate) fn load_profile_from_quote_summary_value(
     client: &YfClient,
     symbol: &str,
     value: serde_json::Value,
-    _options: &CallOptions,
-) -> Result<Profile, YfError> {
-    load_from_quote_summary_value_api(client, symbol, value)
+    options: &CallOptions,
+) -> Result<YfResponse<Profile>, YfError> {
+    let root: api::V10Result = serde_json::from_value(value).map_err(YfError::Json)?;
+    api::load_from_quote_summary_result_with_diagnostics(
+        client,
+        symbol,
+        &root,
+        options.data_quality(),
+    )
 }
 
 pub(crate) async fn load_profile_with_options(
@@ -96,8 +93,20 @@ pub(crate) async fn load_profile_with_options(
     symbol: &str,
     options: &CallOptions,
 ) -> Result<Profile, YfError> {
+    Ok(
+        load_profile_with_options_and_diagnostics(client, symbol, options)
+            .await?
+            .into_data(),
+    )
+}
+
+pub(crate) async fn load_profile_with_options_and_diagnostics(
+    client: &YfClient,
+    symbol: &str,
+    options: &CallOptions,
+) -> Result<YfResponse<Profile>, YfError> {
     let symbol = crate::core::client::normalize_symbol(symbol)?;
-    api::load_from_quote_summary_api(client, &symbol, options).await
+    api::load_from_quote_summary_api_with_diagnostics(client, &symbol, options).await
 }
 
 /// Loads the profile for a given symbol.
@@ -109,6 +118,26 @@ pub(crate) async fn load_profile_with_options(
 /// Returns `YfError` if the network request fails, the response cannot be parsed,
 /// or the data for the symbol is not available.
 pub async fn load_profile(client: &YfClient, symbol: &str) -> Result<Profile, YfError> {
+    Ok(load_profile_with_diagnostics(client, symbol)
+        .await?
+        .into_data())
+}
+
+/// Loads the profile for a given symbol with projection diagnostics.
+///
+/// This function loads the profile from Yahoo's quoteSummary API and reports
+/// malformed optional provider fields that were omitted from the returned
+/// profile.
+///
+/// # Errors
+///
+/// Returns `YfError` if the network request fails, the response cannot be parsed,
+/// the data for the symbol is not available, or strict data-quality mode rejects
+/// a projection issue.
+pub async fn load_profile_with_diagnostics(
+    client: &YfClient,
+    symbol: &str,
+) -> Result<YfResponse<Profile>, YfError> {
     let options = CallOptions::default().with_cache_mode(CacheMode::Use);
-    load_profile_with_options(client, symbol, &options).await
+    load_profile_with_options_and_diagnostics(client, symbol, &options).await
 }

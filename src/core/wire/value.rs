@@ -19,13 +19,6 @@ impl<T> WireValue<T> {
         }
     }
 
-    pub(crate) fn into_option(self) -> Option<T> {
-        match self {
-            Self::Valid(value) => Some(value),
-            Self::Missing | Self::Invalid(_) => None,
-        }
-    }
-
     pub(crate) fn invalid_details(&self) -> Option<&str> {
         match self {
             Self::Invalid(details) => Some(details),
@@ -72,10 +65,6 @@ pub struct BufferedWireValue<T>(pub(super) WireValue<T>);
 impl<T> BufferedWireValue<T> {
     pub(crate) const fn as_ref(&self) -> Option<&T> {
         self.0.as_ref()
-    }
-
-    pub(crate) fn into_option(self) -> Option<T> {
-        self.0.into_option()
     }
 
     pub(crate) fn invalid_details(&self) -> Option<&str> {

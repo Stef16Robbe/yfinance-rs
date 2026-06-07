@@ -124,7 +124,7 @@ pub(super) async fn fetch_info_with_diagnostics(
 
 struct InfoQuoteSummaryParts {
     key_statistics: Result<crate::core::quotes::QuoteSummaryKeyStatistics, YfError>,
-    profile: Result<Profile, YfError>,
+    profile: Result<YfResponse<Profile>, YfError>,
     analysis: Result<analysis::InfoAnalysisParts, YfError>,
     calendar: Result<YfResponse<paft::fundamentals::statements::Calendar>, YfError>,
 }
@@ -167,7 +167,8 @@ fn project_info_quote_summary_parts(
             }
             None => (None, None),
         };
-    let profile = log_err_async(ctx, parts.profile, "profile", symbol)?;
+    let profile =
+        log_optional_response_async(ctx, parts.profile, "profile", symbol, &["assetProfile"])?;
     let (price_target, recommendation_summary) = match parts.analysis {
         Ok(analysis) => {
             let price_target = log_optional_response_async(

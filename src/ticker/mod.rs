@@ -171,7 +171,24 @@ impl Ticker {
     /// or Yahoo does not provide a supported profile for the symbol.
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), err, fields(symbol = %self.symbol)))]
     pub async fn profile(&self) -> Result<Profile, YfError> {
-        crate::profile::load_profile_with_options(&self.client, &self.symbol, &self.options).await
+        Ok(self.profile_with_diagnostics().await?.into_data())
+    }
+
+    /// Fetches the company, ETF, or mutual-fund profile with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails, the response cannot be parsed,
+    /// Yahoo does not provide a supported profile for the symbol, or strict data-quality mode
+    /// rejects a projection issue.
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), err, fields(symbol = %self.symbol)))]
+    pub async fn profile_with_diagnostics(&self) -> Result<YfResponse<Profile>, YfError> {
+        crate::profile::load_profile_with_options_and_diagnostics(
+            &self.client,
+            &self.symbol,
+            &self.options,
+        )
+        .await
     }
 
     /* ---------------- Quotes ---------------- */
