@@ -22,11 +22,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `ScreenerNumber` is now an opaque validated value. Floating-point values must
   be constructed with `ScreenerNumber::new`, while integer values still use the
   existing `From` conversions.
-- `ProjectionIssue::MissingRequiredFields` now owns `Vec<&'static str>` instead
-  of requiring a static field slice.
 - `StreamBuilder::start()` is now async. In `StreamMethod::Websocket` mode it waits for the
   initial WebSocket handshake and subscription write, returning startup failures directly.
-- `YfError` has new variants for provider-data and retry failures: `InvalidData`, `RequestNotCloneable`, `Money`, and `OptionUnderlyingTypeUnavailable`.
+- `YfError` has new variants for provider-data, data-quality, retry, money,
+  and option-chain failures: `InvalidData`, `DataQuality`,
+  `RequestNotCloneable`, `Money`, and `OptionUnderlyingTypeUnavailable`.
 - Removed `HistoryBuilder::keepna` and `DownloadBuilder::keepna`. `paft::Candle` requires valid OHLC prices, so malformed history rows are always dropped instead of fabricating placeholder prices.
 - `DownloadBuilder` now models price adjustment with `DownloadAdjustment`.
   The old `auto_adjust(bool)` and `back_adjust(bool)` setters are replaced by
@@ -39,7 +39,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Missing or unparseable Yahoo currency metadata no longer silently falls back to USD. Required monetary responses now return typed data errors when no valid currency can be resolved, and optional monetary fields/actions are omitted instead of fabricated.
 - `CacheMode` now has a policy-driven `Default` mode. Volatile endpoints such as quotes, options, news, and screeners bypass the response cache by default; use `CacheMode::Use` to opt them into caching.
 - Removed lossy tuple-based `Ticker::dividends()`, `Ticker::splits()`, and `Ticker::capital_gains()` helpers. Use `Ticker::actions()` and match on typed `Action` variants instead.
-- Removed the always-empty `Info::esg_scores` field. Yahoo no longer returns the backing `esgScores` module; use `Ticker::sustainability()` for explicit best-effort ESG requests.
+- Removed `Info::esg_scores`. `Ticker::info()` no longer fetches the
+  `esgScores` module; use `Ticker::sustainability()` for explicit best-effort
+  ESG requests.
 - Removed the legacy HTML scraping fallback for profile lookups. Profiles now load only from Yahoo's quoteSummary API.
 - Removed `YfClientBuilder::base_quote()`, which only configured the deleted Yahoo quote-page scraping path.
 - Removed `DownloadBuilder::repair()` and the download price-outlier repair
@@ -59,20 +61,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   no longer forced to `None` when Yahoo sends volume, and streams no longer keep
   reset/rollover state; callers that need deltas or session-boundary policy can
   derive them from successive cumulative values.
-- `YfWarning::CurrencyInferred` now reports only diagnostic purpose and
-  heuristic inference through `YfCurrencyPurpose` and `YfCurrencyInference`.
-  Removed the public `YfCurrencySource` and `YfEvidenceStrength` provenance
-  types; provider-backed currency provenance is now an internal resolver detail.
-- Growable public enums such as diagnostics, errors, news tabs, and Yahoo
-  screener vocabularies are now `#[non_exhaustive]`.
+- Existing growable public enums such as `YfError`, `NewsTab`, and Yahoo
+  screener vocabularies are now `#[non_exhaustive]`; new diagnostics enums use
+  the same policy.
 
 ### Added
 
-- Add adapter-level projection diagnostics through `YfResponse<T>`, `YfDiagnostics`, `YfWarning`, `ProjectionIssue`, and `DataQuality`, plus `strict()` and `*_with_diagnostics()` entry points on history, download, holders, fundamentals, analysis, ESG, news, profile, search, and `Ticker::info()`.
+- Add adapter-level projection diagnostics through `YfResponse<T>`,
+  `YfDiagnostics`, `YfWarning`, `ProjectionIssue`, and `DataQuality`, plus
+  diagnostic-returning entry points on history, download, holders,
+  fundamentals, analysis, ESG, news, profile, search, and ticker info; builders
+  and ticker convenience calls can opt into strict data-quality projection.
 - Add fixture-backed coverage for Yahoo's v7 and quoteSummary dividend-yield
   wire conventions, locking both paths to `paft`'s fractional yield model.
 - History, holders, fundamentals, analysis, ESG, news, search, download, and aggregate info calls can now distinguish absent optional provider data from present Yahoo data that was dropped or omitted while projecting into strict `paft` values.
 - Add `YfWarning::CoercedPresentField` for present provider fields that are represented only after a lossy coercion such as rounding.
+- Add currency-inference diagnostics that report heuristic purpose and
+  inference through `YfCurrencyPurpose` and `YfCurrencyInference`;
+  provider-backed currency provenance remains internal.
 - Add projection diagnostics entry points for quotes, fast info, key statistics, option chains, and screeners, including `Ticker::*_with_diagnostics()` methods and `QuotesBuilder::fetch_with_diagnostics()`.
 - Add `Ticker::data_quality()` and `Ticker::strict()` so ticker convenience
   methods and builders created from a ticker can use strict projection
@@ -81,8 +87,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   `Ticker::quarterly_shares_between()`, and
   `FundamentalsBuilder::shares_between()`/`shares_between_with_diagnostics()`.
 - Add `FastInfo::moving_averages` with Yahoo's 50-day and 200-day average
-  prices, matching Python yfinance's `fast_info` placement without extending
-  `paft::Snapshot`.
+  prices without extending `paft::Snapshot`.
 - Re-export common `paft` decimal, money, currency, domain, market, and
   fundamentals model types from `yfinance_rs` so callers can construct inputs
   and annotate returned values without depending on `paft` directly.
@@ -101,17 +106,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Dependencies
 
-- Use `serde_field_result` for recoverable provider wire-field
+- Add `serde_field_result` for recoverable provider wire-field
   deserialization.
-- Use the published `paft` 0.9.0 crate instead of tracking the Git `develop`
-  branch.
-- Remove the Boa JavaScript parser dependencies from ISIN lookup.
+- Bump `paft` from crates.io `0.8.0` to `0.9.0`.
+- Remove the direct optional `polars` dependency from `yfinance-rs`; the
+  `dataframe` feature now enables `paft/dataframe`.
 
 ### Fixed
 
 - Business Insider ISIN JSONP responses are now parsed with a small local
-  data-expression parser instead of manually rewriting callback arguments into
-  JSON.
+  data-expression parser.
 - Stock split action ratios now normalize Yahoo split components with exact
   decimal arithmetic instead of f64 scaling and rounding.
 - ISIN lookup now parses Business Insider's `mmSuggestDeliver` wire shape into
@@ -159,8 +163,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   unbounded `HashMap`s, with `YfClientBuilder::side_cache_max_entries()` for
   tuning the per-cache limit.
 - Response and side caches now use `moka` for bounded concurrent storage,
-  avoiding async `RwLock` serialization and best-effort LRU promotion on cache
-  hits.
+  avoiding async `RwLock` serialization on hot cache paths.
 - Credential state now uses a synchronous `RwLock`, avoiding async lock
   scheduling overhead when reading or updating in-memory cookie/crumb values.
 - `YfClient::clear_cache()` and `YfClient::invalidate_cache_entry()` are now
@@ -247,7 +250,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Historical share-count helpers now request Yahoo's annual/quarterly
   `OrdinarySharesNumber` timeseries instead of the semantically different
   basic-average-shares fields.
-- `Ticker::info()` now batches its quoteSummary modules into one request, avoids duplicate `financialData` fetches, and no longer exposes an always-empty ESG field for Yahoo's dead `esgScores` module; use `Ticker::sustainability()` for explicit best-effort ESG requests.
+- `Ticker::info()` now batches its quoteSummary modules into one request, avoids duplicate `financialData` fetches, and no longer fetches or exposes ESG scores; use `Ticker::sustainability()` for explicit best-effort ESG requests.
+- `Ticker::key_statistics()` and `info.key_statistics` now backfill additional
+  quoteSummary valuation, dividend, range, and volume fields when Yahoo's v7
+  quote response omits them.
 - `Ticker::isin()` now returns typed HTTP status errors for non-success Business Insider
   responses and keeps suffix-qualified symbols distinct while matching ISIN suggestions.
 - `Ticker::isin()` now validates ISIN check digits and avoids raw fallback matches that are not tied to the requested symbol.
@@ -255,8 +261,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Holder convenience methods now request only the quoteSummary module they project instead of fetching every holder/insider module for each call.
 - `StreamMethod::Websocket` startup failures are now returned from `StreamBuilder::start().await`
   instead of being logged in the spawned task while the caller receives `Ok`.
-- WebSocket streams now flush pong replies for ping frames and treat remote close/EOF as stream
-  failures, allowing `WebsocketWithFallback` to fall back to polling unless the caller stopped it.
+- WebSocket streams now treat remote close/EOF as stream failures, allowing
+  `WebsocketWithFallback` to fall back to polling unless the caller stopped it.
 - Polling streams now timestamp quote updates with Yahoo's `regularMarketTime` when available
   instead of always using the local polling receive time.
 - Streaming quote updates now pass Yahoo cumulative volume through directly
@@ -272,7 +278,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Public retry policies, stream intervals, and user-provided symbols are now validated before
   use, returning `YfError::InvalidParams` for invalid values instead of panicking or issuing
   malformed Yahoo requests.
-- Convert malformed Yahoo/user-provided symbols, missing quote symbols, missing currency metadata, and uncloneable retry requests into `Result` errors instead of panicking.
+- Malformed Yahoo/user-provided symbols, missing quote symbols, missing currency metadata, and uncloneable retry requests are now surfaced through `YfError` or projection diagnostics instead of panicking.
 - Surface unavailable Yahoo ESG modules through `ProviderFeatureUnavailable` diagnostics and strict-mode data-quality errors, so missing provider data is not indistinguishable from a valid zero-involvement result for callers that audit projection quality.
 - Missing optional quoteSummary feature modules, including earnings, analyst recommendations, price targets, upgrades/downgrades, and holder ownership modules, now return empty data plus `ProviderFeatureUnavailable` diagnostics in best-effort mode and data-quality errors in strict mode.
 - Normalize HTTP status handling through shared fetch helpers so quoteSummary and fundamentals-timeseries failures return typed `YfError` variants and are not cached as parseable response bodies.
@@ -281,10 +287,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   null results as valid empty statements or share counts; malformed responses
   with no result now return `YfError::MissingData`.
 - Invalid Yahoo floats (`NaN`, infinities, and values that cannot fit the decimal backend) no longer become zero-valued financial data.
-- Optional `paft` fields now become `None` when Yahoo supplies an invalid numeric value, while valid sibling records are still preserved.
+- Best-effort projection now omits optional `paft` fields when Yahoo supplies an invalid numeric value, while valid sibling records are still preserved.
 - Calendar, holder, ESG, and analyst mappers now route present-but-unrepresentable date and decimal fields through projection diagnostics instead of silently omitting them or failing best-effort calls.
 - Recommendation, analyst-count, search-exchange, history-timezone, inferred cash-flow, and share-count projections now report present-but-invalid, rounded, or inferred provider values through diagnostics; strict mode rejects those losses instead of silently returning `None` or coerced data.
-- Malformed required records, including bad OHLC candles, option contracts with invalid strikes, and invalid dividend/capital-gain amounts, are skipped item-by-item.
+- In best-effort mode, malformed required records, including bad OHLC candles, option contracts with invalid strikes, and invalid dividend/capital-gain amounts, are skipped item-by-item with diagnostics.
 - Batch quote projection now skips semantically or structurally malformed quote nodes item-by-item in best-effort mode and reports `DroppedItem` diagnostics, matching search, options, holders, and fundamentals row handling; strict mode still rejects the first malformed quote node.
 - Yahoo counter fields such as v7 quote volume/book sizes, screener volume, and option contract volume/open interest now accept numeric strings without dropping otherwise valid nodes; internal v7 quote fetches used by polling streams and currency enrichment now skip malformed quote nodes item-by-item in best-effort mode.
 - Option-chain projection now parses contracts item-by-item, so one structurally malformed contract no longer aborts the whole chain in best-effort mode.
@@ -329,7 +335,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Status errors, HTTP-client errors, and tracing URL fields now redact crumb and auth-like query parameters before formatting.
 - Build Yahoo symbol path URLs with one percent-encoding helper instead of `Url::join`, preventing symbols containing URL syntax from changing the request target.
 - Expired URL cache entries are now pruned opportunistically on cache reads and writes.
-- Crumb refresh now relies on exact response-cache key eviction instead of an unreachable sweep for crumb-bearing cache keys.
+- Crumb refresh now evicts the exact cached response key before retrying with
+  fresh credentials.
 - `Ticker`-level cache and retry settings now propagate consistently through history builders, action helpers, and profile loading inside `Ticker::info()`.
 - Caller-supplied currency overrides no longer emit `CurrencyInferred` diagnostics or fail strict-mode projection.
 - Provider-backed quote, quoteSummary, direct, override, and cached currency
@@ -364,7 +371,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Centralize repeated per-call builder option setters through one internal macro.
 - Clean up example output so holder rows, corporate actions, historical action dates, and handled live Yahoo errors render as user-facing text instead of debug-shaped values.
 - Declare Rust 1.91 as the crate MSRV and enable direct Tokio `sync` and `time` features used by the crate.
-- Update ESG examples/docs to handle Yahoo's currently unavailable `esgScores` response instead of advertising unavailable live data.
+- Update ESG examples/docs to treat `esgScores` as fallible provider data
+  instead of assuming live ESG data is always returned.
 - README examples no longer advertise direct use of conversion helpers such as `money_to_f64`.
 - Build-time protobuf generation now uses a vendored `protoc` binary instead of relying on a system installation.
 - Currency auto-resolution is now source-aware and typed by purpose (`Trading`, `Reporting`, `CorporateAction`, and `AnalystEstimate`). Direct Yahoo evidence wins over quote/quoteSummary enrichment, listing inference, and profile-country heuristics.
@@ -426,7 +434,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Prefer Yahoo long names over short names for search results, quotes, and fast-info snapshots
   when both names are available.
 - Preserve option-chain underlying identity from Yahoo's options response metadata, including ETF/fund quote types and exchange context, instead of falling back to an equity-only request-symbol instrument.
-- Populate `Ticker::key_statistics()` and `info.key_statistics` fallbacks from quoteSummary `summaryDetail`/`defaultKeyStatistics`, including beta, ex-dividend date, market cap, shares outstanding, trailing EPS/PE, dividends, 52-week range, and average volume when the v7 quote response omits them.
+- Populate beta in `Ticker::key_statistics()` and `info.key_statistics` from quoteSummary `summaryDetail`/`defaultKeyStatistics` when the v7 quote response does not include beta.
 
 ### Dependencies
 
@@ -753,8 +761,8 @@ Yahoo Finance appears to have removed or relocated the ESG data endpoint. As a r
 - Analysis tools: `recommendations`, `sustainability`, `major_holders`, `institutional_holders`.
 - Utilities: `DownloadBuilder`, `StreamBuilder`, `SearchBuilder`.
 
-[Unreleased]: https://github.com/gramistella/yfinance-rs/compare/v0.9.0...HEAD
-[0.9.0]: https://github.com/gramistella/yfinance-rs/compare/v0.8.0...v0.9.0
+[Unreleased]: https://github.com/gramistella/yfinance-rs/compare/v0.8.0...HEAD
+[0.9.0]: https://github.com/gramistella/yfinance-rs/compare/v0.8.0...HEAD
 [0.8.0]: https://github.com/gramistella/yfinance-rs/compare/v0.7.2...v0.8.0
 [0.7.2]: https://github.com/gramistella/yfinance-rs/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/gramistella/yfinance-rs/compare/v0.7.0...v0.7.1
