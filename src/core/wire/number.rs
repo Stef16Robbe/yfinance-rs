@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use paft::Decimal;
-use rust_decimal::prelude::ToPrimitive;
+use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
 use serde::{Deserialize, Deserializer, de};
 use serde_field_result::{Field, FieldDecode, FieldError, ScalarFieldDecode};
 use serde_json::{Number, Value};
@@ -113,6 +113,16 @@ fn decimal_from_f64_field(value: f64) -> Result<Decimal, FieldError> {
         .map_err(|err| FieldError::new(format!("cannot parse decimal {value:?}: {err}")))
 }
 
+fn decimal_from_i128_field(value: i128) -> Result<Decimal, FieldError> {
+    Decimal::from_i128(value)
+        .ok_or_else(|| FieldError::new(format!("cannot parse decimal {value}: out of range")))
+}
+
+fn decimal_from_u128_field(value: u128) -> Result<Decimal, FieldError> {
+    Decimal::from_u128(value)
+        .ok_or_else(|| FieldError::new(format!("cannot parse decimal {value}: out of range")))
+}
+
 fn u64_from_decimal(decimal: Decimal) -> Result<u64, FieldError> {
     if decimal.is_sign_negative() || !decimal.fract().is_zero() {
         return Err(FieldError::new(format!(
@@ -137,6 +147,16 @@ fn u64_from_f64(value: f64) -> Result<u64, FieldError> {
     decimal_from_f64_field(value).and_then(u64_from_decimal)
 }
 
+fn u64_from_i128(value: i128) -> Result<u64, FieldError> {
+    u64::try_from(value)
+        .map_err(|_| FieldError::new(format!("cannot convert integer {value} to u64")))
+}
+
+fn u64_from_u128(value: u128) -> Result<u64, FieldError> {
+    u64::try_from(value)
+        .map_err(|_| FieldError::new(format!("cannot convert integer {value} to u64")))
+}
+
 impl ScalarFieldDecode for JsonDecimal {
     const EXPECTED: &'static str = "JSON number or numeric string";
 
@@ -152,6 +172,14 @@ impl ScalarFieldDecode for JsonDecimal {
         })
     }
 
+    fn from_i128(value: i128) -> Result<Self, FieldError> {
+        decimal_from_i128_field(value).map(|value| Self { value })
+    }
+
+    fn from_u128(value: u128) -> Result<Self, FieldError> {
+        decimal_from_u128_field(value).map(|value| Self { value })
+    }
+
     fn from_f64(value: f64) -> Result<Self, FieldError> {
         decimal_from_f64_field(value).map(|value| Self { value })
     }
@@ -165,11 +193,19 @@ impl ScalarFieldDecode for JsonU64 {
     const EXPECTED: &'static str = "unsigned integer or unsigned integer string";
 
     fn from_i64(value: i64) -> Result<Self, FieldError> {
-        u64_from_decimal(Decimal::from(value)).map(|value| Self { value })
+        u64_from_i128(i128::from(value)).map(|value| Self { value })
     }
 
     fn from_u64(value: u64) -> Result<Self, FieldError> {
         Ok(Self { value })
+    }
+
+    fn from_i128(value: i128) -> Result<Self, FieldError> {
+        u64_from_i128(value).map(|value| Self { value })
+    }
+
+    fn from_u128(value: u128) -> Result<Self, FieldError> {
+        u64_from_u128(value).map(|value| Self { value })
     }
 
     fn from_f64(value: f64) -> Result<Self, FieldError> {

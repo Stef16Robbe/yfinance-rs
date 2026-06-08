@@ -3388,6 +3388,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde-field-result"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61ff31e22cbeb10f0c1bd4e2afda31e67b34124283199a57f53070ac2afcdc8b"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "serde_core"
 version = "1.0.228"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3405,14 +3415,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.117",
-]
-
-[[package]]
-name = "serde_field_result"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -4793,7 +4795,7 @@ dependencies = [
  "reqwest",
  "rust_decimal",
  "serde",
- "serde_field_result",
+ "serde-field-result",
  "serde_json",
  "thiserror",
  "tokio",

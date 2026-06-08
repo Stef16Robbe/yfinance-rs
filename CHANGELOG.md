@@ -106,7 +106,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Dependencies
 
-- Add `serde_field_result` for recoverable provider wire-field
+- Add `serde-field-result` 0.1.0 for recoverable provider wire-field
   deserialization.
 - Bump `paft` from crates.io `0.8.0` to `0.9.0`.
 - Remove the direct optional `polars` dependency from `yfinance-rs`; the
