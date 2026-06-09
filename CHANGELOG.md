@@ -146,6 +146,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   hardcoded two-decimal `f64` rounding.
 - Sparse Yahoo `adjclose` history payloads now use one coherent split-only
   adjustment basis with diagnostics instead of mixing adjustment bases by row.
+- Downloads now keep successful history entries when Yahoo omits
+  `chart.meta.instrumentType`, using an explicit untyped instrument fallback
+  with diagnostics instead of dropping the symbol in best-effort mode.
 - Business Insider ISIN lookup now parses the `mmSuggestDeliver` JSONP shape
   with a local data-expression parser, returns typed HTTP status errors for
   non-success responses, validates ISIN check digits, and keeps suffix-qualified

@@ -174,7 +174,7 @@ async fn best_effort_download_keeps_successes_when_symbol_fetch_fails() {
 }
 
 #[tokio::test]
-async fn best_effort_download_drops_entry_without_instrument_metadata() {
+async fn best_effort_download_uses_untyped_instrument_without_instrument_metadata() {
     let server = common::setup_server();
 
     let m_aapl = server.mock(|when, then| {
@@ -215,17 +215,30 @@ async fn best_effort_download_drops_entry_without_instrument_metadata() {
     m_aapl.assert();
     m_missing.assert();
 
-    assert_eq!(response.data.entries.len(), 1);
-    assert_eq!(response.data.entries[0].instrument.symbol.as_str(), "AAPL");
+    assert_eq!(response.data.entries.len(), 2);
+    assert!(
+        response
+            .data
+            .entries
+            .iter()
+            .any(|entry| entry.instrument.symbol.as_str() == "AAPL")
+    );
+    let fallback = response
+        .data
+        .entries
+        .iter()
+        .find(|entry| entry.instrument.symbol.as_str() == "NOKIND")
+        .expect("NOKIND should use untyped fallback instrument");
+    let fallback_kind: &str = fallback.instrument.kind.code();
+    assert_eq!(fallback_kind, "YAHOO_DOWNLOAD_UNTYPED");
+    assert_eq!(fallback.history.candles.len(), 1);
     assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
         warning,
-        YfWarning::DroppedItem {
+        YfWarning::RepairedData {
             endpoint: "download",
             item: "download_entry",
             key: Some(key),
-            reason: ProjectionIssue::MissingRequiredField {
-                field: "chart.meta.instrumentType",
-            },
+            repair: "used untyped Yahoo download instrument because chart.meta.instrumentType was missing",
         } if key == "NOKIND"
     )));
 }
@@ -265,13 +278,11 @@ async fn strict_download_errors_without_instrument_metadata() {
     };
     assert!(matches!(
         &*warning,
-        YfWarning::DroppedItem {
+        YfWarning::RepairedData {
             endpoint: "download",
             item: "download_entry",
             key: Some(key),
-            reason: ProjectionIssue::MissingRequiredField {
-                field: "chart.meta.instrumentType",
-            },
+            repair: "used untyped Yahoo download instrument because chart.meta.instrumentType was missing",
         } if key == "NOKIND"
     ));
 }

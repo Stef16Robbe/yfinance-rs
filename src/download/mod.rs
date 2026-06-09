@@ -9,6 +9,7 @@ use crate::{
     },
     history::{HistoryBuilder, YahooHistoryResponse},
 };
+use paft::domain::{AssetKind, Instrument};
 use paft::market::responses::{
     download::{DownloadEntry, DownloadResponse},
     history::{OhlcPriceBasis, PriceBasis},
@@ -20,6 +21,7 @@ type DownloadFetchSuccess = (usize, String, YfResponse<YahooHistoryResponse>);
 type DownloadFetchFailure = (usize, String, YfError);
 type DownloadFetchResult = Result<DownloadFetchSuccess, DownloadFetchFailure>;
 const MAX_DECIMAL_SCALE: u32 = 28;
+const UNTYPED_DOWNLOAD_ASSET_KIND: &str = "YAHOO_DOWNLOAD_UNTYPED";
 
 /// Maximum number of per-symbol history requests a [`DownloadBuilder`] runs at once.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -82,6 +84,10 @@ impl DownloadAdjustment {
 /// parameters in parallel, similar to `yfinance.download` in Python.
 ///
 /// Many of the configuration methods mirror those on [`HistoryBuilder`].
+///
+/// When Yahoo omits `chart.meta.instrumentType`, best-effort downloads keep the
+/// history entry using `AssetKind::Other("YAHOO_DOWNLOAD_UNTYPED")` and emit a
+/// repair diagnostic. Strict mode treats that diagnostic as an error.
 pub struct DownloadBuilder {
     client: YfClient,
     symbols: Vec<String>,
@@ -201,16 +207,7 @@ impl DownloadBuilder {
             resp.price_basis = self.back_adjust_price_basis(resp.price_basis);
             self.apply_rounding_if_enabled(&mut resp.candles, history.price_hint);
 
-            let Some(instrument) = self.client.cached_instrument(&sym) else {
-                ctx.dropped_item(
-                    "download_entry",
-                    Some(sym.as_str()),
-                    ProjectionIssue::MissingRequiredField {
-                        field: "chart.meta.instrumentType",
-                    },
-                )?;
-                continue;
-            };
+            let instrument = resolve_download_instrument(&self.client, &sym, ctx)?;
 
             entries.push(DownloadEntry {
                 instrument,
@@ -430,4 +427,28 @@ fn rounded_price(price: &PriceAmount, price_hint: u32) -> PriceAmount {
             .as_decimal()
             .round_dp(price_hint.min(MAX_DECIMAL_SCALE)),
     )
+}
+
+fn resolve_download_instrument(
+    client: &YfClient,
+    symbol: &str,
+    ctx: &mut ProjectionContext,
+) -> Result<Instrument, YfError> {
+    if let Some(instrument) = client.cached_instrument(symbol) {
+        return Ok(instrument);
+    }
+
+    ctx.repaired_data(
+        "download_entry",
+        Some(symbol),
+        "used untyped Yahoo download instrument because chart.meta.instrumentType was missing",
+    )?;
+
+    Instrument::from_symbol(symbol, untyped_download_asset_kind()).map_err(|err| {
+        YfError::InvalidParams(format!("invalid download symbol fallback {symbol}: {err}"))
+    })
+}
+
+fn untyped_download_asset_kind() -> AssetKind {
+    AssetKind::other(UNTYPED_DOWNLOAD_ASSET_KIND).expect("valid download fallback asset kind")
 }
