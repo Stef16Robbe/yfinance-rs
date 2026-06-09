@@ -3410,7 +3410,8 @@ dependencies = [
 [[package]]
 name = "serde_field_result"
 version = "0.1.0"
-source = "git+https://github.com/gramistella/serde-field-result#b2c7dabf706d932505dabdd240a9857e22e253f8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "12d3829c58a858ded6f18dc9bb4fcd42415851a9c3b2e44dff2908479ad09b6e"
 dependencies = [
  "serde",
  "serde_json",
