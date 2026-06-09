@@ -3,12 +3,116 @@ use httpmock::MockServer;
 use url::Url;
 use yfinance_rs::core::Interval;
 use yfinance_rs::core::conversions::*;
-use yfinance_rs::{Action, HistoryBuilder, OhlcPriceBasis, PriceBasis, YfClient};
+use yfinance_rs::{
+    Action, HistoryBuilder, OhlcPriceBasis, PriceBasis, YfClient, YfError, YfWarning,
+};
 
 fn date_from_ts(timestamp: i64) -> chrono::NaiveDate {
     chrono::DateTime::from_timestamp(timestamp, 0)
         .unwrap()
         .date_naive()
+}
+
+#[tokio::test]
+async fn sparse_adjclose_uses_one_split_adjusted_basis_with_diagnostic() {
+    let server = MockServer::start();
+
+    let body = r#"{
+      "chart":{
+        "result":[
+          {
+            "meta":{"currency":"USD","symbol":"TEST","instrumentType":"EQUITY"},
+            "timestamp":[1000,2000,3000],
+            "indicators":{
+              "quote":[{
+                "open":[100.0,100.0,100.0],
+                "high":[101.0,101.0,101.0],
+                "low":[99.0,99.0,99.0],
+                "close":[100.0,100.0,100.0],
+                "volume":[10,10,10]
+              }],
+              "adjclose":[{"adjclose":[50.0,null,99.0]}]
+            },
+            "events":{
+              "splits":{
+                "2000":{"date":2000,"numerator":2,"denominator":1}
+              },
+              "dividends":{
+                "3000":{"date":3000,"amount":1.0}
+              }
+            }
+          }
+        ],
+        "error":null
+      }
+    }"#;
+
+    let mock = server.mock(|when, then| {
+        when.method(GET).path("/v8/finance/chart/TEST");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(body);
+    });
+
+    let client = YfClient::builder()
+        .base_chart(Url::parse(&format!("{}/v8/finance/chart/", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+
+    let response = HistoryBuilder::new(&client, "TEST")
+        .interval(Interval::D1)
+        .auto_adjust(true)
+        .fetch_full_with_diagnostics()
+        .await
+        .unwrap();
+
+    let resp = response.data;
+    assert_eq!(
+        resp.price_basis,
+        OhlcPriceBasis::uniform(PriceBasis::split_adjusted_latest())
+    );
+    assert_eq!(resp.candles.len(), 3);
+    assert!((money_to_f64(&resp.candles[0].ohlc.close) - 50.0).abs() < 1e-9);
+    assert!((money_to_f64(&resp.candles[1].ohlc.close) - 100.0).abs() < 1e-9);
+    assert!((money_to_f64(&resp.candles[2].ohlc.close) - 100.0).abs() < 1e-9);
+    assert!(
+        response
+            .diagnostics
+            .warnings
+            .iter()
+            .any(|warning| matches!(
+                warning,
+                YfWarning::RepairedData {
+                    endpoint: "history_chart",
+                    item: "candle_adjustment",
+                    repair:
+                        "ignored sparse chart.indicators.adjclose and used split-only adjustment for all candles",
+                    ..
+                }
+            ))
+    );
+
+    let err = HistoryBuilder::new(&client, "TEST")
+        .interval(Interval::D1)
+        .auto_adjust(true)
+        .strict()
+        .fetch_full()
+        .await
+        .unwrap_err();
+
+    mock.assert_calls(2);
+    assert!(matches!(
+        err,
+        YfError::DataQuality(warning)
+            if matches!(
+                *warning,
+                YfWarning::RepairedData {
+                    endpoint: "history_chart",
+                    item: "candle_adjustment",
+                    ..
+                }
+            )
+    ));
 }
 
 #[tokio::test]

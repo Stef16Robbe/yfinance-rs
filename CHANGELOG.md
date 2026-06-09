@@ -144,6 +144,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   `tests/fixtures`.
 - Download rounding now uses Yahoo chart `priceHint` metadata instead of
   hardcoded two-decimal `f64` rounding.
+- Sparse Yahoo `adjclose` history payloads now use one coherent split-only
+  adjustment basis with diagnostics instead of mixing adjustment bases by row.
 - Business Insider ISIN lookup now parses the `mmSuggestDeliver` JSONP shape
   with a local data-expression parser, returns typed HTTP status errors for
   non-success responses, validates ISIN check digits, and keeps suffix-qualified

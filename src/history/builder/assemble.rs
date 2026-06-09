@@ -5,13 +5,13 @@ use crate::history::wire::QuoteBlock;
 use paft::market::responses::history::{Candle, Ohlc};
 use paft::money::PriceAmount;
 
-use super::adjust::price_factor_for_row;
+use super::adjust::{AdjustmentBasis, price_factor_for_row, provider_adjustment_factor};
 
 pub fn assemble_candles(
     ts: &[i64],
     q: &QuoteBlock,
     adj: &[Option<f64>],
-    auto_adjust: bool,
+    adjustment_basis: Option<AdjustmentBasis>,
     cum_split_after: &[f64],
     currency: &ResolvedCurrencyUnit,
     ctx: &mut ProjectionContext,
@@ -52,9 +52,14 @@ pub fn assemble_candles(
         };
         let raw_close = close;
 
-        if auto_adjust {
-            let pf =
-                price_factor_for_row(i, adj.get(i).and_then(|x| *x), Some(close), cum_split_after);
+        if let Some(adjustment_basis) = adjustment_basis {
+            let pf = price_factor_for_row(
+                i,
+                adjustment_basis,
+                adj.get(i).and_then(|x| *x),
+                Some(close),
+                cum_split_after,
+            );
 
             open *= pf;
             high *= pf;
@@ -95,6 +100,48 @@ pub fn assemble_candles(
     }
 
     Ok(out)
+}
+
+pub fn adjustment_basis_for_series(
+    q: &QuoteBlock,
+    adj: &[Option<f64>],
+    len: usize,
+    ctx: &mut ProjectionContext,
+) -> Result<AdjustmentBasis, YfError> {
+    let mut emitted_rows = 0usize;
+    let mut provider_adjusted_rows = 0usize;
+
+    for i in 0..len {
+        let open = q.open.get(i).and_then(|value| *value);
+        let high = q.high.get(i).and_then(|value| *value);
+        let low = q.low.get(i).and_then(|value| *value);
+        let close = q.close.get(i).and_then(|value| *value);
+
+        let Ok((_, _, _, close)) = raw_ohlc_values(open, high, low, close) else {
+            continue;
+        };
+
+        emitted_rows += 1;
+        if provider_adjustment_factor(adj.get(i).and_then(|value| *value), Some(close)).is_some() {
+            provider_adjusted_rows += 1;
+        }
+    }
+
+    if provider_adjusted_rows == 0 {
+        return Ok(AdjustmentBasis::SplitAdjusted);
+    }
+
+    if provider_adjusted_rows == emitted_rows {
+        return Ok(AdjustmentBasis::ProviderAdjusted);
+    }
+
+    ctx.repaired_data(
+        "candle_adjustment",
+        None,
+        "ignored sparse chart.indicators.adjclose and used split-only adjustment for all candles",
+    )?;
+
+    Ok(AdjustmentBasis::SplitAdjusted)
 }
 
 fn candle_capacity_upper_bound(ts: &[i64], q: &QuoteBlock) -> usize {

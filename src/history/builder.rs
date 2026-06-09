@@ -25,8 +25,8 @@ use paft::market::responses::history::{
 };
 
 use actions::extract_actions;
-use adjust::cumulative_split_after;
-use assemble::assemble_candles;
+use adjust::{AdjustmentBasis, cumulative_split_after};
+use assemble::{adjustment_basis_for_series, assemble_candles};
 use fetch::{ChartFetchRequest, fetch_chart};
 
 /// A builder for fetching historical price data for a single symbol.
@@ -209,18 +209,7 @@ impl HistoryBuilder {
         )
         .await?;
 
-        cache_history_instrument(&self.client, &symbol, fetched.meta.as_ref())?;
-        if let Some(meta) = fetched.meta.as_ref() {
-            self.client.store_currency_hints(
-                &symbol,
-                CurrencyHints::from_chart(
-                    meta.currency.as_deref(),
-                    meta.exchange_name.as_deref(),
-                    meta.full_exchange_name.as_deref(),
-                    meta.instrument_type.as_deref(),
-                ),
-            );
-        }
+        store_history_side_effects(&self.client, &symbol, fetched.meta.as_ref())?;
 
         // 2) Corporate actions & split ratios
         let chart_currency = fetched.meta.as_ref().and_then(|m| m.currency.as_deref());
@@ -255,12 +244,20 @@ impl HistoryBuilder {
         let cum_split_after = cumulative_split_after(&fetched.ts, &split_events);
 
         // 4) Assemble candles (+ raw close) with/without adjustments
+        let mut adjustment_basis = None;
         let candles = if let Some(currency) = currency.as_ref() {
+            adjustment_basis = history_adjustment_basis(
+                self.auto_adjust,
+                &fetched.quote,
+                &fetched.adjclose,
+                fetched.ts.len(),
+                &mut ctx,
+            )?;
             assemble_candles(
                 &fetched.ts,
                 &fetched.quote,
                 &fetched.adjclose,
-                self.auto_adjust,
+                adjustment_basis,
                 &cum_split_after,
                 currency,
                 &mut ctx,
@@ -287,8 +284,7 @@ impl HistoryBuilder {
             .meta
             .as_ref()
             .and_then(|meta| u32::try_from(meta.price_hint?).ok());
-        let price_basis =
-            history_price_basis(self.auto_adjust, &fetched.adjclose, &cum_split_after);
+        let price_basis = history_price_basis(adjustment_basis, &cum_split_after);
 
         Ok(ctx.finish(YahooHistoryResponse {
             response: HistoryResponse {
@@ -333,23 +329,55 @@ const fn action_sort_key(action: &Action) -> (bool, chrono::NaiveDate) {
 }
 
 fn history_price_basis(
-    auto_adjust: bool,
-    adjclose: &[Option<f64>],
+    adjustment_basis: Option<AdjustmentBasis>,
     cum_split_after: &[f64],
 ) -> OhlcPriceBasis {
-    if !auto_adjust {
-        return OhlcPriceBasis::raw();
+    match adjustment_basis {
+        Some(AdjustmentBasis::ProviderAdjusted) => {
+            OhlcPriceBasis::uniform(PriceBasis::provider_latest_adjusted())
+        }
+        Some(AdjustmentBasis::SplitAdjusted)
+            if cum_split_after
+                .iter()
+                .any(|factor| (*factor - 1.0).abs() > f64::EPSILON) =>
+        {
+            OhlcPriceBasis::uniform(PriceBasis::split_adjusted_latest())
+        }
+        None | Some(AdjustmentBasis::SplitAdjusted) => OhlcPriceBasis::raw(),
     }
+}
 
-    if adjclose.iter().any(Option::is_some) {
-        OhlcPriceBasis::uniform(PriceBasis::provider_latest_adjusted())
-    } else if cum_split_after
-        .iter()
-        .any(|factor| (*factor - 1.0).abs() > f64::EPSILON)
-    {
-        OhlcPriceBasis::uniform(PriceBasis::split_adjusted_latest())
+fn store_history_side_effects(
+    client: &YfClient,
+    symbol: &str,
+    meta: Option<&MetaNode>,
+) -> Result<(), YfError> {
+    cache_history_instrument(client, symbol, meta)?;
+    if let Some(meta) = meta {
+        client.store_currency_hints(
+            symbol,
+            CurrencyHints::from_chart(
+                meta.currency.as_deref(),
+                meta.exchange_name.as_deref(),
+                meta.full_exchange_name.as_deref(),
+                meta.instrument_type.as_deref(),
+            ),
+        );
+    }
+    Ok(())
+}
+
+fn history_adjustment_basis(
+    auto_adjust: bool,
+    quote: &crate::history::wire::QuoteBlock,
+    adjclose: &[Option<f64>],
+    len: usize,
+    ctx: &mut ProjectionContext,
+) -> Result<Option<AdjustmentBasis>, YfError> {
+    if auto_adjust {
+        adjustment_basis_for_series(quote, adjclose, len, ctx).map(Some)
     } else {
-        OhlcPriceBasis::raw()
+        Ok(None)
     }
 }
 
