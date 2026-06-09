@@ -300,11 +300,9 @@ pub fn market_state_to_string(state: Option<MarketState>) -> Option<String> {
 }
 
 /// Convert String to `FundKind` enum
-#[allow(clippy::single_option_map)]
 pub fn string_to_fund_kind(s: Option<String>) -> Result<Option<FundKind>, YfError> {
-    s.map(|s| {
-        // Map Yahoo Finance legal types to paft FundKind values
-        match s.as_str() {
+    s.map_or(Ok(None), |s| {
+        let kind = match s.as_str() {
             "Exchange Traded Fund" => Ok(FundKind::Etf),
             "Mutual Fund" => Ok(FundKind::MutualFund),
             "Index Fund" => Ok(FundKind::IndexFund),
@@ -314,9 +312,10 @@ pub fn string_to_fund_kind(s: Option<String>) -> Result<Option<FundKind>, YfErro
             "Real Estate Investment Trust" => Ok(FundKind::Reit),
             "Unit Investment Trust" => Ok(FundKind::UnitInvestmentTrust),
             _ => parse_required_token(&s, "fund kind"),
-        }
+        }?;
+
+        Ok(Some(kind))
     })
-    .transpose()
 }
 
 /// Convert `FundKind` to String
