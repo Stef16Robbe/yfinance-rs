@@ -131,26 +131,26 @@ pub async fn option_chain_with_diagnostics(
         underlying_from_response,
         raw_underlying_quote_type,
     )?;
+    let projection = OptionProjectionContext {
+        expiration,
+        currency: currency.as_ref(),
+        currency_issue: currency_issue.as_ref(),
+        underlying: &underlying,
+    };
 
     let mut contracts = Vec::new();
     project_option_side(
         &mut ctx,
         od.calls,
         OptionSide::Call,
-        expiration,
-        currency.as_ref(),
-        currency_issue.as_ref(),
-        &underlying,
+        projection,
         &mut contracts,
     )?;
     project_option_side(
         &mut ctx,
         od.puts,
         OptionSide::Put,
-        expiration,
-        currency.as_ref(),
-        currency_issue.as_ref(),
-        &underlying,
+        projection,
         &mut contracts,
     )?;
 
@@ -182,23 +182,31 @@ fn underlying_instrument(
     })
 }
 
-#[allow(clippy::too_many_arguments)]
+#[derive(Clone, Copy)]
+struct OptionProjectionContext<'a> {
+    expiration: Option<i64>,
+    currency: Option<&'a ResolvedCurrencyUnit>,
+    currency_issue: Option<&'a ProjectionIssue>,
+    underlying: &'a Instrument,
+}
+
 fn project_option_side(
     ctx: &mut ProjectionContext,
     side: Option<Vec<Value>>,
     option_side: OptionSide,
-    expiration: Option<i64>,
-    currency: Option<&ResolvedCurrencyUnit>,
-    currency_issue: Option<&ProjectionIssue>,
-    underlying: &Instrument,
+    projection: OptionProjectionContext<'_>,
     out: &mut Vec<OptionContract>,
 ) -> Result<(), YfError> {
     for (idx, contract) in side.unwrap_or_default().into_iter().enumerate() {
         let contract = match OptContractNode::deserialize(&contract) {
             Ok(contract) => contract,
             Err(err) => {
-                let key =
-                    option_contract_diag_key_from_value(&contract, option_side, expiration, idx);
+                let key = option_contract_diag_key_from_value(
+                    &contract,
+                    option_side,
+                    projection.expiration,
+                    idx,
+                );
                 ctx.dropped_item(
                     "option_contract",
                     Some(&key),
@@ -210,15 +218,7 @@ fn project_option_side(
                 continue;
             }
         };
-        if let Some(contract) = project_option_contract(
-            ctx,
-            &contract,
-            option_side,
-            expiration,
-            currency,
-            currency_issue,
-            underlying,
-        )? {
+        if let Some(contract) = project_option_contract(ctx, &contract, option_side, projection)? {
             out.push(contract);
         }
     }
@@ -231,17 +231,14 @@ fn project_option_contract(
     ctx: &mut ProjectionContext,
     contract: &OptContractNode,
     option_side: OptionSide,
-    expiration: Option<i64>,
-    currency: Option<&ResolvedCurrencyUnit>,
-    currency_issue: Option<&ProjectionIssue>,
-    underlying: &Instrument,
+    projection: OptionProjectionContext<'_>,
 ) -> Result<Option<OptionContract>, YfError> {
-    let key_for_diag = option_contract_diag_key(contract, option_side, expiration);
+    let key_for_diag = option_contract_diag_key(contract, option_side, projection.expiration);
     let contract_expiration =
         contract
             .expiration
             .optional_copied(ctx, "expiration", key_for_diag.as_deref())?;
-    let Some(exp_ts) = contract_expiration.or(expiration) else {
+    let Some(exp_ts) = contract_expiration.or(projection.expiration) else {
         ctx.dropped_item(
             "option_contract",
             key_for_diag.as_deref(),
@@ -272,11 +269,12 @@ fn project_option_contract(
     .copied() else {
         return Ok(None);
     };
-    let Some(currency) = currency else {
+    let Some(currency) = projection.currency else {
         ctx.dropped_item(
             "option_contract",
             key_for_diag.as_deref(),
-            currency_issue
+            projection
+                .currency_issue
                 .cloned()
                 .unwrap_or(ProjectionIssue::CurrencyUnresolved),
         )?;
@@ -294,7 +292,8 @@ fn project_option_contract(
     };
 
     let exp_date: NaiveDate = exp_dt.date_naive();
-    let mut key = OptionContractKey::new(underlying.clone(), option_side, strike, exp_date);
+    let mut key =
+        OptionContractKey::new(projection.underlying.clone(), option_side, strike, exp_date);
     let key_for_diag = option_contract_diag_key(contract, option_side, Some(exp_ts));
     if let Some(contract_instrument) =
         optional_contract_instrument(ctx, key_for_diag.as_deref(), contract)?
