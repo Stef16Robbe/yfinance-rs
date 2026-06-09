@@ -1405,7 +1405,6 @@ pub fn report_missing_requested_quote_values(
 
 /// Centralized function to fetch raw quote values from the v7 API.
 /// Projection callers can then choose strict or best-effort node conversion.
-#[allow(clippy::too_many_lines)]
 pub async fn fetch_v7_quote_values(
     client: &YfClient,
     symbols: &[&str],
