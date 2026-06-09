@@ -15,6 +15,7 @@ build = "build.rs"
 exclude = [
     ".github/**",
     "**/.DS_Store",
+    "tests/fixtures/**",
 ]
 
 [dependencies]
