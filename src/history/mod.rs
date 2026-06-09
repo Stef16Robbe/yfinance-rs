@@ -5,6 +5,12 @@ pub use builder::HistoryBuilder;
 
 use crate::core::{HistoryRequest, HistoryResponse, HistoryService, YfClient, YfError};
 
+#[derive(Debug)]
+pub(crate) struct YahooHistoryResponse {
+    pub(crate) response: HistoryResponse,
+    pub(crate) price_hint: Option<u32>,
+}
+
 impl HistoryService for YfClient {
     async fn fetch_full_history(
         &self,

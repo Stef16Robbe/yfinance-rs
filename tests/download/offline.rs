@@ -9,12 +9,13 @@ use yfinance_rs::{
     DownloadBuilder, DownloadConcurrency, ProjectionIssue, YfClient, YfError, YfWarning,
 };
 
-fn has_more_than_two_decimals(x: f64) -> bool {
+fn has_more_than_decimals(x: f64, decimals: i32) -> bool {
     if !x.is_finite() {
         return false;
     }
-    let cents = (x * 100.0).round();
-    (x - cents / 100.0).abs() > 1e-12
+    let scale = 10_f64.powi(decimals);
+    let rounded = (x * scale).round();
+    (x - rounded / scale).abs() > 1e-12
 }
 
 async fn wait_for_mock_calls(
@@ -550,7 +551,7 @@ async fn download_back_adjust_offline() {
 }
 
 #[tokio::test]
-async fn rounding_two_decimals() {
+async fn rounding_uses_recorded_price_hint() {
     use yfinance_rs::core::conversions::money_to_f64;
 
     let server = MockServer::start();
@@ -594,10 +595,10 @@ async fn rounding_two_decimals() {
 
     for entry in &res.entries {
         for c in &entry.history.candles {
-            assert!(!has_more_than_two_decimals(money_to_f64(&c.ohlc.open)));
-            assert!(!has_more_than_two_decimals(money_to_f64(&c.ohlc.high)));
-            assert!(!has_more_than_two_decimals(money_to_f64(&c.ohlc.low)));
-            assert!(!has_more_than_two_decimals(money_to_f64(&c.ohlc.close)));
+            assert!(!has_more_than_decimals(money_to_f64(&c.ohlc.open), 2));
+            assert!(!has_more_than_decimals(money_to_f64(&c.ohlc.high), 2));
+            assert!(!has_more_than_decimals(money_to_f64(&c.ohlc.low), 2));
+            assert!(!has_more_than_decimals(money_to_f64(&c.ohlc.close), 2));
         }
     }
 }

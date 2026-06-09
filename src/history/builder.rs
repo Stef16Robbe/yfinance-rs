@@ -14,6 +14,7 @@ use crate::core::{
         TradingCurrencyEvidence, project_currency_resolution,
     },
 };
+use crate::history::YahooHistoryResponse;
 use crate::history::wire::MetaNode;
 use chrono_tz::Tz;
 use paft::domain::Instrument;
@@ -181,6 +182,15 @@ impl HistoryBuilder {
     pub async fn fetch_full_with_diagnostics(
         &self,
     ) -> Result<YfResponse<HistoryResponse>, YfError> {
+        Ok(self
+            .fetch_full_yahoo_with_diagnostics()
+            .await?
+            .map(|history| history.response))
+    }
+
+    pub(crate) async fn fetch_full_yahoo_with_diagnostics(
+        &self,
+    ) -> Result<YfResponse<YahooHistoryResponse>, YfError> {
         let mut ctx = ProjectionContext::new("history_chart", self.options.data_quality());
         let symbol = normalize_symbol(&self.symbol)?;
 
@@ -273,15 +283,22 @@ impl HistoryBuilder {
 
         // 5) Map metadata
         let meta_out = map_meta(fetched.meta.as_ref(), &mut ctx)?;
+        let price_hint = fetched
+            .meta
+            .as_ref()
+            .and_then(|meta| u32::try_from(meta.price_hint?).ok());
         let price_basis =
             history_price_basis(self.auto_adjust, &fetched.adjclose, &cum_split_after);
 
-        Ok(ctx.finish(HistoryResponse {
-            candles,
-            actions: actions_out,
-            price_basis,
-            meta: meta_out,
-            provider: (),
+        Ok(ctx.finish(YahooHistoryResponse {
+            response: HistoryResponse {
+                candles,
+                actions: actions_out,
+                price_basis,
+                meta: meta_out,
+                provider: (),
+            },
+            price_hint,
         }))
     }
 }

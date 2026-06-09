@@ -51,6 +51,8 @@ pub struct MetaNode {
     pub(crate) gmtoffset: Option<i64>,
     #[serde(default)]
     pub(crate) currency: Option<String>,
+    #[serde(default, rename = "priceHint")]
+    pub(crate) price_hint: Option<i64>,
 }
 
 #[derive(Deserialize)]

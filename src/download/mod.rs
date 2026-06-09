@@ -4,22 +4,22 @@ use crate::{
     core::client::normalize_symbols,
     core::conversions::f64_from_price_amount,
     core::{
-        CallOptions, Candle, HistoryResponse, Interval, ProjectionContext, ProjectionIssue, Range,
-        YfClient, YfError, YfResponse,
+        CallOptions, Candle, Interval, ProjectionContext, ProjectionIssue, Range, YfClient,
+        YfError, YfResponse,
     },
-    history::HistoryBuilder,
+    history::{HistoryBuilder, YahooHistoryResponse},
 };
 use paft::market::responses::{
     download::{DownloadEntry, DownloadResponse},
     history::{OhlcPriceBasis, PriceBasis},
 };
 use paft::money::PriceAmount;
-use rust_decimal::prelude::FromPrimitive;
 type DateRange = (chrono::DateTime<chrono::Utc>, chrono::DateTime<chrono::Utc>);
 type MaybeDateRange = Option<DateRange>;
-type DownloadFetchSuccess = (usize, String, YfResponse<HistoryResponse>);
+type DownloadFetchSuccess = (usize, String, YfResponse<YahooHistoryResponse>);
 type DownloadFetchFailure = (usize, String, YfError);
 type DownloadFetchResult = Result<DownloadFetchSuccess, DownloadFetchFailure>;
+const MAX_DECIMAL_SCALE: u32 = 28;
 
 /// Maximum number of per-symbol history requests a [`DownloadBuilder`] runs at once.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -169,39 +169,37 @@ impl DownloadBuilder {
         OhlcPriceBasis::per_field(*open, *high, *low, PriceBasis::raw())
     }
 
-    fn apply_rounding_if_enabled(&self, rows: &mut [Candle]) {
+    fn apply_rounding_if_enabled(&self, rows: &mut [Candle], price_hint: Option<u32>) {
         if !self.rounding {
             return;
         }
+
+        let Some(price_hint) = price_hint else {
+            return;
+        };
+
         for c in rows {
-            if let Some(open) = rounded_price(&c.ohlc.open) {
-                c.ohlc.open = open;
-            }
-            if let Some(high) = rounded_price(&c.ohlc.high) {
-                c.ohlc.high = high;
-            }
-            if let Some(low) = rounded_price(&c.ohlc.low) {
-                c.ohlc.low = low;
-            }
-            if let Some(close) = rounded_price(&c.ohlc.close) {
-                c.ohlc.close = close;
-            }
+            c.ohlc.open = rounded_price(&c.ohlc.open, price_hint);
+            c.ohlc.high = rounded_price(&c.ohlc.high, price_hint);
+            c.ohlc.low = rounded_price(&c.ohlc.low, price_hint);
+            c.ohlc.close = rounded_price(&c.ohlc.close, price_hint);
         }
     }
 
     fn process_joined_results(
         &self,
-        joined: Vec<(String, YfResponse<HistoryResponse>)>,
+        joined: Vec<(String, YfResponse<YahooHistoryResponse>)>,
         ctx: &mut ProjectionContext,
     ) -> Result<DownloadResponse, YfError> {
         let mut entries: Vec<DownloadEntry> = Vec::with_capacity(joined.len());
         for (sym, response) in joined {
             ctx.extend(response.diagnostics.with_key_prefix(&sym));
-            let mut resp = response.data;
+            let history = response.data;
+            let mut resp = history.response;
             // apply transforms to candles
             self.apply_back_adjust(&mut resp.candles);
             resp.price_basis = self.back_adjust_price_basis(resp.price_basis);
-            self.apply_rounding_if_enabled(&mut resp.candles);
+            self.apply_rounding_if_enabled(&mut resp.candles, history.price_hint);
 
             let Some(instrument) = self.client.cached_instrument(&sym) else {
                 ctx.dropped_item(
@@ -343,7 +341,7 @@ impl DownloadBuilder {
         self
     }
 
-    /// Sets whether to round prices to 2 decimal places. (Default: `false`)
+    /// Sets whether to round prices using Yahoo's chart `priceHint`. (Default: `false`)
     #[must_use]
     pub const fn rounding(mut self, yes: bool) -> Self {
         self.rounding = yes;
@@ -383,7 +381,7 @@ impl DownloadBuilder {
                 let hb = self.build_history_for_symbol(&sym, period_dt, need_adjust_in_fetch);
 
                 async move {
-                    match hb.fetch_full_with_diagnostics().await {
+                    match hb.fetch_full_yahoo_with_diagnostics().await {
                         Ok(full) => Ok((index, sym, full)),
                         Err(err) => Err((index, sym, err)),
                     }
@@ -414,7 +412,7 @@ impl DownloadBuilder {
         }
 
         joined.sort_unstable_by_key(|(index, _, _)| *index);
-        let joined: Vec<(String, YfResponse<HistoryResponse>)> = joined
+        let joined: Vec<(String, YfResponse<YahooHistoryResponse>)> = joined
             .into_iter()
             .map(|(_, sym, full)| (sym, full))
             .collect();
@@ -426,12 +424,10 @@ impl DownloadBuilder {
 
 /* ---------------- internal helpers ---------------- */
 
-fn round2(x: f64) -> f64 {
-    (x * 100.0).round() / 100.0
-}
-
-fn rounded_price(price: &PriceAmount) -> Option<PriceAmount> {
-    let value = f64_from_price_amount(price)?;
-    let decimal = rust_decimal::Decimal::from_f64(round2(value))?;
-    Some(PriceAmount::new(decimal))
+fn rounded_price(price: &PriceAmount, price_hint: u32) -> PriceAmount {
+    PriceAmount::new(
+        price
+            .as_decimal()
+            .round_dp(price_hint.min(MAX_DECIMAL_SCALE)),
+    )
 }

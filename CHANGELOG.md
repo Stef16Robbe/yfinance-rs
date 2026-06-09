@@ -142,6 +142,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Published crate packages now exclude recorded Yahoo fixture payloads from
   `tests/fixtures`.
+- Download rounding now uses Yahoo chart `priceHint` metadata instead of
+  hardcoded two-decimal `f64` rounding.
 - Business Insider ISIN lookup now parses the `mmSuggestDeliver` JSONP shape
   with a local data-expression parser, returns typed HTTP status errors for
   non-success responses, validates ISIN check digits, and keeps suffix-qualified
