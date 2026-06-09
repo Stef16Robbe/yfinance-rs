@@ -209,7 +209,7 @@ impl HistoryBuilder {
         )
         .await?;
 
-        store_history_side_effects(&self.client, &symbol, fetched.meta.as_ref())?;
+        store_history_side_effects(&self.client, &symbol, fetched.meta.as_ref());
 
         // 2) Corporate actions & split ratios
         let chart_currency = fetched.meta.as_ref().and_then(|m| m.currency.as_deref());
@@ -347,12 +347,8 @@ fn history_price_basis(
     }
 }
 
-fn store_history_side_effects(
-    client: &YfClient,
-    symbol: &str,
-    meta: Option<&MetaNode>,
-) -> Result<(), YfError> {
-    cache_history_instrument(client, symbol, meta)?;
+fn store_history_side_effects(client: &YfClient, symbol: &str, meta: Option<&MetaNode>) {
+    cache_history_instrument(client, symbol, meta);
     if let Some(meta) = meta {
         client.store_currency_hints(
             symbol,
@@ -364,7 +360,6 @@ fn store_history_side_effects(
             ),
         );
     }
-    Ok(())
 }
 
 fn history_adjustment_basis(
@@ -533,23 +528,20 @@ fn parse_history_timezone(
     Ok(None)
 }
 
-fn cache_history_instrument(
-    client: &YfClient,
-    requested_symbol: &str,
-    meta: Option<&MetaNode>,
-) -> Result<(), YfError> {
+fn cache_history_instrument(client: &YfClient, requested_symbol: &str, meta: Option<&MetaNode>) {
     let Some(meta) = meta else {
-        return Ok(());
+        return;
     };
-    let Some(kind) = meta
+    let Some(instrument_type) = meta
         .instrument_type
         .as_deref()
         .map(str::trim)
         .filter(|value| !value.is_empty())
-        .map(parse_yahoo_quote_type)
-        .transpose()?
     else {
-        return Ok(());
+        return;
+    };
+    let Ok(kind) = parse_yahoo_quote_type(instrument_type) else {
+        return;
     };
 
     let exchange = first_parsed_yahoo_exchange([
@@ -563,7 +555,7 @@ fn cache_history_instrument(
     };
 
     let Ok(instrument) = instrument else {
-        return Ok(());
+        return;
     };
 
     client.store_instrument(requested_symbol.to_string(), instrument.clone());
@@ -575,6 +567,4 @@ fn cache_history_instrument(
     {
         client.store_instrument(provider_symbol.to_string(), instrument);
     }
-
-    Ok(())
 }

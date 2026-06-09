@@ -169,6 +169,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - History best-effort responses now report unresolved candle or action currency
   as dropped-item diagnostics instead of aborting the whole response or falling
   back to USD.
+- History requests now ignore malformed `chart.meta.instrumentType` values when
+  the field is only needed for side-cache enrichment, preserving otherwise
+  valid candles.
 - `DownloadBuilder` best-effort batches now preserve successful symbols when an
   individual history fetch fails, report failed symbols as dropped entries, and
   drop only entries whose chart metadata lacks a usable instrument kind.

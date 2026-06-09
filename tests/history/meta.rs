@@ -2,7 +2,8 @@ use httpmock::Method::GET;
 use httpmock::MockServer;
 use url::Url;
 use yfinance_rs::core::Range;
-use yfinance_rs::{ProjectionIssue, Ticker, YfClient, YfError, YfWarning};
+use yfinance_rs::core::conversions::money_to_f64;
+use yfinance_rs::{HistoryBuilder, ProjectionIssue, Ticker, YfClient, YfError, YfWarning};
 
 fn meta_body() -> String {
     r#"{
@@ -46,6 +47,38 @@ fn malformed_timezone_body() -> String {
     .to_string()
 }
 
+fn malformed_instrument_type_body() -> String {
+    r#"{
+      "chart":{
+        "result":[
+          {
+            "meta": {
+              "symbol": "BADTYPE",
+              "instrumentType": "!!!",
+              "currency": "USD",
+              "timezone":"EDT",
+              "exchangeTimezoneName":"America/New_York",
+              "gmtoffset": -14400
+            },
+            "timestamp": [1704067200],
+            "indicators": {
+              "quote":[{
+                "open":[100.0],
+                "high":[101.0],
+                "low":[99.0],
+                "close":[100.5],
+                "volume":[1000]
+              }],
+              "adjclose":[{ "adjclose":[100.5] }]
+            }
+          }
+        ],
+        "error": null
+      }
+    }"#
+    .to_string()
+}
+
 #[tokio::test]
 async fn get_history_metadata_returns_timezone() {
     let server = MockServer::start();
@@ -76,6 +109,35 @@ async fn get_history_metadata_returns_timezone() {
         Some("America/New_York".to_string())
     );
     assert_eq!(m.utc_offset_seconds, Some(-14400));
+}
+
+#[tokio::test]
+async fn malformed_history_instrument_type_does_not_abort_candles() {
+    let server = MockServer::start();
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v8/finance/chart/BADTYPE")
+            .query_param("events", "div|split|capitalGains");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(malformed_instrument_type_body());
+    });
+
+    let client = YfClient::builder()
+        .base_chart(Url::parse(&format!("{}/v8/finance/chart/", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+
+    let response = HistoryBuilder::new(&client, "BADTYPE")
+        .fetch_full_with_diagnostics()
+        .await
+        .unwrap();
+
+    mock.assert();
+    assert!(response.diagnostics.is_empty());
+    assert_eq!(response.data.candles.len(), 1);
+    assert!((money_to_f64(&response.data.candles[0].ohlc.close) - 100.5).abs() < 1e-9);
 }
 
 #[tokio::test]
