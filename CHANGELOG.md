@@ -124,8 +124,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Dependencies
 
-- Added `serde-field-result` 0.1.0 for recoverable provider wire-field
-  deserialization.
+- Added `serde-field-result` 0.1.0 from GitHub for recoverable provider
+  wire-field deserialization.
 - Added `moka` for bounded in-memory caches and `getrandom` for retry jitter.
 - Added `unicode-normalization` for country/currency inference normalization.
 - Added `protoc-bin-vendored` as a build dependency so protobuf generation does
