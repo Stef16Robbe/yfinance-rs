@@ -646,19 +646,15 @@ async fn run_websocket_stream_with_fallback(
         }
 
         let reconnect_delay = websocket_reconnect_backoff(cfg.interval, websocket_failures);
-        if !poll_until_websocket_reconnect(
-            &client,
-            &symbols,
-            &cfg,
-            &tx,
-            stop_rx,
+        let reconnect = PollReconnectContext {
+            client: &client,
+            symbols: &symbols,
+            cfg: &cfg,
+            tx: &tx,
             options,
-            &mut last_price,
-            &mut ticker,
-            reconnect_delay,
-        )
-        .await
-        {
+            delay: reconnect_delay,
+        };
+        if !poll_until_websocket_reconnect(reconnect, stop_rx, &mut last_price, &mut ticker).await {
             break;
         }
     }
@@ -671,28 +667,39 @@ fn websocket_reconnect_backoff(interval: Duration, consecutive_failures: u32) ->
         .min(MAX_WEBSOCKET_RECONNECT_BACKOFF)
 }
 
-#[allow(clippy::too_many_arguments)]
+struct PollReconnectContext<'a> {
+    client: &'a crate::core::YfClient,
+    symbols: &'a [String],
+    cfg: &'a StreamConfig,
+    tx: &'a tokio::sync::mpsc::Sender<QuoteUpdate>,
+    options: &'a CallOptions,
+    delay: Duration,
+}
+
 async fn poll_until_websocket_reconnect(
-    client: &crate::core::YfClient,
-    symbols: &[String],
-    cfg: &StreamConfig,
-    tx: &tokio::sync::mpsc::Sender<QuoteUpdate>,
+    reconnect: PollReconnectContext<'_>,
     stop_rx: &mut tokio::sync::oneshot::Receiver<()>,
-    options: &CallOptions,
     last_price: &mut HashMap<String, Option<f64>>,
     ticker: &mut tokio::time::Interval,
-    reconnect_delay: Duration,
 ) -> bool {
-    let reconnect_at = tokio::time::Instant::now() + reconnect_delay;
+    let reconnect_at = tokio::time::Instant::now() + reconnect.delay;
 
     loop {
         tokio::select! {
             () = tokio::time::sleep_until(reconnect_at) => return true,
             _ = ticker.tick() => {
-                if tx.is_closed() {
+                if reconnect.tx.is_closed() {
                     return false;
                 }
-                if !poll_stream_once(client, symbols, cfg, tx, stop_rx, options, last_price).await {
+                if !poll_stream_once(
+                    reconnect.client,
+                    reconnect.symbols,
+                    reconnect.cfg,
+                    reconnect.tx,
+                    stop_rx,
+                    reconnect.options,
+                    last_price,
+                ).await {
                     return false;
                 }
             },
