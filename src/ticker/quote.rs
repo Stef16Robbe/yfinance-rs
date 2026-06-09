@@ -46,7 +46,8 @@ pub async fn fetch_quote_with_diagnostics(
     let mut ctx = ProjectionContext::new("quote", options.data_quality());
     let symbols = [symbol];
     let results = quotes::fetch_v7_quote_values(client, &symbols, options).await?;
-    let result = quotes::required_quote_node_from_values_with_context(results, symbol, &mut ctx)?;
+    let nodes = quotes::quote_nodes_from_values_with_context(client, &symbols, results, &mut ctx)?;
+    let result = quotes::required_quote_node_from_nodes(nodes, symbol)?;
 
     let quote = result.to_quote_with_context(&mut ctx)?;
     Ok(ctx.finish(quote))
@@ -70,7 +71,8 @@ pub async fn fetch_fast_info_with_diagnostics(
     let mut ctx = ProjectionContext::new("fast_info", options.data_quality());
     let symbols = [symbol];
     let results = quotes::fetch_v7_quote_values(client, &symbols, options).await?;
-    let result = quotes::required_quote_node_from_values_with_context(results, symbol, &mut ctx)?;
+    let nodes = quotes::quote_nodes_from_values_with_context(client, &symbols, results, &mut ctx)?;
+    let result = quotes::required_quote_node_from_nodes(nodes, symbol)?;
 
     let fast_info = result.to_fast_info_with_context(&mut ctx)?;
     Ok(ctx.finish(fast_info))
@@ -100,13 +102,14 @@ pub async fn fetch_key_statistics_with_diagnostics(
         quotes::fetch_quote_summary_key_statistics(client, symbol, options)
     );
 
-    let results = quote_res?;
-    if results.is_empty() {
+    let values = quote_res?;
+    if values.is_empty() {
         return Err(YfError::MissingData(format!(
             "no quote result found for symbol {symbol}"
         )));
     }
-    let stats = match quotes::first_quote_node_from_values_with_context(results, &mut ctx)? {
+    let nodes = quotes::quote_nodes_from_values_with_context(client, &symbols, values, &mut ctx)?;
+    let stats = match quotes::first_quote_node_from_nodes(nodes) {
         Some(result) => result.to_key_statistics_with_context(&mut ctx)?,
         None => KeyStatistics::default(),
     };

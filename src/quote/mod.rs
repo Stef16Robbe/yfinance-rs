@@ -107,13 +107,14 @@ impl QuotesBuilder {
 
         let mut ctx = ProjectionContext::new("quotes", self.options.data_quality());
         core_quotes::report_missing_requested_quote_values(&symbol_slices, &results, &mut ctx)?;
-        let mut quotes = Vec::with_capacity(results.len());
-        for (idx, result) in results.into_iter().enumerate() {
-            let Some(result) =
-                core_quotes::quote_node_from_value_with_context(result, idx, &mut ctx)?
-            else {
-                continue;
-            };
+        let nodes = core_quotes::quote_nodes_from_values_with_context(
+            &self.client,
+            &symbol_slices,
+            results,
+            &mut ctx,
+        )?;
+        let mut quotes = Vec::with_capacity(nodes.len());
+        for result in nodes {
             if let Some(quote) = result.to_quote_item_with_context(&mut ctx)? {
                 quotes.push(quote);
             }

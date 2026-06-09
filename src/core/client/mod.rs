@@ -15,10 +15,9 @@ pub(crate) use urls::{SymbolEndpoint, normalize_symbol, normalize_symbols};
 use constants::{
     DEFAULT_BASE_CHART, DEFAULT_BASE_QUOTE_API, DEFAULT_COOKIE_URL, DEFAULT_CRUMB_URL, USER_AGENT,
 };
-use moka::ops::compute::Op;
 use moka::sync::Cache as MokaCache;
 use reqwest::Client;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::hash::Hash;
 use std::num::NonZeroUsize;
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
@@ -36,73 +35,114 @@ struct HttpTimeouts {
     connect: Duration,
 }
 
-pub(crate) struct BoundedMokaMap<K, V> {
-    entries: MokaCache<K, V>,
+pub(crate) struct BoundedSideMap<K, V> {
+    entries: RwLock<BoundedSideEntries<K, V>>,
 }
 
-impl<K, V> std::fmt::Debug for BoundedMokaMap<K, V>
+struct BoundedSideEntries<K, V> {
+    values: HashMap<K, V>,
+    insertion_order: VecDeque<K>,
+    max_entries: usize,
+}
+
+impl<K, V> std::fmt::Debug for BoundedSideMap<K, V>
 where
     K: Eq + Hash + std::fmt::Debug,
     V: std::fmt::Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("BoundedMokaMap").finish_non_exhaustive()
+        f.debug_struct("BoundedSideMap").finish_non_exhaustive()
     }
 }
 
-impl<K, V> BoundedMokaMap<K, V>
+impl<K, V> BoundedSideEntries<K, V>
 where
-    K: Eq + Hash + Send + Sync + 'static,
+    K: Clone + Eq + Hash,
+{
+    fn insert(&mut self, key: K, value: V) {
+        if !self.values.contains_key(&key) {
+            self.insertion_order.push_back(key.clone());
+        }
+        self.values.insert(key, value);
+        self.evict_extra_entries();
+    }
+
+    fn evict_extra_entries(&mut self) {
+        while self.values.len() > self.max_entries {
+            let Some(oldest_key) = self.insertion_order.pop_front() else {
+                break;
+            };
+            self.values.remove(&oldest_key);
+        }
+    }
+}
+
+impl<K, V> BoundedSideMap<K, V>
+where
+    K: Clone + Eq + Hash + Send + Sync + 'static,
     V: Clone + Send + Sync + 'static,
 {
     fn new(max_entries: usize) -> Self {
         debug_assert!(max_entries > 0);
         Self {
-            entries: MokaCache::builder()
-                .max_capacity(max_entries.try_into().unwrap_or(u64::MAX))
-                .build(),
+            entries: RwLock::new(BoundedSideEntries {
+                values: HashMap::new(),
+                insertion_order: VecDeque::new(),
+                max_entries,
+            }),
         }
     }
 
     pub(crate) fn insert(&self, key: K, value: V) {
-        self.entries.insert(key, value);
-        self.entries.run_pending_tasks();
+        self.entries
+            .write()
+            .expect("side cache lock poisoned")
+            .insert(key, value);
     }
 
     pub(crate) fn get_cloned(&self, key: &K) -> Option<V> {
-        self.entries.get(key)
+        self.entries
+            .read()
+            .expect("side cache lock poisoned")
+            .values
+            .get(key)
+            .cloned()
     }
 
     pub(crate) fn compute_with(&self, key: K, f: impl FnOnce(Option<V>) -> V) -> V {
-        let result = self
-            .entries
-            .entry(key)
-            .and_compute_with(|maybe_entry| Op::Put(f(maybe_entry.map(moka::Entry::into_value))));
-        self.entries.run_pending_tasks();
-        result
-            .into_entry()
-            .expect("compute always puts a value")
-            .into_value()
+        let mut entries = self.entries.write().expect("side cache lock poisoned");
+        let value = f(entries.values.get(&key).cloned());
+        entries.insert(key, value.clone());
+        value
     }
 
     pub(crate) fn clear(&self) {
-        self.entries.invalidate_all();
-        self.entries.run_pending_tasks();
+        let mut entries = self.entries.write().expect("side cache lock poisoned");
+        entries.values.clear();
+        entries.insertion_order.clear();
     }
 
     #[cfg(test)]
     pub(crate) fn len(&self) -> usize {
-        self.entries.run_pending_tasks();
-        usize::try_from(self.entries.entry_count()).expect("cache entry count fits usize")
+        self.entries
+            .read()
+            .expect("side cache lock poisoned")
+            .values
+            .len()
     }
 }
 
-impl<V> BoundedMokaMap<String, V>
+impl<V> BoundedSideMap<String, V>
 where
     V: Clone + Send + Sync + 'static,
 {
     pub(crate) fn get_str(&self, key: &str) -> Option<V> {
-        self.entries.get(key)
+        self.entries
+            .read()
+            .expect("side cache lock poisoned")
+            .values
+            .get(key)
+            .cloned()
     }
 }
 
@@ -273,10 +313,10 @@ pub struct YfClient {
     credential_fetch_lock: Arc<tokio::sync::Mutex<()>>,
 
     retry: RetryConfig,
-    pub(crate) currency_cache: Arc<BoundedMokaMap<CurrencyCacheKey, ResolvedCurrency>>,
-    pub(crate) currency_hints: Arc<BoundedMokaMap<String, CurrencyHints>>,
+    pub(crate) currency_cache: Arc<BoundedSideMap<CurrencyCacheKey, ResolvedCurrency>>,
+    pub(crate) currency_hints: Arc<BoundedSideMap<String, CurrencyHints>>,
     // Cache of resolved instruments by original ticker string
-    instrument_cache: Arc<BoundedMokaMap<String, paft::domain::Instrument>>,
+    instrument_cache: Arc<BoundedSideMap<String, paft::domain::Instrument>>,
     cache: Option<Arc<CacheStore>>,
 }
 
@@ -1081,9 +1121,9 @@ impl YfClientBuilder {
             state: Arc::new(RwLock::new(initial_state)),
             credential_fetch_lock: Arc::new(tokio::sync::Mutex::new(())),
             retry,
-            currency_cache: Arc::new(BoundedMokaMap::new(side_cache_max_entries)),
-            currency_hints: Arc::new(BoundedMokaMap::new(side_cache_max_entries)),
-            instrument_cache: Arc::new(BoundedMokaMap::new(side_cache_max_entries)),
+            currency_cache: Arc::new(BoundedSideMap::new(side_cache_max_entries)),
+            currency_hints: Arc::new(BoundedSideMap::new(side_cache_max_entries)),
+            instrument_cache: Arc::new(BoundedSideMap::new(side_cache_max_entries)),
             cache: (self.cache_ttl.is_some() || !self.cache_ttls.is_empty()).then(|| {
                 Arc::new(CacheStore::new(
                     self.cache_ttl,
@@ -1300,9 +1340,9 @@ mod tests {
     }
 
     #[test]
-    fn bounded_moka_map_hit_does_not_clone_keys() {
+    fn bounded_side_map_hit_does_not_clone_keys() {
         let clones = Arc::new(std::sync::atomic::AtomicUsize::new(0));
-        let cache = BoundedMokaMap::new(2);
+        let cache = BoundedSideMap::new(2);
         cache.insert(CloneCountingKey::new("AAPL", &clones), "aapl");
         cache.insert(CloneCountingKey::new("MSFT", &clones), "msft");
 

@@ -224,25 +224,41 @@ async fn fetch_info_parts(
     YfError,
 > {
     let symbols = [symbol];
-    let (quote_res, quote_summary_res) = tokio::join!(
+    let (quote_res, quote_summary_body_res) = tokio::join!(
         crate::core::quotes::fetch_v7_quote_values(client, &symbols, options),
-        fetch_info_quote_summary_parts(client, symbol, options)
+        fetch_info_quote_summary_body(client, symbol, options)
     );
 
-    let quote =
-        crate::core::quotes::required_quote_node_from_values_with_context(quote_res?, symbol, ctx)?;
+    let quote_values = quote_res?;
+    let quote_nodes = crate::core::quotes::quote_nodes_from_values_with_context(
+        client,
+        &symbols,
+        quote_values,
+        ctx,
+    )?;
+    let quote = crate::core::quotes::required_quote_node_from_nodes(quote_nodes, symbol)?;
+    let quote_summary_res = match quote_summary_body_res {
+        Ok(body) => project_info_quote_summary_body(client, symbol, &body, options).await,
+        Err(err) => Err(err),
+    };
     Ok((quote, quote_summary_res))
 }
 
-async fn fetch_info_quote_summary_parts(
+async fn fetch_info_quote_summary_body(
     client: &YfClient,
     symbol: &str,
     options: &CallOptions,
+) -> Result<String, YfError> {
+    quotesummary::fetch_body(client, symbol, INFO_QUOTE_SUMMARY_MODULES, "info", options).await
+}
+
+async fn project_info_quote_summary_body(
+    client: &YfClient,
+    symbol: &str,
+    body: &str,
+    options: &CallOptions,
 ) -> Result<InfoQuoteSummaryParts, YfError> {
-    let body =
-        quotesummary::fetch_body(client, symbol, INFO_QUOTE_SUMMARY_MODULES, "info", options)
-            .await?;
-    let raw = quotesummary::module_result_raw_value(&body)?;
+    let raw = quotesummary::module_result_raw_value(body)?;
 
     Ok(InfoQuoteSummaryParts {
         key_statistics: crate::core::quotes::quote_summary_key_statistics_from_raw(raw),

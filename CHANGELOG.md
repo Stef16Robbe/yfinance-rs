@@ -149,6 +149,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Downloads now keep successful history entries when Yahoo omits
   `chart.meta.instrumentType`, using an explicit untyped instrument fallback
   with diagnostics instead of dropping the symbol in best-effort mode.
+- v7 quote side effects now reuse already-projected quote nodes instead of
+  cloning and re-deserializing raw JSON values, and side caches no longer run
+  Moka maintenance on every write.
 - Business Insider ISIN lookup now parses the `mmSuggestDeliver` JSONP shape
   with a local data-expression parser, returns typed HTTP status errors for
   non-success responses, validates ISIN check digits, and keeps suffix-qualified

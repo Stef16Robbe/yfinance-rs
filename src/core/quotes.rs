@@ -1368,14 +1368,7 @@ pub async fn fetch_v7_quotes(
     let values = fetch_v7_quote_values(client, symbols, options).await?;
     let mut ctx = ProjectionContext::new("quote_v7", options.data_quality());
     report_missing_requested_quote_values(symbols, &values, &mut ctx)?;
-    let mut nodes = Vec::with_capacity(values.len());
-    for (idx, value) in values.into_iter().enumerate() {
-        if let Some(node) = quote_node_from_value_with_context(value, idx, &mut ctx)? {
-            nodes.push(node);
-        }
-    }
-
-    Ok(nodes)
+    quote_nodes_from_values_with_context(client, symbols, values, &mut ctx)
 }
 
 pub fn report_missing_requested_quote_values(
@@ -1411,7 +1404,7 @@ pub fn report_missing_requested_quote_values(
     Ok(())
 }
 
-/// Centralized function to fetch raw quote nodes from the v7 API.
+/// Centralized function to fetch raw quote values from the v7 API.
 /// Projection callers can then choose strict or best-effort node conversion.
 #[allow(clippy::too_many_lines)]
 pub async fn fetch_v7_quote_values(
@@ -1459,8 +1452,6 @@ pub async fn fetch_v7_quote_values(
         .result
         .ok_or_else(|| YfError::MissingData("v7 quoteResponse.result missing".into()))?;
 
-    store_v7_quote_side_effects_from_values(client, symbols, &nodes);
-
     Ok(nodes)
 }
 
@@ -1484,7 +1475,23 @@ fn reject_v7_quote_error(quote_response: &V7QuoteResponse) -> Result<(), YfError
     Ok(())
 }
 
-pub fn quote_node_from_value_with_context(
+pub fn quote_nodes_from_values_with_context(
+    client: &YfClient,
+    requested_symbols: &[&str],
+    values: Vec<Value>,
+    ctx: &mut ProjectionContext,
+) -> Result<Vec<V7QuoteNode>, YfError> {
+    let mut nodes = Vec::with_capacity(values.len());
+    for (idx, value) in values.into_iter().enumerate() {
+        if let Some(node) = quote_node_from_value_with_context(value, idx, ctx)? {
+            nodes.push(node);
+        }
+    }
+    store_v7_quote_side_effects(client, requested_symbols, &nodes);
+    Ok(nodes)
+}
+
+fn quote_node_from_value_with_context(
     value: Value,
     idx: usize,
     ctx: &mut ProjectionContext,
@@ -1506,25 +1513,15 @@ pub fn quote_node_from_value_with_context(
     }
 }
 
-pub fn first_quote_node_from_values_with_context(
-    values: Vec<Value>,
-    ctx: &mut ProjectionContext,
-) -> Result<Option<V7QuoteNode>, YfError> {
-    for (idx, value) in values.into_iter().enumerate() {
-        if let Some(node) = quote_node_from_value_with_context(value, idx, ctx)? {
-            return Ok(Some(node));
-        }
-    }
-
-    Ok(None)
+pub fn first_quote_node_from_nodes(nodes: Vec<V7QuoteNode>) -> Option<V7QuoteNode> {
+    nodes.into_iter().next()
 }
 
-pub fn required_quote_node_from_values_with_context(
-    values: Vec<Value>,
+pub fn required_quote_node_from_nodes(
+    nodes: Vec<V7QuoteNode>,
     symbol: &str,
-    ctx: &mut ProjectionContext,
 ) -> Result<V7QuoteNode, YfError> {
-    first_quote_node_from_values_with_context(values, ctx)?.ok_or_else(|| {
+    first_quote_node_from_nodes(nodes).ok_or_else(|| {
         YfError::MissingData(format!("no valid quote result found for symbol {symbol}"))
     })
 }
@@ -1536,18 +1533,6 @@ fn quote_node_diag_key_from_value(value: &Value, idx: usize) -> String {
         .map(str::trim)
         .filter(|symbol| !symbol.is_empty())
         .map_or_else(|| format!("result[{idx}]"), ToString::to_string)
-}
-
-fn store_v7_quote_side_effects_from_values(
-    client: &YfClient,
-    requested_symbols: &[&str],
-    values: &[Value],
-) {
-    let nodes = values
-        .iter()
-        .filter_map(|value| serde_json::from_value(value.clone()).ok())
-        .collect::<Vec<_>>();
-    store_v7_quote_side_effects(client, requested_symbols, &nodes);
 }
 
 fn store_v7_quote_side_effects(
