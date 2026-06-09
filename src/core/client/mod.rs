@@ -780,13 +780,13 @@ impl YfClientBuilder {
 
     /// (Internal testing only) Provides pre-authenticated credentials to bypass the cookie/crumb fetch.
     ///
-    /// This setting only has effect when the `test-mode` feature is enabled.
-    /// In normal usage, this setting is ignored.
+    /// This setting only has effect in tests or when the `test-mode` feature is
+    /// enabled. In normal usage, this setting is ignored.
     #[doc(hidden)]
     #[must_use]
     #[allow(unused_variables, unused_mut)]
     pub fn _preauth(mut self, cookie: impl Into<String>, crumb: impl Into<String>) -> Self {
-        #[cfg(feature = "test-mode")]
+        #[cfg(any(test, feature = "test-mode"))]
         {
             self.preauth_cookie = Some(cookie.into());
             self.preauth_crumb = Some(crumb.into());
@@ -1078,21 +1078,21 @@ impl YfClientBuilder {
 
         let initial_state = ClientState {
             cookie: {
-                #[cfg(feature = "test-mode")]
+                #[cfg(any(test, feature = "test-mode"))]
                 {
                     self.preauth_cookie
                 }
-                #[cfg(not(feature = "test-mode"))]
+                #[cfg(not(any(test, feature = "test-mode")))]
                 {
                     None
                 }
             },
             crumb: {
-                #[cfg(feature = "test-mode")]
+                #[cfg(any(test, feature = "test-mode"))]
                 {
                     self.preauth_crumb
                 }
-                #[cfg(not(feature = "test-mode"))]
+                #[cfg(not(any(test, feature = "test-mode")))]
                 {
                     None
                 }
@@ -1259,6 +1259,22 @@ mod tests {
         assert!(debug.contains("crumb_present: true"));
         assert!(!debug.contains("cookie-secret"));
         assert!(!debug.contains("crumb-secret"));
+    }
+
+    #[test]
+    #[allow(clippy::used_underscore_items)]
+    fn preauth_sets_initial_credentials_in_normal_test_builds() {
+        let client = YfClient::builder()
+            ._preauth("cookie-secret", "crumb-secret")
+            .build()
+            .expect("client builds");
+        let (cookie, crumb) = {
+            let state = client.read_state();
+            (state.cookie.clone(), state.crumb.clone())
+        };
+
+        assert_eq!(cookie.as_deref(), Some("cookie-secret"));
+        assert_eq!(crumb.as_deref(), Some("crumb-secret"));
     }
 
     #[test]

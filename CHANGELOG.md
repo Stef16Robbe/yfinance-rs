@@ -152,6 +152,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - v7 quote side effects now reuse already-projected quote nodes instead of
   cloning and re-deserializing raw JSON values, and side caches no longer run
   Moka maintenance on every write.
+- `_preauth` now seeds client credentials in ordinary `cargo test` builds, not
+  only when the `test-mode` feature is enabled.
 - Business Insider ISIN lookup now parses the `mmSuggestDeliver` JSONP shape
   with a local data-expression parser, returns typed HTTP status errors for
   non-success responses, validates ISIN check digits, and keeps suffix-qualified
