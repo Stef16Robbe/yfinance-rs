@@ -1359,7 +1359,6 @@ pub async fn fetch_quote_summary_key_statistics(
 
 /// Centralized function to fetch one or more quotes from the v7 API.
 /// It handles caching, retries, and authentication (crumb).
-#[allow(clippy::too_many_lines)]
 pub async fn fetch_v7_quotes(
     client: &YfClient,
     symbols: &[&str],

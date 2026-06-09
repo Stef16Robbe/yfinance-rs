@@ -43,7 +43,6 @@ pub async fn expiration_dates(
     Ok(first.expiration_dates.unwrap_or_default())
 }
 
-#[allow(clippy::too_many_lines)]
 pub async fn option_chain(
     client: &YfClient,
     symbol: &str,
