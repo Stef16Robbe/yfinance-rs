@@ -28,6 +28,56 @@ fn meta_body() -> String {
     .to_string()
 }
 
+fn missing_timestamp_empty_series_body() -> String {
+    r#"{
+      "chart":{
+        "result":[
+          {
+            "meta": {
+              "timezone":"EDT",
+              "exchangeTimezoneName":"America/New_York",
+              "gmtoffset": -14400
+            },
+            "indicators": {
+              "quote":[{}],
+              "adjclose":[{}]
+            }
+          }
+        ],
+        "error": null
+      }
+    }"#
+    .to_string()
+}
+
+fn missing_timestamp_with_quote_data_body() -> String {
+    r#"{
+      "chart":{
+        "result":[
+          {
+            "meta": {
+              "timezone":"EDT",
+              "exchangeTimezoneName":"America/New_York",
+              "gmtoffset": -14400
+            },
+            "indicators": {
+              "quote":[{
+                "open":[100.0],
+                "high":[101.0],
+                "low":[99.0],
+                "close":[100.5],
+                "volume":[1000]
+              }],
+              "adjclose":[{ "adjclose":[100.5] }]
+            }
+          }
+        ],
+        "error": null
+      }
+    }"#
+    .to_string()
+}
+
 fn malformed_timezone_body() -> String {
     r#"{
       "chart":{
@@ -109,6 +159,77 @@ async fn get_history_metadata_returns_timezone() {
         Some("America/New_York".to_string())
     );
     assert_eq!(m.utc_offset_seconds, Some(-14400));
+}
+
+#[tokio::test]
+async fn missing_timestamp_with_empty_chart_series_returns_empty_history() {
+    let server = MockServer::start();
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v8/finance/chart/AAPL")
+            .query_param("range", "1d")
+            .query_param("interval", "1d")
+            .query_param("events", "div|split|capitalGains");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(missing_timestamp_empty_series_body());
+    });
+
+    let client = YfClient::builder()
+        .base_chart(Url::parse(&format!("{}/v8/finance/chart/", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+
+    let response = HistoryBuilder::new(&client, "AAPL")
+        .range(Range::D1)
+        .fetch_full_with_diagnostics()
+        .await
+        .unwrap();
+
+    mock.assert();
+    assert!(response.diagnostics.is_empty());
+    assert!(response.data.candles.is_empty());
+    assert!(response.data.actions.is_empty());
+    assert_eq!(
+        response
+            .data
+            .meta
+            .as_ref()
+            .and_then(|meta| meta.timezone.as_ref())
+            .map(std::string::ToString::to_string),
+        Some("America/New_York".to_string())
+    );
+}
+
+#[tokio::test]
+async fn missing_timestamp_with_quote_data_remains_malformed() {
+    let server = MockServer::start();
+
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v8/finance/chart/AAPL")
+            .query_param("range", "1d")
+            .query_param("interval", "1d")
+            .query_param("events", "div|split|capitalGains");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(missing_timestamp_with_quote_data_body());
+    });
+
+    let client = YfClient::builder()
+        .base_chart(Url::parse(&format!("{}/v8/finance/chart/", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+
+    let err = HistoryBuilder::new(&client, "AAPL")
+        .range(Range::D1)
+        .fetch_full()
+        .await
+        .unwrap_err();
+
+    mock.assert();
+    assert!(matches!(err, YfError::MissingData(message) if message == "missing timestamps"));
 }
 
 #[tokio::test]

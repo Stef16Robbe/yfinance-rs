@@ -120,10 +120,15 @@ fn decode_chart(body: &str) -> Result<Fetched, crate::core::YfError> {
         .map(|a| a.adjclose.clone())
         .unwrap_or_default();
 
-    let ts = first
-        .timestamp
-        .clone()
-        .ok_or_else(|| crate::core::YfError::MissingData("missing timestamps".into()))?;
+    let ts = match first.timestamp.clone() {
+        Some(ts) => ts,
+        None if quote_block_is_empty(quote) && adjclose.is_empty() => Vec::new(),
+        None => {
+            return Err(crate::core::YfError::MissingData(
+                "missing timestamps".into(),
+            ));
+        }
+    };
 
     Ok(Fetched {
         ts,
@@ -132,4 +137,12 @@ fn decode_chart(body: &str) -> Result<Fetched, crate::core::YfError> {
         events: first.events.clone(),
         meta: first.meta.clone(),
     })
+}
+
+const fn quote_block_is_empty(quote: &QuoteBlock) -> bool {
+    quote.open.is_empty()
+        && quote.high.is_empty()
+        && quote.low.is_empty()
+        && quote.close.is_empty()
+        && quote.volume.is_empty()
 }
