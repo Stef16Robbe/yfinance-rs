@@ -8,7 +8,7 @@
 //! Run it manually:
 //!
 //! ```sh
-//! cargo run --example 16_diagnostics_audit
+//! cargo run --features stream --example 16_diagnostics_audit
 //! ```
 
 #![allow(clippy::too_many_lines)]

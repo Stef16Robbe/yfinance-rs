@@ -46,7 +46,7 @@ const MAX_WEBSOCKET_RECONNECT_BACKOFF: Duration = Duration::from_secs(30);
 
 // Yahoo Finance websocket wire types (generated from `yaticker.proto`).
 mod wire_ws {
-    include!(concat!(env!("OUT_DIR"), "/yaticker.rs"));
+    include!("yaticker.rs");
 }
 
 fn untyped_stream_asset_kind() -> AssetKind {

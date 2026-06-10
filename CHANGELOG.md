@@ -17,6 +17,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `StreamBuilder::start()` is now async. In `StreamMethod::Websocket` mode it
   waits for the initial WebSocket handshake and subscription write, returning
   startup failures directly.
+- The `stream` module and crate-root stream builder re-exports are now behind
+  the opt-in `stream` feature.
 - `HistoryService::fetch_full_history()` now returns an unboxed
   `impl Future + Send` instead of a pinned boxed future; custom trait
   implementors must update their signatures.
@@ -132,8 +134,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   wire-field deserialization.
 - Added `moka` for bounded in-memory caches and `getrandom` for retry jitter.
 - Added `unicode-normalization` for country/currency inference normalization.
-- Added `protoc-bin-vendored` as a build dependency so protobuf generation does
-  not require a system `protoc`.
+- Removed protobuf code generation from crate builds. The tiny generated
+  Yahoo stream wire module is now committed, and stream-only dependencies
+  (`base64`, `prost`, `futures-util`, and `tokio-tungstenite`) are enabled only
+  by the `stream` feature.
 - Bumped `paft` from crates.io `0.8.0` to `0.9.0`.
 - Switched reqwest from `rustls-tls` to `rustls-tls-native-roots`, aligning HTTP
   TLS root handling with the existing WebSocket native-root setup.

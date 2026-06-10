@@ -1,3 +1,5 @@
+#![cfg(feature = "stream")]
+
 mod common;
 
 #[path = "stream/live.rs"]

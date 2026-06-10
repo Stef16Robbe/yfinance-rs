@@ -11,7 +11,6 @@ documentation = "https://docs.rs/yfinance-rs"
 readme = "README.md"
 keywords = ["yahoo", "finance", "stocks", "trading", "yfinance"]
 categories = ["api-bindings", "finance"]
-build = "build.rs"
 exclude = [
     ".github/**",
     "**/.DS_Store",
@@ -19,7 +18,7 @@ exclude = [
 ]
 
 [dependencies]
-base64 = "0.22"
+base64 = { version = "0.22", optional = true }
 chrono = { version = "0.4.41", features = ["serde"] }
 chrono-tz = { version = "0.10", features = ["serde"] }
 reqwest = { version = "0.12.24", default-features = false, features = ["json", "rustls-tls-native-roots", "gzip", "brotli", "deflate", "cookies"] }
@@ -29,9 +28,9 @@ serde_field_result = { version = "0.1.0", features = ["json"] }
 url = "2.5.7"
 tokio = { version = "1.48", features = ["macros", "rt-multi-thread", "sync", "time"] }
 futures = "0.3"
-tokio-tungstenite = { version = "0.28", features = ["rustls-tls-native-roots"] }
-futures-util = "0.3"
-prost = "0.14"
+tokio-tungstenite = { version = "0.28", features = ["rustls-tls-native-roots"], optional = true }
+futures-util = { version = "0.3", optional = true }
+prost = { version = "0.14", optional = true }
 getrandom = "0.3.3"
 moka = { version = "0.12", default-features = false, features = ["sync"] }
 paft = { version = "0.9.0", features = ["market", "fundamentals", "domain", "aggregates"] }
@@ -49,12 +48,9 @@ features = ["fmt", "std", "env-filter"]
 httpmock = "0.8.2"
 polars = { version = "0.53", default-features = false, features = ["lazy", "rolling_window"] }
 
-[build-dependencies]
-prost-build = "0.14"
-protoc-bin-vendored = "3"
-
 [features]
 default = []
+stream = ["dep:base64", "dep:futures-util", "dep:prost", "dep:tokio-tungstenite"]
 test-mode = []
 debug-dumps = []
 dataframe = ["paft/dataframe"]
@@ -69,5 +65,17 @@ all-features = true
 all-features = true
 
 [[example]]
+name = "01_basic_usage"
+required-features = ["stream"]
+
+[[example]]
+name = "06_realtime_polling"
+required-features = ["stream"]
+
+[[example]]
 name = "14_polars_dataframes"
 required-features = ["dataframe"]
+
+[[example]]
+name = "16_diagnostics_audit"
+required-features = ["stream"]

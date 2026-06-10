@@ -51,6 +51,7 @@ impl ResolvedCurrencyUnit {
         self.scaled_decimal_from_f64(value).map(PriceAmount::new)
     }
 
+    #[cfg(feature = "stream")]
     pub fn price_amount_from_decimal(&self, value: Decimal) -> Option<PriceAmount> {
         value.checked_mul(self.scale).map(PriceAmount::new)
     }

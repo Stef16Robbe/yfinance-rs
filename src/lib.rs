@@ -143,6 +143,7 @@ pub mod screener;
 /// Search for tickers by name or keyword.
 pub mod search;
 /// Stream real-time quote updates via `WebSockets` or polling.
+#[cfg(feature = "stream")]
 pub mod stream;
 /// A high-level interface for a single ticker, providing access to all data types.
 pub mod ticker;
@@ -179,6 +180,7 @@ pub use screener::{
     screen_with_diagnostics,
 };
 pub use search::{SearchBuilder, search};
+#[cfg(feature = "stream")]
 pub use stream::{StreamBuilder, StreamConfig, StreamHandle, StreamMethod};
 pub use ticker::{FastInfo, Info, MovingAverages, Ticker};
 

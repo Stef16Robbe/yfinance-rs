@@ -23,10 +23,12 @@ use yfinance_rs::{
     Ohlc, OptionChain, OptionContract, OptionContractKey, OptionGreeks, OptionSide, Price,
     PriceAmount, PriceTarget, Profile, QuantityAmount, Quote, QuoteUpdate, QuotesBuilder, Ratio,
     RecommendationAction, RecommendationGrade, RecommendationRow, RecommendationSummary,
-    RetryConfig, ScreenerQuery, SearchResponse, SearchResult, ShareCount, Snapshot, StreamBuilder,
-    StreamMethod, TransactionType, UpgradeDowngradeRow, YahooQuoteType, YfClient,
-    YfCurrencyInference, YfCurrencyPurpose, YfError,
+    RetryConfig, ScreenerQuery, SearchResponse, SearchResult, ShareCount, Snapshot,
+    TransactionType, UpgradeDowngradeRow, YahooQuoteType, YfClient, YfCurrencyInference,
+    YfCurrencyPurpose, YfError,
 };
+#[cfg(feature = "stream")]
+use yfinance_rs::{StreamBuilder, StreamMethod};
 
 fn invalid_retry_with_factor(factor: f64) -> RetryConfig {
     RetryConfig {
@@ -396,6 +398,7 @@ async fn general_proxy_routes_https_requests_through_proxy() {
 }
 
 #[tokio::test]
+#[cfg(feature = "stream")]
 async fn general_proxy_routes_websocket_startup_through_proxy() {
     let proxy = CaptureServer::start();
     let target = CaptureServer::start();
@@ -419,6 +422,7 @@ async fn general_proxy_routes_websocket_startup_through_proxy() {
 }
 
 #[tokio::test]
+#[cfg(feature = "stream")]
 async fn custom_client_proxy_routes_websocket_startup_through_proxy() {
     let proxy = CaptureServer::start();
     let target = CaptureServer::start();
@@ -458,6 +462,7 @@ async fn per_call_retry_override_is_validated_before_request() {
     assert_invalid_params(err, "factor");
 }
 
+#[cfg(feature = "stream")]
 fn assert_websocket_proxy_connect(
     proxy: &CaptureServer,
     target: &CaptureServer,
@@ -524,6 +529,7 @@ async fn quote_symbols_are_normalized_before_request() {
 }
 
 #[tokio::test]
+#[cfg(feature = "stream")]
 async fn stream_builder_rejects_zero_interval_before_starting() {
     let client = YfClient::default();
     let builder = StreamBuilder::new(&client)
@@ -539,6 +545,7 @@ async fn stream_builder_rejects_zero_interval_before_starting() {
 }
 
 #[tokio::test]
+#[cfg(feature = "stream")]
 async fn stream_builder_rejects_zero_websocket_idle_timeout_before_starting() {
     let client = YfClient::default();
     let builder = StreamBuilder::new(&client)
@@ -554,6 +561,7 @@ async fn stream_builder_rejects_zero_websocket_idle_timeout_before_starting() {
 }
 
 #[tokio::test]
+#[cfg(feature = "stream")]
 async fn stream_builder_rejects_zero_websocket_connect_timeout_before_starting() {
     let client = YfClient::default();
     let builder = StreamBuilder::new(&client)

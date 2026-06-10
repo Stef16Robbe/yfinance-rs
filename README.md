@@ -67,6 +67,12 @@ An ergonomic, async-first Rust client for the unofficial Yahoo Finance API. It p
 
 ### Real-time Streaming (WebSocket/Polling)
 
+Streaming is behind the `stream` feature:
+
+```toml
+yfinance-rs = { version = "0.9.0", features = ["stream"] }
+```
+
 * **WebSocket Streaming**: Get live quote updates using WebSockets (preferred method).
 * **HTTP Polling**: Fallback polling method for real-time data.
 * **Configurable Streaming**: Customize update frequency and change-only filtering.
@@ -279,6 +285,8 @@ For back-adjusted downloads, use `.back_adjust()` or
 `.adjustment(DownloadAdjustment::Back)`.
 
 ### Real-time Streaming
+
+Enable the `stream` feature to use this API:
 
 ```rust
 use yfinance_rs::{StreamBuilder, StreamMethod, YfClient};

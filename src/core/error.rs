@@ -35,10 +35,11 @@ impl std::error::Error for RedactedHttpError {}
 
 /// An opaque wrapper around WebSocket transport errors.
 pub struct WebsocketError {
-    source: Box<tokio_tungstenite::tungstenite::Error>,
+    source: Box<dyn StdError + Send + Sync + 'static>,
 }
 
 impl WebsocketError {
+    #[cfg(feature = "stream")]
     pub(crate) fn new(source: tokio_tungstenite::tungstenite::Error) -> Self {
         Self {
             source: Box::new(source),
@@ -66,6 +67,49 @@ impl StdError for WebsocketError {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         Some(self.as_source())
     }
+}
+
+macro_rules! boxed_source_error {
+    (
+        $(#[$meta:meta])*
+        $name:ident
+    ) => {
+        $(#[$meta])*
+        pub struct $name {
+            source: Box<dyn StdError + Send + Sync + 'static>,
+        }
+
+        impl $name {
+            #[cfg(feature = "stream")]
+            fn from_source(source: impl StdError + Send + Sync + 'static) -> Self {
+                Self {
+                    source: Box::new(source),
+                }
+            }
+
+            fn as_source(&self) -> &(dyn StdError + 'static) {
+                self.source.as_ref()
+            }
+        }
+
+        impl fmt::Display for $name {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt::Display::fmt(&self.source, f)
+            }
+        }
+
+        impl fmt::Debug for $name {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt::Display::fmt(self, f)
+            }
+        }
+
+        impl StdError for $name {
+            fn source(&self) -> Option<&(dyn StdError + 'static)> {
+                Some(self.as_source())
+            }
+        }
+    };
 }
 
 macro_rules! opaque_source_error {
@@ -108,9 +152,9 @@ macro_rules! opaque_source_error {
     };
 }
 
-opaque_source_error!(
+boxed_source_error!(
     /// An opaque wrapper around Protobuf decoding errors.
-    ProtobufDecodeError(prost::DecodeError)
+    ProtobufDecodeError
 );
 
 opaque_source_error!(
@@ -118,9 +162,9 @@ opaque_source_error!(
     JsonError(serde_json::Error)
 );
 
-opaque_source_error!(
+boxed_source_error!(
     /// An opaque wrapper around Base64 decoding errors.
-    Base64DecodeError(base64::DecodeError)
+    Base64DecodeError
 );
 
 opaque_source_error!(
@@ -220,20 +264,23 @@ pub enum YfError {
 }
 
 impl YfError {
+    #[cfg(feature = "stream")]
     pub(crate) fn websocket(error: tokio_tungstenite::tungstenite::Error) -> Self {
         Self::Websocket(WebsocketError::new(error))
     }
 
-    pub(crate) const fn protobuf(error: prost::DecodeError) -> Self {
-        Self::Protobuf(ProtobufDecodeError::new(error))
+    #[cfg(feature = "stream")]
+    pub(crate) fn protobuf(error: prost::DecodeError) -> Self {
+        Self::Protobuf(ProtobufDecodeError::from_source(error))
     }
 
     pub(crate) const fn json(error: serde_json::Error) -> Self {
         Self::Json(JsonError::new(error))
     }
 
-    pub(crate) const fn base64(error: base64::DecodeError) -> Self {
-        Self::Base64(Base64DecodeError::new(error))
+    #[cfg(feature = "stream")]
+    pub(crate) fn base64(error: base64::DecodeError) -> Self {
+        Self::Base64(Base64DecodeError::from_source(error))
     }
 
     pub(crate) const fn url(error: url::ParseError) -> Self {
@@ -308,9 +355,6 @@ impl From<paft::money::MoneyError> for YfError {
 mod tests {
     use std::error::Error as _;
 
-    use base64::{Engine as _, engine::general_purpose};
-    use prost::DecodeError;
-
     use super::*;
 
     fn assert_source<T>(error: &YfError)
@@ -321,7 +365,24 @@ mod tests {
     }
 
     #[test]
-    fn opaque_error_variants_preserve_foreign_sources() {
+    fn opaque_json_and_url_errors_preserve_foreign_sources() {
+        let json = YfError::json(
+            serde_json::from_str::<serde_json::Value>("{").expect_err("invalid JSON"),
+        );
+        assert!(matches!(json, YfError::Json(_)));
+        assert_source::<serde_json::Error>(&json);
+
+        let url = YfError::url(url::Url::parse("://").expect_err("invalid URL"));
+        assert!(matches!(url, YfError::Url(_)));
+        assert_source::<url::ParseError>(&url);
+    }
+
+    #[cfg(feature = "stream")]
+    #[test]
+    fn opaque_stream_errors_preserve_foreign_sources() {
+        use base64::{Engine as _, engine::general_purpose};
+        use prost::DecodeError;
+
         let websocket = YfError::websocket(tokio_tungstenite::tungstenite::Error::ConnectionClosed);
         assert!(matches!(websocket, YfError::Websocket(_)));
         assert_source::<tokio_tungstenite::tungstenite::Error>(&websocket);
@@ -330,12 +391,6 @@ mod tests {
         assert!(matches!(protobuf, YfError::Protobuf(_)));
         assert_source::<prost::DecodeError>(&protobuf);
 
-        let json = YfError::json(
-            serde_json::from_str::<serde_json::Value>("{").expect_err("invalid JSON"),
-        );
-        assert!(matches!(json, YfError::Json(_)));
-        assert_source::<serde_json::Error>(&json);
-
         let base64 = YfError::base64(
             general_purpose::STANDARD
                 .decode("!")
@@ -343,9 +398,5 @@ mod tests {
         );
         assert!(matches!(base64, YfError::Base64(_)));
         assert_source::<base64::DecodeError>(&base64);
-
-        let url = YfError::url(url::Url::parse("://").expect_err("invalid URL"));
-        assert!(matches!(url, YfError::Url(_)));
-        assert_source::<url::ParseError>(&url);
     }
 }

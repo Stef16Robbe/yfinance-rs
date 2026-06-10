@@ -392,6 +392,7 @@ impl YfClient {
         &self.http
     }
 
+    #[cfg(feature = "stream")]
     pub(crate) fn user_agent(&self) -> &str {
         &self.user_agent
     }
@@ -408,6 +409,7 @@ impl YfClient {
         &self.base_quote_v7
     }
 
+    #[cfg(feature = "stream")]
     pub(crate) const fn base_stream(&self) -> &Url {
         &self.base_stream
     }
