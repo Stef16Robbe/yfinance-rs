@@ -376,13 +376,22 @@ async fn upgrades_downgrades_keep_rows_when_optional_fields_are_invalid() {
                   "quoteSummary": {
                     "result": [{
                       "upgradeDowngradeHistory": {
-                        "history": [{
-                          "epochGradeDate": 1704067200,
-                          "firm": "Example Research",
-                          "fromGrade": "!!!",
-                          "toGrade": "Buy",
-                          "action": "!!!"
-                        }]
+                        "history": [
+                          {
+                            "epochGradeDate": 1704067200,
+                            "firm": "Example Research",
+                            "fromGrade": "!!!",
+                            "toGrade": "Buy",
+                            "action": "!!!"
+                          },
+                          {
+                            "epochGradeDate": 1704153600,
+                            "firm": [],
+                            "fromGrade": "Hold",
+                            "toGrade": "Buy",
+                            "action": "up"
+                          }
+                        ]
                       }
                     }],
                     "error": null
@@ -404,7 +413,7 @@ async fn upgrades_downgrades_keep_rows_when_optional_fields_are_invalid() {
         .await
         .unwrap();
 
-    assert_eq!(response.data.len(), 1);
+    assert_eq!(response.data.len(), 2);
     assert!(response.data[0].from_grade.is_none());
     assert_eq!(
         response.data[0]
@@ -415,6 +424,7 @@ async fn upgrades_downgrades_keep_rows_when_optional_fields_are_invalid() {
         Some("BUY")
     );
     assert!(response.data[0].action.is_none());
+    assert!(response.data[1].firm.is_none());
     for path in [
         "upgradeDowngradeHistory.history[].fromGrade",
         "upgradeDowngradeHistory.history[].action",
@@ -429,6 +439,15 @@ async fn upgrades_downgrades_keep_rows_when_optional_fields_are_invalid() {
             } if *warning_path == path && key == "Example Research"
         )));
     }
+    assert!(response.diagnostics.warnings.iter().any(|warning| matches!(
+        warning,
+        YfWarning::OmittedPresentField {
+            path: "upgradeDowngradeHistory.history[].firm",
+            key: None,
+            reason: ProjectionIssue::InvalidField { field: "firm", .. },
+            ..
+        }
+    )));
 
     let err = AnalysisBuilder::new(&client, sym)
         .strict()

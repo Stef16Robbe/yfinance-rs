@@ -247,6 +247,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   upgrade/downgrade mappers now route present-but-unrepresentable periods,
   dates, decimals, currencies, and grade/action fields through projection
   diagnostics.
+- Upgrade/downgrade rows now report invalid present analyst firm fields as
+  omitted-field diagnostics instead of silently treating them as missing.
 - Recommendation summaries now populate `mean_rating_text` from Yahoo's
   `recommendationKey`.
 - Option endpoints now surface Yahoo `optionChain.error` payloads as

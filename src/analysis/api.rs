@@ -92,6 +92,28 @@ fn key_from_wire(value: &WireValue<String>) -> Option<String> {
     value.as_ref().cloned()
 }
 
+fn optional_string_from_wire(
+    ctx: &mut ProjectionContext,
+    path: &'static str,
+    key: Option<&str>,
+    field: &'static str,
+    value: &WireValue<String>,
+) -> Result<Option<String>, YfError> {
+    if let Some(details) = value.invalid_details() {
+        ctx.omitted_present_field(
+            path,
+            key,
+            ProjectionIssue::InvalidField {
+                field,
+                details: details.to_string(),
+            },
+        )?;
+        return Ok(None);
+    }
+
+    Ok(value.as_ref().cloned())
+}
+
 fn required_period_from_wire(
     ctx: &mut ProjectionContext,
     item: &'static str,
@@ -398,7 +420,13 @@ pub(super) async fn upgrades_downgrades(
 
     let mut rows = Vec::new();
     for h in hist {
-        let key = key_from_wire(&h.firm);
+        let key = optional_string_from_wire(
+            &mut ctx,
+            "upgradeDowngradeHistory.history[].firm",
+            None,
+            "firm",
+            &h.firm,
+        )?;
         let Some(ts_raw) = required_i64_from_wire(
             &mut ctx,
             "upgrade_downgrade",
