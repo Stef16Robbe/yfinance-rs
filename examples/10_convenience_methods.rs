@@ -1,3 +1,5 @@
+#![recursion_limit = "256"]
+
 use std::fmt::Display;
 use yfinance_rs::core::{Action, Interval, Range};
 use yfinance_rs::{Ticker, YfClient};

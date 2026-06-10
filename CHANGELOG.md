@@ -257,8 +257,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Public retry policies, stream intervals/timeouts, and user-provided symbols
   are now validated before use, returning `YfError::InvalidParams` instead of
   panicking or issuing malformed Yahoo requests.
-- The Polars dataframe example now raises its crate recursion limit so
-  all-target clippy/check builds compile under current stable Rust.
+- The Polars dataframe and convenience-methods examples now raise their crate
+  recursion limits so all-target clippy/check builds compile under current
+  stable Rust.
 - Yahoo exchange and quote-type vocabulary is now normalized through one shared
   adapter across quote, fast info, info, search, screener, history, options,
   stream, and currency-inference paths.
