@@ -39,7 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   The old `auto_adjust(bool)` and `back_adjust(bool)` setters are replaced by
   `.adjustment(...)`, `.auto_adjust()`, `.back_adjust()`, and `.unadjusted()`.
 - Removed `DownloadBuilder::repair()` and the download price-outlier repair
-  heuristic; downloads now preserve Yahoo candle values.
+  heuristic; downloads no longer apply the 100x outlier repair pass.
 - History responses now use `paft`'s `price_basis` metadata instead of the old
   `adjusted` boolean. Back-adjusted downloads report adjusted open/high/low and
   raw close as per-field OHLC bases.
@@ -51,17 +51,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Removed the legacy HTML scraping fallback for profile lookups. Profiles now
   load only from Yahoo's quoteSummary API.
 - Removed `YfClientBuilder::base_quote()`, public `ApiPreference`, and hidden
-  `YfClientBuilder::_api_preference()`, which only configured the deleted
-  quote-page scraping path.
+  `YfClientBuilder::_api_preference()` along with the deleted profile HTML
+  scraping fallback and profile source-selection test path.
 - `Ticker::fast_info()` now returns yfinance-rs' own `FastInfo` struct with
   instant quote data under `snapshot` and moving averages under
   `moving_averages`.
 - The public model now follows the `paft` 0.9 shape: quote, snapshot, stream,
-  history, option, and book-level price fields use currency-less
-  `PriceAmount` values with currency carried by the containing model; stream,
-  quote, and history volumes plus book-level sizes use `QuantityAmount`;
-  `Candle` prices live under `candle.ohlc`; actions and share/calendar dates
-  are calendar dates; and `ReportingPeriod` replaces the old period type.
+  history, option premium (`price`/`bid`/`ask`), and book-level price fields
+  use currency-less `PriceAmount` values with currency carried by the
+  containing model; stream, quote, and history volumes plus book-level sizes
+  use `QuantityAmount`; `Candle` prices live under `candle.ohlc`; actions and
+  share/calendar dates are calendar dates; and `ReportingPeriod` replaces the
+  old period type.
 - `QuoteUpdate::volume` now exposes Yahoo's latest cumulative session volume as
   a `QuantityAmount` instead of a computed per-update delta.
 - `ScreenerNumber` is now an opaque validated value. Floating-point values must
@@ -80,10 +81,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Replaced the old lossy float-to-money/price/decimal helpers with checked
   conversion helpers. `core::conversions` is now doc-hidden, publicly reachable
   only as unstable Yahoo-to-`paft` adapter and test plumbing.
-- Missing or malformed provider classification, date, currency, and numeric
-  fields now fail, emit diagnostics, or drop the affected row instead of being
-  coerced into plausible defaults such as USD, epoch timestamps, `Equity`, or
-  zero-valued financial data.
+- Projection-aware parsers now reject, diagnose, or drop many malformed provider
+  classification, currency, date, and numeric fields instead of silently using
+  defaults such as USD, epoch timestamps, `Equity`, or zero-valued financial
+  data.
 - Existing growable public enums such as `YfError`, `NewsTab`, and several
   Yahoo screener vocabularies are now `#[non_exhaustive]`; open-ended
   diagnostics enums such as `YfWarning`, `ProjectionIssue`,
@@ -164,8 +165,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   with diagnostics instead of dropping the symbol in best-effort mode.
 - v7 quote side effects now reuse already-projected quote nodes instead of
   cloning and re-deserializing raw JSON values.
-- `_preauth` now seeds client credentials in ordinary `cargo test` builds, not
-  only when the `test-mode` feature is enabled.
+- `_preauth` now seeds client credentials in crate unit-test builds (`cfg(test)`)
+  as well as when the `test-mode` feature is enabled.
 - Business Insider ISIN lookup now parses the `mmSuggestDeliver` JSONP shape
   with a local data-expression parser, returns typed HTTP status errors for
   non-success responses, validates ISIN check digits, and keeps suffix-qualified
@@ -260,9 +261,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   require typed underlying metadata.
 - Option chains now resolve missing contract currency through the trading
   currency resolver instead of depending on already-converted quote prices.
-- `StreamMethod::Websocket` startup failures are now returned from
-  `StreamBuilder::start().await` instead of being logged in the spawned task
-  while the caller receives `Ok`.
 - WebSocket streams now use the configured reqwest client for the startup
   upgrade, so builder and custom-client proxy/DNS/TLS configuration is honored.
 - WebSocket fallback mode now treats idle sockets, remote close/EOF, and startup
@@ -293,9 +291,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   trims successful crumb bodies before caching them.
 - Response-cache keys for POST endpoints with `cache_mode(CacheMode::Use)`,
   including news and custom screeners, now include the serialized request body.
-- Successful HTTP responses are now validated against endpoint provider-error
-  envelopes before being written to the response cache; stale cached bodies that
-  fail the same validation are evicted instead of replayed.
+- Cached responses for endpoints with provider-error validators (chart, v7
+  quote, quoteSummary, options, fundamentals-timeseries, search, and screeners)
+  are now checked before cache writes; stale cached bodies that fail the same
+  validation are evicted instead of replayed.
 - Response cache now uses bounded `moka`; side caches are bounded in-memory
   maps; stale response-cache entries are removed on access and expired entries
   are pruned on writes.
