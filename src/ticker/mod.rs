@@ -277,7 +277,17 @@ impl Ticker {
     /// This method will return an error if the request fails, the response cannot be parsed,
     /// or strict data-quality mode rejects a projection issue.
     pub async fn news(&self) -> Result<Vec<NewsArticle>, YfError> {
-        self.news_builder().fetch().await
+        Ok(self.news_with_diagnostics().await?.into_data())
+    }
+
+    /// Fetches the latest news articles with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or strict data-quality mode
+    /// rejects a projection issue.
+    pub async fn news_with_diagnostics(&self) -> Result<YfResponse<Vec<NewsArticle>>, YfError> {
+        self.news_builder().fetch_with_diagnostics().await
     }
 
     /* ---------------- History helpers ---------------- */
@@ -311,6 +321,31 @@ impl Ticker {
         interval: Option<Interval>,
         prepost: bool,
     ) -> Result<Vec<Candle>, crate::core::YfError> {
+        Ok(self
+            .history_with_diagnostics(range, interval, prepost)
+            .await?
+            .into_data())
+    }
+
+    /// Fetches historical price candles with projection diagnostics.
+    ///
+    /// Prices are automatically adjusted for splits and dividends. For more control, use [`Self::history_builder`].
+    ///
+    /// # Arguments
+    /// * `range` - The relative time range for the data (e.g., `1y`, `6mo`). Defaults to `6mo` if `None`.
+    /// * `interval` - The time interval for each candle (e.g., `1d`, `1wk`). Defaults to `1d` if `None`.
+    /// * `prepost` - Whether to include pre-market and post-market data for intraday intervals.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails, the response cannot be parsed,
+    /// or strict data-quality mode rejects a projection issue.
+    pub async fn history_with_diagnostics(
+        &self,
+        range: Option<Range>,
+        interval: Option<Interval>,
+        prepost: bool,
+    ) -> Result<YfResponse<Vec<Candle>>, YfError> {
         let mut hb = self.history_builder();
         if let Some(r) = range {
             hb = hb.range(r);
@@ -319,7 +354,7 @@ impl Ticker {
             hb = hb.interval(i);
         }
         hb = hb.auto_adjust(true).prepost(prepost).actions(true);
-        hb.fetch().await
+        hb.fetch_with_diagnostics().await
     }
 
     /// Fetches all corporate actions (dividends, splits, and capital gains) for the given range.
@@ -331,12 +366,33 @@ impl Ticker {
     /// This method will return an error if the request fails or the response cannot be parsed.
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), err, fields(symbol = %self.symbol)))]
     pub async fn actions(&self, range: Option<Range>) -> Result<Vec<Action>, YfError> {
+        Ok(self.actions_with_diagnostics(range).await?.into_data())
+    }
+
+    /// Fetches all corporate actions with projection diagnostics.
+    ///
+    /// Defaults to the maximum available range if `None`.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails, the response cannot be parsed,
+    /// or strict data-quality mode rejects a projection issue.
+    pub async fn actions_with_diagnostics(
+        &self,
+        range: Option<Range>,
+    ) -> Result<YfResponse<Vec<Action>>, YfError> {
         let mut hb = self.history_builder();
         hb = hb.range(range.unwrap_or(Range::Max));
-        let resp = hb.auto_adjust(true).actions(true).fetch_full().await?;
-        let mut actions = resp.actions;
-        actions.sort_by_key(action_sort_key);
-        Ok(actions)
+        Ok(hb
+            .auto_adjust(true)
+            .actions(true)
+            .fetch_full_with_diagnostics()
+            .await?
+            .map(|resp| {
+                let mut actions = resp.actions;
+                actions.sort_by_key(action_sort_key);
+                actions
+            }))
     }
 
     /// Fetches the metadata associated with the ticker's historical data, such as timezone.
@@ -349,12 +405,30 @@ impl Ticker {
         &self,
         range: Option<Range>,
     ) -> Result<Option<HistoryMeta>, crate::core::YfError> {
+        Ok(self
+            .get_history_metadata_with_diagnostics(range)
+            .await?
+            .into_data())
+    }
+
+    /// Fetches the ticker's historical metadata with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails, the response cannot be parsed,
+    /// or strict data-quality mode rejects a projection issue.
+    pub async fn get_history_metadata_with_diagnostics(
+        &self,
+        range: Option<Range>,
+    ) -> Result<YfResponse<Option<HistoryMeta>>, YfError> {
         let mut hb = self.history_builder();
         if let Some(r) = range {
             hb = hb.range(r);
         }
-        let resp = hb.fetch_full().await?;
-        Ok(resp.meta)
+        Ok(hb
+            .fetch_full_with_diagnostics()
+            .await?
+            .map(|resp| resp.meta))
     }
 
     /// Fetches the ISIN for the ticker by searching on markets.businessinsider.com.
@@ -428,7 +502,21 @@ impl Ticker {
     ///
     /// This method will return an error if the request fails or the response cannot be parsed.
     pub async fn major_holders(&self) -> Result<Vec<MajorHolder>, YfError> {
-        self.holders_builder().major_holders().await
+        Ok(self.major_holders_with_diagnostics().await?.into_data())
+    }
+
+    /// Fetches the major holders breakdown with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or strict data-quality mode
+    /// rejects a projection issue.
+    pub async fn major_holders_with_diagnostics(
+        &self,
+    ) -> Result<YfResponse<Vec<MajorHolder>>, YfError> {
+        self.holders_builder()
+            .major_holders_with_diagnostics()
+            .await
     }
 
     /// Fetches a list of the top institutional holders.
@@ -437,7 +525,24 @@ impl Ticker {
     ///
     /// This method will return an error if the request fails or the response cannot be parsed.
     pub async fn institutional_holders(&self) -> Result<Vec<InstitutionalHolder>, YfError> {
-        self.holders_builder().institutional_holders().await
+        Ok(self
+            .institutional_holders_with_diagnostics()
+            .await?
+            .into_data())
+    }
+
+    /// Fetches institutional holders with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or strict data-quality mode
+    /// rejects a projection issue.
+    pub async fn institutional_holders_with_diagnostics(
+        &self,
+    ) -> Result<YfResponse<Vec<InstitutionalHolder>>, YfError> {
+        self.holders_builder()
+            .institutional_holders_with_diagnostics()
+            .await
     }
 
     /// Fetches a list of the top mutual fund holders.
@@ -446,7 +551,24 @@ impl Ticker {
     ///
     /// This method will return an error if the request fails or the response cannot be parsed.
     pub async fn mutual_fund_holders(&self) -> Result<Vec<InstitutionalHolder>, YfError> {
-        self.holders_builder().mutual_fund_holders().await
+        Ok(self
+            .mutual_fund_holders_with_diagnostics()
+            .await?
+            .into_data())
+    }
+
+    /// Fetches mutual fund holders with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or strict data-quality mode
+    /// rejects a projection issue.
+    pub async fn mutual_fund_holders_with_diagnostics(
+        &self,
+    ) -> Result<YfResponse<Vec<InstitutionalHolder>>, YfError> {
+        self.holders_builder()
+            .mutual_fund_holders_with_diagnostics()
+            .await
     }
 
     /// Fetches a list of recent insider transactions.
@@ -455,7 +577,24 @@ impl Ticker {
     ///
     /// This method will return an error if the request fails or the response cannot be parsed.
     pub async fn insider_transactions(&self) -> Result<Vec<InsiderTransaction>, YfError> {
-        self.holders_builder().insider_transactions().await
+        Ok(self
+            .insider_transactions_with_diagnostics()
+            .await?
+            .into_data())
+    }
+
+    /// Fetches insider transactions with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or strict data-quality mode
+    /// rejects a projection issue.
+    pub async fn insider_transactions_with_diagnostics(
+        &self,
+    ) -> Result<YfResponse<Vec<InsiderTransaction>>, YfError> {
+        self.holders_builder()
+            .insider_transactions_with_diagnostics()
+            .await
     }
 
     /// Fetches a roster of company insiders and their holdings.
@@ -464,7 +603,24 @@ impl Ticker {
     ///
     /// This method will return an error if the request fails or the response cannot be parsed.
     pub async fn insider_roster_holders(&self) -> Result<Vec<InsiderRosterHolder>, YfError> {
-        self.holders_builder().insider_roster_holders().await
+        Ok(self
+            .insider_roster_holders_with_diagnostics()
+            .await?
+            .into_data())
+    }
+
+    /// Fetches insider roster holders with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or strict data-quality mode
+    /// rejects a projection issue.
+    pub async fn insider_roster_holders_with_diagnostics(
+        &self,
+    ) -> Result<YfResponse<Vec<InsiderRosterHolder>>, YfError> {
+        self.holders_builder()
+            .insider_roster_holders_with_diagnostics()
+            .await
     }
 
     /// Fetches a summary of net insider purchase and sale activity.
@@ -475,7 +631,24 @@ impl Ticker {
     pub async fn net_share_purchase_activity(
         &self,
     ) -> Result<Option<NetSharePurchaseActivity>, YfError> {
-        self.holders_builder().net_share_purchase_activity().await
+        Ok(self
+            .net_share_purchase_activity_with_diagnostics()
+            .await?
+            .into_data())
+    }
+
+    /// Fetches net insider purchase and sale activity with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or strict data-quality mode
+    /// rejects a projection issue.
+    pub async fn net_share_purchase_activity_with_diagnostics(
+        &self,
+    ) -> Result<YfResponse<Option<NetSharePurchaseActivity>>, YfError> {
+        self.holders_builder()
+            .net_share_purchase_activity_with_diagnostics()
+            .await
     }
 
     /* ---------------- Analysis convenience ---------------- */
@@ -493,7 +666,21 @@ impl Ticker {
     ///
     /// This method will return an error if the request fails or the response cannot be parsed.
     pub async fn recommendations(&self) -> Result<Vec<RecommendationRow>, YfError> {
-        self.analysis_builder().recommendations().await
+        Ok(self.recommendations_with_diagnostics().await?.into_data())
+    }
+
+    /// Fetches analyst recommendation trends with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or strict data-quality mode
+    /// rejects a projection issue.
+    pub async fn recommendations_with_diagnostics(
+        &self,
+    ) -> Result<YfResponse<Vec<RecommendationRow>>, YfError> {
+        self.analysis_builder()
+            .recommendations_with_diagnostics()
+            .await
     }
 
     /// Fetches a summary of the latest analyst recommendations.
@@ -502,7 +689,24 @@ impl Ticker {
     ///
     /// This method will return an error if the request fails or the response cannot be parsed.
     pub async fn recommendations_summary(&self) -> Result<RecommendationSummary, YfError> {
-        self.analysis_builder().recommendations_summary().await
+        Ok(self
+            .recommendations_summary_with_diagnostics()
+            .await?
+            .into_data())
+    }
+
+    /// Fetches the latest analyst recommendation summary with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or strict data-quality mode
+    /// rejects a projection issue.
+    pub async fn recommendations_summary_with_diagnostics(
+        &self,
+    ) -> Result<YfResponse<RecommendationSummary>, YfError> {
+        self.analysis_builder()
+            .recommendations_summary_with_diagnostics()
+            .await
     }
 
     /// Fetches the history of analyst upgrades and downgrades.
@@ -511,7 +715,24 @@ impl Ticker {
     ///
     /// This method will return an error if the request fails or the response cannot be parsed.
     pub async fn upgrades_downgrades(&self) -> Result<Vec<UpgradeDowngradeRow>, YfError> {
-        self.analysis_builder().upgrades_downgrades().await
+        Ok(self
+            .upgrades_downgrades_with_diagnostics()
+            .await?
+            .into_data())
+    }
+
+    /// Fetches analyst upgrades and downgrades with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or strict data-quality mode
+    /// rejects a projection issue.
+    pub async fn upgrades_downgrades_with_diagnostics(
+        &self,
+    ) -> Result<YfResponse<Vec<UpgradeDowngradeRow>>, YfError> {
+        self.analysis_builder()
+            .upgrades_downgrades_with_diagnostics()
+            .await
     }
 
     /// Fetches the analyst price target.
@@ -526,8 +747,27 @@ impl Ticker {
         &self,
         override_currency: Option<Currency>,
     ) -> Result<PriceTarget, YfError> {
+        Ok(self
+            .analyst_price_target_with_diagnostics(override_currency)
+            .await?
+            .into_data())
+    }
+
+    /// Fetches analyst price targets with projection diagnostics.
+    ///
+    /// Provide `Some(currency)` to override the auto-resolved currency for this call;
+    /// pass `None` to enrich currency metadata from Yahoo and infer only when needed.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or strict data-quality mode
+    /// rejects a projection issue.
+    pub async fn analyst_price_target_with_diagnostics(
+        &self,
+        override_currency: Option<Currency>,
+    ) -> Result<YfResponse<PriceTarget>, YfError> {
         self.analysis_builder()
-            .analyst_price_target(override_currency)
+            .analyst_price_target_with_diagnostics(override_currency)
             .await
     }
 
@@ -545,8 +785,29 @@ impl Ticker {
         &self,
         override_currency: Option<Currency>,
     ) -> Result<Vec<EarningsTrendRow>, YfError> {
+        Ok(self
+            .earnings_trend_with_diagnostics(override_currency)
+            .await?
+            .into_data())
+    }
+
+    /// Fetches earnings trend data with projection diagnostics.
+    ///
+    /// This includes earnings estimates, revenue estimates, EPS trends, and EPS revisions for various periods.
+    ///
+    /// Provide `Some(currency)` to override the auto-resolved currency for this call;
+    /// pass `None` to enrich currency metadata from Yahoo and infer only when needed.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or strict data-quality mode
+    /// rejects a projection issue.
+    pub async fn earnings_trend_with_diagnostics(
+        &self,
+        override_currency: Option<Currency>,
+    ) -> Result<YfResponse<Vec<EarningsTrendRow>>, YfError> {
         self.analysis_builder()
-            .earnings_trend(override_currency)
+            .earnings_trend_with_diagnostics(override_currency)
             .await
     }
 
@@ -597,8 +858,27 @@ impl Ticker {
         &self,
         override_currency: Option<Currency>,
     ) -> Result<Vec<IncomeStatementRow>, YfError> {
+        Ok(self
+            .income_stmt_with_diagnostics(override_currency)
+            .await?
+            .into_data())
+    }
+
+    /// Fetches the annual income statement with projection diagnostics.
+    ///
+    /// Provide `Some(currency)` to override the auto-resolved reporting currency for this call;
+    /// pass `None` to enrich currency metadata from Yahoo and infer only when needed.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or strict data-quality mode
+    /// rejects a projection issue.
+    pub async fn income_stmt_with_diagnostics(
+        &self,
+        override_currency: Option<Currency>,
+    ) -> Result<YfResponse<Vec<IncomeStatementRow>>, YfError> {
         self.fundamentals_builder()
-            .income_statement(false, override_currency)
+            .income_statement_with_diagnostics(false, override_currency)
             .await
     }
 
@@ -614,8 +894,27 @@ impl Ticker {
         &self,
         override_currency: Option<Currency>,
     ) -> Result<Vec<IncomeStatementRow>, YfError> {
+        Ok(self
+            .quarterly_income_stmt_with_diagnostics(override_currency)
+            .await?
+            .into_data())
+    }
+
+    /// Fetches the quarterly income statement with projection diagnostics.
+    ///
+    /// Provide `Some(currency)` to override the auto-resolved reporting currency for this call;
+    /// pass `None` to enrich currency metadata from Yahoo and infer only when needed.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or strict data-quality mode
+    /// rejects a projection issue.
+    pub async fn quarterly_income_stmt_with_diagnostics(
+        &self,
+        override_currency: Option<Currency>,
+    ) -> Result<YfResponse<Vec<IncomeStatementRow>>, YfError> {
         self.fundamentals_builder()
-            .income_statement(true, override_currency)
+            .income_statement_with_diagnostics(true, override_currency)
             .await
     }
 
@@ -631,8 +930,27 @@ impl Ticker {
         &self,
         override_currency: Option<Currency>,
     ) -> Result<Vec<BalanceSheetRow>, YfError> {
+        Ok(self
+            .balance_sheet_with_diagnostics(override_currency)
+            .await?
+            .into_data())
+    }
+
+    /// Fetches the annual balance sheet with projection diagnostics.
+    ///
+    /// Provide `Some(currency)` to override the auto-resolved reporting currency for this call;
+    /// pass `None` to enrich currency metadata from Yahoo and infer only when needed.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or strict data-quality mode
+    /// rejects a projection issue.
+    pub async fn balance_sheet_with_diagnostics(
+        &self,
+        override_currency: Option<Currency>,
+    ) -> Result<YfResponse<Vec<BalanceSheetRow>>, YfError> {
         self.fundamentals_builder()
-            .balance_sheet(false, override_currency)
+            .balance_sheet_with_diagnostics(false, override_currency)
             .await
     }
 
@@ -648,8 +966,27 @@ impl Ticker {
         &self,
         override_currency: Option<Currency>,
     ) -> Result<Vec<BalanceSheetRow>, YfError> {
+        Ok(self
+            .quarterly_balance_sheet_with_diagnostics(override_currency)
+            .await?
+            .into_data())
+    }
+
+    /// Fetches the quarterly balance sheet with projection diagnostics.
+    ///
+    /// Provide `Some(currency)` to override the auto-resolved reporting currency for this call;
+    /// pass `None` to enrich currency metadata from Yahoo and infer only when needed.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or strict data-quality mode
+    /// rejects a projection issue.
+    pub async fn quarterly_balance_sheet_with_diagnostics(
+        &self,
+        override_currency: Option<Currency>,
+    ) -> Result<YfResponse<Vec<BalanceSheetRow>>, YfError> {
         self.fundamentals_builder()
-            .balance_sheet(true, override_currency)
+            .balance_sheet_with_diagnostics(true, override_currency)
             .await
     }
 
@@ -665,8 +1002,27 @@ impl Ticker {
         &self,
         override_currency: Option<Currency>,
     ) -> Result<Vec<CashflowRow>, YfError> {
+        Ok(self
+            .cashflow_with_diagnostics(override_currency)
+            .await?
+            .into_data())
+    }
+
+    /// Fetches the annual cash flow statement with projection diagnostics.
+    ///
+    /// Provide `Some(currency)` to override the auto-resolved reporting currency for this call;
+    /// pass `None` to enrich currency metadata from Yahoo and infer only when needed.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or strict data-quality mode
+    /// rejects a projection issue.
+    pub async fn cashflow_with_diagnostics(
+        &self,
+        override_currency: Option<Currency>,
+    ) -> Result<YfResponse<Vec<CashflowRow>>, YfError> {
         self.fundamentals_builder()
-            .cashflow(false, override_currency)
+            .cashflow_with_diagnostics(false, override_currency)
             .await
     }
 
@@ -682,8 +1038,27 @@ impl Ticker {
         &self,
         override_currency: Option<Currency>,
     ) -> Result<Vec<CashflowRow>, YfError> {
+        Ok(self
+            .quarterly_cashflow_with_diagnostics(override_currency)
+            .await?
+            .into_data())
+    }
+
+    /// Fetches the quarterly cash flow statement with projection diagnostics.
+    ///
+    /// Provide `Some(currency)` to override the auto-resolved reporting currency for this call;
+    /// pass `None` to enrich currency metadata from Yahoo and infer only when needed.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or strict data-quality mode
+    /// rejects a projection issue.
+    pub async fn quarterly_cashflow_with_diagnostics(
+        &self,
+        override_currency: Option<Currency>,
+    ) -> Result<YfResponse<Vec<CashflowRow>>, YfError> {
         self.fundamentals_builder()
-            .cashflow(true, override_currency)
+            .cashflow_with_diagnostics(true, override_currency)
             .await
     }
 
@@ -696,8 +1071,27 @@ impl Ticker {
     ///
     /// This method will return an error if the request fails or the response cannot be parsed.
     pub async fn earnings(&self, override_currency: Option<Currency>) -> Result<Earnings, YfError> {
+        Ok(self
+            .earnings_with_diagnostics(override_currency)
+            .await?
+            .into_data())
+    }
+
+    /// Fetches earnings history and estimates with projection diagnostics.
+    ///
+    /// Provide `Some(currency)` to override the auto-resolved reporting currency for this call;
+    /// pass `None` to enrich currency metadata from Yahoo and infer only when needed.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or strict data-quality mode
+    /// rejects a projection issue.
+    pub async fn earnings_with_diagnostics(
+        &self,
+        override_currency: Option<Currency>,
+    ) -> Result<YfResponse<Earnings>, YfError> {
         self.fundamentals_builder()
-            .earnings(override_currency)
+            .earnings_with_diagnostics(override_currency)
             .await
     }
 
@@ -707,7 +1101,19 @@ impl Ticker {
     ///
     /// This method will return an error if the request fails or the response cannot be parsed.
     pub async fn calendar(&self) -> Result<Calendar, YfError> {
-        self.fundamentals_builder().calendar().await
+        Ok(self.calendar_with_diagnostics().await?.into_data())
+    }
+
+    /// Fetches corporate calendar events with projection diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or strict data-quality mode
+    /// rejects a projection issue.
+    pub async fn calendar_with_diagnostics(&self) -> Result<YfResponse<Calendar>, YfError> {
+        self.fundamentals_builder()
+            .calendar_with_diagnostics()
+            .await
     }
 
     /// Fetches historical annual shares outstanding.
@@ -720,7 +1126,23 @@ impl Ticker {
     ///
     /// This method will return an error if the request fails or the response cannot be parsed.
     pub async fn shares(&self) -> Result<Vec<ShareCount>, YfError> {
-        self.fundamentals_builder().shares(false).await
+        Ok(self.shares_with_diagnostics().await?.into_data())
+    }
+
+    /// Fetches historical annual shares outstanding with projection diagnostics.
+    ///
+    /// This convenience method uses Yahoo's rolling 548-day share-count window, matching
+    /// Python yfinance's `get_shares_full(start=None, end=None)`. Use
+    /// [`Self::shares_between_with_diagnostics`] to request an explicit wider window.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or strict data-quality mode
+    /// rejects a projection issue.
+    pub async fn shares_with_diagnostics(&self) -> Result<YfResponse<Vec<ShareCount>>, YfError> {
+        self.fundamentals_builder()
+            .shares_with_diagnostics(false)
+            .await
     }
 
     /// Fetches historical annual shares outstanding within an explicit UTC time window.
@@ -734,8 +1156,25 @@ impl Ticker {
         start: DateTime<Utc>,
         end: DateTime<Utc>,
     ) -> Result<Vec<ShareCount>, YfError> {
+        Ok(self
+            .shares_between_with_diagnostics(start, end)
+            .await?
+            .into_data())
+    }
+
+    /// Fetches historical annual shares outstanding within an explicit UTC time window with diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the date range is invalid, the request fails,
+    /// or strict data-quality mode rejects a projection issue.
+    pub async fn shares_between_with_diagnostics(
+        &self,
+        start: DateTime<Utc>,
+        end: DateTime<Utc>,
+    ) -> Result<YfResponse<Vec<ShareCount>>, YfError> {
         self.fundamentals_builder()
-            .shares_between(false, start, end)
+            .shares_between_with_diagnostics(false, start, end)
             .await
     }
 
@@ -749,7 +1188,25 @@ impl Ticker {
     ///
     /// This method will return an error if the request fails or the response cannot be parsed.
     pub async fn quarterly_shares(&self) -> Result<Vec<ShareCount>, YfError> {
-        self.fundamentals_builder().shares(true).await
+        Ok(self.quarterly_shares_with_diagnostics().await?.into_data())
+    }
+
+    /// Fetches historical quarterly shares outstanding with projection diagnostics.
+    ///
+    /// This convenience method uses Yahoo's rolling 548-day share-count window, matching
+    /// Python yfinance's `get_shares_full(start=None, end=None)`. Use
+    /// [`Self::quarterly_shares_between_with_diagnostics`] to request an explicit wider window.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the request fails or strict data-quality mode
+    /// rejects a projection issue.
+    pub async fn quarterly_shares_with_diagnostics(
+        &self,
+    ) -> Result<YfResponse<Vec<ShareCount>>, YfError> {
+        self.fundamentals_builder()
+            .shares_with_diagnostics(true)
+            .await
     }
 
     /// Fetches historical quarterly shares outstanding within an explicit UTC time window.
@@ -763,8 +1220,25 @@ impl Ticker {
         start: DateTime<Utc>,
         end: DateTime<Utc>,
     ) -> Result<Vec<ShareCount>, YfError> {
+        Ok(self
+            .quarterly_shares_between_with_diagnostics(start, end)
+            .await?
+            .into_data())
+    }
+
+    /// Fetches historical quarterly shares outstanding within an explicit UTC time window with diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the date range is invalid, the request fails,
+    /// or strict data-quality mode rejects a projection issue.
+    pub async fn quarterly_shares_between_with_diagnostics(
+        &self,
+        start: DateTime<Utc>,
+        end: DateTime<Utc>,
+    ) -> Result<YfResponse<Vec<ShareCount>>, YfError> {
         self.fundamentals_builder()
-            .shares_between(true, start, end)
+            .shares_between_with_diagnostics(true, start, end)
             .await
     }
 }
