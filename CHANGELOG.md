@@ -175,6 +175,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Downloads now keep successful history entries when Yahoo omits
   `chart.meta.instrumentType`, using an explicit untyped instrument fallback
   with diagnostics instead of dropping the symbol in best-effort mode.
+- Multi-symbol downloads now carry each chart response's resolved instrument
+  through assembly, avoiding false untyped fallbacks or strict-mode failures
+  when the bounded side cache evicts earlier history metadata.
 - v7 quote side effects now reuse already-projected quote nodes instead of
   cloning and re-deserializing raw JSON values.
 - Batch v7 quote fetches now split large symbol lists into bounded URL-size

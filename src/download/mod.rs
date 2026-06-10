@@ -200,14 +200,17 @@ impl DownloadBuilder {
         let mut entries: Vec<DownloadEntry> = Vec::with_capacity(joined.len());
         for (sym, response) in joined {
             ctx.extend(response.diagnostics.with_key_prefix(&sym));
-            let history = response.data;
-            let mut resp = history.response;
+            let YahooHistoryResponse {
+                response: mut resp,
+                price_hint,
+                instrument,
+            } = response.data;
             // apply transforms to candles
             self.apply_back_adjust(&mut resp.candles);
             resp.price_basis = self.back_adjust_price_basis(resp.price_basis);
-            self.apply_rounding_if_enabled(&mut resp.candles, history.price_hint);
+            self.apply_rounding_if_enabled(&mut resp.candles, price_hint);
 
-            let instrument = resolve_download_instrument(&self.client, &sym, ctx)?;
+            let instrument = resolve_download_instrument(instrument, &sym, ctx)?;
 
             entries.push(DownloadEntry {
                 instrument,
@@ -430,11 +433,11 @@ fn rounded_price(price: &PriceAmount, price_hint: u32) -> PriceAmount {
 }
 
 fn resolve_download_instrument(
-    client: &YfClient,
+    instrument: Option<Instrument>,
     symbol: &str,
     ctx: &mut ProjectionContext,
 ) -> Result<Instrument, YfError> {
-    if let Some(instrument) = client.cached_instrument(symbol) {
+    if let Some(instrument) = instrument {
         return Ok(instrument);
     }
 

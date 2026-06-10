@@ -209,7 +209,7 @@ impl HistoryBuilder {
         )
         .await?;
 
-        store_history_side_effects(&self.client, &symbol, fetched.meta.as_ref());
+        let instrument = store_history_side_effects(&self.client, &symbol, fetched.meta.as_ref());
 
         // 2) Corporate actions & split ratios
         let chart_currency = fetched.meta.as_ref().and_then(|m| m.currency.as_deref());
@@ -295,6 +295,7 @@ impl HistoryBuilder {
                 provider: (),
             },
             price_hint,
+            instrument,
         }))
     }
 }
@@ -347,8 +348,15 @@ fn history_price_basis(
     }
 }
 
-fn store_history_side_effects(client: &YfClient, symbol: &str, meta: Option<&MetaNode>) {
-    cache_history_instrument(client, symbol, meta);
+fn store_history_side_effects(
+    client: &YfClient,
+    symbol: &str,
+    meta: Option<&MetaNode>,
+) -> Option<Instrument> {
+    let instrument = history_instrument_from_meta(symbol, meta);
+    if let (Some(meta), Some(instrument)) = (meta, instrument.as_ref()) {
+        store_history_instrument(client, symbol, meta, instrument);
+    }
     if let Some(meta) = meta {
         client.store_currency_hints(
             symbol,
@@ -360,6 +368,7 @@ fn store_history_side_effects(client: &YfClient, symbol: &str, meta: Option<&Met
             ),
         );
     }
+    instrument
 }
 
 fn history_adjustment_plan(
@@ -528,21 +537,17 @@ fn parse_history_timezone(
     Ok(None)
 }
 
-fn cache_history_instrument(client: &YfClient, requested_symbol: &str, meta: Option<&MetaNode>) {
-    let Some(meta) = meta else {
-        return;
-    };
-    let Some(instrument_type) = meta
+fn history_instrument_from_meta(
+    requested_symbol: &str,
+    meta: Option<&MetaNode>,
+) -> Option<Instrument> {
+    let meta = meta?;
+    let instrument_type = meta
         .instrument_type
         .as_deref()
         .map(str::trim)
-        .filter(|value| !value.is_empty())
-    else {
-        return;
-    };
-    let Ok(kind) = parse_yahoo_quote_type(instrument_type) else {
-        return;
-    };
+        .filter(|value| !value.is_empty())?;
+    let kind = parse_yahoo_quote_type(instrument_type).ok()?;
 
     let exchange = first_parsed_yahoo_exchange([
         meta.full_exchange_name.as_deref(),
@@ -554,10 +559,15 @@ fn cache_history_instrument(client: &YfClient, requested_symbol: &str, meta: Opt
         None => Instrument::from_symbol(requested_symbol, kind),
     };
 
-    let Ok(instrument) = instrument else {
-        return;
-    };
+    instrument.ok()
+}
 
+fn store_history_instrument(
+    client: &YfClient,
+    requested_symbol: &str,
+    meta: &MetaNode,
+    instrument: &Instrument,
+) {
     client.store_instrument(requested_symbol.to_string(), instrument.clone());
     if let Some(provider_symbol) = meta
         .symbol
@@ -565,6 +575,6 @@ fn cache_history_instrument(client: &YfClient, requested_symbol: &str, meta: Opt
         .map(str::trim)
         .filter(|symbol| !symbol.is_empty() && *symbol != requested_symbol)
     {
-        client.store_instrument(provider_symbol.to_string(), instrument);
+        client.store_instrument(provider_symbol.to_string(), instrument.clone());
     }
 }

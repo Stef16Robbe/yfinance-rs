@@ -4,11 +4,13 @@ mod wire;
 pub use builder::HistoryBuilder;
 
 use crate::core::{HistoryRequest, HistoryResponse, HistoryService, YfClient, YfError};
+use paft::domain::Instrument;
 
 #[derive(Debug)]
 pub(crate) struct YahooHistoryResponse {
     pub(crate) response: HistoryResponse,
     pub(crate) price_hint: Option<u32>,
+    pub(crate) instrument: Option<Instrument>,
 }
 
 impl HistoryService for YfClient {

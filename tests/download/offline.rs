@@ -1,5 +1,6 @@
 use httpmock::Method::GET;
 use httpmock::{Mock, MockServer};
+use std::num::NonZeroUsize;
 use url::Url;
 
 use crate::common;
@@ -285,6 +286,67 @@ async fn strict_download_errors_without_instrument_metadata() {
             repair: "used untyped Yahoo download instrument because chart.meta.instrumentType was missing",
         } if key == "NOKIND"
     ));
+}
+
+#[tokio::test]
+async fn strict_download_uses_per_response_instruments_after_side_cache_eviction() {
+    let server = common::setup_server();
+
+    let m_aapl = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v8/finance/chart/AAPL")
+            .query_param("range", "6mo")
+            .query_param("interval", "1d")
+            .query_param("includePrePost", "false")
+            .query_param("events", "div|split|capitalGains");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(common::fixture("history_chart", "AAPL", "json"));
+    });
+
+    let m_msft = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v8/finance/chart/MSFT")
+            .query_param("range", "6mo")
+            .query_param("interval", "1d")
+            .query_param("includePrePost", "false")
+            .query_param("events", "div|split|capitalGains");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(common::fixture("history_chart", "MSFT", "json"));
+    });
+
+    let client = YfClient::builder()
+        .base_chart(Url::parse(&format!("{}/v8/finance/chart/", server.base_url())).unwrap())
+        .side_cache_max_entries(NonZeroUsize::new(1).unwrap())
+        .build()
+        .unwrap();
+
+    let response = DownloadBuilder::new(&client)
+        .symbols(["AAPL", "MSFT"])
+        .concurrency(DownloadConcurrency::new(1).unwrap())
+        .strict()
+        .run_with_diagnostics()
+        .await
+        .unwrap();
+
+    m_aapl.assert();
+    m_msft.assert();
+
+    let symbols: Vec<_> = response
+        .data
+        .entries
+        .iter()
+        .map(|entry| entry.instrument.symbol.as_str())
+        .collect();
+    assert_eq!(symbols, vec!["AAPL", "MSFT"]);
+    assert!(
+        response
+            .data
+            .entries
+            .iter()
+            .all(|entry| entry.instrument.kind.code() != "YAHOO_DOWNLOAD_UNTYPED")
+    );
 }
 
 #[tokio::test]
