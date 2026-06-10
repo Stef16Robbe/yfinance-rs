@@ -346,10 +346,12 @@ async fn configured_timeout_retries_hanging_quote_requests() {
 
     for _ in 0..3 {
         let req = server.recv_request_timeout(Duration::from_secs(1)).await;
+        let req = String::from_utf8_lossy(&req);
+        // An empty read is a connection where the 50ms client timeout fired
+        // before the request bytes were written; it still counts as an attempt.
         assert!(
-            String::from_utf8_lossy(&req).starts_with("GET /v7/finance/quote?symbols=AAPL"),
-            "unexpected request: {:?}",
-            String::from_utf8_lossy(&req)
+            req.is_empty() || req.starts_with("GET /v7/finance/quote?symbols=AAPL"),
+            "unexpected request: {req:?}"
         );
     }
 
