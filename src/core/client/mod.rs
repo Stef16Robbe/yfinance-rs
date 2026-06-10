@@ -788,15 +788,13 @@ impl YfClientBuilder {
     ///
     /// This setting only has effect in tests or when the `test-mode` feature is
     /// enabled. In normal usage, this setting is ignored.
+    #[cfg(any(test, feature = "test-mode"))]
     #[doc(hidden)]
     #[must_use]
     #[allow(unused_variables, unused_mut)]
     pub fn _preauth(mut self, cookie: impl Into<String>, crumb: impl Into<String>) -> Self {
-        #[cfg(any(test, feature = "test-mode"))]
-        {
-            self.preauth_cookie = Some(cookie.into());
-            self.preauth_crumb = Some(crumb.into());
-        }
+        self.preauth_cookie = Some(cookie.into());
+        self.preauth_crumb = Some(crumb.into());
         self
     }
 

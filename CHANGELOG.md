@@ -79,8 +79,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   parser and transport error types. The original errors remain available through
   `std::error::Error::source()`.
 - Replaced the old lossy float-to-money/price/decimal helpers with checked
-  conversion helpers. `core::conversions` is now doc-hidden, publicly reachable
-  only as unstable Yahoo-to-`paft` adapter and test plumbing.
+  conversion helpers. Doc-hidden test/plumbing APIs including
+  `core::conversions`, `core::yahoo_vocab`, `YfClientBuilder::_preauth()`, and
+  `stream::decode_and_map_message()` are now crate-private or unavailable in
+  normal builds and public only for unit tests or the `test-mode` feature.
 - Projection-aware parsers now reject, diagnose, or drop many malformed provider
   classification, currency, date, and numeric fields instead of silently using
   defaults such as USD, epoch timestamps, `Equity`, or zero-valued financial

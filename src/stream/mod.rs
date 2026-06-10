@@ -866,6 +866,7 @@ fn map_ws_pricing_to_update(
 }
 
 /// Decodes a single base64-encoded protobuf message from the Yahoo Finance WebSocket stream.
+#[cfg(any(test, feature = "test-mode"))]
 #[doc(hidden)]
 pub fn decode_and_map_message(text: &str) -> Result<QuoteUpdate, YfError> {
     let ticker = decode_ws_pricing(text)?;

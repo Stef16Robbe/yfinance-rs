@@ -61,6 +61,7 @@ impl ResolvedCurrencyUnit {
             .map(|decimal| Price::new(decimal, self.currency.clone()))
     }
 
+    #[cfg_attr(not(any(test, feature = "test-mode")), allow(dead_code))]
     pub fn money_from_f64(&self, value: f64) -> Option<Money> {
         decimal_from_f64(value).and_then(|decimal| Money::new(decimal, self.currency.clone()).ok())
     }

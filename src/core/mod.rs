@@ -24,14 +24,20 @@ pub(crate) mod redaction;
 /// Service traits for abstracting functionality like history fetching.
 pub mod services;
 pub(crate) mod wire;
+#[cfg(any(test, feature = "test-mode"))]
 #[doc(hidden)]
 pub mod yahoo_vocab;
+#[cfg(not(any(test, feature = "test-mode")))]
+pub(crate) mod yahoo_vocab;
 
 #[cfg(feature = "test-mode")]
 pub(crate) mod fixtures;
 
+#[cfg(any(test, feature = "test-mode"))]
 #[doc(hidden)]
 pub mod conversions;
+#[cfg(not(any(test, feature = "test-mode")))]
+pub(crate) mod conversions;
 pub(crate) mod net;
 
 // convenient re-exports so most code can just `use crate::core::YfClient`

@@ -1,7 +1,10 @@
 //! Internal Yahoo-to-`paft` conversion utilities.
 //!
-//! This module is public only so integration tests can share the crate's adapter
-//! helpers. It is not part of the stable user-facing API.
+//! This module is crate-private in normal builds and public only so integration
+//! tests can share the crate's adapter helpers under the `test-mode` feature.
+//! It is not part of the stable user-facing API.
+
+#![cfg_attr(not(any(test, feature = "test-mode")), allow(dead_code))]
 
 use chrono::{DateTime, NaiveDate, Utc};
 use paft::Decimal;
