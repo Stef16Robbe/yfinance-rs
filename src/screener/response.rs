@@ -18,6 +18,7 @@ use crate::{
 };
 
 /// Response from a Yahoo screener request.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct ScreenerResponse {
     /// Total count reported by Yahoo, when present.
@@ -27,6 +28,7 @@ pub struct ScreenerResponse {
 }
 
 /// A single Yahoo screener result.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct ScreenerResult {
     /// Raw Yahoo symbol, preserved even when instrument construction fails.

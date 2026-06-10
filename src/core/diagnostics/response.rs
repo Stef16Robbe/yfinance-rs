@@ -11,6 +11,7 @@ pub enum DataQuality {
 }
 
 /// A response paired with adapter-level data-quality diagnostics.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct YfResponse<T> {
     /// The successfully projected public data.
@@ -48,6 +49,7 @@ impl<T> YfResponse<T> {
 }
 
 /// Diagnostics emitted while projecting Yahoo data into strict public models.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct YfDiagnostics {
     /// Projection warnings. An empty list means the response was lossless.

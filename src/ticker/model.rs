@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 /// This mirrors the broad intent of Python yfinance's `Ticker.info` while
 /// keeping the data grouped by paft's provider-agnostic domain models instead
 /// of exposing Yahoo's raw response shape.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Info {
     /// Instant-in-time market snapshot data.

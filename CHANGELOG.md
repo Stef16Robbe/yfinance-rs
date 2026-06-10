@@ -97,6 +97,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   Yahoo screener vocabularies are now `#[non_exhaustive]`; open-ended
   diagnostics enums such as `YfWarning`, `ProjectionIssue`,
   `YfCurrencyPurpose`, and `YfCurrencyInference` use the same policy.
+- Marked growable public response structs as `#[non_exhaustive]`, including
+  `Info`, `FastInfo`, `MovingAverages`, `ScreenerResponse`,
+  `ScreenerResult`, `YfResponse<T>`, and `YfDiagnostics`.
 
 ### Added
 

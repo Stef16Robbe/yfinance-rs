@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// This mirrors Python yfinance's `Ticker.fast_info` surface while keeping
 /// instant-in-time quote data separate from derived moving-average metrics.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FastInfo {
     /// Instant-in-time market snapshot data.
@@ -24,6 +25,7 @@ pub struct FastInfo {
 }
 
 /// Price moving averages exposed in fast ticker information.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct MovingAverages {
     /// 50 trading-day average price.
