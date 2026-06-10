@@ -320,11 +320,12 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
 
         let cache_url = url.clone();
         let (body, _) = self.get_with_auth_retry(url, screener.id()).await?;
+        let response = parse_screener_body_with_diagnostics(&body, self.options.data_quality())?;
         if self.options.cache_mode().writes(CacheEndpoint::Screener) {
             self.client
                 .cache_put(CacheEndpoint::Screener, &cache_url, &body, None);
         }
-        parse_screener_body_with_diagnostics(&body, self.options.data_quality())
+        Ok(response)
     }
 
     async fn fetch_custom_post(

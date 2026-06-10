@@ -170,6 +170,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   hardcoded two-decimal `f64` rounding.
 - Sparse Yahoo `adjclose` history payloads now use one coherent split-only
   adjustment basis with diagnostics instead of mixing adjustment bases by row.
+- Predefined screener GET responses are now parsed before response-cache writes,
+  preventing successful-status Yahoo error or malformed bodies from being cached.
 - Provider-adjusted history candle factors are now computed while validating
   `adjclose` coverage, avoiding a fragile cross-function assembly invariant.
 - Downloads now keep successful history entries when Yahoo omits

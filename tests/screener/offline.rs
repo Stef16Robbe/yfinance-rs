@@ -49,6 +49,58 @@ async fn offline_predefined_day_gainers_uses_get_with_expected_params() {
 }
 
 #[tokio::test]
+async fn predefined_screener_does_not_cache_successful_status_api_error_body() {
+    let server = MockServer::start();
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v1/finance/screener/predefined/saved")
+            .query_param("scrIds", "day_gainers")
+            .query_param("corsDomain", "finance.yahoo.com")
+            .query_param("formatted", "false")
+            .query_param("lang", "en-US")
+            .query_param("region", "US");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(
+                r#"{
+                    "finance": {
+                        "result": null,
+                        "error": {
+                            "code": "Unauthorized",
+                            "description": "Invalid crumb"
+                        }
+                    }
+                }"#,
+            );
+    });
+
+    let client = YfClient::builder()
+        .cache_ttl(Duration::from_mins(1))
+        .build()
+        .unwrap();
+    let base = Url::parse(&format!(
+        "{}/v1/finance/screener/predefined/saved",
+        server.base_url()
+    ))
+    .unwrap();
+
+    for _ in 0..2 {
+        let err = ScreenerBuilder::predefined(&client, PredefinedScreener::DayGainers)
+            .predefined_screener_base(base.clone())
+            .cache_mode(CacheMode::Use)
+            .fetch()
+            .await
+            .unwrap_err();
+        assert!(matches!(
+            err,
+            YfError::Api(message) if message.contains("Unauthorized")
+        ));
+    }
+
+    mock.assert_calls(2);
+}
+
+#[tokio::test]
 async fn predefined_screener_market_cap_preserves_large_integer_precision() {
     let server = MockServer::start();
     let exact = 9_007_199_254_740_993_i64;
