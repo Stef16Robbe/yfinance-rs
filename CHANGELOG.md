@@ -10,9 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Breaking Changes
 
-- Raised the minimum supported Rust version to 1.91.
-- Public builder constructors now consistently borrow `&YfClient`, including
-  `QuotesBuilder::new`; public fetch/run/start methods now borrow the configured
+- Declared Rust 1.91 as the crate's minimum supported Rust version through
+  package metadata.
+- `QuotesBuilder::new` now borrows `&YfClient`, matching the other public
+  builder constructors. Public fetch/run/start methods now borrow the configured
   builder instead of consuming it.
 - `StreamBuilder::start()` is now async. In `StreamMethod::Websocket` mode it
   waits for the initial WebSocket handshake and subscription write, returning
@@ -48,11 +49,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   `Action` variants instead.
 - Removed `Info::esg_scores`; `Ticker::info()` no longer fetches the
   `esgScores` module. Use `Ticker::sustainability()` for explicit ESG requests.
-- Removed the legacy HTML scraping fallback for profile lookups. Profiles now
-  load only from Yahoo's quoteSummary API.
-- Removed `YfClientBuilder::base_quote()`, public `ApiPreference`, and hidden
-  `YfClientBuilder::_api_preference()` along with the deleted profile HTML
-  scraping fallback and profile source-selection test path.
+- Removed the legacy profile HTML scraping fallback and its configuration
+  surface: `YfClientBuilder::base_quote()`, public `ApiPreference`, hidden
+  `YfClientBuilder::_api_preference()`, and profile source-selection test paths.
+  Profiles now load only from Yahoo's quoteSummary API.
 - `Ticker::fast_info()` now returns yfinance-rs' own `FastInfo` struct with
   instant quote data under `snapshot` and moving averages under
   `moving_averages`.
@@ -97,9 +97,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   Yahoo screener vocabularies are now `#[non_exhaustive]`; open-ended
   diagnostics enums such as `YfWarning`, `ProjectionIssue`,
   `YfCurrencyPurpose`, and `YfCurrencyInference` use the same policy.
-- Marked growable public response structs as `#[non_exhaustive]`, including
-  `Info`, `FastInfo`, `MovingAverages`, `ScreenerResponse`,
-  `ScreenerResult`, `YfResponse<T>`, and `YfDiagnostics`.
+- Marked growable public response and diagnostics structs as
+  `#[non_exhaustive]`, including `Info`, `FastInfo`, `MovingAverages`,
+  `ScreenerResponse`, `ScreenerResult`, `YfResponse<T>`, and `YfDiagnostics`.
 
 ### Added
 
@@ -159,8 +159,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   TLS root handling with the existing WebSocket native-root setup.
 - Disabled reqwest's `cookies` feature; `YfClient` handles Yahoo auth cookies
   explicitly without reqwest's cookie store.
-- Removed inert `[package.metadata.cargo-doc]`; docs.rs all-feature builds remain
-  configured through `[package.metadata.docs.rs]`.
+- Removed inert `[package.metadata.cargo-doc]`; docs.rs build configuration now
+  lives only under `[package.metadata.docs.rs]`.
 - Removed the direct optional/runtime `polars` dependency from `yfinance-rs`;
   the `dataframe` feature now enables `paft/dataframe`, while `polars` remains
   only as a dev-dependency for examples and tests.
@@ -193,8 +193,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   cloning and re-deserializing raw JSON values.
 - Batch v7 quote fetches now split large symbol lists into bounded URL-size
   chunks and fetch those chunks with bounded concurrency.
-- Chart responses with no `timestamp` field and empty quote data now decode as
-  empty history results instead of failing the whole request.
+- Chart responses that omit `timestamp` while carrying quote or `adjclose` data
+  now fail as malformed; timestamp-less empty quote and `adjclose` payloads
+  continue to decode as empty history results.
 - `_preauth` now seeds client credentials in crate unit-test builds (`cfg(test)`)
   as well as when the `test-mode` feature is enabled.
 - Business Insider ISIN lookup now parses the `mmSuggestDeliver` JSONP shape
@@ -206,9 +207,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - History candle assembly now validates timestamps and raw OHLC values before
   adjustment, drops malformed rows with diagnostics, and preallocates from the
   shortest required OHLC/timestamp array.
-- History now uses `chart.meta.currency` for candles and default
-  dividend/capital-gain currency before inferred fallbacks; event-level action
-  currencies override the chart default.
+- History now resolves candle and action currencies through source-aware trading
+  and corporate-action resolvers; dividend and capital-gain events can use
+  event-level currencies, then chart/trading defaults, before inferred
+  fallbacks.
 - History best-effort responses now report unresolved candle or action currency
   as dropped-item diagnostics instead of aborting the whole response or falling
   back to USD.
@@ -217,8 +219,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   valid candles.
 - `DownloadBuilder` best-effort batches now preserve successful symbols when an
   individual history fetch fails and report failed symbols as dropped entries.
-- `DownloadBuilder::between()` now rejects invalid date ranges as a top-level
-  `YfError::InvalidDates`.
+- `DownloadBuilder` now validates explicit date ranges once before spawning
+  per-symbol history requests, preserving top-level `YfError::InvalidDates`
+  while best-effort mode reports other per-symbol fetch failures as diagnostics.
 - Download rounding now leaves values unchanged when conversion fails instead
   of falling back to zero.
 - `Ticker::info()` now batches quoteSummary modules into one request, avoids
@@ -245,7 +248,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   projection losses.
 - Yahoo v7 quote, quoteSummary, options, and fundamentals-timeseries payload
   errors now surface as `YfError::Api` or typed status errors before being
-  treated as missing data or cached as parseable response bodies.
+  treated as missing data.
 - Batch quotes with diagnostics now report requested symbols that Yahoo omits
   from the v7 response instead of silently returning a shorter quote vector.
 - Yahoo counter fields such as quote volume/book sizes, screener volume, and
