@@ -103,7 +103,7 @@ async fn batch_quotes_401_then_retry_with_crumb_succeeds() {
 async fn batch_quotes_401_with_stale_cached_crumb_refreshes_before_retry() {
     let server = MockServer::start();
 
-    let first = server.mock(|when, then| {
+    let bare = server.mock(|when, then| {
         when.method(GET)
             .path("/v7/finance/quote")
             .query_param("symbols", "AAPL")
@@ -152,7 +152,11 @@ async fn batch_quotes_401_with_stale_cached_crumb_refreshes_before_retry() {
         .await
         .unwrap();
 
-    first.assert();
+    assert_eq!(
+        bare.calls(),
+        0,
+        "cached OptionalCrumb credentials should be tried before a bare request"
+    );
     stale.assert();
     cookie.assert();
     crumb.assert();

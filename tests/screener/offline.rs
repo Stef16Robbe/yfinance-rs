@@ -365,7 +365,7 @@ async fn malformed_screener_optional_field_is_omitted_without_losing_result() {
 #[tokio::test]
 async fn predefined_screener_401_with_stale_cached_crumb_refreshes_before_retry() {
     let server = MockServer::start();
-    let first = server.mock(|when, then| {
+    let bare_request = server.mock(|when, then| {
         when.method(GET)
             .path("/v1/finance/screener/predefined/saved")
             .query_param("scrIds", "day_gainers")
@@ -423,7 +423,11 @@ async fn predefined_screener_401_with_stale_cached_crumb_refreshes_before_retry(
         .await
         .unwrap();
 
-    first.assert();
+    assert_eq!(
+        bare_request.calls(),
+        0,
+        "cached OptionalCrumb credentials should be tried before a bare request"
+    );
     stale.assert();
     cookie.assert();
     crumb.assert();
@@ -560,7 +564,7 @@ async fn custom_screener_403_with_stale_cached_crumb_refreshes_before_retry() {
         }
     });
 
-    let first = server.mock(|when, then| {
+    let bare_request = server.mock(|when, then| {
         when.method(POST)
             .path("/v1/finance/screener")
             .query_param("corsDomain", "finance.yahoo.com")
@@ -619,7 +623,11 @@ async fn custom_screener_403_with_stale_cached_crumb_refreshes_before_retry() {
         .await
         .unwrap();
 
-    first.assert();
+    assert_eq!(
+        bare_request.calls(),
+        0,
+        "cached OptionalCrumb credentials should be tried before a bare request"
+    );
     stale.assert();
     cookie.assert();
     crumb.assert();

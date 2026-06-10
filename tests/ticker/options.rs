@@ -741,7 +741,7 @@ async fn options_retry_with_crumb_on_403() {
 
     // First call returns 403 (unauthorized) ONLY when the crumb is missing.
     let date = 1_737_072_000_i64;
-    let first = server.mock(|when, then| {
+    let bare = server.mock(|when, then| {
         when.method(GET)
             .path("/v7/finance/options/MSFT")
             .query_param("date", date.to_string())
@@ -815,7 +815,11 @@ async fn options_retry_with_crumb_on_403() {
     let chain = t.option_chain(Some(date)).await.unwrap();
     assert!(chain.calls().next().is_none() && chain.puts().next().is_none());
 
-    first.assert();
+    assert_eq!(
+        bare.calls(),
+        0,
+        "cached OptionalCrumb credentials should be tried before a bare request"
+    );
     stale.assert();
     cookie.assert();
     crumb.assert();

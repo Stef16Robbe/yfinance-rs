@@ -292,12 +292,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Yahoo crumb-auth retries are centralized across crumb-authenticated endpoints:
   stale crumbs are cleared on 401/403 or invalid-crumb bodies, cached invalid
   responses are evicted, and fresh-credential retries bypass stale cache reads.
+- Optional crumb endpoints now use an already cached crumb before trying a bare
+  request, avoiding repeated auth failures on Yahoo surfaces that require crumbs.
 - Yahoo auth now sends the stored cookie explicitly during crumb acquisition and
   crumb-authenticated requests, so custom reqwest clients no longer need
   reqwest's cookie store enabled.
 - Builder-created clients no longer enable reqwest's ambient cookie store, and
-  crumb acquisition now rejects non-success statuses before reading the body and
-  trims successful crumb bodies before caching them.
+  crumb acquisition now rejects non-success statuses, error-shaped crumb bodies,
+  whitespace/control-bearing values, and suspiciously long values before caching
+  a trimmed crumb.
 - Response-cache keys for POST endpoints with `cache_mode(CacheMode::Use)`,
   including news and custom screeners, now include the serialized request body.
 - Cached responses for endpoints with provider-error validators (chart, v7

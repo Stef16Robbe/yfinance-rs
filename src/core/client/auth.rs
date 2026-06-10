@@ -69,16 +69,43 @@ impl super::YfClient {
         }
 
         let crumb = resp.text().await?;
-        let crumb = crumb.trim();
-
-        if crumb.is_empty() || crumb.contains('{') || crumb.contains('<') {
-            return Err(YfError::Auth("Received invalid crumb response".into()));
-        }
+        let crumb = validate_crumb_response(crumb.trim())?;
 
         let crumb = crumb.to_owned();
         self.write_state().crumb = Some(crumb);
         Ok(())
     }
+}
+
+fn validate_crumb_response(crumb: &str) -> Result<&str, YfError> {
+    const MAX_CRUMB_LEN: usize = 128;
+    const ERROR_PHRASES: &[&str] = &[
+        "too many requests",
+        "unauthorized",
+        "forbidden",
+        "invalid crumb",
+        "invalid credentials",
+        "rate limit",
+        "not found",
+        "error",
+    ];
+
+    let lower = crumb.to_ascii_lowercase();
+    let looks_like_html = crumb.contains('<') || crumb.contains('>');
+    let looks_like_json = matches!(crumb.as_bytes().first(), Some(b'{' | b'['));
+    let contains_error_phrase = ERROR_PHRASES.iter().any(|phrase| lower.contains(phrase));
+
+    if crumb.is_empty()
+        || crumb.len() > MAX_CRUMB_LEN
+        || crumb.chars().any(|c| c.is_control() || c.is_whitespace())
+        || looks_like_html
+        || looks_like_json
+        || contains_error_phrase
+    {
+        return Err(YfError::Auth("Received invalid crumb response".into()));
+    }
+
+    Ok(crumb)
 }
 
 fn cookie_header(headers: &HeaderMap) -> Result<String, YfError> {
@@ -103,4 +130,43 @@ fn cookie_header(headers: &HeaderMap) -> Result<String, YfError> {
     }
 
     Ok(cookies.join("; "))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_crumb_response;
+
+    #[test]
+    fn crumb_response_validation_accepts_compact_tokens() {
+        assert_eq!(
+            validate_crumb_response("abc-DEF_123./~").expect("valid crumb"),
+            "abc-DEF_123./~"
+        );
+    }
+
+    #[test]
+    fn crumb_response_validation_rejects_error_shapes() {
+        for crumb in [
+            "",
+            "crumb value",
+            "Too Many Requests",
+            "Unauthorized",
+            "Invalid Crumb",
+            "Rate limit exceeded",
+            r#"{"error":"blocked"}"#,
+            "[\"crumb\"]",
+            "<html>blocked</html>",
+        ] {
+            assert!(
+                validate_crumb_response(crumb).is_err(),
+                "crumb should be rejected: {crumb:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn crumb_response_validation_rejects_suspiciously_long_values() {
+        let long = "x".repeat(129);
+        assert!(validate_crumb_response(&long).is_err());
+    }
 }

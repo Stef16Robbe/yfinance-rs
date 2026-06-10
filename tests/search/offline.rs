@@ -78,7 +78,7 @@ async fn search_403_with_stale_cached_crumb_refreshes_before_retry() {
     let query = "apple";
     let server = MockServer::start();
 
-    let first = server.mock(|when, then| {
+    let bare = server.mock(|when, then| {
         when.method(GET)
             .path("/v1/finance/search")
             .query_param("q", query)
@@ -128,7 +128,11 @@ async fn search_403_with_stale_cached_crumb_refreshes_before_retry() {
         .await
         .unwrap();
 
-    first.assert();
+    assert_eq!(
+        bare.calls(),
+        0,
+        "cached OptionalCrumb credentials should be tried before a bare request"
+    );
     stale.assert();
     cookie.assert();
     crumb.assert();

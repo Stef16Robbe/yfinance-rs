@@ -99,6 +99,63 @@ async fn invalid_crumb_body_is_an_error() {
 }
 
 #[tokio::test]
+async fn crumb_error_phrase_body_is_not_used_as_credential() {
+    let server = MockServer::start();
+    let sym = "AAPL";
+
+    let _cookie = server.mock(|when, then| {
+        when.method(GET).path("/consent");
+        then.status(200).header("set-cookie", "A=B; Path=/");
+    });
+    let _crumb = server.mock(|when, then| {
+        when.method(GET).path("/v1/test/getcrumb");
+        then.status(200).body("Too Many Requests");
+    });
+    let api = server.mock(|when, then| {
+        when.method(GET)
+            .path(format!("/v10/finance/quoteSummary/{sym}"))
+            .query_param("modules", "assetProfile,quoteType,fundProfile")
+            .query_param("crumb", "Too Many Requests");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(common::fixture(
+                "profile_api_assetProfile-quoteType-fundProfile",
+                sym,
+                "json",
+            ));
+    });
+
+    let client = YfClient::builder()
+        .base_quote_api(
+            Url::parse(&format!("{}/v10/finance/quoteSummary/", server.base_url())).unwrap(),
+        )
+        .cookie_url(Url::parse(&format!("{}/consent", server.base_url())).unwrap())
+        .crumb_url(Url::parse(&format!("{}/v1/test/getcrumb", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+
+    let err = yfinance_rs::profile::load_profile(&client, sym)
+        .await
+        .unwrap_err();
+
+    match err {
+        YfError::Auth(s) => {
+            assert!(s.contains("Received invalid crumb"), "unexpected: {s}");
+            assert!(
+                !s.contains("Too Many Requests"),
+                "crumb leaked in error: {s}"
+            );
+        }
+        other => panic!("expected Auth error, got {other:?}"),
+    }
+    assert_eq!(
+        api.calls(),
+        0,
+        "API should not be called with an error phrase as the crumb"
+    );
+}
+
+#[tokio::test]
 async fn non_success_crumb_response_is_not_stored() {
     let server = MockServer::start();
     let sym = "AAPL";
