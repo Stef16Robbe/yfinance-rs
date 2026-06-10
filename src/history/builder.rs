@@ -25,8 +25,8 @@ use paft::market::responses::history::{
 };
 
 use actions::extract_actions;
-use adjust::{AdjustmentBasis, cumulative_split_after};
-use assemble::{adjustment_basis_for_series, assemble_candles};
+use adjust::{AdjustmentBasis, AdjustmentPlan, cumulative_split_after};
+use assemble::{adjustment_plan_for_series, assemble_candles};
 use fetch::{ChartFetchRequest, fetch_chart};
 
 /// A builder for fetching historical price data for a single symbol.
@@ -246,18 +246,18 @@ impl HistoryBuilder {
         // 4) Assemble candles (+ raw close) with/without adjustments
         let mut adjustment_basis = None;
         let candles = if let Some(currency) = currency.as_ref() {
-            adjustment_basis = history_adjustment_basis(
+            let adjustment_plan = history_adjustment_plan(
                 self.auto_adjust,
                 &fetched.quote,
                 &fetched.adjclose,
                 fetched.ts.len(),
                 &mut ctx,
             )?;
+            adjustment_basis = adjustment_plan.as_ref().map(AdjustmentPlan::basis);
             assemble_candles(
                 &fetched.ts,
                 &fetched.quote,
-                &fetched.adjclose,
-                adjustment_basis,
+                adjustment_plan.as_ref(),
                 &cum_split_after,
                 currency,
                 &mut ctx,
@@ -362,15 +362,15 @@ fn store_history_side_effects(client: &YfClient, symbol: &str, meta: Option<&Met
     }
 }
 
-fn history_adjustment_basis(
+fn history_adjustment_plan(
     auto_adjust: bool,
     quote: &crate::history::wire::QuoteBlock,
     adjclose: &[Option<f64>],
     len: usize,
     ctx: &mut ProjectionContext,
-) -> Result<Option<AdjustmentBasis>, YfError> {
+) -> Result<Option<AdjustmentPlan>, YfError> {
     if auto_adjust {
-        adjustment_basis_for_series(quote, adjclose, len, ctx).map(Some)
+        adjustment_plan_for_series(quote, adjclose, len, ctx).map(Some)
     } else {
         Ok(None)
     }

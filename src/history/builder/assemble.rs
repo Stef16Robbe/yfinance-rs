@@ -5,13 +5,12 @@ use crate::history::wire::QuoteBlock;
 use paft::market::responses::history::{Candle, Ohlc};
 use paft::money::PriceAmount;
 
-use super::adjust::{AdjustmentBasis, price_factor_for_row, provider_adjustment_factor};
+use super::adjust::{AdjustmentPlan, provider_adjustment_factor};
 
 pub fn assemble_candles(
     ts: &[i64],
     q: &QuoteBlock,
-    adj: &[Option<f64>],
-    adjustment_basis: Option<AdjustmentBasis>,
+    adjustment_plan: Option<&AdjustmentPlan>,
     cum_split_after: &[f64],
     currency: &ResolvedCurrencyUnit,
     ctx: &mut ProjectionContext,
@@ -52,14 +51,19 @@ pub fn assemble_candles(
         };
         let raw_close = close;
 
-        if let Some(adjustment_basis) = adjustment_basis {
-            let pf = price_factor_for_row(
-                i,
-                adjustment_basis,
-                adj.get(i).and_then(|x| *x),
-                Some(close),
-                cum_split_after,
-            );
+        if let Some(adjustment_plan) = adjustment_plan {
+            let Some(pf) = adjustment_plan.factor_for_row(i, cum_split_after) else {
+                let key = t.to_string();
+                ctx.dropped_item(
+                    "candle",
+                    Some(&key),
+                    ProjectionIssue::InvalidField {
+                        field: "adjclose",
+                        details: "missing precomputed adjustment factor".into(),
+                    },
+                )?;
+                continue;
+            };
 
             open *= pf;
             high *= pf;
@@ -102,16 +106,17 @@ pub fn assemble_candles(
     Ok(out)
 }
 
-pub fn adjustment_basis_for_series(
+pub fn adjustment_plan_for_series(
     q: &QuoteBlock,
     adj: &[Option<f64>],
     len: usize,
     ctx: &mut ProjectionContext,
-) -> Result<AdjustmentBasis, YfError> {
+) -> Result<AdjustmentPlan, YfError> {
     let mut emitted_rows = 0usize;
     let mut provider_adjusted_rows = 0usize;
+    let mut row_factors = vec![None; len];
 
-    for i in 0..len {
+    for (i, row_factor) in row_factors.iter_mut().enumerate().take(len) {
         let open = q.open.get(i).and_then(|value| *value);
         let high = q.high.get(i).and_then(|value| *value);
         let low = q.low.get(i).and_then(|value| *value);
@@ -122,17 +127,20 @@ pub fn adjustment_basis_for_series(
         };
 
         emitted_rows += 1;
-        if provider_adjustment_factor(adj.get(i).and_then(|value| *value), Some(close)).is_some() {
+        if let Some(factor) =
+            provider_adjustment_factor(adj.get(i).and_then(|value| *value), Some(close))
+        {
+            *row_factor = Some(factor);
             provider_adjusted_rows += 1;
         }
     }
 
     if provider_adjusted_rows == 0 {
-        return Ok(AdjustmentBasis::SplitAdjusted);
+        return Ok(AdjustmentPlan::SplitAdjusted);
     }
 
     if provider_adjusted_rows == emitted_rows {
-        return Ok(AdjustmentBasis::ProviderAdjusted);
+        return Ok(AdjustmentPlan::ProviderAdjusted { row_factors });
     }
 
     ctx.repaired_data(
@@ -141,7 +149,7 @@ pub fn adjustment_basis_for_series(
         "ignored sparse chart.indicators.adjclose and used split-only adjustment for all candles",
     )?;
 
-    Ok(AdjustmentBasis::SplitAdjusted)
+    Ok(AdjustmentPlan::SplitAdjusted)
 }
 
 fn candle_capacity_upper_bound(ts: &[i64], q: &QuoteBlock) -> usize {
@@ -220,5 +228,27 @@ mod tests {
         };
 
         assert_eq!(candle_capacity_upper_bound(&[1, 2, 3, 4, 5], &quote), 1);
+    }
+
+    #[test]
+    fn provider_adjustment_plan_carries_row_factors() {
+        let quote = QuoteBlock {
+            open: vec![Some(100.0), Some(101.0)],
+            high: vec![Some(100.0), Some(101.0)],
+            low: vec![Some(100.0), Some(101.0)],
+            close: vec![Some(100.0), Some(101.0)],
+            volume: vec![Some(1), Some(1)],
+        };
+        let mut ctx = ProjectionContext::new("history_chart", crate::core::DataQuality::BestEffort);
+
+        let plan =
+            adjustment_plan_for_series(&quote, &[Some(50.0), Some(101.0)], 2, &mut ctx).unwrap();
+
+        assert_eq!(
+            plan.factor_for_row(0, &[1.0, 1.0]),
+            Some(0.5),
+            "provider factor should be computed while selecting the provider-adjusted plan"
+        );
+        assert_eq!(plan.factor_for_row(1, &[1.0, 1.0]), Some(1.0));
     }
 }

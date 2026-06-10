@@ -6,6 +6,28 @@ pub enum AdjustmentBasis {
     SplitAdjusted,
 }
 
+#[derive(Debug, Clone)]
+pub enum AdjustmentPlan {
+    ProviderAdjusted { row_factors: Vec<Option<f64>> },
+    SplitAdjusted,
+}
+
+impl AdjustmentPlan {
+    pub const fn basis(&self) -> AdjustmentBasis {
+        match self {
+            Self::ProviderAdjusted { .. } => AdjustmentBasis::ProviderAdjusted,
+            Self::SplitAdjusted => AdjustmentBasis::SplitAdjusted,
+        }
+    }
+
+    pub fn factor_for_row(&self, i: usize, cum_split_after: &[f64]) -> Option<f64> {
+        match self {
+            Self::ProviderAdjusted { row_factors } => row_factors.get(i).copied().flatten(),
+            Self::SplitAdjusted => split_adjustment_factor(i, cum_split_after),
+        }
+    }
+}
+
 pub fn cumulative_split_after(ts: &[i64], split_events: &[(i64, SplitRatio)]) -> Vec<f64> {
     let mut out = vec![1.0; ts.len()];
     if split_events.is_empty() || ts.is_empty() {
@@ -25,20 +47,6 @@ pub fn cumulative_split_after(ts: &[i64], split_events: &[(i64, SplitRatio)]) ->
     out
 }
 
-pub fn price_factor_for_row(
-    i: usize,
-    basis: AdjustmentBasis,
-    adjclose_i: Option<f64>,
-    close_i: Option<f64>,
-    cum_split_after: &[f64],
-) -> f64 {
-    match basis {
-        AdjustmentBasis::ProviderAdjusted => provider_adjustment_factor(adjclose_i, close_i)
-            .expect("provider adjustment basis requires every emitted row to have usable adjclose"),
-        AdjustmentBasis::SplitAdjusted => split_adjustment_factor(i, cum_split_after),
-    }
-}
-
 pub fn provider_adjustment_factor(adjclose_i: Option<f64>, close_i: Option<f64>) -> Option<f64> {
     match (adjclose_i, close_i) {
         (Some(adj), Some(close)) if close != 0.0 => Some(adj / close),
@@ -46,6 +54,6 @@ pub fn provider_adjustment_factor(adjclose_i: Option<f64>, close_i: Option<f64>)
     }
 }
 
-fn split_adjustment_factor(i: usize, cum_split_after: &[f64]) -> f64 {
-    1.0 / cum_split_after[i].max(1e-12)
+fn split_adjustment_factor(i: usize, cum_split_after: &[f64]) -> Option<f64> {
+    cum_split_after.get(i).map(|factor| 1.0 / factor.max(1e-12))
 }
