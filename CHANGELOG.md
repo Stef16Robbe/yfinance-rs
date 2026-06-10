@@ -224,10 +224,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   while best-effort mode reports other per-symbol fetch failures as diagnostics.
 - Download rounding now leaves values unchanged when conversion fails instead
   of falling back to zero.
-- `Ticker::info()` now batches quoteSummary modules into one request, avoids
-  duplicate `financialData` fetches, returns `None` for unavailable optional
-  modules, and lets the v7 quote dividend-date fallback populate
-  `Info::calendar`.
+- `Ticker::info()` now projects profile, key-statistics, price-target,
+  recommendation-summary, and calendar data from one quoteSummary response,
+  avoiding duplicate `financialData` fetches.
 - `Ticker::key_statistics()` and `info.key_statistics` now backfill additional
   quoteSummary valuation, dividend, range, beta, and volume fields when Yahoo's
   v7 quote response omits them.
@@ -246,9 +245,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Best-effort projection now omits malformed optional fields with diagnostics
   while preserving otherwise usable sibling data; strict mode rejects those
   projection losses.
-- Yahoo v7 quote, quoteSummary, options, and fundamentals-timeseries payload
-  errors now surface as `YfError::Api` or typed status errors before being
-  treated as missing data.
+- Yahoo v7 quote, options, and fundamentals-timeseries payload errors now
+  surface as `YfError::Api` or typed status errors before being treated as
+  missing data.
 - Batch quotes with diagnostics now report requested symbols that Yahoo omits
   from the v7 response instead of silently returning a shorter quote vector.
 - Yahoo counter fields such as quote volume/book sizes, screener volume, and
