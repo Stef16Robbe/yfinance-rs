@@ -145,7 +145,7 @@ async fn section_analysis_df(ticker: &Ticker) -> Result<(), Box<dyn std::error::
             col("close.amount").mean().alias("avg_close"),
             col("close.amount").min().alias("min_close"),
             col("close.amount").max().alias("max_close"),
-            col("volume").sum().alias("total_volume"),
+            col("volume.amount").sum().alias("total_volume"),
         ])
         .collect()?;
     println!("   6M Close/Volume Stats:\n{stats}");
@@ -161,7 +161,12 @@ async fn section_analysis_df(ticker: &Ticker) -> Result<(), Box<dyn std::error::
                 })
                 .alias("ma_5d"),
         )
-        .select([col("ts"), col("close.amount"), col("ma_5d"), col("volume")])
+        .select([
+            col("ts"),
+            col("close.amount"),
+            col("ma_5d"),
+            col("volume.amount"),
+        ])
         .limit(10)
         .collect()?;
     println!("   First 10 rows with 5-day moving average:\n{with_ma}");

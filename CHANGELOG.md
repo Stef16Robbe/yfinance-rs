@@ -260,6 +260,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - The Polars dataframe and convenience-methods examples now raise their crate
   recursion limits so all-target clippy/check builds compile under current
   stable Rust.
+- The Polars dataframe example's analysis queries now use the `paft` 0.9
+  `volume.amount` history column name instead of the removed `volume` column.
 - Yahoo exchange and quote-type vocabulary is now normalized through one shared
   adapter across quote, fast info, info, search, screener, history, options,
   stream, and currency-inference paths.
