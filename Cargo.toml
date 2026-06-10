@@ -50,16 +50,23 @@ polars = { version = "0.53", default-features = false, features = ["lazy", "roll
 
 [features]
 default = []
+
+# User-facing optional features.
 stream = ["dep:base64", "dep:futures-util", "dep:prost", "dep:tokio-tungstenite"]
-test-mode = []
-debug-dumps = []
 dataframe = ["paft/dataframe"]
 tracing = ["dep:tracing"]
+
+# Internal/unstable maintenance features. They are published because Cargo has no
+# private feature namespace; downstream crates should not rely on them.
+test-mode = []
+debug-dumps = []
 # Dev-only convenience to initialize a subscriber in examples/tests
 tracing-subscriber = ["tracing", "dep:tracing-subscriber"]
 
 [package.metadata.docs.rs]
-all-features = true
+# Build docs for public optional APIs only. Internal maintenance features are
+# documented as unsupported and intentionally excluded from docs.rs builds.
+features = ["stream", "dataframe", "tracing"]
 
 [[example]]
 name = "01_basic_usage"

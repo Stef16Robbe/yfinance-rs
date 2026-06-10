@@ -358,6 +358,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Examples and README snippets were updated for the `paft` 0.9 model,
   diagnostics, fallible ESG data, and the removal of public conversion-helper
   usage.
+- Documented `test-mode`, `debug-dumps`, and `tracing-subscriber` as
+  internal/unstable Cargo features rather than user-facing options.
+- docs.rs builds now enable only the public optional `stream`, `dataframe`, and
+  `tracing` features instead of `all-features`, keeping internal maintenance
+  features out of published API docs.
 - Published crate packages now exclude repository workflow metadata and tracked
   macOS editor artifacts.
 

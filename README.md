@@ -96,6 +96,22 @@ yfinance-rs = { version = "0.9.0", features = ["stream"] }
 * **Caching**: Configurable caching behavior for API responses.
 * **Custom Timeouts**: Configurable request timeouts and connection settings.
 
+## Cargo Features
+
+User-facing optional features:
+
+- `stream`: enables WebSocket streaming support.
+- `dataframe`: re-exports `paft` DataFrame conversion traits.
+- `tracing`: compiles structured tracing instrumentation.
+
+Internal/unstable features:
+
+- `test-mode`: enables repository test hooks, fixture recording, and doc-hidden plumbing APIs for yfinance-rs' own integration tests.
+- `debug-dumps`: enables maintainer diagnostics for dumping selected raw Yahoo responses.
+- `tracing-subscriber`: test/example convenience for initializing a basic subscriber; applications should configure their own subscriber instead.
+
+Internal features are published only because Cargo has no private feature namespace. They are not part of the supported user-facing API.
+
 ## Quick Start
 
 To get started, add `yfinance-rs` to your `Cargo.toml`:
