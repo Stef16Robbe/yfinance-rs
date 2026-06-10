@@ -2,6 +2,8 @@
 //!
 //! Run with: cargo run --example `14_polars_dataframes` --features dataframe
 
+#![recursion_limit = "256"]
+
 #[cfg(feature = "dataframe")]
 use polars::prelude::*;
 
