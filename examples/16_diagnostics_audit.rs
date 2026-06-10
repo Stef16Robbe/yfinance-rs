@@ -486,8 +486,6 @@ async fn audit_news_search_and_screener_surfaces(client: &YfClient, audit: &mut 
         || async {
             SearchBuilder::new(client, "Apple")
                 .quotes_count(10)
-                .news_count(0)
-                .lists_count(0)
                 .region("US")
                 .lang("en-US")
                 .cache_mode(CacheMode::Use)

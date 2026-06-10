@@ -171,8 +171,6 @@ pub struct SearchBuilder {
     base: Url,
     query: String,
     quotes_count: Option<u32>,
-    news_count: Option<u32>,
-    lists_count: Option<u32>,
     lang: Option<String>,
     region: Option<String>,
     options: CallOptions,
@@ -191,8 +189,6 @@ impl SearchBuilder {
             base: Url::parse(DEFAULT_BASE_SEARCH_V1).unwrap(),
             query: query.into(),
             quotes_count: Some(10),
-            news_count: Some(0),
-            lists_count: Some(0),
             lang: None,
             region: None,
             options: CallOptions::default(),
@@ -212,20 +208,6 @@ impl SearchBuilder {
     #[must_use]
     pub const fn quotes_count(mut self, n: u32) -> Self {
         self.quotes_count = Some(n);
-        self
-    }
-
-    /// Sets the maximum number of news results to return.
-    #[must_use]
-    pub const fn news_count(mut self, n: u32) -> Self {
-        self.news_count = Some(n);
-        self
-    }
-
-    /// Sets the maximum number of screener list results to return.
-    #[must_use]
-    pub const fn lists_count(mut self, n: u32) -> Self {
-        self.lists_count = Some(n);
         self
     }
 
@@ -280,8 +262,6 @@ impl SearchBuilder {
             &mut url,
             query,
             self.quotes_count,
-            self.news_count,
-            self.lists_count,
             self.lang.as_deref(),
             self.region.as_deref(),
         );
@@ -327,8 +307,6 @@ impl SearchBuilder {
         url: &mut Url,
         query: &str,
         quotes_count: Option<u32>,
-        news_count: Option<u32>,
-        lists_count: Option<u32>,
         lang: Option<&str>,
         region: Option<&str>,
     ) {
@@ -336,12 +314,6 @@ impl SearchBuilder {
         qp.append_pair("q", query);
         if let Some(n) = quotes_count {
             qp.append_pair("quotesCount", &n.to_string());
-        }
-        if let Some(n) = news_count {
-            qp.append_pair("newsCount", &n.to_string());
-        }
-        if let Some(n) = lists_count {
-            qp.append_pair("listsCount", &n.to_string());
         }
         if let Some(l) = lang {
             qp.append_pair("lang", l);
@@ -375,12 +347,6 @@ struct V1SearchEnvelope {
     #[allow(dead_code)]
     count: Option<i64>,
     quotes: Option<Vec<Value>>,
-    #[allow(dead_code)]
-    news: Option<serde_json::Value>,
-    #[allow(dead_code)]
-    nav: Option<serde_json::Value>,
-    #[allow(dead_code)]
-    lists: Option<serde_json::Value>,
 }
 
 #[derive(Deserialize)]

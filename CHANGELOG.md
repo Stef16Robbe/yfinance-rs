@@ -86,6 +86,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Removed the panicking `YfClientBuilder::proxy()` and
   `YfClientBuilder::https_proxy()` setters. Use `try_proxy()` and
   `try_https_proxy()` instead.
+- Removed `SearchBuilder::news_count()` and `SearchBuilder::lists_count()`;
+  search responses currently expose quote results only, so the builder no
+  longer advertises unsupported result surfaces.
 - Projection-aware parsers now reject, diagnose, or drop many malformed provider
   classification, currency, date, and numeric fields instead of silently using
   defaults such as USD, epoch timestamps, `Equity`, or zero-valued financial

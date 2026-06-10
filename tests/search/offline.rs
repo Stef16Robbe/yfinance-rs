@@ -19,8 +19,11 @@ async fn offline_search_uses_recorded_fixture() {
             .path("/v1/finance/search")
             .query_param("q", query)
             .query_param("quotesCount", "10")
-            .query_param("newsCount", "0")
-            .query_param("listsCount", "0");
+            .is_true(|req| {
+                !req.query_params()
+                    .iter()
+                    .any(|(key, _)| key == "newsCount" || key == "listsCount")
+            });
         then.status(200)
             .header("content-type", "application/json")
             .body(fixture("search_v1", query));
@@ -83,8 +86,6 @@ async fn search_403_with_stale_cached_crumb_refreshes_before_retry() {
             .path("/v1/finance/search")
             .query_param("q", query)
             .query_param("quotesCount", "10")
-            .query_param("newsCount", "0")
-            .query_param("listsCount", "0")
             .is_true(|req| !req.query_params().iter().any(|(k, _)| k == "crumb"));
         then.status(403);
     });
@@ -96,8 +97,6 @@ async fn search_403_with_stale_cached_crumb_refreshes_before_retry() {
             .path("/v1/finance/search")
             .query_param("q", query)
             .query_param("quotesCount", "10")
-            .query_param("newsCount", "0")
-            .query_param("listsCount", "0")
             .query_param("crumb", "stale-crumb");
         then.status(403);
     });
@@ -107,8 +106,6 @@ async fn search_403_with_stale_cached_crumb_refreshes_before_retry() {
             .path("/v1/finance/search")
             .query_param("q", query)
             .query_param("quotesCount", "10")
-            .query_param("newsCount", "0")
-            .query_param("listsCount", "0")
             .query_param("crumb", "crumb-value");
         then.status(200)
             .header("content-type", "application/json")
@@ -153,9 +150,7 @@ async fn invalid_search_exchange_is_reported_as_projection_loss() {
         when.method(GET)
             .path("/v1/finance/search")
             .query_param("q", query)
-            .query_param("quotesCount", "10")
-            .query_param("newsCount", "0")
-            .query_param("listsCount", "0");
+            .query_param("quotesCount", "10");
         then.status(200)
             .header("content-type", "application/json")
             .body(
@@ -211,9 +206,7 @@ async fn yahoo_search_exchange_codes_normalize_without_diagnostics() {
         when.method(GET)
             .path("/v1/finance/search")
             .query_param("q", query)
-            .query_param("quotesCount", "10")
-            .query_param("newsCount", "0")
-            .query_param("listsCount", "0");
+            .query_param("quotesCount", "10");
         then.status(200)
             .header("content-type", "application/json")
             .body(
@@ -265,9 +258,7 @@ async fn malformed_optional_search_name_is_omitted_without_losing_result() {
         when.method(GET)
             .path("/v1/finance/search")
             .query_param("q", query)
-            .query_param("quotesCount", "10")
-            .query_param("newsCount", "0")
-            .query_param("listsCount", "0");
+            .query_param("quotesCount", "10");
         then.status(200)
             .header("content-type", "application/json")
             .body(
@@ -328,9 +319,7 @@ async fn malformed_search_quote_is_dropped_without_losing_valid_siblings() {
         when.method(GET)
             .path("/v1/finance/search")
             .query_param("q", query)
-            .query_param("quotesCount", "10")
-            .query_param("newsCount", "0")
-            .query_param("listsCount", "0");
+            .query_param("quotesCount", "10");
         then.status(200)
             .header("content-type", "application/json")
             .body(

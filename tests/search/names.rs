@@ -11,9 +11,7 @@ async fn search_prefers_long_name_for_display_name() {
         when.method(GET)
             .path("/v1/finance/search")
             .query_param("q", "milk")
-            .query_param("quotesCount", "10")
-            .query_param("newsCount", "0")
-            .query_param("listsCount", "0");
+            .query_param("quotesCount", "10");
         then.status(200)
             .header("content-type", "application/json")
             .body(
