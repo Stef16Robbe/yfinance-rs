@@ -134,6 +134,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   `HistoryService`, `ScreenerQuery`, and `YahooQuoteType` from the crate root.
 - Added `quotes_with_diagnostics()` and `screen_with_diagnostics()` crate-root
   helpers.
+- Re-exported `AnalysisBuilder` from the crate root for consistency with the
+  other endpoint builders.
 - Added `examples/16_diagnostics_audit.rs`, a live public-surface audit that
   demonstrates checking projection diagnostics across the crate.
 

@@ -14,18 +14,18 @@ use httpmock::Method::GET;
 use tokio::sync::mpsc::{self as tokio_mpsc, UnboundedReceiver, error::TryRecvError};
 use url::Url;
 use yfinance_rs::{
-    Address, Backoff, BalanceSheetRow, BookLevel, Calendar, Candle, CashflowRow, Company, Currency,
-    Decimal, DownloadEntry, DownloadResponse, Earnings, EarningsQuarter, EarningsQuarterEps,
-    EarningsTrendRow, EarningsYear, EsgInvolvement, EsgScores, EsgSummary, Fund, FundKind,
-    HistoryRequest, HistoryResponse, HistoryService, IncomeStatementRow, InsiderPosition,
-    InsiderRosterHolder, InsiderTransaction, InstitutionalHolder, Isin, IsoCurrency, KeyStatistics,
-    MajorHolder, Money, MovingAverages, NetSharePurchaseActivity, NewsArticle, NonNegativeDecimal,
-    Ohlc, OptionChain, OptionContract, OptionContractKey, OptionGreeks, OptionSide, Price,
-    PriceAmount, PriceTarget, Profile, QuantityAmount, Quote, QuoteUpdate, QuotesBuilder, Ratio,
-    RecommendationAction, RecommendationGrade, RecommendationRow, RecommendationSummary,
-    RetryConfig, ScreenerQuery, SearchResponse, SearchResult, ShareCount, Snapshot,
-    TransactionType, UpgradeDowngradeRow, YahooQuoteType, YfClient, YfCurrencyInference,
-    YfCurrencyPurpose, YfError,
+    Address, AnalysisBuilder, Backoff, BalanceSheetRow, BookLevel, Calendar, Candle, CashflowRow,
+    Company, Currency, Decimal, DownloadEntry, DownloadResponse, Earnings, EarningsQuarter,
+    EarningsQuarterEps, EarningsTrendRow, EarningsYear, EsgInvolvement, EsgScores, EsgSummary,
+    Fund, FundKind, HistoryRequest, HistoryResponse, HistoryService, IncomeStatementRow,
+    InsiderPosition, InsiderRosterHolder, InsiderTransaction, InstitutionalHolder, Isin,
+    IsoCurrency, KeyStatistics, MajorHolder, Money, MovingAverages, NetSharePurchaseActivity,
+    NewsArticle, NonNegativeDecimal, Ohlc, OptionChain, OptionContract, OptionContractKey,
+    OptionGreeks, OptionSide, Price, PriceAmount, PriceTarget, Profile, QuantityAmount, Quote,
+    QuoteUpdate, QuotesBuilder, Ratio, RecommendationAction, RecommendationGrade,
+    RecommendationRow, RecommendationSummary, RetryConfig, ScreenerQuery, SearchResponse,
+    SearchResult, ShareCount, Snapshot, TransactionType, UpgradeDowngradeRow, YahooQuoteType,
+    YfClient, YfCurrencyInference, YfCurrencyPurpose, YfError,
 };
 #[cfg(feature = "stream")]
 use yfinance_rs::{StreamBuilder, StreamMethod};
@@ -71,6 +71,7 @@ fn crate_root_reexports_common_public_types() {
 
     assert_history_service::<YfClient>();
     assert_reexport::<Address>();
+    assert_reexport::<AnalysisBuilder>();
     assert_reexport::<BalanceSheetRow>();
     assert_reexport::<BookLevel>();
     assert_reexport::<Calendar>();
