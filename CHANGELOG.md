@@ -102,10 +102,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Added currency-inference diagnostics through `YfCurrencyPurpose` and
   `YfCurrencyInference`, plus `YfWarning::CoercedPresentField` for lossy
   coercions.
-- Added response-cache tuning through public `CacheEndpoint` buckets,
+- Added cache tuning through public `CacheEndpoint` buckets,
   `YfClientBuilder::cache_ttl_for()`,
   `YfClientBuilder::cache_max_entries()`, and
-  `YfClientBuilder::side_cache_max_entries()`.
+  `YfClientBuilder::side_cache_max_entries()` for internal side caches.
 - Added `StreamBuilder::websocket_connect_timeout()` and
   `StreamBuilder::websocket_idle_timeout()`.
 - Added `DownloadConcurrency` and `DownloadBuilder::concurrency()`; downloads
@@ -130,7 +130,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Dependencies
 
-- Added `serde-field-result` 0.1.0 from GitHub for recoverable provider
+- Added `serde_field_result` 0.1.0 from crates.io for recoverable provider
   wire-field deserialization.
 - Added `moka` for bounded in-memory caches and `getrandom` for retry jitter.
 - Added `unicode-normalization` for country/currency inference normalization.
@@ -145,6 +145,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   the `dataframe` feature now enables `paft/dataframe`, while `polars` remains
   only as a dev-dependency for examples and tests.
 - Enabled the direct Tokio `sync` and `time` features used by the crate.
+- Removed the direct `thiserror` dependency; `YfError` now uses manual
+  `Display` and `Error` implementations to support redacted and opaque error
+  wrappers.
 
 ### Fixed
 
@@ -160,8 +163,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   `chart.meta.instrumentType`, using an explicit untyped instrument fallback
   with diagnostics instead of dropping the symbol in best-effort mode.
 - v7 quote side effects now reuse already-projected quote nodes instead of
-  cloning and re-deserializing raw JSON values, and side caches no longer run
-  Moka maintenance on every write.
+  cloning and re-deserializing raw JSON values.
 - `_preauth` now seeds client credentials in ordinary `cargo test` builds, not
   only when the `test-mode` feature is enabled.
 - Business Insider ISIN lookup now parses the `mmSuggestDeliver` JSONP shape
@@ -183,8 +185,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   the field is only needed for side-cache enrichment, preserving otherwise
   valid candles.
 - `DownloadBuilder` best-effort batches now preserve successful symbols when an
-  individual history fetch fails, report failed symbols as dropped entries, and
-  drop only entries whose chart metadata lacks a usable instrument kind.
+  individual history fetch fails and report failed symbols as dropped entries.
 - `DownloadBuilder::between()` now rejects invalid date ranges as a top-level
   `YfError::InvalidDates`.
 - Download rounding now leaves values unchanged when conversion fails instead
@@ -274,10 +275,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   apply Yahoo `price_hint`/direct f32 decimal conversion for WebSocket prices,
   preserve equity prices when Yahoo omits stream currency but sends exchange
   metadata, and avoid poisoning the instrument cache with untyped fallbacks.
+- Polling streams in `diff_only` mode now emit only on price changes;
+  volume-only cumulative-volume changes no longer trigger an update.
 - General proxy configuration through `YfClientBuilder::proxy()` and
   `try_proxy()` now applies to HTTPS requests instead of only plain HTTP URLs.
-- `YfClient::default()` and builder-created clients now apply a 30-second total
-  request timeout and a 10-second connect timeout by default.
+- `YfClient::default()` and builder-created clients that do not use
+  `custom_client()` now apply a 30-second total request timeout and a 10-second
+  connect timeout by default.
 - Yahoo crumb-auth retries are centralized across crumb-authenticated endpoints:
   stale crumbs are cleared on 401/403 or invalid-crumb bodies, cached invalid
   responses are evicted, and fresh-credential retries bypass stale cache reads.
@@ -292,8 +296,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Successful HTTP responses are now validated against endpoint provider-error
   envelopes before being written to the response cache; stale cached bodies that
   fail the same validation are evicted instead of replayed.
-- Response and side caches now use bounded `moka` caches; stale response-cache
-  entries are removed on access and expired entries are pruned on writes.
+- Response cache now uses bounded `moka`; side caches are bounded in-memory
+  maps; stale response-cache entries are removed on access and expired entries
+  are pruned on writes.
 - Status errors, HTTP-client errors, WebSocket startup status errors, tracing
   URL fields, and `YfClient` debug output now redact crumb and auth-like query
   parameters.
