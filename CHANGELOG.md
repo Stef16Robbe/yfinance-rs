@@ -147,6 +147,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Bumped `paft` from crates.io `0.8.0` to `0.9.0`.
 - Switched reqwest from `rustls-tls` to `rustls-tls-native-roots`, aligning HTTP
   TLS root handling with the existing WebSocket native-root setup.
+- Disabled reqwest's `cookies` feature; `YfClient` handles Yahoo auth cookies
+  explicitly without reqwest's cookie store.
 - Removed the direct optional/runtime `polars` dependency from `yfinance-rs`;
   the `dataframe` feature now enables `paft/dataframe`, while `polars` remains
   only as a dev-dependency for examples and tests.
