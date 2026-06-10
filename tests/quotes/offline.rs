@@ -1,8 +1,31 @@
 use crate::common::{mock_quote_v7_multi, setup_server};
 use httpmock::Method::GET;
+use serde_json::json;
 use std::{path::Path, time::Duration};
 use url::Url;
 use yfinance_rs::{CacheMode, ProjectionIssue, YfError, YfWarning};
+
+fn quote_response_body(symbols: &[String]) -> String {
+    let result = symbols
+        .iter()
+        .map(|symbol| {
+            json!({
+                "symbol": symbol,
+                "quoteType": "EQUITY",
+                "regularMarketPrice": 1.0,
+                "currency": "USD",
+            })
+        })
+        .collect::<Vec<_>>();
+
+    json!({
+        "quoteResponse": {
+            "result": result,
+            "error": null,
+        }
+    })
+    .to_string()
+}
 
 #[tokio::test]
 async fn offline_multi_quotes_uses_recorded_fixture() {
@@ -38,6 +61,53 @@ async fn offline_multi_quotes_uses_recorded_fixture() {
         .collect();
     assert!(syms.contains(&"AAPL"));
     assert!(syms.contains(&"MSFT"));
+}
+
+#[tokio::test]
+async fn batch_quotes_chunks_large_symbol_lists_by_count() {
+    let server = setup_server();
+    let symbols = (0..=100)
+        .map(|idx| format!("CHUNK{idx:03}"))
+        .collect::<Vec<_>>();
+    let first_symbols = &symbols[..100];
+    let second_symbols = &symbols[100..];
+    let first_query = first_symbols.join(",");
+    let second_query = second_symbols.join(",");
+
+    let first = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", first_query.as_str());
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(quote_response_body(first_symbols));
+    });
+    let second = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v7/finance/quote")
+            .query_param("symbols", second_query.as_str());
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(quote_response_body(second_symbols));
+    });
+
+    let base = Url::parse(&format!("{}/v7/finance/quote", server.base_url())).unwrap();
+    let client = yfinance_rs::YfClient::builder()
+        .base_quote_v7(base)
+        .build()
+        .unwrap();
+
+    let quotes = yfinance_rs::QuotesBuilder::new(&client)
+        .symbols(symbols.iter().map(String::as_str))
+        .fetch()
+        .await
+        .unwrap();
+
+    first.assert();
+    second.assert();
+    assert_eq!(quotes.len(), symbols.len());
+    assert_eq!(quotes[0].instrument.symbol.as_str(), "CHUNK000");
+    assert_eq!(quotes[100].instrument.symbol.as_str(), "CHUNK100");
 }
 
 #[tokio::test]

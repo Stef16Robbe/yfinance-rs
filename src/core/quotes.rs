@@ -1,8 +1,10 @@
 // src/core/quotes.rs
 use std::{borrow::Cow, fmt::Write as _};
 
+use futures::{StreamExt, stream};
 use serde::Deserialize;
 use serde_json::Value;
+use url::Url;
 
 use crate::{
     YfClient, YfError,
@@ -30,6 +32,10 @@ use paft::market::quote::Quote;
 use paft::money::{Currency, PriceAmount};
 
 const KEY_STATISTICS_MODULES: &str = "summaryDetail,defaultKeyStatistics";
+const MAX_V7_QUOTE_SYMBOLS_PER_REQUEST: usize = 100;
+const MAX_V7_QUOTE_URL_BYTES: usize = 1_800;
+// Live probes plateaued at 12 concurrent quote chunks; 16 added burst without improving latency.
+const MAX_V7_QUOTE_CONCURRENT_REQUESTS: usize = 12;
 
 // Centralized wire model for the v7 quote API
 #[derive(Deserialize)]
@@ -1417,9 +1423,69 @@ pub async fn fetch_v7_quote_values(
     }
 
     let normalized_symbols = normalize_symbols(symbols.iter().copied())?;
-    let mut url = client.base_quote_v7().clone();
-    url.query_pairs_mut()
-        .append_pair("symbols", &normalized_symbols.join(","));
+    let chunks = chunk_v7_quote_symbols(client.base_quote_v7(), normalized_symbols)?;
+
+    let mut chunk_values: Vec<_> = stream::iter(chunks.into_iter().enumerate())
+        .map(|(index, symbols)| async move {
+            let values = fetch_v7_quote_chunk(client, &symbols, options).await?;
+            Ok::<_, YfError>((index, values))
+        })
+        .buffer_unordered(MAX_V7_QUOTE_CONCURRENT_REQUESTS)
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .collect::<Result<_, _>>()?;
+
+    chunk_values.sort_unstable_by_key(|(index, _)| *index);
+    let total_len = chunk_values.iter().map(|(_, values)| values.len()).sum();
+    let mut values = Vec::with_capacity(total_len);
+    for (_, mut chunk) in chunk_values {
+        values.append(&mut chunk);
+    }
+
+    Ok(values)
+}
+
+fn chunk_v7_quote_symbols(
+    base_url: &Url,
+    normalized_symbols: Vec<String>,
+) -> Result<Vec<Vec<String>>, YfError> {
+    let mut chunks = Vec::new();
+    let mut current = Vec::new();
+
+    for symbol in normalized_symbols {
+        let mut candidate = current.clone();
+        candidate.push(symbol.clone());
+
+        if candidate.len() > MAX_V7_QUOTE_SYMBOLS_PER_REQUEST
+            || v7_quote_url(&candidate, base_url).as_str().len() > MAX_V7_QUOTE_URL_BYTES
+        {
+            if current.is_empty() {
+                return Err(YfError::InvalidParams(format!(
+                    "symbol {symbol:?} makes v7 quote URL exceed {MAX_V7_QUOTE_URL_BYTES} bytes"
+                )));
+            }
+
+            chunks.push(std::mem::take(&mut current));
+            current.push(symbol);
+        } else {
+            current = candidate;
+        }
+    }
+
+    if !current.is_empty() {
+        chunks.push(current);
+    }
+
+    Ok(chunks)
+}
+
+async fn fetch_v7_quote_chunk(
+    client: &YfClient,
+    normalized_symbols: &[String],
+    options: &CallOptions,
+) -> Result<Vec<Value>, YfError> {
+    let url = v7_quote_url(normalized_symbols, client.base_quote_v7());
     let fixture_key = normalized_symbols.join("-");
 
     let (body_to_parse, _) = net::fetch_text_with_auth_retry(
@@ -1451,6 +1517,13 @@ pub async fn fetch_v7_quote_values(
         .ok_or_else(|| YfError::MissingData("v7 quoteResponse.result missing".into()))?;
 
     Ok(nodes)
+}
+
+fn v7_quote_url(normalized_symbols: &[String], base_url: &Url) -> Url {
+    let mut url = base_url.clone();
+    url.query_pairs_mut()
+        .append_pair("symbols", &normalized_symbols.join(","));
+    url
 }
 
 fn validate_v7_quote_body(body: &str) -> Result<(), YfError> {
@@ -1755,5 +1828,41 @@ impl V7QuoteNode {
             as_of: self.as_of_with_context(ctx, key)?,
             provider: (),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_base_url() -> Url {
+        Url::parse("https://query1.finance.yahoo.com/v7/finance/quote").unwrap()
+    }
+
+    #[test]
+    fn quote_symbol_chunks_respect_max_symbol_count() {
+        let symbols = (0..=MAX_V7_QUOTE_SYMBOLS_PER_REQUEST)
+            .map(|idx| format!("SYM{idx}"))
+            .collect::<Vec<_>>();
+
+        let chunks = chunk_v7_quote_symbols(&test_base_url(), symbols).unwrap();
+
+        assert_eq!(chunks.len(), 2);
+        assert_eq!(chunks[0].len(), MAX_V7_QUOTE_SYMBOLS_PER_REQUEST);
+        assert_eq!(chunks[1].len(), 1);
+    }
+
+    #[test]
+    fn quote_symbol_chunks_respect_encoded_url_byte_limit() {
+        let symbols = (0..40)
+            .map(|idx| format!("SYM{idx:03}{}", "X".repeat(70)))
+            .collect::<Vec<_>>();
+
+        let chunks = chunk_v7_quote_symbols(&test_base_url(), symbols).unwrap();
+
+        assert!(chunks.len() > 1);
+        assert!(chunks.iter().all(|chunk| {
+            v7_quote_url(chunk, &test_base_url()).as_str().len() <= MAX_V7_QUOTE_URL_BYTES
+        }));
     }
 }

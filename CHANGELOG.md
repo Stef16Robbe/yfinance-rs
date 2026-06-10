@@ -174,6 +174,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   with diagnostics instead of dropping the symbol in best-effort mode.
 - v7 quote side effects now reuse already-projected quote nodes instead of
   cloning and re-deserializing raw JSON values.
+- Batch v7 quote fetches now split large symbol lists into bounded URL-size
+  chunks and fetch those chunks with bounded concurrency.
 - `_preauth` now seeds client credentials in crate unit-test builds (`cfg(test)`)
   as well as when the `test-mode` feature is enabled.
 - Business Insider ISIN lookup now parses the `mmSuggestDeliver` JSONP shape
