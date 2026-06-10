@@ -1,6 +1,4 @@
-use std::fmt;
-
-use thiserror::Error;
+use std::{error::Error as StdError, fmt};
 
 use crate::core::redaction::redact_auth_query_params_in_text;
 
@@ -35,50 +33,136 @@ impl fmt::Debug for RedactedHttpError {
 
 impl std::error::Error for RedactedHttpError {}
 
+/// An opaque wrapper around WebSocket transport errors.
+pub struct WebsocketError {
+    source: Box<tokio_tungstenite::tungstenite::Error>,
+}
+
+impl WebsocketError {
+    pub(crate) fn new(source: tokio_tungstenite::tungstenite::Error) -> Self {
+        Self {
+            source: Box::new(source),
+        }
+    }
+
+    fn as_source(&self) -> &(dyn StdError + 'static) {
+        self.source.as_ref()
+    }
+}
+
+impl fmt::Display for WebsocketError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.source, f)
+    }
+}
+
+impl fmt::Debug for WebsocketError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
+    }
+}
+
+impl StdError for WebsocketError {
+    fn source(&self) -> Option<&(dyn StdError + 'static)> {
+        Some(self.as_source())
+    }
+}
+
+macro_rules! opaque_source_error {
+    (
+        $(#[$meta:meta])*
+        $name:ident($source:ty)
+    ) => {
+        $(#[$meta])*
+        pub struct $name {
+            source: $source,
+        }
+
+        impl $name {
+            pub(crate) const fn new(source: $source) -> Self {
+                Self { source }
+            }
+
+            fn as_source(&self) -> &(dyn StdError + 'static) {
+                &self.source
+            }
+        }
+
+        impl fmt::Display for $name {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt::Display::fmt(&self.source, f)
+            }
+        }
+
+        impl fmt::Debug for $name {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fmt::Display::fmt(self, f)
+            }
+        }
+
+        impl StdError for $name {
+            fn source(&self) -> Option<&(dyn StdError + 'static)> {
+                Some(self.as_source())
+            }
+        }
+    };
+}
+
+opaque_source_error!(
+    /// An opaque wrapper around Protobuf decoding errors.
+    ProtobufDecodeError(prost::DecodeError)
+);
+
+opaque_source_error!(
+    /// An opaque wrapper around JSON serialization and deserialization errors.
+    JsonError(serde_json::Error)
+);
+
+opaque_source_error!(
+    /// An opaque wrapper around Base64 decoding errors.
+    Base64DecodeError(base64::DecodeError)
+);
+
+opaque_source_error!(
+    /// An opaque wrapper around URL parsing errors.
+    UrlParseError(url::ParseError)
+);
+
 /// The primary error type for the `yfinance-rs` crate.
 #[non_exhaustive]
-#[derive(Debug, Error)]
+#[derive(Debug)]
 pub enum YfError {
     /// An error originating from the underlying HTTP client (`reqwest`).
-    #[error("HTTP error: {0}")]
     Http(RedactedHttpError),
 
     /// An error related to WebSocket communication.
-    #[error("WebSocket error: {0}")]
-    Websocket(Box<tokio_tungstenite::tungstenite::Error>),
+    Websocket(WebsocketError),
 
     /// An error during Protobuf decoding, typically from a WebSocket stream.
-    #[error("Protobuf decoding error: {0}")]
-    Protobuf(#[from] prost::DecodeError),
+    Protobuf(ProtobufDecodeError),
 
     /// An error during JSON serialization or deserialization.
-    #[error("JSON parsing error: {0}")]
-    Json(#[from] serde_json::Error),
+    Json(JsonError),
 
     /// An error during Base64 decoding.
-    #[error("Base64 decoding error: {0}")]
-    Base64(#[from] base64::DecodeError),
+    Base64(Base64DecodeError),
 
     /// An error that occurs when parsing a URL.
-    #[error("Invalid URL: {0}")]
-    Url(#[from] url::ParseError),
+    Url(UrlParseError),
 
     /// A 404 Not Found returned by Yahoo endpoints.
-    #[error("Not found at {url}")]
     NotFound {
         /// The URL that returned a 404.
         url: String,
     },
 
     /// A 429 Too Many Requests (rate limit) returned by Yahoo endpoints.
-    #[error("Rate limited at {url}")]
     RateLimited {
         /// The URL that returned a 429.
         url: String,
     },
 
     /// A 5xx server error returned by Yahoo endpoints.
-    #[error("Server error {status} at {url}")]
     ServerError {
         /// The HTTP status code in the 5xx range.
         status: u16,
@@ -87,7 +171,6 @@ pub enum YfError {
     },
 
     /// An error indicating an unexpected, non-successful HTTP status code (non-404/429/5xx).
-    #[error("Unexpected response status: {status} at {url}")]
     Status {
         /// The unexpected HTTP status code returned.
         status: u16,
@@ -98,27 +181,21 @@ pub enum YfError {
     /// An error returned by the Yahoo Finance API within an otherwise successful response.
     ///
     /// For example, a `200 OK` response might contain a JSON body with an `error` field.
-    #[error("Yahoo API error: {0}")]
     Api(String),
 
     /// An error related to authentication, such as failing to retrieve a cookie or crumb.
-    #[error("Authentication error: {0}")]
     Auth(String),
 
     /// An error that occurs during the web scraping process.
-    #[error("Web scraping error: {0}")]
     Scrape(String),
 
     /// Indicates that an expected piece of data was missing from the API response.
-    #[error("Missing data in response: {0}")]
     MissingData(String),
 
     /// Indicates that provider data was present but could not be mapped into the public model.
-    #[error("Invalid data in response: {0}")]
     InvalidData(String),
 
     /// Option contracts were present, but Yahoo did not provide a usable underlying type.
-    #[error("contracts present, underlying type unavailable for {symbol}")]
     OptionUnderlyingTypeUnavailable {
         /// The requested option-chain symbol.
         symbol: String,
@@ -127,24 +204,92 @@ pub enum YfError {
     },
 
     /// Indicates that provider data could not be projected losslessly in strict mode.
-    #[error("Provider data quality issue: {0}")]
     DataQuality(Box<crate::core::diagnostics::YfWarning>),
 
     /// An error indicating that the parameters provided by the caller were invalid.
-    #[error("Invalid parameters: {0}")]
     InvalidParams(String),
 
     /// An error indicating that an HTTP request could not be cloned for retry.
-    #[error("Request cannot be cloned for retry")]
     RequestNotCloneable,
 
     /// An error originating from `paft` money modeling.
-    #[error("Money data error: {0}")]
-    Money(#[from] paft::money::MoneyError),
+    Money(paft::money::MoneyError),
 
     /// An error indicating that the provided date range is invalid (e.g., start date after end date).
-    #[error("Invalid date range: start date must be before end date")]
     InvalidDates,
+}
+
+impl YfError {
+    pub(crate) fn websocket(error: tokio_tungstenite::tungstenite::Error) -> Self {
+        Self::Websocket(WebsocketError::new(error))
+    }
+
+    pub(crate) const fn protobuf(error: prost::DecodeError) -> Self {
+        Self::Protobuf(ProtobufDecodeError::new(error))
+    }
+
+    pub(crate) const fn json(error: serde_json::Error) -> Self {
+        Self::Json(JsonError::new(error))
+    }
+
+    pub(crate) const fn base64(error: base64::DecodeError) -> Self {
+        Self::Base64(Base64DecodeError::new(error))
+    }
+
+    pub(crate) const fn url(error: url::ParseError) -> Self {
+        Self::Url(UrlParseError::new(error))
+    }
+}
+
+impl fmt::Display for YfError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Http(error) => write!(f, "HTTP error: {error}"),
+            Self::Websocket(error) => write!(f, "WebSocket error: {error}"),
+            Self::Protobuf(error) => write!(f, "Protobuf decoding error: {error}"),
+            Self::Json(error) => write!(f, "JSON parsing error: {error}"),
+            Self::Base64(error) => write!(f, "Base64 decoding error: {error}"),
+            Self::Url(error) => write!(f, "Invalid URL: {error}"),
+            Self::NotFound { url } => write!(f, "Not found at {url}"),
+            Self::RateLimited { url } => write!(f, "Rate limited at {url}"),
+            Self::ServerError { status, url } => write!(f, "Server error {status} at {url}"),
+            Self::Status { status, url } => {
+                write!(f, "Unexpected response status: {status} at {url}")
+            }
+            Self::Api(message) => write!(f, "Yahoo API error: {message}"),
+            Self::Auth(message) => write!(f, "Authentication error: {message}"),
+            Self::Scrape(message) => write!(f, "Web scraping error: {message}"),
+            Self::MissingData(message) => write!(f, "Missing data in response: {message}"),
+            Self::InvalidData(message) => write!(f, "Invalid data in response: {message}"),
+            Self::OptionUnderlyingTypeUnavailable { symbol, .. } => {
+                write!(
+                    f,
+                    "contracts present, underlying type unavailable for {symbol}"
+                )
+            }
+            Self::DataQuality(warning) => write!(f, "Provider data quality issue: {warning}"),
+            Self::InvalidParams(message) => write!(f, "Invalid parameters: {message}"),
+            Self::RequestNotCloneable => write!(f, "Request cannot be cloned for retry"),
+            Self::Money(error) => write!(f, "Money data error: {error}"),
+            Self::InvalidDates => {
+                f.write_str("Invalid date range: start date must be before end date")
+            }
+        }
+    }
+}
+
+impl StdError for YfError {
+    fn source(&self) -> Option<&(dyn StdError + 'static)> {
+        match self {
+            Self::Websocket(error) => Some(error.as_source()),
+            Self::Protobuf(error) => Some(error.as_source()),
+            Self::Json(error) => Some(error.as_source()),
+            Self::Base64(error) => Some(error.as_source()),
+            Self::Url(error) => Some(error.as_source()),
+            Self::Money(error) => Some(error),
+            _ => None,
+        }
+    }
 }
 
 impl From<reqwest::Error> for YfError {
@@ -153,8 +298,54 @@ impl From<reqwest::Error> for YfError {
     }
 }
 
-impl From<tokio_tungstenite::tungstenite::Error> for YfError {
-    fn from(e: tokio_tungstenite::tungstenite::Error) -> Self {
-        Self::Websocket(Box::new(e))
+impl From<paft::money::MoneyError> for YfError {
+    fn from(error: paft::money::MoneyError) -> Self {
+        Self::Money(error)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::error::Error as _;
+
+    use base64::{Engine as _, engine::general_purpose};
+    use prost::DecodeError;
+
+    use super::*;
+
+    fn assert_source<T>(error: &YfError)
+    where
+        T: std::error::Error + 'static,
+    {
+        assert!(error.source().expect("error source").is::<T>());
+    }
+
+    #[test]
+    fn opaque_error_variants_preserve_foreign_sources() {
+        let websocket = YfError::websocket(tokio_tungstenite::tungstenite::Error::ConnectionClosed);
+        assert!(matches!(websocket, YfError::Websocket(_)));
+        assert_source::<tokio_tungstenite::tungstenite::Error>(&websocket);
+
+        let protobuf = YfError::protobuf(DecodeError::new("invalid protobuf"));
+        assert!(matches!(protobuf, YfError::Protobuf(_)));
+        assert_source::<prost::DecodeError>(&protobuf);
+
+        let json = YfError::json(
+            serde_json::from_str::<serde_json::Value>("{").expect_err("invalid JSON"),
+        );
+        assert!(matches!(json, YfError::Json(_)));
+        assert_source::<serde_json::Error>(&json);
+
+        let base64 = YfError::base64(
+            general_purpose::STANDARD
+                .decode("!")
+                .expect_err("invalid base64"),
+        );
+        assert!(matches!(base64, YfError::Base64(_)));
+        assert_source::<base64::DecodeError>(&base64);
+
+        let url = YfError::url(url::Url::parse("://").expect_err("invalid URL"));
+        assert!(matches!(url, YfError::Url(_)));
+        assert_source::<url::ParseError>(&url);
     }
 }

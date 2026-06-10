@@ -658,6 +658,10 @@ impl YfClientBuilder {
         }
     }
 
+    fn configured_url(configured: Option<Url>, default: &str) -> Result<Url, YfError> {
+        configured.map_or_else(|| Url::parse(default).map_err(YfError::url), Ok)
+    }
+
     /// Sets the `User-Agent` header for all HTTP requests and WebSocket connections.
     ///
     /// The user agent is applied consistently across all request types:
@@ -1032,31 +1036,21 @@ impl YfClientBuilder {
     /// Returns an error if the base URLs are invalid or the HTTP client fails to build.
     pub fn build(self) -> Result<YfClient, YfError> {
         let timeouts = self.http_timeouts();
-        let base_chart = self.base_chart.unwrap_or(Url::parse(DEFAULT_BASE_CHART)?);
-        let base_quote_api = self
-            .base_quote_api
-            .unwrap_or(Url::parse(DEFAULT_BASE_QUOTE_API)?);
-        let base_quote_v7 = self
-            .base_quote_v7
-            .unwrap_or(Url::parse(constants::DEFAULT_BASE_QUOTE_V7)?);
-        let base_options_v7 = self
-            .base_options_v7
-            .unwrap_or(Url::parse(constants::DEFAULT_BASE_OPTIONS_V7)?);
-        let base_stream = self
-            .base_stream
-            .unwrap_or(Url::parse(constants::DEFAULT_BASE_STREAM)?);
-        let base_news = self
-            .base_news
-            .unwrap_or(Url::parse(constants::DEFAULT_BASE_NEWS)?);
-        let base_insider_search = self
-            .base_insider_search
-            .unwrap_or(Url::parse(DEFAULT_BASE_INSIDER_SEARCH)?);
-        let base_timeseries = self
-            .base_timeseries
-            .unwrap_or(Url::parse(constants::DEFAULT_BASE_TIMESERIES)?);
+        let base_chart = Self::configured_url(self.base_chart, DEFAULT_BASE_CHART)?;
+        let base_quote_api = Self::configured_url(self.base_quote_api, DEFAULT_BASE_QUOTE_API)?;
+        let base_quote_v7 =
+            Self::configured_url(self.base_quote_v7, constants::DEFAULT_BASE_QUOTE_V7)?;
+        let base_options_v7 =
+            Self::configured_url(self.base_options_v7, constants::DEFAULT_BASE_OPTIONS_V7)?;
+        let base_stream = Self::configured_url(self.base_stream, constants::DEFAULT_BASE_STREAM)?;
+        let base_news = Self::configured_url(self.base_news, constants::DEFAULT_BASE_NEWS)?;
+        let base_insider_search =
+            Self::configured_url(self.base_insider_search, DEFAULT_BASE_INSIDER_SEARCH)?;
+        let base_timeseries =
+            Self::configured_url(self.base_timeseries, constants::DEFAULT_BASE_TIMESERIES)?;
 
-        let cookie_url = self.cookie_url.unwrap_or(Url::parse(DEFAULT_COOKIE_URL)?);
-        let crumb_url = self.crumb_url.unwrap_or(Url::parse(DEFAULT_CRUMB_URL)?);
+        let cookie_url = Self::configured_url(self.cookie_url, DEFAULT_COOKIE_URL)?;
+        let crumb_url = Self::configured_url(self.crumb_url, DEFAULT_CRUMB_URL)?;
 
         let user_agent = self.user_agent.as_deref().unwrap_or(USER_AGENT).to_string();
 

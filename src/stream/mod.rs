@@ -373,23 +373,21 @@ fn report_websocket_startup_error(
 }
 
 fn websocket_remote_closed_error() -> YfError {
-    WsError::ConnectionClosed.into()
+    YfError::websocket(WsError::ConnectionClosed)
 }
 
 fn websocket_idle_timeout_error(timeout: Duration) -> YfError {
-    WsError::Io(std::io::Error::new(
+    YfError::websocket(WsError::Io(std::io::Error::new(
         std::io::ErrorKind::TimedOut,
         format!("websocket stream received no frames for {timeout:?}"),
-    ))
-    .into()
+    )))
 }
 
 fn websocket_connect_timeout_error(timeout: Duration) -> YfError {
-    WsError::Io(std::io::Error::new(
+    YfError::websocket(WsError::Io(std::io::Error::new(
         std::io::ErrorKind::TimedOut,
         format!("websocket startup did not complete within {timeout:?}"),
-    ))
-    .into()
+    )))
 }
 
 fn websocket_stop_requested(stop_rx: &mut oneshot::Receiver<()>) -> bool {
@@ -397,10 +395,9 @@ fn websocket_stop_requested(stop_rx: &mut oneshot::Receiver<()>) -> bool {
 }
 
 fn websocket_http_transport_error(err: &reqwest::Error) -> YfError {
-    WsError::Io(std::io::Error::other(
+    YfError::websocket(WsError::Io(std::io::Error::other(
         RedactedHttpError::new(err).to_string(),
-    ))
-    .into()
+    )))
 }
 
 fn websocket_http_upgrade_url(base: &Url) -> Result<Url, YfError> {
@@ -455,10 +452,9 @@ async fn connect_websocket_stream(
         .get(SEC_WEBSOCKET_ACCEPT)
         .is_none_or(|accept| accept != expected_accept.as_str())
     {
-        return Err(WsError::Protocol(
+        return Err(YfError::websocket(WsError::Protocol(
             tokio_tungstenite::tungstenite::error::ProtocolError::SecWebSocketAcceptKeyMismatch,
-        )
-        .into());
+        )));
     }
 
     let upgraded = response
@@ -484,8 +480,11 @@ async fn run_websocket_stream(
         let sub_msg = serde_json::to_string(&WsSubscribe {
             subscribe: &symbols,
         })
-        .map_err(YfError::Json)?;
-        write.send(WsMessage::Text(sub_msg.into())).await?;
+        .map_err(YfError::json)?;
+        write
+            .send(WsMessage::Text(sub_msg.into()))
+            .await
+            .map_err(YfError::websocket)?;
 
         Ok((write, read))
     };
@@ -577,13 +576,13 @@ async fn run_websocket_stream(
                     // Tungstenite queues ping replies automatically; keep polling so they flush.
                     Some(Ok(WsMessage::Ping(_) | WsMessage::Pong(_) | WsMessage::Frame(_))) => {}
                     Some(Ok(WsMessage::Close(_))) => {
-                        write.flush().await?;
+                        write.flush().await.map_err(YfError::websocket)?;
                         if websocket_stop_requested(stop_rx) {
                             break;
                         }
                         return Err(websocket_remote_closed_error());
                     }
-                    Some(Err(e)) => return Err(e.into()),
+                    Some(Err(e)) => return Err(YfError::websocket(e)),
                     None => {
                         if websocket_stop_requested(stop_rx) {
                             break;
@@ -725,8 +724,8 @@ fn decode_ws_pricing(text: &str) -> Result<wire_ws::PricingData, YfError> {
     };
     let decoded = general_purpose::STANDARD
         .decode(b64_cow.as_ref())
-        .map_err(YfError::Base64)?;
-    let ticker = wire_ws::PricingData::decode(&*decoded)?;
+        .map_err(YfError::base64)?;
+    let ticker = wire_ws::PricingData::decode(&*decoded).map_err(YfError::protobuf)?;
     Ok(ticker)
 }
 

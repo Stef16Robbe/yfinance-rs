@@ -71,6 +71,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `YfError::Http` now stores a redacted HTTP-client error wrapper instead of
   `reqwest::Error`, preventing formatted errors from leaking auth-like query
   parameters.
+- `YfError` JSON, WebSocket, Protobuf, Base64, and URL variants now store
+  yfinance-rs-owned opaque wrapper types instead of directly exposing foreign
+  parser and transport error types. The original errors remain available through
+  `std::error::Error::source()`.
 - Replaced the old lossy float-to-money/price/decimal helpers with checked
   conversion helpers. `core::conversions` is now doc-hidden, publicly reachable
   only as unstable Yahoo-to-`paft` adapter and test plumbing.

@@ -13,7 +13,7 @@ use crate::{ProjectionIssue, YfClient, YfError, YfResponse};
 
 #[allow(clippy::too_many_lines)]
 fn parse_search_body(body: &str, ctx: &mut ProjectionContext) -> Result<SearchResponse, YfError> {
-    let env: V1SearchEnvelope = serde_json::from_str(body).map_err(YfError::Json)?;
+    let env: V1SearchEnvelope = serde_json::from_str(body).map_err(YfError::json)?;
 
     let quotes = env
         .quotes
@@ -353,7 +353,7 @@ impl SearchBuilder {
 }
 
 fn validate_search_body(body: &str) -> Result<(), YfError> {
-    let env: V1SearchEnvelope = serde_json::from_str(body).map_err(YfError::Json)?;
+    let env: V1SearchEnvelope = serde_json::from_str(body).map_err(YfError::json)?;
     if env.quotes.is_some() {
         Ok(())
     } else {

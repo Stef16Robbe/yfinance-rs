@@ -35,7 +35,7 @@ pub(super) async fn fetch_news(
 ) -> Result<crate::YfResponse<Vec<NewsArticle>>, YfError> {
     let symbol = normalize_symbol(symbol)?;
     let mut ctx = ProjectionContext::new("news", options.data_quality());
-    let mut url = client.base_news().join("xhr/ncp")?;
+    let mut url = client.base_news().join("xhr/ncp").map_err(YfError::url)?;
     url.query_pairs_mut()
         .append_pair("queryRef", tab_as_str(tab))
         .append_pair("serviceKey", "ncp_fin");
@@ -49,7 +49,7 @@ pub(super) async fn fetch_news(
     };
 
     let endpoint = format!("news_{}", tab_as_str(tab));
-    let body_json = serde_json::to_string(&payload).map_err(YfError::Json)?;
+    let body_json = serde_json::to_string(&payload).map_err(YfError::json)?;
     let envelope: wire::NewsEnvelope = net::fetch_json_post_cached(
         client,
         &url,

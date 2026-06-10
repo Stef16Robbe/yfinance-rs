@@ -87,7 +87,7 @@ fn validate_chart_body(body: &str) -> Result<(), crate::core::YfError> {
 // NEW helper to keep fetch_chart compact
 fn decode_chart(body: &str) -> Result<Fetched, crate::core::YfError> {
     let envelope: crate::history::wire::ChartEnvelope =
-        serde_json::from_str(body).map_err(crate::core::YfError::Json)?;
+        serde_json::from_str(body).map_err(crate::core::YfError::json)?;
 
     let chart = envelope
         .chart

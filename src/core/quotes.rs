@@ -1276,7 +1276,7 @@ fn optional_date(
 pub fn quote_summary_key_statistics_from_raw(
     raw: &serde_json::value::RawValue,
 ) -> Result<QuoteSummaryKeyStatistics, YfError> {
-    serde_json::from_str(raw.get()).map_err(YfError::Json)
+    serde_json::from_str(raw.get()).map_err(YfError::json)
 }
 
 pub fn merge_key_statistics(
@@ -1440,7 +1440,7 @@ pub async fn fetch_v7_quote_values(
     )
     .await?;
 
-    let env: V7Envelope = serde_json::from_str(&body_to_parse)?;
+    let env: V7Envelope = serde_json::from_str(&body_to_parse).map_err(YfError::json)?;
     let quote_response = env
         .quote_response
         .ok_or_else(|| YfError::MissingData("v7 quoteResponse missing".into()))?;
@@ -1454,7 +1454,7 @@ pub async fn fetch_v7_quote_values(
 }
 
 fn validate_v7_quote_body(body: &str) -> Result<(), YfError> {
-    let env: V7Envelope = serde_json::from_str(body).map_err(YfError::Json)?;
+    let env: V7Envelope = serde_json::from_str(body).map_err(YfError::json)?;
     let quote_response = env
         .quote_response
         .ok_or_else(|| YfError::MissingData("v7 quoteResponse missing".into()))?;

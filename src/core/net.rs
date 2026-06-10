@@ -193,7 +193,7 @@ where
     .await?;
 
     validate_cache_body(config.cache_validator, &body)?;
-    let data = serde_json::from_str(&body).map_err(YfError::Json)?;
+    let data = serde_json::from_str(&body).map_err(YfError::json)?;
 
     if cache_write_enabled(client, config.options, config.cache_endpoint) {
         client.cache_put_key(config.cache_endpoint, cache_key, &body, None);

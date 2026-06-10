@@ -36,7 +36,7 @@ pub async fn expiration_dates(
 ) -> Result<Vec<i64>, YfError> {
     let symbol = normalize_symbol(symbol)?;
     let (body, _used_url) = fetch_options_raw(client, &symbol, None, options).await?;
-    let env: OptEnvelope = serde_json::from_str(&body).map_err(YfError::Json)?;
+    let env: OptEnvelope = serde_json::from_str(&body).map_err(YfError::json)?;
 
     let first = first_option_result(env)?;
 
@@ -64,7 +64,7 @@ pub async fn option_chain_with_diagnostics(
     let symbol = normalize_symbol(symbol)?;
     let mut ctx = ProjectionContext::new("options", options.data_quality());
     let (body, used_url) = fetch_options_raw(client, &symbol, date, options).await?;
-    let env: OptEnvelope = serde_json::from_str(&body).map_err(YfError::Json)?;
+    let env: OptEnvelope = serde_json::from_str(&body).map_err(YfError::json)?;
 
     let first = first_option_result(env)?;
 
@@ -613,7 +613,7 @@ struct OptChainNode {
 }
 
 fn validate_options_body(body: &str) -> Result<(), YfError> {
-    let env: OptEnvelope = serde_json::from_str(body).map_err(YfError::Json)?;
+    let env: OptEnvelope = serde_json::from_str(body).map_err(YfError::json)?;
     first_option_result(env).map(|_| ())
 }
 

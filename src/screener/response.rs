@@ -64,7 +64,7 @@ pub(super) fn parse_screener_body_with_diagnostics(
     data_quality: DataQuality,
 ) -> Result<YfResponse<ScreenerResponse>, YfError> {
     let mut ctx = ProjectionContext::new("screener", data_quality);
-    let env: WireEnvelope = serde_json::from_str(body)?;
+    let env: WireEnvelope = serde_json::from_str(body).map_err(YfError::json)?;
     reject_screener_error(&env)?;
 
     let result = env
@@ -103,7 +103,7 @@ pub(super) fn parse_screener_body_with_diagnostics(
 }
 
 pub(super) fn validate_screener_body(body: &str) -> Result<(), YfError> {
-    let env: WireEnvelope = serde_json::from_str(body)?;
+    let env: WireEnvelope = serde_json::from_str(body).map_err(YfError::json)?;
     reject_screener_error(&env)
 }
 

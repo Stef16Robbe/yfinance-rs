@@ -657,7 +657,7 @@ pub(super) async fn price_target_and_recommendation_summary_from_quote_summary_r
     options: &CallOptions,
 ) -> Result<super::InfoAnalysisParts, YfError> {
     let root: super::wire::V10Result<'_> =
-        serde_json::from_str(raw.get()).map_err(YfError::Json)?;
+        serde_json::from_str(raw.get()).map_err(YfError::json)?;
     Ok(map_price_target_and_recommendation_summary(
         client,
         symbol,

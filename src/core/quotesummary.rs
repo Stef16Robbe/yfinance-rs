@@ -93,7 +93,7 @@ pub async fn fetch_body(
 }
 
 fn validate_quote_summary_body(body: &str) -> Result<(), YfError> {
-    let env: BorrowedV10Envelope<'_> = serde_json::from_str(body).map_err(YfError::Json)?;
+    let env: BorrowedV10Envelope<'_> = serde_json::from_str(body).map_err(YfError::json)?;
     reject_borrowed_quote_summary_error(&env)
 }
 
@@ -110,7 +110,7 @@ fn reject_borrowed_quote_summary_error(env: &BorrowedV10Envelope<'_>) -> Result<
 }
 
 pub fn module_result_raw_value<'a>(body: &'a str) -> Result<&'a RawValue, YfError> {
-    let env: BorrowedV10Envelope<'a> = serde_json::from_str(body).map_err(YfError::Json)?;
+    let env: BorrowedV10Envelope<'a> = serde_json::from_str(body).map_err(YfError::json)?;
 
     reject_borrowed_quote_summary_error(&env)?;
 
@@ -131,7 +131,7 @@ pub fn parse_module_result_raw<'de, T>(raw: &'de RawValue) -> Result<T, YfError>
 where
     T: serde::Deserialize<'de>,
 {
-    serde_json::from_str(raw.get()).map_err(YfError::Json)
+    serde_json::from_str(raw.get()).map_err(YfError::json)
 }
 
 pub async fn fetch_module_result<T>(

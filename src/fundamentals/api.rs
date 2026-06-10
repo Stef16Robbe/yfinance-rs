@@ -169,7 +169,7 @@ where
     let url = timeseries_url(client, &symbol, prefix, keys)?;
     let body = fetch_timeseries_body(client, &symbol, endpoint_name, prefix, url, options).await?;
 
-    let envelope: TimeseriesEnvelope<'_> = serde_json::from_str(&body).map_err(YfError::Json)?;
+    let envelope: TimeseriesEnvelope<'_> = serde_json::from_str(&body).map_err(YfError::json)?;
     let result_vec = timeseries_results(envelope)?;
 
     if result_vec.is_empty() {
@@ -276,7 +276,7 @@ async fn fetch_timeseries_body(
 }
 
 fn validate_timeseries_body(body: &str) -> Result<(), YfError> {
-    let envelope: TimeseriesEnvelope<'_> = serde_json::from_str(body).map_err(YfError::Json)?;
+    let envelope: TimeseriesEnvelope<'_> = serde_json::from_str(body).map_err(YfError::json)?;
     timeseries_results(envelope).map(|_| ())
 }
 
@@ -1323,7 +1323,7 @@ pub(super) fn calendar_from_quote_summary_raw(
     data_quality: DataQuality,
 ) -> Result<YfResponse<super::Calendar>, YfError> {
     let root: super::wire::V10Result<'_> =
-        serde_json::from_str(raw.get()).map_err(YfError::Json)?;
+        serde_json::from_str(raw.get()).map_err(YfError::json)?;
     map_calendar(&root, data_quality)
 }
 
@@ -1476,7 +1476,7 @@ pub(super) async fn shares(
     )
     .await?;
 
-    let envelope: TimeseriesEnvelope<'_> = serde_json::from_str(&body).map_err(YfError::Json)?;
+    let envelope: TimeseriesEnvelope<'_> = serde_json::from_str(&body).map_err(YfError::json)?;
     let result_vec = timeseries_results(envelope)?;
 
     let result_data: Option<TimeseriesData<'_>> = result_vec

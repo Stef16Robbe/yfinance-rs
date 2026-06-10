@@ -336,7 +336,7 @@ impl<U: Send + Sync> ScreenerBuilder<U> {
 
         let fixture_key = parts.quote_type.as_str().to_ascii_lowercase();
         let body = self.custom_body(parts);
-        let body_json = serde_json::to_string(&body).map_err(YfError::Json)?;
+        let body_json = serde_json::to_string(&body).map_err(YfError::json)?;
         let response = self
             .post_with_auth_retry(url, &body_json, &fixture_key)
             .await?;
