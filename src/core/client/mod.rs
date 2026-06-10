@@ -911,42 +911,6 @@ impl YfClientBuilder {
     /// use yfinance_rs::YfClient;
     ///
     /// let client = YfClient::builder()
-    ///     .proxy("http://proxy.example.com:8080")
-    ///     .build()
-    ///     .unwrap();
-    /// ```
-    ///
-    /// # Errors
-    ///
-    /// This method will panic if the proxy URL is invalid. For production code,
-    /// consider using `try_proxy()` instead.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the proxy URL format is invalid.
-    #[must_use]
-    pub fn proxy(mut self, proxy_url: &str) -> Self {
-        // Validate URL format before creating proxy
-        assert!(
-            url::Url::parse(proxy_url).is_ok(),
-            "invalid proxy URL format: {proxy_url}"
-        );
-        self.proxy = Some(reqwest::Proxy::all(proxy_url).expect("invalid proxy URL"));
-        self
-    }
-
-    /// Sets a proxy for all HTTP and HTTPS requests, including WebSocket upgrade requests.
-    ///
-    /// This is a convenience method for setting up proxy configuration without
-    /// needing to create a full custom client. If you need more advanced proxy
-    /// configuration, use `custom_client()` instead.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use yfinance_rs::YfClient;
-    ///
-    /// let client = YfClient::builder()
     ///     .try_proxy("http://proxy.example.com:8080")?
     ///     .build()?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
@@ -964,40 +928,6 @@ impl YfClientBuilder {
             .map_err(|e| YfError::InvalidParams(format!("invalid proxy URL: {e}")))?;
         self.proxy = Some(proxy);
         Ok(self)
-    }
-
-    /// Sets a proxy for HTTPS requests, including `wss://` WebSocket upgrade requests.
-    ///
-    /// This is a convenience method for setting up HTTPS proxy configuration.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use yfinance_rs::YfClient;
-    ///
-    /// let client = YfClient::builder()
-    ///     .https_proxy("https://proxy.example.com:8443")
-    ///     .build()
-    ///     .unwrap();
-    /// ```
-    ///
-    /// # Errors
-    ///
-    /// This method will panic if the proxy URL is invalid. For production code,
-    /// consider using `try_https_proxy()` instead.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the proxy URL format is invalid.
-    #[must_use]
-    pub fn https_proxy(mut self, proxy_url: &str) -> Self {
-        // Validate URL format before creating proxy
-        assert!(
-            url::Url::parse(proxy_url).is_ok(),
-            "invalid HTTPS proxy URL format: {proxy_url}"
-        );
-        self.proxy = Some(reqwest::Proxy::https(proxy_url).expect("invalid HTTPS proxy URL"));
-        self
     }
 
     /// Sets a proxy for HTTPS requests, including `wss://` WebSocket upgrade requests.

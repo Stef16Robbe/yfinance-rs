@@ -572,10 +572,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 #### Proxy Configuration
 
-You can configure general or scheme-specific proxies through the builder:
+You can configure general or scheme-specific proxies through fallible builder methods:
 
 ```rust
-use yfinance_rs::{YfClient, YfClientBuilder, Ticker};
+use yfinance_rs::{Ticker, YfClient};
 use std::time::Duration;
 
 #[tokio::main]
@@ -587,11 +587,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let client_https = YfClient::builder()
         .try_https_proxy("https://proxy.example.com:8443")?
-        .timeout(Duration::from_secs(30))
-        .build()?;
-
-    let client_simple = YfClient::builder()
-        .proxy("http://proxy.example.com:8080")
         .timeout(Duration::from_secs(30))
         .build()?;
 

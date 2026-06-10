@@ -32,7 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("2. General Proxy Configuration Example:");
     // Note: This example uses a dummy proxy URL - replace with actual proxy if needed
     // let client_with_proxy = YfClient::builder()
-    //     .proxy("http://proxy.example.com:8080")
+    //     .try_proxy("http://proxy.example.com:8080")?
     //     .timeout(Duration::from_secs(30))
     //     .build()?;
 
@@ -130,7 +130,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 7: Working HTTPS proxy example (commented out for safety)
     // Uncomment and replace with your actual proxy URL:
     // let client_with_https = YfClient::builder()
-    //     .https_proxy("https://your-proxy.com:8443")
+    //     .try_https_proxy("https://your-proxy.com:8443")?
     //     .timeout(Duration::from_secs(30))
     //     .build()?;
 
@@ -138,9 +138,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!();
     println!("Key points:");
     println!("- Use .custom_client() for full reqwest control");
-    println!("- Use .proxy() for proxying all HTTP and HTTPS requests");
-    println!("- Use .https_proxy() for HTTPS proxy setup");
-    println!("- Use .try_proxy() or .try_https_proxy() for error handling");
+    println!("- Use .try_proxy() for proxying all HTTP and HTTPS requests");
+    println!("- Use .try_https_proxy() for HTTPS proxy setup");
     println!("- Custom client takes precedence over other HTTP settings");
     println!("- Rate limiting (429) is common with live API calls");
 

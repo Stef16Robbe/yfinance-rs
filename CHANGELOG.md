@@ -83,6 +83,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   `core::conversions`, `core::yahoo_vocab`, `YfClientBuilder::_preauth()`, and
   `stream::decode_and_map_message()` are now crate-private or unavailable in
   normal builds and public only for unit tests or the `test-mode` feature.
+- Removed the panicking `YfClientBuilder::proxy()` and
+  `YfClientBuilder::https_proxy()` setters. Use `try_proxy()` and
+  `try_https_proxy()` instead.
 - Projection-aware parsers now reject, diagnose, or drop many malformed provider
   classification, currency, date, and numeric fields instead of silently using
   defaults such as USD, epoch timestamps, `Equity`, or zero-valued financial
@@ -277,8 +280,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   metadata, and avoid poisoning the instrument cache with untyped fallbacks.
 - Polling streams in `diff_only` mode now emit only on price changes;
   volume-only cumulative-volume changes no longer trigger an update.
-- General proxy configuration through `YfClientBuilder::proxy()` and
-  `try_proxy()` now applies to HTTPS requests instead of only plain HTTP URLs.
+- General proxy configuration through `YfClientBuilder::try_proxy()` now applies
+  to HTTPS requests instead of only plain HTTP URLs.
 - `YfClient::default()` and builder-created clients that do not use
   `custom_client()` now apply a 30-second total request timeout and a 10-second
   connect timeout by default.
