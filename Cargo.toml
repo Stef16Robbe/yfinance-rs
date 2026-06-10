@@ -14,7 +14,7 @@ categories = ["api-bindings", "finance"]
 exclude = [
     ".github/**",
     "**/.DS_Store",
-    "tests/fixtures/**",
+    "tests/**",
 ]
 
 [dependencies]
