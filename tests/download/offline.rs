@@ -1,5 +1,6 @@
 use httpmock::Method::GET;
 use httpmock::{Mock, MockServer};
+use paft::Decimal;
 use std::num::NonZeroUsize;
 use url::Url;
 
@@ -674,4 +675,89 @@ async fn rounding_uses_recorded_price_hint() {
             assert!(!has_more_than_decimals(money_to_f64(&c.ohlc.close), 2));
         }
     }
+}
+
+#[tokio::test]
+async fn rounding_uses_recorded_minor_unit_price_hint_before_scaling() {
+    let fixture = common::fixture("history_chart", "TSCO.L", "json");
+    let raw: serde_json::Value = serde_json::from_str(&fixture).unwrap();
+    let result = &raw["chart"]["result"][0];
+    let meta = &result["meta"];
+    assert_eq!(meta["currency"].as_str(), Some("GBp"));
+    let price_hint = u32::try_from(meta["priceHint"].as_u64().unwrap()).unwrap();
+    let quote = &result["indicators"]["quote"][0];
+    let expected_open = rounded_minor_unit_field(quote, "open", price_hint);
+    let scale_first_open = scale_first_rounded_minor_unit_field(quote, "open", price_hint);
+    assert_ne!(
+        expected_open, scale_first_open,
+        "fixture should expose the previous scale-first rounding bug"
+    );
+
+    let server = MockServer::start();
+    let mock = server.mock(|when, then| {
+        when.method(GET)
+            .path("/v8/finance/chart/TSCO.L")
+            .query_param("range", "5d")
+            .query_param("interval", "1d")
+            .query_param("includePrePost", "false")
+            .query_param("events", "div|split|capitalGains");
+        then.status(200)
+            .header("content-type", "application/json")
+            .body(fixture);
+    });
+
+    let client = YfClient::builder()
+        .base_chart(Url::parse(&format!("{}/v8/finance/chart/", server.base_url())).unwrap())
+        .build()
+        .unwrap();
+
+    let response = DownloadBuilder::new(&client)
+        .symbols(["TSCO.L"])
+        .range(Range::D5)
+        .interval(Interval::D1)
+        .rounding(true)
+        .run()
+        .await
+        .unwrap();
+
+    mock.assert();
+
+    let candle = &response.entries[0].history.candles[0];
+    assert_eq!(candle.currency.to_string(), "GBP");
+    assert_eq!(candle.ohlc.open.as_decimal(), &expected_open);
+    assert_eq!(
+        candle.ohlc.high.as_decimal(),
+        &rounded_minor_unit_field(quote, "high", price_hint)
+    );
+    assert_eq!(
+        candle.ohlc.low.as_decimal(),
+        &rounded_minor_unit_field(quote, "low", price_hint)
+    );
+    assert_eq!(
+        candle.ohlc.close.as_decimal(),
+        &rounded_minor_unit_field(quote, "close", price_hint)
+    );
+    assert_ne!(candle.ohlc.open.as_decimal(), &scale_first_open);
+}
+
+fn rounded_minor_unit_field(quote: &serde_json::Value, field: &str, price_hint: u32) -> Decimal {
+    provider_decimal_field(quote, field)
+        .round_dp(price_hint)
+        .checked_mul(Decimal::new(1, 2))
+        .unwrap()
+}
+
+fn scale_first_rounded_minor_unit_field(
+    quote: &serde_json::Value,
+    field: &str,
+    price_hint: u32,
+) -> Decimal {
+    provider_decimal_field(quote, field)
+        .checked_mul(Decimal::new(1, 2))
+        .unwrap()
+        .round_dp(price_hint)
+}
+
+fn provider_decimal_field(quote: &serde_json::Value, field: &str) -> Decimal {
+    Decimal::try_from(quote[field][0].as_f64().unwrap()).unwrap()
 }

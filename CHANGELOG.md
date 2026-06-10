@@ -175,6 +175,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   Yahoo fixture payloads under `tests/`.
 - Download rounding now uses Yahoo chart `priceHint` metadata instead of
   hardcoded two-decimal `f64` rounding.
+- Download rounding now applies Yahoo chart `priceHint` before converting
+  Yahoo subunit quote currencies such as `GBp` into major currency amounts.
 - Sparse Yahoo `adjclose` history payloads now use one coherent split-only
   adjustment basis with diagnostics instead of mixing adjustment bases by row.
 - Predefined screener GET responses are now parsed before response-cache writes,

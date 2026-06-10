@@ -51,6 +51,18 @@ impl ResolvedCurrencyUnit {
         self.scaled_decimal_from_f64(value).map(PriceAmount::new)
     }
 
+    pub(crate) fn price_amount_rounded_at_provider_precision(
+        &self,
+        value: &PriceAmount,
+        precision: u32,
+    ) -> Option<PriceAmount> {
+        let provider_value = value.as_decimal().checked_div(self.scale)?;
+        provider_value
+            .round_dp(precision)
+            .checked_mul(self.scale)
+            .map(PriceAmount::new)
+    }
+
     #[cfg(feature = "stream")]
     pub fn price_amount_from_decimal(&self, value: Decimal) -> Option<PriceAmount> {
         value.checked_mul(self.scale).map(PriceAmount::new)

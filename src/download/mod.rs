@@ -5,7 +5,7 @@ use crate::{
     core::conversions::f64_from_price_amount,
     core::{
         CallOptions, Candle, Interval, ProjectionContext, ProjectionIssue, Range, YfClient,
-        YfError, YfResponse,
+        YfError, YfResponse, currency_resolver::ResolvedCurrencyUnit,
     },
     history::{HistoryBuilder, YahooHistoryResponse},
 };
@@ -175,7 +175,12 @@ impl DownloadBuilder {
         OhlcPriceBasis::per_field(*open, *high, *low, PriceBasis::raw())
     }
 
-    fn apply_rounding_if_enabled(&self, rows: &mut [Candle], price_hint: Option<u32>) {
+    fn apply_rounding_if_enabled(
+        &self,
+        rows: &mut [Candle],
+        price_hint: Option<u32>,
+        currency_unit: Option<&ResolvedCurrencyUnit>,
+    ) {
         if !self.rounding {
             return;
         }
@@ -185,10 +190,10 @@ impl DownloadBuilder {
         };
 
         for c in rows {
-            c.ohlc.open = rounded_price(&c.ohlc.open, price_hint);
-            c.ohlc.high = rounded_price(&c.ohlc.high, price_hint);
-            c.ohlc.low = rounded_price(&c.ohlc.low, price_hint);
-            c.ohlc.close = rounded_price(&c.ohlc.close, price_hint);
+            c.ohlc.open = rounded_price(&c.ohlc.open, price_hint, currency_unit);
+            c.ohlc.high = rounded_price(&c.ohlc.high, price_hint, currency_unit);
+            c.ohlc.low = rounded_price(&c.ohlc.low, price_hint, currency_unit);
+            c.ohlc.close = rounded_price(&c.ohlc.close, price_hint, currency_unit);
         }
     }
 
@@ -203,12 +208,13 @@ impl DownloadBuilder {
             let YahooHistoryResponse {
                 response: mut resp,
                 price_hint,
+                currency_unit,
                 instrument,
             } = response.data;
             // apply transforms to candles
             self.apply_back_adjust(&mut resp.candles);
             resp.price_basis = self.back_adjust_price_basis(resp.price_basis);
-            self.apply_rounding_if_enabled(&mut resp.candles, price_hint);
+            self.apply_rounding_if_enabled(&mut resp.candles, price_hint, currency_unit.as_ref());
 
             let instrument = resolve_download_instrument(instrument, &sym, ctx)?;
 
@@ -424,12 +430,19 @@ impl DownloadBuilder {
 
 /* ---------------- internal helpers ---------------- */
 
-fn rounded_price(price: &PriceAmount, price_hint: u32) -> PriceAmount {
-    PriceAmount::new(
-        price
-            .as_decimal()
-            .round_dp(price_hint.min(MAX_DECIMAL_SCALE)),
-    )
+fn rounded_price(
+    price: &PriceAmount,
+    price_hint: u32,
+    currency_unit: Option<&ResolvedCurrencyUnit>,
+) -> PriceAmount {
+    let price_hint = price_hint.min(MAX_DECIMAL_SCALE);
+    if let Some(rounded) = currency_unit
+        .and_then(|currency| currency.price_amount_rounded_at_provider_precision(price, price_hint))
+    {
+        return rounded;
+    }
+
+    PriceAmount::new(price.as_decimal().round_dp(price_hint))
 }
 
 fn resolve_download_instrument(

@@ -295,6 +295,7 @@ impl HistoryBuilder {
                 provider: (),
             },
             price_hint,
+            currency_unit: currency,
             instrument,
         }))
     }

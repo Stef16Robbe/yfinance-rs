@@ -3,13 +3,17 @@ mod wire;
 
 pub use builder::HistoryBuilder;
 
-use crate::core::{HistoryRequest, HistoryResponse, HistoryService, YfClient, YfError};
+use crate::core::{
+    HistoryRequest, HistoryResponse, HistoryService, YfClient, YfError,
+    currency_resolver::ResolvedCurrencyUnit,
+};
 use paft::domain::Instrument;
 
 #[derive(Debug)]
 pub(crate) struct YahooHistoryResponse {
     pub(crate) response: HistoryResponse,
     pub(crate) price_hint: Option<u32>,
+    pub(crate) currency_unit: Option<ResolvedCurrencyUnit>,
     pub(crate) instrument: Option<Instrument>,
 }
 
